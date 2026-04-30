@@ -30,6 +30,67 @@ flowchart LR
 - **PostgreSQL**: persiste assistentes, documentos, conversas e mensagens.
 - **Qdrant**: armazena embeddings em collections isoladas por assistente.
 
+## Árvore Oficial do Monorepo
+
+```text
+nexus/
+├── backend/
+│   ├── README.md
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── routes/
+│   │   │   └── schemas/
+│   │   ├── application/
+│   │   │   ├── dto/
+│   │   │   ├── services/
+│   │   │   └── use_cases/
+│   │   ├── domain/
+│   │   └── infrastructure/
+│   │       ├── database/
+│   │       ├── embeddings/
+│   │       ├── langgraph/
+│   │       ├── llm/
+│   │       └── vector_store/
+│   └── tests/
+│       ├── integration/
+│       └── unit/
+├── docs/
+│   ├── arquitetura/
+│   │   ├── adrs/
+│   │   ├── c4-componentes-backend.md
+│   │   ├── c4-componentes-frontend.md
+│   │   ├── c4-containers.md
+│   │   ├── c4-contexto.md
+│   │   ├── clean-architecture-backend.md
+│   │   ├── frontend-angular-ngrx.md
+│   │   ├── langgraph-fluxo-conversacional.md
+│   │   ├── rag-e-isolamento-de-conhecimento.md
+│   │   └── visao-geral.md
+│   ├── infraestrutura/
+│   ├── negocio/
+│   └── plano-incremental.md
+├── frontend/
+│   ├── README.md
+│   └── src/app/
+│       ├── core/
+│       ├── features/
+│       │   ├── assistants/
+│       │   ├── chat/
+│       │   └── documents/
+│       ├── shared/
+│       └── store/
+├── infra/
+│   └── docker/
+│       ├── README.md
+│       └── scripts/
+├── scripts/
+│   └── README.md
+├── .env.example
+├── .gitignore
+├── compose.yaml
+└── README.md
+```
+
 ## Ajustes em Relação ao Plano Inicial
 
 - O MVP não deve começar com múltiplos bancos lógicos ou microserviços; um backend modular é
