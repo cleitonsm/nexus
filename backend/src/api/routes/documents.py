@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from json import JSONDecodeError
-from pathlib import Path
 
 from fastapi import (
     APIRouter,
@@ -30,6 +29,7 @@ from src.infrastructure.database import (
     PostgresAssistantRepository,
     PostgresDocumentRepository,
 )
+from src.infrastructure.documents import extract_supported_text
 from src.infrastructure.embeddings import LocalHashEmbeddingGateway
 from src.infrastructure.vector_store import QdrantVectorStoreGateway
 
@@ -37,10 +37,6 @@ router = APIRouter(
     prefix="/assistants/{assistant_id}/documents",
     tags=["documents"],
 )
-
-_SUPPORTED_SUFFIXES = {".txt", ".md", ".markdown"}
-_SUPPORTED_CONTENT_TYPES = {"text/plain", "text/markdown"}
-
 
 @router.post(
     "",
@@ -80,12 +76,18 @@ async def ingest_document(
         )
 
     file_bytes = await file.read()
-    extracted_text = _extract_supported_text(
-        file.filename,
-        file.content_type,
-        file_bytes,
-    )
-    parsed_metadata = _parse_metadata_field(metadata)
+    try:
+        extracted_text = _extract_supported_text(
+            filename=file.filename,
+            content_type=file.content_type,
+            raw_content=file_bytes,
+        )
+        parsed_metadata = _parse_metadata_field(metadata)
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
     use_case = IngestDocumentUseCase(
         document_repository=document_repository,
@@ -117,32 +119,6 @@ async def ingest_document(
         chunk_count=result.chunk_count,
         embedding_dimension=result.embedding_dimension,
     )
-
-
-def _extract_supported_text(
-    filename: str | None,
-    content_type: str | None,
-    raw_content: bytes,
-) -> str:
-    suffix = Path(filename or "").suffix.lower()
-    if suffix and suffix not in _SUPPORTED_SUFFIXES:
-        raise ValueError(
-            "unsupported file format. Supported formats: .txt, .md, .markdown"
-        )
-    if content_type and content_type not in _SUPPORTED_CONTENT_TYPES:
-        raise ValueError(
-            "unsupported content type. Supported types: text/plain, text/markdown"
-        )
-    if not raw_content:
-        raise ValueError("uploaded file is empty.")
-    try:
-        text = raw_content.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise ValueError("file must be UTF-8 encoded text.") from exc
-    normalized = text.strip()
-    if not normalized:
-        raise ValueError("uploaded file does not contain text content.")
-    return normalized
 
 
 def _parse_metadata_field(raw_metadata: str | None) -> dict[str, str]:

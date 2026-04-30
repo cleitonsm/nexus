@@ -18,6 +18,14 @@ class ConversationResponse(BaseModel):
     message_count: int
 
 
+class ConversationHistoryResponse(BaseModel):
+    id: str
+    assistant_id: str
+    created_at: datetime
+    updated_at: datetime
+    message_count: int
+
+
 class MessageRoleRequest(StrEnum):
     USER = "user"
     ASSISTANT = "assistant"

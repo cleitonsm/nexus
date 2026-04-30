@@ -2,6 +2,7 @@ from .assistant_dto import AssistantDTO
 from .conversation_dto import (
     ChatTurnResult,
     ConversationDTO,
+    ListConversationsResult,
     MessageDTO,
     RegisterConversationResult,
 )
@@ -12,6 +13,7 @@ __all__ = [
     "ChatTurnResult",
     "ConversationDTO",
     "DocumentIngestionDTO",
+    "ListConversationsResult",
     "MessageDTO",
     "RegisterConversationResult",
 ]

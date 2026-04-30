@@ -8,6 +8,8 @@ from src.application.use_cases import (
     IngestDocumentInput,
     IngestDocumentUseCase,
     ListAssistantsUseCase,
+    ListConversationsInput,
+    ListConversationsUseCase,
     RegisterConversationInput,
     RegisterConversationUseCase,
 )
@@ -72,6 +74,18 @@ class InMemoryConversationRepository:
                 )
             ),
         )
+
+    def list_by_assistant(self, assistant_id: AssistantId) -> list[Conversation]:
+        conversations = [
+            self.get_by_id(ConversationId(conversation.id.value))
+            for conversation in self.items.values()
+            if conversation.assistant_id == assistant_id
+        ]
+        return [
+            conversation
+            for conversation in conversations
+            if conversation is not None
+        ]
 
     def save_message(self, message: ChatMessage) -> ChatMessage:
         conversation = self.items.get(message.conversation_id.value)
@@ -211,6 +225,39 @@ class UseCasesTestCase(unittest.TestCase):
         self.assertEqual(result.conversation.id, "conv-1")
         self.assertEqual(result.conversation.assistant_id, "assistant-1")
         self.assertIsNotNone(repo.get_by_id(ConversationId("conv-1")))
+
+    def test_list_conversations_use_case_returns_assistant_history(self) -> None:
+        repo = InMemoryConversationRepository()
+        register_use_case = RegisterConversationUseCase(repository=repo)
+        register_use_case.execute(
+            RegisterConversationInput(
+                conversation_id="conv-1",
+                assistant_id="assistant-1",
+            )
+        )
+        register_use_case.execute(
+            RegisterConversationInput(
+                conversation_id="conv-2",
+                assistant_id="assistant-1",
+            )
+        )
+        register_use_case.execute(
+            RegisterConversationInput(
+                conversation_id="conv-3",
+                assistant_id="assistant-2",
+            )
+        )
+
+        use_case = ListConversationsUseCase(repository=repo)
+        result = use_case.execute(
+            ListConversationsInput(assistant_id="assistant-1")
+        )
+
+        self.assertEqual(len(result.conversations), 2)
+        self.assertEqual(
+            {item.id for item in result.conversations},
+            {"conv-1", "conv-2"},
+        )
 
     def test_ingest_document_use_case_creates_collection_per_assistant(
         self,

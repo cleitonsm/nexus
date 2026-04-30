@@ -111,6 +111,37 @@ class PostgresConversationRepository:
             messages=messages,
         )
 
+    def list_by_assistant(
+        self,
+        assistant_id: AssistantId,
+    ) -> list[Conversation]:
+        stmt = (
+            select(ConversationModel)
+            .where(ConversationModel.assistant_id == assistant_id.value)
+            .options(selectinload(ConversationModel.messages))
+            .order_by(ConversationModel.updated_at.desc())
+        )
+        items = self._session.scalars(stmt).all()
+        conversations: list[Conversation] = []
+        for model in items:
+            sorted_messages = sorted(
+                model.messages,
+                key=lambda message: message.created_at,
+            )
+            conversations.append(
+                Conversation(
+                    id=ConversationId(model.id),
+                    assistant_id=AssistantId(model.assistant_id),
+                    created_at=model.created_at,
+                    updated_at=model.updated_at,
+                    messages=tuple(
+                        _message_to_entity(message)
+                        for message in sorted_messages
+                    ),
+                )
+            )
+        return conversations
+
     def save_message(self, message: ChatMessage) -> ChatMessage:
         model = MessageModel(
             id=message.id.value,

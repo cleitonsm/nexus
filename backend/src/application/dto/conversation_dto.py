@@ -31,6 +31,11 @@ class RegisterConversationResult:
 
 
 @dataclass(frozen=True, slots=True)
+class ListConversationsResult:
+    conversations: list[ConversationDTO]
+
+
+@dataclass(frozen=True, slots=True)
 class MessageDTO:
     id: str
     conversation_id: str

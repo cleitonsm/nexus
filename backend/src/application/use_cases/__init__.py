@@ -6,6 +6,7 @@ from .chat_with_assistant import (
 from .create_assistant import CreateAssistantInput, CreateAssistantUseCase
 from .ingest_document import IngestDocumentInput, IngestDocumentUseCase
 from .list_assistants import ListAssistantsUseCase
+from .list_conversations import ListConversationsInput, ListConversationsUseCase
 from .manage_api_key import (
     GetGlobalApiKeyStatusUseCase,
     GetGlobalApiKeyValueUseCase,
@@ -23,6 +24,8 @@ __all__ = [
     "IngestDocumentInput",
     "IngestDocumentUseCase",
     "ListAssistantsUseCase",
+    "ListConversationsInput",
+    "ListConversationsUseCase",
     "GetGlobalApiKeyStatusUseCase",
     "GetGlobalApiKeyValueUseCase",
     "RegisterConversationInput",
