@@ -1,0 +1,46 @@
+import { createActionGroup, emptyProps, props } from "@ngrx/store";
+
+import { Assistant, ChatMessage, IngestedDocument } from "../shared/models/nexus.models";
+
+export const nexusActions = createActionGroup({
+  source: "Nexus",
+  events: {
+    "Clear Error": emptyProps(),
+    "Load Assistants": emptyProps(),
+    "Load Assistants Success": props<{ assistants: Assistant[] }>(),
+    "Load Assistants Failure": props<{ error: string }>(),
+
+    "Create Assistant": props<{ name: string; description: string | null }>(),
+    "Create Assistant Success": props<{ assistant: Assistant }>(),
+    "Create Assistant Failure": props<{ error: string }>(),
+
+    "Select Assistant": props<{ assistantId: string }>(),
+
+    "Create Conversation": props<{ assistantId: string }>(),
+    "Create Conversation Success": props<{ assistantId: string; conversationId: string }>(),
+    "Create Conversation Failure": props<{ error: string }>(),
+
+    "Load Conversation": props<{ conversationId: string }>(),
+    "Load Conversation Success": props<{
+      conversationId: string;
+      messages: ChatMessage[];
+    }>(),
+    "Load Conversation Failure": props<{ error: string }>(),
+
+    "Upload Document": props<{
+      assistantId: string;
+      file: File;
+      metadata: Record<string, string>;
+    }>(),
+    "Upload Document Success": props<{ document: IngestedDocument }>(),
+    "Upload Document Failure": props<{ error: string }>(),
+
+    "Send Chat Question": props<{ conversationId: string; question: string; topK: number }>(),
+    "Send Chat Question Success": props<{
+      conversationId: string;
+      userMessage: ChatMessage;
+      assistantMessage: ChatMessage;
+    }>(),
+    "Send Chat Question Failure": props<{ error: string }>()
+  }
+});

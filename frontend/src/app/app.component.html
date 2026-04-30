@@ -1,0 +1,170 @@
+<main class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 lg:flex-row">
+    <aside class="w-full rounded-lg border border-slate-800 bg-slate-900 p-4 lg:w-80">
+      <h1 class="text-xl font-semibold">Nexus</h1>
+      <p class="mt-1 text-sm text-slate-400">
+        Selecione um assistente para enviar documentos e conversar.
+      </p>
+
+      <form class="mt-4 space-y-3" [formGroup]="assistantForm" (ngSubmit)="createAssistant()">
+        <h2 class="text-sm font-medium text-slate-200">Novo assistente</h2>
+        <label class="block text-xs text-slate-300">
+          Nome
+          <input
+            class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+            formControlName="name"
+            placeholder="Ex: Jurídico"
+          />
+        </label>
+        <label class="block text-xs text-slate-300">
+          Descrição
+          <textarea
+            class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+            rows="3"
+            formControlName="description"
+            placeholder="Contexto de uso (opcional)"
+          ></textarea>
+        </label>
+        <button
+          type="submit"
+          [disabled]="loading().createAssistant"
+          class="w-full rounded-md bg-indigo-500 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {{ loading().createAssistant ? "Criando..." : "Criar assistente" }}
+        </button>
+      </form>
+
+      <section class="mt-6">
+        <h2 class="text-sm font-medium text-slate-200">Assistentes</h2>
+        <ul class="mt-2 space-y-2">
+          <li *ngFor="let assistant of assistants()">
+            <button
+              type="button"
+              (click)="selectAssistant(assistant.id)"
+              class="w-full rounded-md border px-3 py-2 text-left text-sm"
+              [ngClass]="{
+                'border-indigo-400 bg-indigo-500/10': assistant.id === activeAssistantId(),
+                'border-slate-700': assistant.id !== activeAssistantId()
+              }"
+            >
+              <div class="font-medium">{{ assistant.name }}</div>
+              <p class="text-xs text-slate-400">{{ assistant.description || "Sem descrição" }}</p>
+            </button>
+          </li>
+        </ul>
+      </section>
+    </aside>
+
+    <section class="flex-1 space-y-4">
+      <div
+        *ngIf="error()"
+        class="rounded-md border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <span>{{ error() }}</span>
+          <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
+        </div>
+      </div>
+
+      <article class="rounded-lg border border-slate-800 bg-slate-900 p-4">
+        <h2 class="text-lg font-semibold">
+          {{ activeAssistant() ? "Documentos de " + activeAssistant()!.name : "Documentos" }}
+        </h2>
+        <p class="mt-1 text-sm text-slate-400">
+          Upload de arquivos `.txt` ou `.md` para o assistente ativo.
+        </p>
+
+        <form
+          class="mt-4 grid gap-3 md:grid-cols-[1fr_auto]"
+          [formGroup]="uploadForm"
+          (ngSubmit)="uploadDocument()"
+        >
+          <div class="space-y-2">
+            <input
+              type="file"
+              accept=".txt,.md,.markdown,text/plain,text/markdown"
+              (change)="onFileSelected($event)"
+              class="block w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+            />
+            <textarea
+              formControlName="metadata"
+              rows="2"
+              placeholder='Metadata em JSON opcional. Ex: {"origem":"manual"}'
+              class="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+            ></textarea>
+          </div>
+          <button
+            type="submit"
+            [disabled]="!activeAssistantId() || loading().uploadDocument"
+            class="rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {{ loading().uploadDocument ? "Enviando..." : "Enviar documento" }}
+          </button>
+        </form>
+
+        <ul class="mt-4 space-y-2 text-sm">
+          <li
+            *ngFor="let document of activeAssistantDocuments()"
+            class="rounded-md border border-slate-700 px-3 py-2"
+          >
+            <div class="font-medium">{{ document.source_name }}</div>
+            <div class="text-xs text-slate-400">
+              chunks: {{ document.chunk_count }} | coleção: {{ document.collection_name }}
+            </div>
+          </li>
+          <li
+            *ngIf="activeAssistantDocuments().length === 0"
+            class="rounded-md border border-dashed border-slate-700 px-3 py-3 text-xs text-slate-500"
+          >
+            Nenhum documento enviado para o assistente selecionado nesta sessão.
+          </li>
+        </ul>
+      </article>
+
+      <article class="rounded-lg border border-slate-800 bg-slate-900 p-4">
+        <h2 class="text-lg font-semibold">Chat</h2>
+        <p class="mt-1 text-sm text-slate-400">
+          Mensagens renderizam Markdown com destaque automático de código.
+        </p>
+
+        <div
+          class="mt-4 h-[380px] space-y-3 overflow-y-auto rounded-md border border-slate-800 bg-slate-950 p-3"
+        >
+          <div
+            *ngFor="let message of messages()"
+            class="max-w-[90%] rounded-md px-3 py-2 text-sm"
+            [class.ml-auto]="message.role === 'user'"
+            [ngClass]="{
+              'bg-indigo-500/20': message.role === 'user',
+              'bg-slate-800': message.role !== 'user'
+            }"
+          >
+            <div class="mb-1 text-xs uppercase tracking-wide text-slate-400">{{ message.role }}</div>
+            <div *ngIf="message.role === 'assistant'; else plainText" [innerHTML]="message.content | markdown"></div>
+            <ng-template #plainText>
+              <p class="whitespace-pre-wrap">{{ message.content }}</p>
+            </ng-template>
+          </div>
+          <div *ngIf="messages().length === 0" class="text-sm text-slate-500">
+            Selecione um assistente para iniciar a conversa.
+          </div>
+        </div>
+
+        <form class="mt-4 flex gap-2" [formGroup]="chatForm" (ngSubmit)="sendQuestion()">
+          <input
+            formControlName="question"
+            placeholder="Digite sua pergunta..."
+            class="flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            [disabled]="!currentConversationId() || loading().sendChat"
+            class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {{ loading().sendChat ? "Enviando..." : "Enviar" }}
+          </button>
+        </form>
+      </article>
+    </section>
+  </div>
+</main>

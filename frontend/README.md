@@ -1,14 +1,16 @@
-# Frontend
+# Frontend Nexus
 
-Futura aplicação Angular do Nexus.
+Frontend Angular com Tailwind e NgRx para o MVP:
 
-## Estrutura Planejada
+- cadastro e seleção de assistentes;
+- upload de documentos por assistente;
+- chat com renderização Markdown e destaque de código;
+- estado previsível com store/effects/selectors.
 
-- `src/app/core`: serviços globais e configuração.
-- `src/app/shared`: componentes e utilitários compartilhados.
-- `src/app/features/assistants`: criação e seleção de assistentes.
-- `src/app/features/documents`: upload e acompanhamento de documentos.
-- `src/app/features/chat`: interface conversacional.
-- `src/app/store`: estado global com NgRx.
+## Comandos
 
-O frontend deve seguir a documentação em `docs/arquitetura/frontend-angular-ngrx.md`.
+- `npm install`
+- `npm start`
+- `npm run build`
+
+No ambiente Docker, o Nginx faz proxy de `/api/*` para o serviço `backend`.
