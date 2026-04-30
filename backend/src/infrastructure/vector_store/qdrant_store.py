@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from uuid import NAMESPACE_URL, uuid5
+
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 
@@ -30,9 +32,10 @@ class QdrantVectorStoreGateway:
             collection_name=collection_name.value,
             points=[
                 models.PointStruct(
-                    id=chunk.id,
+                    id=str(uuid5(NAMESPACE_URL, chunk.id)),
                     vector=chunk.vector,
                     payload={
+                        "chunk_id": chunk.id,
                         "assistant_id": chunk.assistant_id.value,
                         "document_id": chunk.document_id.value,
                         "chunk_index": chunk.chunk_index,
@@ -54,22 +57,36 @@ class QdrantVectorStoreGateway:
     ) -> list[SearchResult]:
         if limit <= 0:
             return []
-        hits = self._client.search(
-            collection_name=collection_name.value,
-            query_vector=query_vector,
-            limit=limit,
-            with_payload=True,
-        )
+        if hasattr(self._client, "search"):
+            hits = self._client.search(
+                collection_name=collection_name.value,
+                query_vector=query_vector,
+                limit=limit,
+                with_payload=True,
+            )
+        else:
+            query_result = self._client.query_points(
+                collection_name=collection_name.value,
+                query=query_vector,
+                limit=limit,
+                with_payload=True,
+            )
+            hits = query_result.points
         results: list[SearchResult] = []
         for hit in hits:
             payload = hit.payload or {}
             document_id = payload.get("document_id")
+            chunk_id = payload.get("chunk_id", str(hit.id))
             text = payload.get("text", "")
-            if not isinstance(document_id, str) or not isinstance(text, str):
+            if (
+                not isinstance(document_id, str)
+                or not isinstance(chunk_id, str)
+                or not isinstance(text, str)
+            ):
                 continue
             results.append(
                 SearchResult(
-                    chunk_id=str(hit.id),
+                    chunk_id=chunk_id,
                     document_id=DocumentId(document_id),
                     score=float(hit.score),
                     text=text,

@@ -19,10 +19,21 @@ O MVP deve provar o fluxo essencial:
 - `docs/negocio`: visão de produto, problema, público, escopo e glossário.
 - `docs/arquitetura`: decisões técnicas, visão macro e arquitetura alvo.
 - `docs/infraestrutura`: requisitos e operação local com Docker.
-- `backend`: futura API FastAPI organizada por Clean Architecture.
-- `frontend`: futura aplicação Angular com Tailwind e NgRx.
+- `backend`: API FastAPI organizada por Clean Architecture.
+- `frontend`: aplicação Angular com Tailwind e NgRx.
 - `infra/docker`: imagens e scripts auxiliares para execução local.
 - `scripts`: comandos de desenvolvimento, testes e lint.
+
+## Execução rápida do MVP
+
+1. Copie `.env.example` para `.env`.
+2. Suba o ambiente com `docker compose up -d --build`.
+3. Acesse:
+   - frontend: `http://localhost:4200`
+   - backend health: `http://localhost:8000/health`
+
+Para validar o fluxo ponta a ponta (assistente -> documento -> chat -> persistencia),
+use o guia em `docs/infraestrutura/docker-local.md`.
 
 ## Documentação Principal
 
