@@ -9,45 +9,13 @@
     </div>
   </div>
 
-  <article class="rounded-lg border border-slate-800 bg-slate-900 p-4">
-    <h2 class="text-lg font-semibold">Criar assistente</h2>
-    <p class="mt-1 text-sm text-slate-400">
-      A seleção de assistentes fica fixa na sidebar.
-    </p>
-    <form class="mt-4 space-y-3" [formGroup]="assistantForm" (ngSubmit)="createAssistant()">
-      <label class="block text-xs text-slate-300">
-        Nome
-        <input
-          class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-          formControlName="name"
-          placeholder="Ex: Jurídico"
-        />
-      </label>
-      <label class="block text-xs text-slate-300">
-        Descrição
-        <textarea
-          class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-          rows="3"
-          formControlName="description"
-          placeholder="Contexto de uso (opcional)"
-        ></textarea>
-      </label>
-      <button
-        type="submit"
-        [disabled]="loading().createAssistant"
-        class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-      >
-        {{ loading().createAssistant ? "Criando..." : "Criar assistente" }}
-      </button>
-    </form>
-  </article>
-
-  <article class="rounded-lg border border-slate-800 bg-slate-900 p-4">
+  <article class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
     <h2 class="text-lg font-semibold">
       {{ activeAssistant() ? "Documentos de " + activeAssistant()!.name : "Documentos" }}
     </h2>
     <p class="mt-1 text-sm text-slate-400">
-      Upload de arquivos `.txt`, `.md`, `.markdown`, `.pdf`, `.doc` e `.docx`.
+      Crie e selecione assistentes na sidebar. Depois envie arquivos `.txt`, `.md`, `.markdown`,
+      `.pdf`, `.doc` e `.docx` para o assistente ativo.
     </p>
 
     <form

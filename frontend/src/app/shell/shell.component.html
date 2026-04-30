@@ -1,64 +1,334 @@
-<main class="min-h-screen bg-slate-950 text-slate-100">
-  <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 lg:flex-row">
-    <aside class="w-full rounded-lg border border-slate-800 bg-slate-900 p-4 lg:w-80">
-      <h1 class="text-xl font-semibold">Nexus</h1>
-      <p class="mt-1 text-sm text-slate-400">
-        Chat e administração separados por área.
-      </p>
+<main class="min-h-screen overflow-hidden bg-slate-950 text-slate-100">
+  <div
+    *ngIf="mobileSidebarOpen()"
+    class="fixed inset-0 z-30 bg-slate-950/70 backdrop-blur-sm lg:hidden"
+    (click)="closeMobileSidebar()"
+  ></div>
+
+  <div class="flex min-h-screen">
+    <aside
+      class="fixed inset-y-0 left-0 z-40 flex w-80 flex-col border-r border-slate-800 bg-slate-950/95 p-3 shadow-2xl transition-all duration-200 lg:static lg:z-auto lg:shadow-none"
+      [ngClass]="{
+        'translate-x-0': mobileSidebarOpen(),
+        '-translate-x-full lg:translate-x-0': !mobileSidebarOpen(),
+        'lg:w-80': !sidebarCollapsed(),
+        'lg:w-20': sidebarCollapsed()
+      }"
+      aria-label="Navegação principal"
+    >
+      <div class="flex items-center gap-2 px-1 py-2">
+        <button
+          type="button"
+          (click)="toggleNavigation()"
+          class="rounded-full border border-slate-700 p-2 text-slate-200 hover:border-indigo-400 hover:text-indigo-100"
+          aria-label="Expandir ou recolher menu"
+        >
+          <span class="block h-0.5 w-4 bg-current"></span>
+          <span class="mt-1 block h-0.5 w-4 bg-current"></span>
+          <span class="mt-1 block h-0.5 w-4 bg-current"></span>
+        </button>
+        <div *ngIf="sidebarContentVisible()" class="min-w-0">
+          <h1 class="text-lg font-semibold">Nexus</h1>
+          <p class="truncate text-xs text-slate-400">Workspace de assistentes</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        (click)="openCreateAssistantModal()"
+        class="mt-3 flex items-center justify-center gap-2 rounded-full bg-indigo-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-950/30 hover:bg-indigo-400"
+        [ngClass]="{ 'px-0': !sidebarContentVisible() }"
+      >
+        <span class="text-lg leading-none">+</span>
+        <span *ngIf="sidebarContentVisible()">Criar assistente</span>
+      </button>
+
+      <button
+        type="button"
+        (click)="createConversation()"
+        [disabled]="!activeAssistantId() || loading().createConversation"
+        class="mt-2 flex items-center justify-center gap-2 rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-200 hover:border-indigo-400 disabled:opacity-50"
+        [ngClass]="{ 'px-0': !sidebarContentVisible() }"
+      >
+        <span class="text-base leading-none">+</span>
+        <span *ngIf="sidebarContentVisible()">
+          {{ loading().createConversation ? "Criando..." : "Nova conversa" }}
+        </span>
+      </button>
 
       <nav class="mt-4 space-y-2">
         <a
           routerLink="/chat"
           routerLinkActive="border-indigo-400 bg-indigo-500/10 text-indigo-100"
-          class="block rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200"
+          class="flex items-center gap-3 rounded-full border border-transparent px-3 py-2 text-sm text-slate-300 hover:border-slate-700"
+          [ngClass]="{ 'justify-center px-0': !sidebarContentVisible() }"
         >
-          Chat
+          <span>CH</span>
+          <span *ngIf="sidebarContentVisible()">Chat</span>
         </a>
         <a
           routerLink="/assistants"
           routerLinkActive="border-indigo-400 bg-indigo-500/10 text-indigo-100"
-          class="block rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200"
+          class="flex items-center gap-3 rounded-full border border-transparent px-3 py-2 text-sm text-slate-300 hover:border-slate-700"
+          [ngClass]="{ 'justify-center px-0': !sidebarContentVisible() }"
         >
-          Assistentes e documentos
-        </a>
-        <a
-          routerLink="/admin"
-          routerLinkActive="border-indigo-400 bg-indigo-500/10 text-indigo-100"
-          class="block rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200"
-        >
-          Administração
+          <span>DOC</span>
+          <span *ngIf="sidebarContentVisible()">Documentos</span>
         </a>
       </nav>
 
-      <section class="mt-6">
-        <h2 class="text-sm font-medium text-slate-200">Assistentes</h2>
-        <ul class="mt-2 space-y-2">
-          <li *ngFor="let assistant of assistants()">
-            <button
-              type="button"
-              (click)="selectAssistant(assistant.id)"
-              class="w-full rounded-md border px-3 py-2 text-left text-sm"
-              [ngClass]="{
-                'border-indigo-400 bg-indigo-500/10': assistant.id === activeAssistantId(),
-                'border-slate-700': assistant.id !== activeAssistantId()
-              }"
+      <div *ngIf="sidebarContentVisible()" class="mt-5 min-h-0 flex-1 space-y-5 overflow-hidden">
+        <section>
+          <div class="flex items-center justify-between">
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Assistentes
+            </h2>
+            <span class="text-xs text-slate-500">{{ assistants().length }}</span>
+          </div>
+          <ul class="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
+            <li *ngFor="let assistant of assistants()">
+              <button
+                type="button"
+                (click)="selectAssistant(assistant.id)"
+                class="w-full rounded-2xl border px-3 py-2 text-left text-sm transition"
+                [ngClass]="{
+                  'border-indigo-400 bg-indigo-500/10 text-indigo-50':
+                    assistant.id === activeAssistantId(),
+                  'border-slate-800 bg-slate-900/60 text-slate-200 hover:border-slate-700':
+                    assistant.id !== activeAssistantId()
+                }"
+              >
+                <div class="truncate font-medium">{{ assistant.name }}</div>
+                <p class="mt-0.5 truncate text-xs text-slate-400">
+                  {{ assistant.description || "Sem descrição" }}
+                </p>
+              </button>
+            </li>
+            <li
+              *ngIf="assistants().length === 0"
+              class="rounded-2xl border border-dashed border-slate-800 px-3 py-3 text-xs text-slate-500"
             >
-              <div class="font-medium">{{ assistant.name }}</div>
-              <p class="text-xs text-slate-400">{{ assistant.description || "Sem descrição" }}</p>
-            </button>
-          </li>
-          <li
-            *ngIf="assistants().length === 0"
-            class="rounded-md border border-dashed border-slate-700 px-3 py-2 text-xs text-slate-500"
-          >
-            Nenhum assistente cadastrado.
-          </li>
-        </ul>
-      </section>
+              Nenhum assistente cadastrado.
+            </li>
+          </ul>
+        </section>
+
+        <section class="min-h-0">
+          <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Histórico
+          </h2>
+          <p *ngIf="activeAssistant()" class="mt-1 truncate text-xs text-slate-500">
+            {{ activeAssistant()!.name }}
+          </p>
+          <ul class="mt-2 max-h-[calc(100vh-32rem)] min-h-32 space-y-2 overflow-y-auto pr-1">
+            <li *ngFor="let conversation of conversations()">
+              <button
+                type="button"
+                (click)="selectConversation(conversation.id)"
+                class="w-full rounded-2xl border px-3 py-2 text-left text-xs transition"
+                [ngClass]="{
+                  'border-indigo-400 bg-indigo-500/10 text-indigo-50':
+                    conversation.id === currentConversationId(),
+                  'border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700':
+                    conversation.id !== currentConversationId()
+                }"
+              >
+                <div class="font-medium">Conversa {{ conversation.id.slice(0, 8) }}</div>
+                <div class="mt-1 text-slate-500">{{ conversation.message_count }} mensagens</div>
+              </button>
+            </li>
+            <li
+              *ngIf="conversations().length === 0"
+              class="rounded-2xl border border-dashed border-slate-800 px-3 py-3 text-xs text-slate-500"
+            >
+              {{ activeAssistantId() ? "Nenhuma conversa para este assistente." : "Selecione um assistente." }}
+            </li>
+          </ul>
+        </section>
+      </div>
     </aside>
 
-    <section class="flex-1">
-      <router-outlet />
+    <section class="flex min-w-0 flex-1 flex-col">
+      <header
+        class="flex h-16 items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/90 px-4 backdrop-blur"
+      >
+        <div class="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            (click)="toggleNavigation()"
+            class="rounded-full border border-slate-700 p-2 text-slate-200 hover:border-indigo-400"
+            aria-label="Abrir menu"
+          >
+            <span class="block h-0.5 w-4 bg-current"></span>
+            <span class="mt-1 block h-0.5 w-4 bg-current"></span>
+            <span class="mt-1 block h-0.5 w-4 bg-current"></span>
+          </button>
+          <div class="min-w-0">
+            <p class="text-xs text-slate-500">Nexus</p>
+            <h2 class="truncate text-base font-semibold">
+              {{ activeAssistant() ? activeAssistant()!.name : "Chat com assistentes" }}
+            </h2>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          (click)="openAdminModal()"
+          class="rounded-full border px-4 py-2 text-sm font-medium"
+          [ngClass]="{
+            'border-emerald-400/60 bg-emerald-500/10 text-emerald-100': apiKeyStatus()?.configured,
+            'border-amber-400/60 bg-amber-500/10 text-amber-100': !apiKeyStatus()?.configured
+          }"
+        >
+          Administração
+        </button>
+      </header>
+
+      <div
+        *ngIf="error()"
+        class="mx-4 mt-4 rounded-md border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <span>{{ error() }}</span>
+          <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
+        </div>
+      </div>
+
+      <div class="min-h-0 flex-1 overflow-y-auto p-4">
+        <router-outlet />
+      </div>
     </section>
   </div>
 </main>
+
+<div
+  *ngIf="createAssistantModalOpen()"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="create-assistant-title"
+>
+  <article class="w-full max-w-lg rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 id="create-assistant-title" class="text-lg font-semibold">Criar assistente</h2>
+        <p class="mt-1 text-sm text-slate-400">
+          Dê um nome para organizar documentos, conversas e contexto.
+        </p>
+      </div>
+      <button
+        type="button"
+        (click)="closeCreateAssistantModal()"
+        class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-300"
+        aria-label="Fechar modal"
+      >
+        x
+      </button>
+    </div>
+
+    <form class="mt-5 space-y-4" [formGroup]="assistantForm" (ngSubmit)="createAssistant()">
+      <label class="block text-sm text-slate-300">
+        Nome
+        <input
+          class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+          formControlName="name"
+          placeholder="Ex: Jurídico"
+        />
+      </label>
+      <label class="block text-sm text-slate-300">
+        Descrição
+        <textarea
+          class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+          rows="3"
+          formControlName="description"
+          placeholder="Contexto de uso (opcional)"
+        ></textarea>
+      </label>
+      <div class="flex justify-end gap-2">
+        <button
+          type="button"
+          (click)="closeCreateAssistantModal()"
+          class="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="loading().createAssistant"
+          class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {{ loading().createAssistant ? "Criando..." : "Criar" }}
+        </button>
+      </div>
+    </form>
+  </article>
+</div>
+
+<div
+  *ngIf="adminModalOpen()"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="admin-api-key-title"
+>
+  <article class="w-full max-w-lg rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <h2 id="admin-api-key-title" class="text-lg font-semibold">Administração</h2>
+        <p class="mt-1 text-sm text-slate-400">
+          Configure a API key global usada pelas integrações de LLM.
+        </p>
+      </div>
+      <button
+        type="button"
+        (click)="closeAdminModal()"
+        class="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-300"
+        aria-label="Fechar modal"
+      >
+        x
+      </button>
+    </div>
+
+    <div class="mt-5 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm">
+      <span class="text-slate-400">Status:</span>
+      <strong
+        class="ml-2"
+        [ngClass]="{
+          'text-emerald-300': apiKeyStatus()?.configured,
+          'text-amber-300': !apiKeyStatus()?.configured
+        }"
+      >
+        {{ apiKeyStatus()?.configured ? "configurada" : "não configurada" }}
+      </strong>
+    </div>
+
+    <form class="mt-5 space-y-4" [formGroup]="apiKeyForm" (ngSubmit)="saveApiKey()">
+      <label class="block text-sm text-slate-300">
+        API key
+        <input
+          type="password"
+          autocomplete="off"
+          class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+          formControlName="apiKey"
+          placeholder="Cole a chave aqui"
+        />
+      </label>
+      <div class="flex justify-end gap-2">
+        <button
+          type="button"
+          (click)="closeAdminModal()"
+          class="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300"
+        >
+          Fechar
+        </button>
+        <button
+          type="submit"
+          [disabled]="loading().saveApiKey"
+          class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {{ loading().saveApiKey ? "Salvando..." : "Salvar API key" }}
+        </button>
+      </div>
+    </form>
+  </article>
+</div>

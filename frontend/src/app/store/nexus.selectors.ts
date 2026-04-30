@@ -42,6 +42,11 @@ export const selectDocuments = createSelector(selectNexusState, (state) => state
 
 export const selectError = createSelector(selectNexusState, (state) => state.error);
 
+export const selectApiKeyStatus = createSelector(
+  selectNexusState,
+  (state) => state.apiKeyStatus
+);
+
 export const selectLoadingState = createSelector(
   selectNexusState,
   (state) => state.loading

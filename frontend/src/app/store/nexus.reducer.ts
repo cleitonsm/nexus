@@ -1,6 +1,7 @@
 import { createReducer, on } from "@ngrx/store";
 
 import {
+  ApiKeyStatus,
   Assistant,
   ChatMessage,
   Conversation,
@@ -18,12 +19,15 @@ export interface NexusState {
   currentConversationId: string | null;
   messagesByConversation: Record<string, ChatMessage[]>;
   documents: IngestedDocument[];
+  apiKeyStatus: ApiKeyStatus | null;
   loading: {
     assistants: boolean;
     createAssistant: boolean;
     createConversation: boolean;
     uploadDocument: boolean;
     sendChat: boolean;
+    apiKeyStatus: boolean;
+    saveApiKey: boolean;
   };
   error: string | null;
 }
@@ -36,12 +40,15 @@ export const initialNexusState: NexusState = {
   currentConversationId: null,
   messagesByConversation: {},
   documents: [],
+  apiKeyStatus: null,
   loading: {
     assistants: false,
     createAssistant: false,
     createConversation: false,
     uploadDocument: false,
-    sendChat: false
+    sendChat: false,
+    apiKeyStatus: false,
+    saveApiKey: false
   },
   error: null
 };
@@ -74,6 +81,8 @@ export const nexusReducer = createReducer(
   on(nexusActions.createAssistantSuccess, (state, { assistant }) => ({
     ...state,
     assistants: [assistant, ...state.assistants],
+    activeAssistantId: assistant.id,
+    currentConversationId: null,
     loading: { ...state.loading, createAssistant: false }
   })),
   on(nexusActions.createAssistantFailure, (state, { error }) => ({
@@ -215,6 +224,38 @@ export const nexusReducer = createReducer(
   on(nexusActions.sendChatQuestionFailure, (state, { error }) => ({
     ...state,
     loading: { ...state.loading, sendChat: false },
+    error
+  })),
+
+  on(nexusActions.loadApiKeyStatus, (state) => ({
+    ...state,
+    loading: { ...state.loading, apiKeyStatus: true },
+    error: null
+  })),
+  on(nexusActions.loadApiKeyStatusSuccess, (state, { status }) => ({
+    ...state,
+    apiKeyStatus: status,
+    loading: { ...state.loading, apiKeyStatus: false }
+  })),
+  on(nexusActions.loadApiKeyStatusFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, apiKeyStatus: false },
+    error
+  })),
+
+  on(nexusActions.saveApiKey, (state) => ({
+    ...state,
+    loading: { ...state.loading, saveApiKey: true },
+    error: null
+  })),
+  on(nexusActions.saveApiKeySuccess, (state, { status }) => ({
+    ...state,
+    apiKeyStatus: status,
+    loading: { ...state.loading, saveApiKey: false }
+  })),
+  on(nexusActions.saveApiKeyFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, saveApiKey: false },
     error
   }))
 );

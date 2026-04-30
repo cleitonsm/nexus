@@ -1,6 +1,6 @@
 import { inject } from "@angular/core";
 import { Actions, createEffect, ofType } from "@ngrx/effects";
-import { catchError, map, of, switchMap } from "rxjs";
+import { catchError, map, mergeMap, of, switchMap } from "rxjs";
 
 import { NexusApiService } from "../core/services/nexus-api.service";
 import { nexusActions } from "./nexus.actions";
@@ -41,6 +41,15 @@ export const createAssistantEffect = createEffect(
           )
         )
       )
+    ),
+  { functional: true }
+);
+
+export const selectCreatedAssistantEffect = createEffect(
+  (actions$ = inject(Actions)) =>
+    actions$.pipe(
+      ofType(nexusActions.createAssistantSuccess),
+      map(({ assistant }) => nexusActions.selectAssistant({ assistantId: assistant.id }))
     ),
   { functional: true }
 );
@@ -147,13 +156,53 @@ export const sendChatQuestionEffect = createEffect(
   { functional: true }
 );
 
+export const loadApiKeyStatusEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadApiKeyStatus),
+      switchMap(() =>
+        api.getApiKeyStatus().pipe(
+          map((status) => nexusActions.loadApiKeyStatusSuccess({ status })),
+          catchError((error) =>
+            of(nexusActions.loadApiKeyStatusFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const saveApiKeyEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.saveApiKey),
+      switchMap(({ apiKey }) =>
+        api.saveApiKey({ api_key: apiKey }).pipe(
+          mergeMap((status) =>
+            of(
+              nexusActions.saveApiKeySuccess({ status }),
+              nexusActions.loadApiKeyStatusSuccess({ status })
+            )
+          ),
+          catchError((error) =>
+            of(nexusActions.saveApiKeyFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
 export const nexusEffects = {
   loadAssistantsEffect,
   createAssistantEffect,
+  selectCreatedAssistantEffect,
   selectAssistantEffect,
   createConversationEffect,
   loadAssistantConversationsEffect,
   loadConversationEffect,
   uploadDocumentEffect,
-  sendChatQuestionEffect
+  sendChatQuestionEffect,
+  loadApiKeyStatusEffect,
+  saveApiKeyEffect
 };

@@ -1,6 +1,6 @@
 import { CommonModule } from "@angular/common";
 import { Component, computed, inject } from "@angular/core";
-import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
+import { FormBuilder, ReactiveFormsModule } from "@angular/forms";
 import { Store } from "@ngrx/store";
 
 import { nexusActions } from "../store/nexus.actions";
@@ -35,30 +35,11 @@ export class AssistantsPageComponent {
     this.documents().filter((document) => document.assistant_id === this.activeAssistantId())
   );
 
-  protected readonly assistantForm = this.formBuilder.nonNullable.group({
-    name: ["", [Validators.required, Validators.maxLength(80)]],
-    description: [""]
-  });
   protected readonly uploadForm = this.formBuilder.group({
     metadata: [""]
   });
 
   private selectedFile: File | null = null;
-
-  protected createAssistant(): void {
-    if (this.assistantForm.invalid) {
-      this.assistantForm.markAllAsTouched();
-      return;
-    }
-    const value = this.assistantForm.getRawValue();
-    this.store.dispatch(
-      nexusActions.createAssistant({
-        name: value.name.trim(),
-        description: value.description.trim() ? value.description.trim() : null
-      })
-    );
-    this.assistantForm.reset({ name: "", description: "" });
-  }
 
   protected onFileSelected(event: Event): void {
     const target = event.target as HTMLInputElement | null;

@@ -48,3 +48,7 @@ export interface ChatResponse {
   used_context_chunks: number;
   fallback_used: boolean;
 }
+
+export interface ApiKeyStatus {
+  configured: boolean;
+}

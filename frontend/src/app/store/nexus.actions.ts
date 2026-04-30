@@ -1,6 +1,7 @@
 import { createActionGroup, emptyProps, props } from "@ngrx/store";
 
 import {
+  ApiKeyStatus,
   Assistant,
   ChatMessage,
   Conversation,
@@ -53,6 +54,13 @@ export const nexusActions = createActionGroup({
       userMessage: ChatMessage;
       assistantMessage: ChatMessage;
     }>(),
-    "Send Chat Question Failure": props<{ error: string }>()
+    "Send Chat Question Failure": props<{ error: string }>(),
+
+    "Load Api Key Status": emptyProps(),
+    "Load Api Key Status Success": props<{ status: ApiKeyStatus }>(),
+    "Load Api Key Status Failure": props<{ error: string }>(),
+    "Save Api Key": props<{ apiKey: string }>(),
+    "Save Api Key Success": props<{ status: ApiKeyStatus }>(),
+    "Save Api Key Failure": props<{ error: string }>()
   }
 });

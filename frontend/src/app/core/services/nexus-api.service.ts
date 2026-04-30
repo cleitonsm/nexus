@@ -3,6 +3,7 @@ import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 
 import {
+  ApiKeyStatus,
   Assistant,
   ChatResponse,
   Conversation,
@@ -22,6 +23,10 @@ interface CreateConversationPayload {
 interface ChatPayload {
   question: string;
   top_k: number;
+}
+
+interface SaveApiKeyPayload {
+  api_key: string;
 }
 
 @Injectable({ providedIn: "root" })
@@ -75,5 +80,13 @@ export class NexusApiService {
       `${this.baseUrl}/conversations/${conversationId}/chat`,
       payload
     );
+  }
+
+  getApiKeyStatus(): Observable<ApiKeyStatus> {
+    return this.http.get<ApiKeyStatus>(`${this.baseUrl}/admin/api-key/status`);
+  }
+
+  saveApiKey(payload: SaveApiKeyPayload): Observable<ApiKeyStatus> {
+    return this.http.post<ApiKeyStatus>(`${this.baseUrl}/admin/api-key`, payload);
   }
 }

@@ -1,6 +1,51 @@
-<article class="rounded-lg border border-slate-800 bg-slate-900 p-4">
-  <h2 class="text-lg font-semibold">Administração</h2>
-  <p class="mt-1 text-sm text-slate-400">
-    Esta área está pronta para receber o gerenciamento da API key global.
-  </p>
-</article>
+<section class="space-y-4">
+  <div
+    *ngIf="error()"
+    class="rounded-md border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
+  >
+    <div class="flex items-center justify-between gap-2">
+      <span>{{ error() }}</span>
+      <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
+    </div>
+  </div>
+
+  <article class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
+    <h2 class="text-lg font-semibold">Administração</h2>
+    <p class="mt-1 text-sm text-slate-400">
+      Configure a API key global pelo header ou por esta rota.
+    </p>
+
+    <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm">
+      <span class="text-slate-400">Status:</span>
+      <strong
+        class="ml-2"
+        [ngClass]="{
+          'text-emerald-300': apiKeyStatus()?.configured,
+          'text-amber-300': !apiKeyStatus()?.configured
+        }"
+      >
+        {{ apiKeyStatus()?.configured ? "configurada" : "não configurada" }}
+      </strong>
+    </div>
+
+    <form class="mt-4 space-y-3" [formGroup]="apiKeyForm" (ngSubmit)="saveApiKey()">
+      <label class="block text-sm text-slate-300">
+        API key
+        <input
+          type="password"
+          autocomplete="off"
+          class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm"
+          formControlName="apiKey"
+          placeholder="Cole a chave aqui"
+        />
+      </label>
+      <button
+        type="submit"
+        [disabled]="loading().saveApiKey"
+        class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {{ loading().saveApiKey ? "Salvando..." : "Salvar API key" }}
+      </button>
+    </form>
+  </article>
+</section>

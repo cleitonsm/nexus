@@ -1,7 +1,7 @@
 import "@angular/compiler";
 import { describe, expect, it } from "vitest";
 
-import { ChatMessage, Conversation } from "../shared/models/nexus.models";
+import { Assistant, ChatMessage, Conversation } from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
 import {
   initialNexusState,
@@ -29,6 +29,13 @@ const chatMessage = (id: string, role: "user" | "assistant"): ChatMessage => ({
   conversation_id: "conv-1",
   role,
   content: `${role}-${id}`,
+  created_at: "2026-04-30T10:00:00Z"
+});
+
+const assistant = (id: string): Assistant => ({
+  id,
+  name: `Assistant ${id}`,
+  description: null,
   created_at: "2026-04-30T10:00:00Z"
 });
 
@@ -70,6 +77,40 @@ describe("nexusReducer", () => {
 
     expect(nextState.messagesByConversation["conv-1"]).toHaveLength(3);
     expect(nextState.loading.sendChat).toBe(false);
+  });
+
+  it("selects a newly created assistant", () => {
+    const nextState = nexusReducer(
+      initialNexusState,
+      nexusActions.createAssistantSuccess({ assistant: assistant("assistant-1") })
+    );
+
+    expect(nextState.assistants[0]?.id).toBe("assistant-1");
+    expect(nextState.activeAssistantId).toBe("assistant-1");
+    expect(nextState.currentConversationId).toBeNull();
+    expect(nextState.loading.createAssistant).toBe(false);
+  });
+
+  it("stores API key status after loading or saving", () => {
+    const loadedState = nexusReducer(
+      {
+        ...initialNexusState,
+        loading: { ...initialNexusState.loading, apiKeyStatus: true }
+      },
+      nexusActions.loadApiKeyStatusSuccess({ status: { configured: false } })
+    );
+    const savedState = nexusReducer(
+      {
+        ...loadedState,
+        loading: { ...loadedState.loading, saveApiKey: true }
+      },
+      nexusActions.saveApiKeySuccess({ status: { configured: true } })
+    );
+
+    expect(loadedState.apiKeyStatus?.configured).toBe(false);
+    expect(loadedState.loading.apiKeyStatus).toBe(false);
+    expect(savedState.apiKeyStatus?.configured).toBe(true);
+    expect(savedState.loading.saveApiKey).toBe(false);
   });
 });
 
