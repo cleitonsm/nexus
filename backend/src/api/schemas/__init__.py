@@ -6,6 +6,7 @@ from .conversations import (
     CreateConversationRequest,
     MessageResponse,
 )
+from .documents import DocumentIngestionResponse
 
 __all__ = [
     "AddMessageRequest",
@@ -14,5 +15,6 @@ __all__ = [
     "ConversationResponse",
     "CreateAssistantRequest",
     "CreateConversationRequest",
+    "DocumentIngestionResponse",
     "MessageResponse",
 ]

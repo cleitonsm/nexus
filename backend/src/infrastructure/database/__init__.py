@@ -1,6 +1,10 @@
 from .base import Base
 from .models import AssistantModel, ConversationModel, DocumentModel, MessageModel
-from .repositories import PostgresAssistantRepository, PostgresConversationRepository
+from .repositories import (
+    PostgresAssistantRepository,
+    PostgresConversationRepository,
+    PostgresDocumentRepository,
+)
 from .session import SessionLocal, engine, get_db_session
 
 __all__ = [
@@ -11,6 +15,7 @@ __all__ = [
     "MessageModel",
     "PostgresAssistantRepository",
     "PostgresConversationRepository",
+    "PostgresDocumentRepository",
     "SessionLocal",
     "engine",
     "get_db_session",

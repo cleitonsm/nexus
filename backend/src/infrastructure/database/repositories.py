@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -10,11 +12,19 @@ from src.domain import (
     ChatMessage,
     Conversation,
     ConversationId,
+    Document,
+    DocumentId,
+    DocumentMetadata,
     MessageId,
     MessageRole,
 )
 
-from .models import AssistantModel, ConversationModel, MessageModel
+from .models import (
+    AssistantModel,
+    ConversationModel,
+    DocumentModel,
+    MessageModel,
+)
 
 
 class PostgresAssistantRepository:
@@ -39,7 +49,9 @@ class PostgresAssistantRepository:
         return _assistant_to_entity(model)
 
     def list_all(self) -> list[Assistant]:
-        stmt = select(AssistantModel).order_by(AssistantModel.created_at.desc())
+        stmt = select(AssistantModel).order_by(
+            AssistantModel.created_at.desc()
+        )
         return [
             _assistant_to_entity(item)
             for item in self._session.scalars(stmt).all()
@@ -72,7 +84,10 @@ class PostgresConversationRepository:
         self._session.commit()
         return self.get_by_id(conversation.id) or conversation
 
-    def get_by_id(self, conversation_id: ConversationId) -> Conversation | None:
+    def get_by_id(
+        self,
+        conversation_id: ConversationId,
+    ) -> Conversation | None:
         stmt = (
             select(ConversationModel)
             .where(ConversationModel.id == conversation_id.value)
@@ -81,7 +96,10 @@ class PostgresConversationRepository:
         model = self._session.scalars(stmt).first()
         if model is None:
             return None
-        sorted_messages = sorted(model.messages, key=lambda item: item.created_at)
+        sorted_messages = sorted(
+            model.messages,
+            key=lambda item: item.created_at,
+        )
         messages = tuple(_message_to_entity(item) for item in sorted_messages)
         return Conversation(
             id=ConversationId(model.id),
@@ -108,7 +126,10 @@ class PostgresConversationRepository:
         self._session.commit()
         return _message_to_entity(model)
 
-    def list_messages(self, conversation_id: ConversationId) -> list[ChatMessage]:
+    def list_messages(
+        self,
+        conversation_id: ConversationId,
+    ) -> list[ChatMessage]:
         stmt = (
             select(MessageModel)
             .where(MessageModel.conversation_id == conversation_id.value)
@@ -116,6 +137,43 @@ class PostgresConversationRepository:
         )
         return [
             _message_to_entity(item)
+            for item in self._session.scalars(stmt).all()
+        ]
+
+
+class PostgresDocumentRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def save(self, document: Document) -> Document:
+        model = self._session.get(DocumentModel, document.id.value)
+        if model is None:
+            model = DocumentModel(
+                id=document.id.value,
+                assistant_id=document.assistant_id.value,
+                source_name=document.source_name,
+                content_hash=document.content_hash,
+                metadata_json=json.dumps(document.metadata.values),
+                created_at=document.created_at,
+            )
+            self._session.add(model)
+        else:
+            model.assistant_id = document.assistant_id.value
+            model.source_name = document.source_name
+            model.content_hash = document.content_hash
+            model.metadata_json = json.dumps(document.metadata.values)
+        self._session.commit()
+        self._session.refresh(model)
+        return _document_to_entity(model)
+
+    def list_by_assistant(self, assistant_id: AssistantId) -> list[Document]:
+        stmt = (
+            select(DocumentModel)
+            .where(DocumentModel.assistant_id == assistant_id.value)
+            .order_by(DocumentModel.created_at.desc())
+        )
+        return [
+            _document_to_entity(item)
             for item in self._session.scalars(stmt).all()
         ]
 
@@ -135,5 +193,17 @@ def _message_to_entity(model: MessageModel) -> ChatMessage:
         conversation_id=ConversationId(model.conversation_id),
         role=MessageRole(model.role),
         content=model.content,
+        created_at=model.created_at,
+    )
+
+
+def _document_to_entity(model: DocumentModel) -> Document:
+    metadata = json.loads(model.metadata_json)
+    return Document(
+        id=DocumentId(model.id),
+        assistant_id=AssistantId(model.assistant_id),
+        source_name=model.source_name,
+        content_hash=model.content_hash,
+        metadata=DocumentMetadata.from_dict(metadata),
         created_at=model.created_at,
     )

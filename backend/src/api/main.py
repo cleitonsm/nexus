@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from src.api.routes import assistants_router, conversations_router
+from src.api.routes import assistants_router, conversations_router, documents_router
 from src.infrastructure.database import Base, engine
 
 
@@ -17,6 +17,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Nexus API", version="0.1.0", lifespan=lifespan)
 app.include_router(assistants_router)
 app.include_router(conversations_router)
+app.include_router(documents_router)
 
 
 @app.get("/health")
