@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -24,6 +25,7 @@ from .models import (
     ConversationModel,
     DocumentModel,
     MessageModel,
+    SecretSettingModel,
 )
 
 
@@ -176,6 +178,38 @@ class PostgresDocumentRepository:
             _document_to_entity(item)
             for item in self._session.scalars(stmt).all()
         ]
+
+
+class PostgresSecretSettingsRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def set_encrypted_value(
+        self,
+        *,
+        key_name: str,
+        encrypted_value: str,
+    ) -> None:
+        now = datetime.now(UTC)
+        model = self._session.get(SecretSettingModel, key_name)
+        if model is None:
+            model = SecretSettingModel(
+                key_name=key_name,
+                encrypted_value=encrypted_value,
+                created_at=now,
+                updated_at=now,
+            )
+            self._session.add(model)
+        else:
+            model.encrypted_value = encrypted_value
+            model.updated_at = now
+        self._session.commit()
+
+    def get_encrypted_value(self, *, key_name: str) -> str | None:
+        model = self._session.get(SecretSettingModel, key_name)
+        if model is None:
+            return None
+        return model.encrypted_value
 
 
 def _assistant_to_entity(model: AssistantModel) -> Assistant:

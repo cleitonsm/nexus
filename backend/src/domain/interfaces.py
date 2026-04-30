@@ -31,6 +31,17 @@ class ConversationRepository(Protocol):
     def list_messages(self, conversation_id: ConversationId) -> list[ChatMessage]: ...
 
 
+class SecretSettingsRepository(Protocol):
+    def set_encrypted_value(
+        self,
+        *,
+        key_name: str,
+        encrypted_value: str,
+    ) -> None: ...
+
+    def get_encrypted_value(self, *, key_name: str) -> str | None: ...
+
+
 class EmbeddingGateway(Protocol):
     def embed_texts(self, texts: list[str]) -> list[list[float]]: ...
 
@@ -69,4 +80,10 @@ class VectorStoreGateway(Protocol):
 
 
 class LLMGateway(Protocol):
-    def generate(self, prompt: str, context_chunks: list[str]) -> str: ...
+    def generate(
+        self,
+        *,
+        prompt: str,
+        context_chunks: list[str],
+        conversation_history: list[ChatMessage],
+    ) -> str: ...

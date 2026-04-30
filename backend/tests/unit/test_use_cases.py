@@ -21,6 +21,7 @@ from src.domain import (
     ConversationId,
     Document,
     DocumentId,
+    MessageId,
     MessageRole,
     SearchResult,
     VectorChunk,
@@ -142,10 +143,16 @@ class SpyVectorStoreGateway:
 
 class FakeLLMGateway:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, list[str]]] = []
+        self.calls: list[tuple[str, list[str], list[ChatMessage]]] = []
 
-    def generate(self, prompt: str, context_chunks: list[str]) -> str:
-        self.calls.append((prompt, context_chunks))
+    def generate(
+        self,
+        *,
+        prompt: str,
+        context_chunks: list[str],
+        conversation_history: list[ChatMessage],
+    ) -> str:
+        self.calls.append((prompt, context_chunks, conversation_history))
         return f"Resposta com base em {len(context_chunks)} chunks"
 
 
@@ -314,10 +321,70 @@ class UseCasesTestCase(unittest.TestCase):
         self.assertEqual(result.used_context_chunks, 1)
         self.assertFalse(result.fallback_used)
         self.assertEqual(len(llm_gateway.calls), 1)
+        prompt, chunks, history = llm_gateway.calls[0]
+        self.assertIn("Qual a politica de reembolso?", prompt)
+        self.assertEqual(len(chunks), 1)
+        self.assertEqual(len(history), 0)
         saved_messages = conversation_repo.list_messages(
             ConversationId("conv-chat")
         )
         self.assertEqual(len(saved_messages), 2)
+
+    def test_chat_with_assistant_use_case_sends_previous_history_to_llm(
+        self,
+    ) -> None:
+        conversation_repo = InMemoryConversationRepository()
+        conversation_repo.save(
+            Conversation(
+                id=ConversationId("conv-history"),
+                assistant_id=AssistantId("assistant-1"),
+            )
+        )
+        conversation_repo.save_message(
+            ChatMessage(
+                id=MessageId("msg-1"),
+                conversation_id=ConversationId("conv-history"),
+                role=MessageRole.USER,
+                content="Primeira pergunta",
+            )
+        )
+        conversation_repo.save_message(
+            ChatMessage(
+                id=MessageId("msg-2"),
+                conversation_id=ConversationId("conv-history"),
+                role=MessageRole.ASSISTANT,
+                content="Primeira resposta",
+            )
+        )
+        vector_store = SpyVectorStoreGateway()
+        vector_store.search_results["assistant-assistant-1"] = [
+            SearchResult(
+                chunk_id="chunk-1",
+                document_id=DocumentId("doc-1"),
+                score=0.95,
+                text="Contexto valido",
+            )
+        ]
+        llm_gateway = FakeLLMGateway()
+        use_case = ChatWithAssistantUseCase(
+            conversation_repository=conversation_repo,
+            embedding_gateway=FakeEmbeddingGateway(),
+            vector_store_gateway=vector_store,
+            llm_gateway=llm_gateway,
+        )
+
+        use_case.execute(
+            ChatWithAssistantInput(
+                conversation_id="conv-history",
+                question="Segunda pergunta",
+            )
+        )
+
+        self.assertEqual(len(llm_gateway.calls), 1)
+        _, _, history = llm_gateway.calls[0]
+        self.assertEqual(len(history), 2)
+        self.assertEqual(history[0].content, "Primeira pergunta")
+        self.assertEqual(history[1].content, "Primeira resposta")
 
     def test_chat_with_assistant_use_case_returns_fallback_when_no_context(
         self,

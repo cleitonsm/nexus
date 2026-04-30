@@ -43,6 +43,7 @@ class ChatState(TypedDict):
     question: str
     top_k: int
     fallback_answer: str
+    conversation_history: list[ChatMessage]
     user_message: ChatMessage
     search_results: list[SearchResult]
     context_chunks: list[str]
@@ -98,6 +99,7 @@ class ChatWithAssistantUseCase:
 
     def _build_graph(self):
         graph = StateGraph(ChatState)
+        graph.add_node("load_conversation_history", self._load_conversation_history)
         graph.add_node("persist_user_message", self._persist_user_message)
         graph.add_node("retrieve_context", self._retrieve_context)
         graph.add_node("evaluate_context", self._evaluate_context)
@@ -108,7 +110,8 @@ class ChatWithAssistantUseCase:
             self._persist_assistant_message,
         )
 
-        graph.set_entry_point("persist_user_message")
+        graph.set_entry_point("load_conversation_history")
+        graph.add_edge("load_conversation_history", "persist_user_message")
         graph.add_edge("persist_user_message", "retrieve_context")
         graph.add_edge("retrieve_context", "evaluate_context")
         graph.add_conditional_edges(
@@ -123,6 +126,13 @@ class ChatWithAssistantUseCase:
         graph.add_edge("fallback_answer", "persist_assistant_message")
         graph.add_edge("persist_assistant_message", END)
         return graph.compile()
+
+    def _load_conversation_history(self, state: ChatState) -> ChatState:
+        history = self._conversation_repository.list_messages(state["conversation_id"])
+        return {
+            **state,
+            "conversation_history": history,
+        }
 
     def _persist_user_message(self, state: ChatState) -> ChatState:
         saved = self._conversation_repository.save_message(
@@ -182,6 +192,7 @@ class ChatWithAssistantUseCase:
         answer = self._llm_gateway.generate(
             prompt=prompt,
             context_chunks=state["context_chunks"],
+            conversation_history=state["conversation_history"],
         ).strip()
         if not answer:
             answer = state["fallback_answer"]

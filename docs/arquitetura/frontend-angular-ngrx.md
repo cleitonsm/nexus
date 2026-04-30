@@ -5,23 +5,28 @@
 O frontend deve oferecer uma experiência simples para gerenciar assistentes, documentos e chat.
 A arquitetura inicial deve ser previsível sem criar camadas excessivas para o MVP.
 
-## Estrutura
+## Estrutura de Rotas e Shell
 
-- `core`: serviços singleton, interceptors, configuração e integração HTTP.
-- `shared`: componentes e utilitários reutilizáveis.
-- `features/assistants`: listagem, criação e seleção de assistentes.
-- `features/documents`: upload e status de documentos.
-- `features/chat`: conversa, renderização Markdown e envio de mensagens.
-- `store`: estado global com NgRx para assistente ativo, mensagens e documentos.
+- O `AppComponent` atua como shell com sidebar persistente e `router-outlet`.
+- Rotas de primeiro nivel:
+  - `/chat`: experiencia conversacional isolada.
+  - `/assistants`: criacao/listagem de assistentes e upload de documentos.
+  - `/admin`: configuracao da API key global do sistema.
+- `core`: servicos singleton, interceptors, configuracao e integracao HTTP.
+- `shared`: componentes e utilitarios reutilizaveis.
+- `features/chat`: conversa com mensagens em bolhas, input ancorado e renderizacao Markdown.
+- `features/assistants`: administracao funcional de assistentes e documentos.
+- `features/admin`: estado administrativo da API key (status e gravacao sem leitura).
+- `store`: estado global NgRx por dominio (chat, assistants, admin e carregamentos/erro).
 
-## Estado Global Inicial
+## Estado Global (Evolução MVP)
 
-- assistente selecionado
-- lista de assistentes
-- conversa ativa
-- mensagens da conversa
-- documentos do assistente
-- estados de carregamento e erro
+- assistente selecionado e lista de assistentes
+- lista de conversas por assistente
+- conversa ativa e mensagens da conversa selecionada
+- status da API key global (`configurada`/`nao configurada`)
+- estado de gravacao/substituicao da API key global
+- documentos do assistente e estados de carregamento/erro
 
 ## Diretriz
 

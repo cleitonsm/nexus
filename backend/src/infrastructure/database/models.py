@@ -100,3 +100,20 @@ class MessageModel(Base):
     )
 
     conversation: Mapped[ConversationModel] = relationship(back_populates="messages")
+
+
+class SecretSettingModel(Base):
+    __tablename__ = "secret_settings"
+
+    key_name: Mapped[str] = mapped_column(String(128), primary_key=True)
+    encrypted_value: Mapped[str] = mapped_column(Text(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=_utc_now,
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=_utc_now,
+        nullable=False,
+    )
