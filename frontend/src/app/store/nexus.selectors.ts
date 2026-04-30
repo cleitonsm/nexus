@@ -16,7 +16,7 @@ export const selectActiveAssistantId = createSelector(
 
 export const selectConversationsByAssistant = createSelector(
   selectNexusState,
-  (state) => state.conversationsByAssistant
+  (state) => state.conversationHistoryByAssistant
 );
 
 export const selectCurrentConversationId = createSelector(
@@ -29,6 +29,13 @@ export const selectCurrentMessages = createSelector(selectNexusState, (state) =>
     return [];
   }
   return state.messagesByConversation[state.currentConversationId] ?? [];
+});
+
+export const selectActiveAssistantConversations = createSelector(selectNexusState, (state) => {
+  if (!state.activeAssistantId) {
+    return [];
+  }
+  return state.conversationHistoryByAssistant[state.activeAssistantId] ?? [];
 });
 
 export const selectDocuments = createSelector(selectNexusState, (state) => state.documents);

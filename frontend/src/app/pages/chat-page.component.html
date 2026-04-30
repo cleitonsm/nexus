@@ -1,0 +1,115 @@
+<section class="space-y-4">
+  <div
+    *ngIf="error()"
+    class="rounded-md border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
+  >
+    <div class="flex items-center justify-between gap-2">
+      <span>{{ error() }}</span>
+      <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
+    </div>
+  </div>
+
+  <article class="rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-semibold">
+          {{ activeAssistant() ? "Chat com " + activeAssistant()!.name : "Chat" }}
+        </h2>
+        <p class="mt-1 text-sm text-slate-400">
+          Histórico por assistente e mensagens em bolhas no estilo Gemini.
+        </p>
+      </div>
+      <button
+        type="button"
+        (click)="createConversation()"
+        [disabled]="!activeAssistantId() || loading().createConversation"
+        class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {{ loading().createConversation ? "Criando..." : "Nova conversa" }}
+      </button>
+    </div>
+
+    <div class="mt-4 flex flex-col gap-4 lg:flex-row">
+      <aside class="w-full rounded-md border border-slate-800 bg-slate-950 p-3 lg:w-72">
+        <h3 class="text-sm font-medium text-slate-200">Histórico</h3>
+        <ul class="mt-3 space-y-2">
+          <li *ngFor="let conversation of conversations()">
+            <button
+              type="button"
+              (click)="selectConversation(conversation.id)"
+              class="w-full rounded-md border px-3 py-2 text-left text-xs"
+              [ngClass]="{
+                'border-indigo-400 bg-indigo-500/10': conversation.id === currentConversationId(),
+                'border-slate-700 text-slate-300': conversation.id !== currentConversationId()
+              }"
+            >
+              <div class="font-medium">Conversa {{ conversation.id.slice(0, 8) }}</div>
+              <div class="mt-1 text-slate-400">
+                {{ conversation.message_count }} msgs
+              </div>
+            </button>
+          </li>
+          <li
+            *ngIf="conversations().length === 0"
+            class="rounded-md border border-dashed border-slate-700 px-3 py-3 text-xs text-slate-500"
+          >
+            Nenhuma conversa para este assistente.
+          </li>
+        </ul>
+      </aside>
+
+      <div class="flex min-h-[560px] flex-1 flex-col rounded-md border border-slate-800 bg-slate-950">
+        <div class="flex-1 space-y-4 overflow-y-auto p-4">
+          <div
+            *ngFor="let message of messages()"
+            class="flex"
+            [class.justify-end]="message.role === 'user'"
+            [class.justify-start]="message.role !== 'user'"
+          >
+            <div
+              class="max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm"
+              [ngClass]="{
+                'rounded-br-md bg-indigo-500/25 text-indigo-50': message.role === 'user',
+                'rounded-bl-md border border-slate-700 bg-slate-900 text-slate-100':
+                  message.role !== 'user'
+              }"
+            >
+              <div
+                *ngIf="message.role === 'assistant'; else plainMessage"
+                class="prose prose-invert prose-sm max-w-none"
+                [innerHTML]="message.content | markdown"
+              ></div>
+              <ng-template #plainMessage>
+                <p class="whitespace-pre-wrap">{{ message.content }}</p>
+              </ng-template>
+            </div>
+          </div>
+          <div *ngIf="messages().length === 0" class="py-10 text-center text-sm text-slate-500">
+            Selecione ou crie uma conversa para começar.
+          </div>
+        </div>
+
+        <form
+          class="border-t border-slate-800 bg-slate-900 p-3"
+          [formGroup]="chatForm"
+          (ngSubmit)="sendQuestion()"
+        >
+          <div class="flex gap-2">
+            <input
+              formControlName="question"
+              placeholder="Digite sua pergunta..."
+              class="flex-1 rounded-full border border-slate-700 bg-slate-950 px-4 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              [disabled]="!currentConversationId() || loading().sendChat"
+              class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {{ loading().sendChat ? "Enviando..." : "Enviar" }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </article>
+</section>

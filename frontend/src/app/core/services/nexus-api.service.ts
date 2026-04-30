@@ -64,6 +64,12 @@ export class NexusApiService {
     );
   }
 
+  listAssistantConversations(assistantId: string): Observable<Conversation[]> {
+    return this.http.get<Conversation[]>(
+      `${this.baseUrl}/assistants/${assistantId}/conversations`
+    );
+  }
+
   sendChatMessage(conversationId: string, payload: ChatPayload): Observable<ChatResponse> {
     return this.http.post<ChatResponse>(
       `${this.baseUrl}/conversations/${conversationId}/chat`,

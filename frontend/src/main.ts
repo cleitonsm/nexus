@@ -4,14 +4,17 @@ import { provideHttpClient } from "@angular/common/http";
 import { provideStore } from "@ngrx/store";
 import { provideEffects } from "@ngrx/effects";
 import { provideStoreDevtools } from "@ngrx/store-devtools";
+import { provideRouter } from "@angular/router";
 
 import { AppComponent } from "./app/app.component";
+import { appRoutes } from "./app/app.routes";
 import { nexusEffects } from "./app/store/nexus.effects";
 import { nexusFeatureKey, nexusReducer } from "./app/store/nexus.reducer";
 
 bootstrapApplication(AppComponent, {
   providers: [
     provideHttpClient(),
+    provideRouter(appRoutes),
     provideStore({ [nexusFeatureKey]: nexusReducer }),
     provideEffects(nexusEffects),
     provideStoreDevtools({

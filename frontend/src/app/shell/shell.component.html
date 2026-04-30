@@ -1,0 +1,64 @@
+<main class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 lg:flex-row">
+    <aside class="w-full rounded-lg border border-slate-800 bg-slate-900 p-4 lg:w-80">
+      <h1 class="text-xl font-semibold">Nexus</h1>
+      <p class="mt-1 text-sm text-slate-400">
+        Chat e administração separados por área.
+      </p>
+
+      <nav class="mt-4 space-y-2">
+        <a
+          routerLink="/chat"
+          routerLinkActive="border-indigo-400 bg-indigo-500/10 text-indigo-100"
+          class="block rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200"
+        >
+          Chat
+        </a>
+        <a
+          routerLink="/assistants"
+          routerLinkActive="border-indigo-400 bg-indigo-500/10 text-indigo-100"
+          class="block rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200"
+        >
+          Assistentes e documentos
+        </a>
+        <a
+          routerLink="/admin"
+          routerLinkActive="border-indigo-400 bg-indigo-500/10 text-indigo-100"
+          class="block rounded-md border border-slate-700 px-3 py-2 text-sm text-slate-200"
+        >
+          Administração
+        </a>
+      </nav>
+
+      <section class="mt-6">
+        <h2 class="text-sm font-medium text-slate-200">Assistentes</h2>
+        <ul class="mt-2 space-y-2">
+          <li *ngFor="let assistant of assistants()">
+            <button
+              type="button"
+              (click)="selectAssistant(assistant.id)"
+              class="w-full rounded-md border px-3 py-2 text-left text-sm"
+              [ngClass]="{
+                'border-indigo-400 bg-indigo-500/10': assistant.id === activeAssistantId(),
+                'border-slate-700': assistant.id !== activeAssistantId()
+              }"
+            >
+              <div class="font-medium">{{ assistant.name }}</div>
+              <p class="text-xs text-slate-400">{{ assistant.description || "Sem descrição" }}</p>
+            </button>
+          </li>
+          <li
+            *ngIf="assistants().length === 0"
+            class="rounded-md border border-dashed border-slate-700 px-3 py-2 text-xs text-slate-500"
+          >
+            Nenhum assistente cadastrado.
+          </li>
+        </ul>
+      </section>
+    </aside>
+
+    <section class="flex-1">
+      <router-outlet />
+    </section>
+  </div>
+</main>

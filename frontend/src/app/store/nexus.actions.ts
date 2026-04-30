@@ -1,6 +1,11 @@
 import { createActionGroup, emptyProps, props } from "@ngrx/store";
 
-import { Assistant, ChatMessage, IngestedDocument } from "../shared/models/nexus.models";
+import {
+  Assistant,
+  ChatMessage,
+  Conversation,
+  IngestedDocument
+} from "../shared/models/nexus.models";
 
 export const nexusActions = createActionGroup({
   source: "Nexus",
@@ -17,8 +22,15 @@ export const nexusActions = createActionGroup({
     "Select Assistant": props<{ assistantId: string }>(),
 
     "Create Conversation": props<{ assistantId: string }>(),
-    "Create Conversation Success": props<{ assistantId: string; conversationId: string }>(),
+    "Create Conversation Success": props<{ assistantId: string; conversation: Conversation }>(),
     "Create Conversation Failure": props<{ error: string }>(),
+    "Load Assistant Conversations": props<{ assistantId: string }>(),
+    "Load Assistant Conversations Success": props<{
+      assistantId: string;
+      conversations: Conversation[];
+    }>(),
+    "Load Assistant Conversations Failure": props<{ error: string }>(),
+    "Select Conversation": props<{ conversationId: string }>(),
 
     "Load Conversation": props<{ conversationId: string }>(),
     "Load Conversation Success": props<{

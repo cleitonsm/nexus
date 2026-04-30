@@ -51,14 +51,36 @@ export const createConversationEffect = createEffect(
       ofType(nexusActions.createConversation),
       switchMap(({ assistantId }) =>
         api.createConversation({ assistant_id: assistantId }).pipe(
-          map((conversation) =>
-            nexusActions.createConversationSuccess({
-              assistantId,
-              conversationId: conversation.id
-            })
-          ),
+          map((conversation) => nexusActions.createConversationSuccess({ assistantId, conversation })),
           catchError((error) =>
             of(nexusActions.createConversationFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const selectAssistantEffect = createEffect(
+  (actions$ = inject(Actions)) =>
+    actions$.pipe(
+      ofType(nexusActions.selectAssistant),
+      map(({ assistantId }) => nexusActions.loadAssistantConversations({ assistantId }))
+    ),
+  { functional: true }
+);
+
+export const loadAssistantConversationsEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadAssistantConversations),
+      switchMap(({ assistantId }) =>
+        api.listAssistantConversations(assistantId).pipe(
+          map((conversations) =>
+            nexusActions.loadAssistantConversationsSuccess({ assistantId, conversations })
+          ),
+          catchError((error) =>
+            of(nexusActions.loadAssistantConversationsFailure({ error: resolveError(error) }))
           )
         )
       )
@@ -128,7 +150,9 @@ export const sendChatQuestionEffect = createEffect(
 export const nexusEffects = {
   loadAssistantsEffect,
   createAssistantEffect,
+  selectAssistantEffect,
   createConversationEffect,
+  loadAssistantConversationsEffect,
   loadConversationEffect,
   uploadDocumentEffect,
   sendChatQuestionEffect

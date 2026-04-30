@@ -1,0 +1,99 @@
+<section class="space-y-4">
+  <div
+    *ngIf="error()"
+    class="rounded-md border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
+  >
+    <div class="flex items-center justify-between gap-2">
+      <span>{{ error() }}</span>
+      <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
+    </div>
+  </div>
+
+  <article class="rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <h2 class="text-lg font-semibold">Criar assistente</h2>
+    <p class="mt-1 text-sm text-slate-400">
+      A seleção de assistentes fica fixa na sidebar.
+    </p>
+    <form class="mt-4 space-y-3" [formGroup]="assistantForm" (ngSubmit)="createAssistant()">
+      <label class="block text-xs text-slate-300">
+        Nome
+        <input
+          class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+          formControlName="name"
+          placeholder="Ex: Jurídico"
+        />
+      </label>
+      <label class="block text-xs text-slate-300">
+        Descrição
+        <textarea
+          class="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+          rows="3"
+          formControlName="description"
+          placeholder="Contexto de uso (opcional)"
+        ></textarea>
+      </label>
+      <button
+        type="submit"
+        [disabled]="loading().createAssistant"
+        class="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {{ loading().createAssistant ? "Criando..." : "Criar assistente" }}
+      </button>
+    </form>
+  </article>
+
+  <article class="rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <h2 class="text-lg font-semibold">
+      {{ activeAssistant() ? "Documentos de " + activeAssistant()!.name : "Documentos" }}
+    </h2>
+    <p class="mt-1 text-sm text-slate-400">
+      Upload de arquivos `.txt`, `.md`, `.markdown`, `.pdf`, `.doc` e `.docx`.
+    </p>
+
+    <form
+      class="mt-4 grid gap-3 md:grid-cols-[1fr_auto]"
+      [formGroup]="uploadForm"
+      (ngSubmit)="uploadDocument()"
+    >
+      <div class="space-y-2">
+        <input
+          type="file"
+          accept=".txt,.md,.markdown,.pdf,.doc,.docx,text/plain,text/markdown,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          (change)="onFileSelected($event)"
+          class="block w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+        />
+        <textarea
+          formControlName="metadata"
+          rows="2"
+          placeholder='Metadata em JSON opcional. Ex: {"origem":"manual"}'
+          class="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+        ></textarea>
+      </div>
+      <button
+        type="submit"
+        [disabled]="!activeAssistantId() || loading().uploadDocument"
+        class="rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {{ loading().uploadDocument ? "Enviando..." : "Enviar documento" }}
+      </button>
+    </form>
+
+    <ul class="mt-4 space-y-2 text-sm">
+      <li
+        *ngFor="let document of activeAssistantDocuments()"
+        class="rounded-md border border-slate-700 px-3 py-2"
+      >
+        <div class="font-medium">{{ document.source_name }}</div>
+        <div class="text-xs text-slate-400">
+          chunks: {{ document.chunk_count }} | coleção: {{ document.collection_name }}
+        </div>
+      </li>
+      <li
+        *ngIf="activeAssistantDocuments().length === 0"
+        class="rounded-md border border-dashed border-slate-700 px-3 py-3 text-xs text-slate-500"
+      >
+        Nenhum documento enviado para o assistente selecionado nesta sessão.
+      </li>
+    </ul>
+  </article>
+</section>
