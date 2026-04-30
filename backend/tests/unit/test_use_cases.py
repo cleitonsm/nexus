@@ -5,6 +5,8 @@ from src.application.use_cases import (
     ChatWithAssistantUseCase,
     CreateAssistantInput,
     CreateAssistantUseCase,
+    GetGlobalApiKeyStatusUseCase,
+    GetGlobalApiKeyValueUseCase,
     IngestDocumentInput,
     IngestDocumentUseCase,
     ListAssistantsUseCase,
@@ -12,6 +14,8 @@ from src.application.use_cases import (
     ListConversationsUseCase,
     RegisterConversationInput,
     RegisterConversationUseCase,
+    SaveGlobalApiKeyInput,
+    SaveGlobalApiKeyUseCase,
 )
 from src.domain import (
     Assistant,
@@ -170,7 +174,70 @@ class FakeLLMGateway:
         return f"Resposta com base em {len(context_chunks)} chunks"
 
 
+class InMemorySecretSettingsRepository:
+    def __init__(self) -> None:
+        self.items: dict[str, str] = {}
+
+    def set_encrypted_value(
+        self,
+        *,
+        key_name: str,
+        encrypted_value: str,
+    ) -> None:
+        self.items[key_name] = encrypted_value
+
+    def get_encrypted_value(self, *, key_name: str) -> str | None:
+        return self.items.get(key_name)
+
+
+class FakeSecretCipher:
+    def encrypt(self, plaintext: str) -> str:
+        return f"enc::{plaintext}"
+
+    def decrypt(self, ciphertext: str) -> str:
+        return ciphertext.replace("enc::", "", 1)
+
+
 class UseCasesTestCase(unittest.TestCase):
+    def test_save_global_api_key_use_case_encrypts_and_persists_secret(
+        self,
+    ) -> None:
+        repository = InMemorySecretSettingsRepository()
+        use_case = SaveGlobalApiKeyUseCase(
+            secret_repository=repository,
+            secret_cipher=FakeSecretCipher(),
+        )
+
+        result = use_case.execute(
+            SaveGlobalApiKeyInput(api_key="  sk-test-123  ")
+        )
+
+        self.assertTrue(result.configured)
+        self.assertEqual(
+            repository.get_encrypted_value(key_name="global_llm_api_key"),
+            "enc::sk-test-123",
+        )
+
+    def test_get_global_api_key_use_cases_report_status_and_decrypt_value(
+        self,
+    ) -> None:
+        repository = InMemorySecretSettingsRepository()
+        repository.set_encrypted_value(
+            key_name="global_llm_api_key",
+            encrypted_value="enc::sk-stored-456",
+        )
+
+        status_result = GetGlobalApiKeyStatusUseCase(
+            secret_repository=repository
+        ).execute()
+        value_result = GetGlobalApiKeyValueUseCase(
+            secret_repository=repository,
+            secret_cipher=FakeSecretCipher(),
+        ).execute()
+
+        self.assertTrue(status_result.configured)
+        self.assertEqual(value_result, "sk-stored-456")
+
     def test_create_assistant_use_case_creates_and_returns_dto(self) -> None:
         repo = InMemoryAssistantRepository()
         use_case = CreateAssistantUseCase(repository=repo)

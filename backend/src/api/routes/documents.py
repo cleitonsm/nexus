@@ -38,6 +38,7 @@ router = APIRouter(
     tags=["documents"],
 )
 
+
 @router.post(
     "",
     response_model=DocumentIngestionResponse,
@@ -77,7 +78,7 @@ async def ingest_document(
 
     file_bytes = await file.read()
     try:
-        extracted_text = _extract_supported_text(
+        extracted_text = extract_supported_text(
             filename=file.filename,
             content_type=file.content_type,
             raw_content=file_bytes,
@@ -127,7 +128,9 @@ def _parse_metadata_field(raw_metadata: str | None) -> dict[str, str]:
     try:
         parsed = json.loads(raw_metadata)
     except JSONDecodeError as exc:
-        raise ValueError("metadata field must be a valid JSON object.") from exc
+        raise ValueError(
+            "metadata field must be a valid JSON object."
+        ) from exc
     if not isinstance(parsed, dict):
         raise ValueError("metadata field must be a JSON object.")
     return {str(key): str(value) for key, value in parsed.items()}
