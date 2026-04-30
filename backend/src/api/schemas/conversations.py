@@ -37,6 +37,20 @@ class MessageResponse(BaseModel):
     created_at: datetime
 
 
+class ChatRequest(BaseModel):
+    question: str = Field(min_length=1)
+    top_k: int = Field(default=4, ge=1, le=20)
+
+
+class ChatResponse(BaseModel):
+    conversation_id: str
+    assistant_id: str
+    user_message: MessageResponse
+    assistant_message: MessageResponse
+    used_context_chunks: int
+    fallback_used: bool
+
+
 class ConversationDetailResponse(BaseModel):
     id: str
     assistant_id: str

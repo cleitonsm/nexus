@@ -1,6 +1,8 @@
 import unittest
 
 from src.application.use_cases import (
+    ChatWithAssistantInput,
+    ChatWithAssistantUseCase,
     CreateAssistantInput,
     CreateAssistantUseCase,
     IngestDocumentInput,
@@ -13,10 +15,14 @@ from src.domain import (
     Assistant,
     AssistantId,
     AssistantName,
+    ChatMessage,
     CollectionName,
     Conversation,
     ConversationId,
     Document,
+    DocumentId,
+    MessageRole,
+    SearchResult,
     VectorChunk,
 )
 
@@ -39,25 +45,49 @@ class InMemoryAssistantRepository:
 class InMemoryConversationRepository:
     def __init__(self) -> None:
         self.items: dict[str, Conversation] = {}
+        self.messages: dict[str, list[ChatMessage]] = {}
 
     def save(self, conversation: Conversation) -> Conversation:
         self.items[conversation.id.value] = conversation
+        self.messages.setdefault(
+            conversation.id.value,
+            list(conversation.messages),
+        )
         return conversation
 
     def get_by_id(self, conversation_id: ConversationId) -> Conversation | None:
-        return self.items.get(conversation_id.value)
+        conversation = self.items.get(conversation_id.value)
+        if conversation is None:
+            return None
+        return Conversation(
+            id=conversation.id,
+            assistant_id=conversation.assistant_id,
+            created_at=conversation.created_at,
+            updated_at=conversation.updated_at,
+            messages=tuple(
+                sorted(
+                    self.messages.get(conversation_id.value, []),
+                    key=lambda item: item.created_at,
+                )
+            ),
+        )
 
-    def save_message(
-        self,
-        message,
-    ):  # pragma: no cover - not used in this stage
-        raise NotImplementedError
+    def save_message(self, message: ChatMessage) -> ChatMessage:
+        conversation = self.items.get(message.conversation_id.value)
+        if conversation is None:
+            raise ValueError("conversation not found")
+        self.messages.setdefault(message.conversation_id.value, []).append(message)
+        self.items[message.conversation_id.value] = Conversation(
+            id=conversation.id,
+            assistant_id=conversation.assistant_id,
+            created_at=conversation.created_at,
+            updated_at=message.created_at,
+            messages=tuple(self.messages[message.conversation_id.value]),
+        )
+        return message
 
-    def list_messages(
-        self,
-        conversation_id: ConversationId,
-    ):  # pragma: no cover - not used
-        raise NotImplementedError
+    def list_messages(self, conversation_id: ConversationId) -> list[ChatMessage]:
+        return list(self.messages.get(conversation_id.value, []))
 
 
 class InMemoryDocumentRepository:
@@ -88,6 +118,7 @@ class SpyVectorStoreGateway:
     def __init__(self) -> None:
         self.collections: dict[str, int] = {}
         self.upserts: list[tuple[str, list[VectorChunk]]] = []
+        self.search_results: dict[str, list[SearchResult]] = {}
 
     def ensure_collection(
         self,
@@ -103,8 +134,19 @@ class SpyVectorStoreGateway:
     ) -> None:
         self.upserts.append((collection_name.value, chunks))
 
-    def search(self, *args, **kwargs):  # pragma: no cover - not used in this stage
-        raise NotImplementedError
+    def search(self, *args, **kwargs) -> list[SearchResult]:
+        collection_name = kwargs["collection_name"].value
+        limit = kwargs["limit"]
+        return self.search_results.get(collection_name, [])[:limit]
+
+
+class FakeLLMGateway:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, list[str]]] = []
+
+    def generate(self, prompt: str, context_chunks: list[str]) -> str:
+        self.calls.append((prompt, context_chunks))
+        return f"Resposta com base em {len(context_chunks)} chunks"
 
 
 class UseCasesTestCase(unittest.TestCase):
@@ -227,6 +269,88 @@ class UseCasesTestCase(unittest.TestCase):
                     content="   ",
                 )
             )
+
+    def test_chat_with_assistant_use_case_runs_rag_flow_with_langgraph(
+        self,
+    ) -> None:
+        conversation_repo = InMemoryConversationRepository()
+        conversation_repo.save(
+            Conversation(
+                id=ConversationId("conv-chat"),
+                assistant_id=AssistantId("assistant-1"),
+            )
+        )
+        vector_store = SpyVectorStoreGateway()
+        vector_store.search_results["assistant-assistant-1"] = [
+            SearchResult(
+                chunk_id="chunk-1",
+                document_id=DocumentId("doc-1"),
+                score=0.91,
+                text="Trecho sobre politica de reembolso",
+            )
+        ]
+        llm_gateway = FakeLLMGateway()
+        use_case = ChatWithAssistantUseCase(
+            conversation_repository=conversation_repo,
+            embedding_gateway=FakeEmbeddingGateway(),
+            vector_store_gateway=vector_store,
+            llm_gateway=llm_gateway,
+        )
+
+        result = use_case.execute(
+            ChatWithAssistantInput(
+                conversation_id="conv-chat",
+                question="Qual a politica de reembolso?",
+                top_k=3,
+            )
+        )
+
+        self.assertEqual(result.conversation_id, "conv-chat")
+        self.assertEqual(result.user_message.role, MessageRole.USER.value)
+        self.assertEqual(
+            result.assistant_message.role,
+            MessageRole.ASSISTANT.value,
+        )
+        self.assertEqual(result.used_context_chunks, 1)
+        self.assertFalse(result.fallback_used)
+        self.assertEqual(len(llm_gateway.calls), 1)
+        saved_messages = conversation_repo.list_messages(
+            ConversationId("conv-chat")
+        )
+        self.assertEqual(len(saved_messages), 2)
+
+    def test_chat_with_assistant_use_case_returns_fallback_when_no_context(
+        self,
+    ) -> None:
+        conversation_repo = InMemoryConversationRepository()
+        conversation_repo.save(
+            Conversation(
+                id=ConversationId("conv-no-context"),
+                assistant_id=AssistantId("assistant-2"),
+            )
+        )
+        llm_gateway = FakeLLMGateway()
+        use_case = ChatWithAssistantUseCase(
+            conversation_repository=conversation_repo,
+            embedding_gateway=FakeEmbeddingGateway(),
+            vector_store_gateway=SpyVectorStoreGateway(),
+            llm_gateway=llm_gateway,
+        )
+
+        result = use_case.execute(
+            ChatWithAssistantInput(
+                conversation_id="conv-no-context",
+                question="Existe cobertura para evento X?",
+            )
+        )
+
+        self.assertTrue(result.fallback_used)
+        self.assertEqual(result.used_context_chunks, 0)
+        self.assertEqual(len(llm_gateway.calls), 0)
+        self.assertIn(
+            "Nao encontrei contexto suficiente",
+            result.assistant_message.content,
+        )
 
 
 if __name__ == "__main__":

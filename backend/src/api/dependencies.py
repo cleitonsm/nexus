@@ -13,6 +13,7 @@ from src.infrastructure.database import (
     get_db_session,
 )
 from src.infrastructure.embeddings import LocalHashEmbeddingGateway
+from src.infrastructure.llm import FakeContextAwareLLM
 from src.infrastructure.vector_store import QdrantVectorStoreGateway
 
 
@@ -46,3 +47,7 @@ def get_embedding_gateway() -> LocalHashEmbeddingGateway:
 def get_vector_store_gateway() -> QdrantVectorStoreGateway:
     qdrant_url = os.getenv("QDRANT_URL", "http://qdrant:6333")
     return QdrantVectorStoreGateway(url=qdrant_url)
+
+
+def get_llm_gateway() -> FakeContextAwareLLM:
+    return FakeContextAwareLLM()
