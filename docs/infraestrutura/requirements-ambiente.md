@@ -1,20 +1,20 @@
 # Requisitos de Ambiente
 
-## Dependências Locais
+## Dependências Locais Obrigatórias
 
-- Git.
-- Docker com suporte a Docker Compose.
+- Git `2.40+`.
+- Docker Desktop `4.30+` (Windows/macOS) ou Docker Engine `24+` (Linux).
+- Docker Compose v2 (`docker compose`).
 
-Não deve ser necessário instalar Python, Node.js, Angular CLI, PostgreSQL ou Qdrant diretamente
-na máquina host para executar o MVP.
+Nao deve ser necessario instalar Python, Node.js, Angular CLI, PostgreSQL ou Qdrant no host para executar o MVP.
 
 ## Premissa de Execução
 
-- O projeto deve subir e executar com `docker compose up --build`.
-- Todas as rotinas de desenvolvimento, teste e execução devem ocorrer dentro de containers.
-- O host precisa apenas orquestrar o ambiente; não deve compilar, rodar ou testar serviços fora do Docker.
+- O ambiente sobe com `docker compose up --build`.
+- Build, testes, migracoes e execucao dos servicos acontecem dentro de containers.
+- O host apenas orquestra o ambiente.
 
-## Portas Previstas
+## Portas Previstas (Host)
 
 - `4200`: frontend Angular.
 - `8000`: backend FastAPI.
@@ -23,22 +23,35 @@ na máquina host para executar o MVP.
 
 ## Volumes Persistentes
 
-- `postgres_data`: persistência de dados relacionais (assistentes, documentos, conversas e mensagens).
-- `qdrant_data`: persistência das collections vetoriais e índices.
-- `backend_cache` (opcional): cache local de modelos/artefatos do backend para reduzir tempo de inicialização.
+- `postgres_data`: dados relacionais (assistentes, documentos, conversas e mensagens).
+- `qdrant_data`: collections vetoriais e indices.
+- `backend_cache` (opcional): cache de modelos de embedding para reduzir tempo de bootstrap.
 
-## Recursos Mínimos Recomendados
+## Capacidade Minima Recomendada
 
 - CPU: 4 vCPUs.
-- Memória RAM: 8 GB disponíveis para Docker.
-- Disco: 20 GB livres para imagens, volumes e modelos locais.
+- Memoria RAM disponivel ao Docker: 8 GB.
+- Disco livre: 20 GB (imagens, volumes e cache de modelos).
 
-Para execução confortável com ingestão de documentos e embeddings locais em paralelo:
+## Capacidade Recomendada para Uso Confortavel
 
 - CPU: 6 vCPUs ou mais.
-- Memória RAM: 12 GB ou mais.
+- Memoria RAM disponivel ao Docker: 12 GB ou mais.
+- Disco livre: 30 GB ou mais para iteracoes com reindexacao.
 
-## Variáveis
+## Variáveis e Segredos
 
-As variáveis devem ser documentadas em `.env.example` e carregadas pelos containers. Segredos
-reais não devem ser versionados.
+- Variaveis obrigatorias e opcionais devem estar documentadas em `.env.example`.
+- Segredos reais devem ficar em `.env` local (nao versionado).
+- Qualquer alteracao de modelo de embedding deve atualizar:
+  - `EMBEDDING_MODEL_NAME`;
+  - dimensao da collection no Qdrant;
+  - rotina de reindexacao.
+
+## Checklist de Validacao Rápida
+
+- `docker --version` retorna versao compativel.
+- `docker compose version` retorna Compose v2.
+- `docker compose up --build` sobe frontend, backend, postgres e qdrant.
+- Backend responde em `/health`.
+- Qdrant responde em `http://localhost:6333`.
