@@ -9,10 +9,14 @@ from src.domain import CollectionName, DocumentId, SearchResult, VectorChunk
 
 
 class QdrantVectorStoreGateway:
-    def __init__(self, *, url: str) -> None:
-        self._client = QdrantClient(url=url)
+    def __init__(self, *, url: str, api_key: str | None = None) -> None:
+        self._client = QdrantClient(url=url, api_key=api_key or None)
 
-    def ensure_collection(self, collection_name: CollectionName, vector_size: int) -> None:
+    def ensure_collection(
+        self,
+        collection_name: CollectionName,
+        vector_size: int,
+    ) -> None:
         if vector_size <= 0:
             raise ValueError("vector_size must be positive.")
         if self._client.collection_exists(collection_name=collection_name.value):
@@ -25,7 +29,11 @@ class QdrantVectorStoreGateway:
             ),
         )
 
-    def upsert_chunks(self, collection_name: CollectionName, chunks: list[VectorChunk]) -> None:
+    def upsert_chunks(
+        self,
+        collection_name: CollectionName,
+        chunks: list[VectorChunk],
+    ) -> None:
         if not chunks:
             return
         self._client.upsert(
@@ -93,3 +101,11 @@ class QdrantVectorStoreGateway:
                 )
             )
         return results
+
+    def delete_collection(self, collection_name: CollectionName) -> None:
+        exists = self._client.collection_exists(
+            collection_name=collection_name.value
+        )
+        if not exists:
+            return
+        self._client.delete_collection(collection_name=collection_name.value)

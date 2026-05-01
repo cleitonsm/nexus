@@ -2,6 +2,7 @@ export interface Assistant {
   id: string;
   name: string;
   description: string | null;
+  initial_prompt: string | null;
   created_at: string;
 }
 
@@ -51,4 +52,11 @@ export interface ChatResponse {
 
 export interface ApiKeyStatus {
   configured: boolean;
+}
+
+export interface ApiKeyTestResult {
+  ok: boolean;
+  model: string;
+  message: string;
+  response_preview: string;
 }

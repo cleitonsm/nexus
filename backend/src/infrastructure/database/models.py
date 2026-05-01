@@ -18,6 +18,7 @@ class AssistantModel(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(80), nullable=False)
     description: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    initial_prompt: Mapped[str | None] = mapped_column(Text(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=_utc_now,
@@ -25,10 +26,12 @@ class AssistantModel(Base):
     )
 
     conversations: Mapped[list[ConversationModel]] = relationship(
-        back_populates="assistant"
+        back_populates="assistant",
+        cascade="all, delete-orphan",
     )
     documents: Mapped[list[DocumentModel]] = relationship(
-        back_populates="assistant"
+        back_populates="assistant",
+        cascade="all, delete-orphan",
     )
 
 
@@ -43,14 +46,20 @@ class DocumentModel(Base):
     )
     source_name: Mapped[str] = mapped_column(String(255), nullable=False)
     content_hash: Mapped[str] = mapped_column(String(128), nullable=False)
-    metadata_json: Mapped[str] = mapped_column(Text(), default="{}", nullable=False)
+    metadata_json: Mapped[str] = mapped_column(
+        Text(),
+        default="{}",
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=_utc_now,
         nullable=False,
     )
 
-    assistant: Mapped[AssistantModel] = relationship(back_populates="documents")
+    assistant: Mapped[AssistantModel] = relationship(
+        back_populates="documents"
+    )
 
 
 class ConversationModel(Base):
@@ -74,10 +83,13 @@ class ConversationModel(Base):
         nullable=False,
     )
 
-    assistant: Mapped[AssistantModel] = relationship(back_populates="conversations")
+    assistant: Mapped[AssistantModel] = relationship(
+        back_populates="conversations"
+    )
     messages: Mapped[list[MessageModel]] = relationship(
         back_populates="conversation",
         order_by="MessageModel.created_at",
+        cascade="all, delete-orphan",
     )
 
 
@@ -99,7 +111,9 @@ class MessageModel(Base):
         nullable=False,
     )
 
-    conversation: Mapped[ConversationModel] = relationship(back_populates="messages")
+    conversation: Mapped[ConversationModel] = relationship(
+        back_populates="messages"
+    )
 
 
 class SecretSettingModel(Base):

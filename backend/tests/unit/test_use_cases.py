@@ -48,6 +48,9 @@ class InMemoryAssistantRepository:
     def get_by_id(self, assistant_id: AssistantId) -> Assistant | None:
         return self.items.get(assistant_id.value)
 
+    def delete(self, assistant_id: AssistantId) -> bool:
+        return self.items.pop(assistant_id.value, None) is not None
+
 
 class InMemoryConversationRepository:
     def __init__(self) -> None:
@@ -108,6 +111,11 @@ class InMemoryConversationRepository:
     def list_messages(self, conversation_id: ConversationId) -> list[ChatMessage]:
         return list(self.messages.get(conversation_id.value, []))
 
+    def delete(self, conversation_id: ConversationId) -> bool:
+        deleted = self.items.pop(conversation_id.value, None) is not None
+        self.messages.pop(conversation_id.value, None)
+        return deleted
+
 
 class InMemoryDocumentRepository:
     def __init__(self) -> None:
@@ -157,6 +165,10 @@ class SpyVectorStoreGateway:
         collection_name = kwargs["collection_name"].value
         limit = kwargs["limit"]
         return self.search_results.get(collection_name, [])[:limit]
+
+    def delete_collection(self, collection_name: CollectionName) -> None:
+        self.collections.pop(collection_name.value, None)
+        self.search_results.pop(collection_name.value, None)
 
 
 class FakeLLMGateway:
@@ -247,11 +259,13 @@ class UseCasesTestCase(unittest.TestCase):
                 assistant_id="assistant-abc",
                 name="Compliance",
                 description="Regras internas",
+                initial_prompt="Aja como especialista em compliance.",
             )
         )
 
         self.assertEqual(created.id, "assistant-abc")
         self.assertEqual(created.name, "Compliance")
+        self.assertEqual(created.initial_prompt, "Aja como especialista em compliance.")
         self.assertEqual(len(repo.list_all()), 1)
 
     def test_list_assistants_use_case_maps_entities_to_dtos(self) -> None:
@@ -401,6 +415,17 @@ class UseCasesTestCase(unittest.TestCase):
                 assistant_id=AssistantId("assistant-1"),
             )
         )
+        assistant_repo = InMemoryAssistantRepository()
+        assistant_repo.save(
+            Assistant(
+                id=AssistantId("assistant-1"),
+                name=AssistantName("Juridico"),
+                initial_prompt=(
+                    "Aja como um especialista em questoes juridicas e use a "
+                    "documentacao RAG como fonte de verdade."
+                ),
+            )
+        )
         vector_store = SpyVectorStoreGateway()
         vector_store.search_results["assistant-assistant-1"] = [
             SearchResult(
@@ -412,6 +437,7 @@ class UseCasesTestCase(unittest.TestCase):
         ]
         llm_gateway = FakeLLMGateway()
         use_case = ChatWithAssistantUseCase(
+            assistant_repository=assistant_repo,
             conversation_repository=conversation_repo,
             embedding_gateway=FakeEmbeddingGateway(),
             vector_store_gateway=vector_store,
@@ -437,6 +463,7 @@ class UseCasesTestCase(unittest.TestCase):
         self.assertEqual(len(llm_gateway.calls), 1)
         prompt, chunks, history = llm_gateway.calls[0]
         self.assertIn("Qual a politica de reembolso?", prompt)
+        self.assertIn("especialista em questoes juridicas", prompt)
         self.assertEqual(len(chunks), 1)
         self.assertEqual(len(history), 0)
         saved_messages = conversation_repo.list_messages(
@@ -452,6 +479,13 @@ class UseCasesTestCase(unittest.TestCase):
             Conversation(
                 id=ConversationId("conv-history"),
                 assistant_id=AssistantId("assistant-1"),
+            )
+        )
+        assistant_repo = InMemoryAssistantRepository()
+        assistant_repo.save(
+            Assistant(
+                id=AssistantId("assistant-1"),
+                name=AssistantName("Historico"),
             )
         )
         conversation_repo.save_message(
@@ -481,6 +515,7 @@ class UseCasesTestCase(unittest.TestCase):
         ]
         llm_gateway = FakeLLMGateway()
         use_case = ChatWithAssistantUseCase(
+            assistant_repository=assistant_repo,
             conversation_repository=conversation_repo,
             embedding_gateway=FakeEmbeddingGateway(),
             vector_store_gateway=vector_store,
@@ -510,8 +545,16 @@ class UseCasesTestCase(unittest.TestCase):
                 assistant_id=AssistantId("assistant-2"),
             )
         )
+        assistant_repo = InMemoryAssistantRepository()
+        assistant_repo.save(
+            Assistant(
+                id=AssistantId("assistant-2"),
+                name=AssistantName("Sem contexto"),
+            )
+        )
         llm_gateway = FakeLLMGateway()
         use_case = ChatWithAssistantUseCase(
+            assistant_repository=assistant_repo,
             conversation_repository=conversation_repo,
             embedding_gateway=FakeEmbeddingGateway(),
             vector_store_gateway=SpyVectorStoreGateway(),

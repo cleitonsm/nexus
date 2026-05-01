@@ -1,6 +1,7 @@
 import { createActionGroup, emptyProps, props } from "@ngrx/store";
 
 import {
+  ApiKeyTestResult,
   ApiKeyStatus,
   Assistant,
   ChatMessage,
@@ -16,9 +17,18 @@ export const nexusActions = createActionGroup({
     "Load Assistants Success": props<{ assistants: Assistant[] }>(),
     "Load Assistants Failure": props<{ error: string }>(),
 
-    "Create Assistant": props<{ name: string; description: string | null }>(),
+    "Create Assistant": props<{
+      name: string;
+      description: string | null;
+      initialPrompt: string | null;
+      documentFiles: File[];
+      documentMetadata: Record<string, string>;
+    }>(),
     "Create Assistant Success": props<{ assistant: Assistant }>(),
     "Create Assistant Failure": props<{ error: string }>(),
+    "Delete Assistant": props<{ assistantId: string }>(),
+    "Delete Assistant Success": props<{ assistantId: string }>(),
+    "Delete Assistant Failure": props<{ error: string }>(),
 
     "Select Assistant": props<{ assistantId: string }>(),
 
@@ -32,6 +42,9 @@ export const nexusActions = createActionGroup({
     }>(),
     "Load Assistant Conversations Failure": props<{ error: string }>(),
     "Select Conversation": props<{ conversationId: string }>(),
+    "Delete Conversation": props<{ assistantId: string; conversationId: string }>(),
+    "Delete Conversation Success": props<{ assistantId: string; conversationId: string }>(),
+    "Delete Conversation Failure": props<{ error: string }>(),
 
     "Load Conversation": props<{ conversationId: string }>(),
     "Load Conversation Success": props<{
@@ -48,7 +61,12 @@ export const nexusActions = createActionGroup({
     "Upload Document Success": props<{ document: IngestedDocument }>(),
     "Upload Document Failure": props<{ error: string }>(),
 
-    "Send Chat Question": props<{ conversationId: string; question: string; topK: number }>(),
+    "Send Chat Question": props<{
+      assistantId: string;
+      conversationId: string | null;
+      question: string;
+      topK: number;
+    }>(),
     "Send Chat Question Success": props<{
       conversationId: string;
       userMessage: ChatMessage;
@@ -61,6 +79,9 @@ export const nexusActions = createActionGroup({
     "Load Api Key Status Failure": props<{ error: string }>(),
     "Save Api Key": props<{ apiKey: string }>(),
     "Save Api Key Success": props<{ status: ApiKeyStatus }>(),
-    "Save Api Key Failure": props<{ error: string }>()
+    "Save Api Key Failure": props<{ error: string }>(),
+    "Test Api Key": emptyProps(),
+    "Test Api Key Success": props<{ result: ApiKeyTestResult }>(),
+    "Test Api Key Failure": props<{ error: string }>()
   }
 });

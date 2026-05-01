@@ -24,12 +24,19 @@ class DocumentExtractionTestCase(unittest.TestCase):
                 raw_content=b"value",
             )
 
-    def test_resolve_document_type_uses_content_type_without_filename(self) -> None:
+    def test_resolve_type_uses_content_type_without_filename(self) -> None:
         resolved = resolve_document_type(
             filename=None,
             content_type="application/pdf",
         )
         self.assertEqual(resolved, ".pdf")
+
+    def test_resolve_type_rejects_suffix_content_type_mismatch(self) -> None:
+        resolved = resolve_document_type(
+            filename="manual.pdf",
+            content_type="text/plain",
+        )
+        self.assertIsNone(resolved)
 
     def test_extract_supported_text_dispatches_docx_extractor(self) -> None:
         with patch(
@@ -38,7 +45,10 @@ class DocumentExtractionTestCase(unittest.TestCase):
         ):
             extracted = extract_supported_text(
                 filename="manual.docx",
-                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                content_type=(
+                    "application/vnd.openxmlformats-officedocument."
+                    "wordprocessingml.document"
+                ),
                 raw_content=b"fake-docx-binary",
             )
         self.assertEqual(extracted, "Texto DOCX")

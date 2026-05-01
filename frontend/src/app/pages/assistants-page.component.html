@@ -14,37 +14,9 @@
       {{ activeAssistant() ? "Documentos de " + activeAssistant()!.name : "Documentos" }}
     </h2>
     <p class="mt-1 text-sm text-slate-400">
-      Crie e selecione assistentes na sidebar. Depois envie arquivos `.txt`, `.md`, `.markdown`,
-      `.pdf`, `.doc` e `.docx` para o assistente ativo.
+      Crie assistentes pela sidebar e anexe documentos na mesma modal de criação. Cada assistente
+      usa uma collection própria para a sua base RAG.
     </p>
-
-    <form
-      class="mt-4 grid gap-3 md:grid-cols-[1fr_auto]"
-      [formGroup]="uploadForm"
-      (ngSubmit)="uploadDocument()"
-    >
-      <div class="space-y-2">
-        <input
-          type="file"
-          accept=".txt,.md,.markdown,.pdf,.doc,.docx,text/plain,text/markdown,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          (change)="onFileSelected($event)"
-          class="block w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-        />
-        <textarea
-          formControlName="metadata"
-          rows="2"
-          placeholder='Metadata em JSON opcional. Ex: {"origem":"manual"}'
-          class="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-        ></textarea>
-      </div>
-      <button
-        type="submit"
-        [disabled]="!activeAssistantId() || loading().uploadDocument"
-        class="rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-      >
-        {{ loading().uploadDocument ? "Enviando..." : "Enviar documento" }}
-      </button>
-    </form>
 
     <ul class="mt-4 space-y-2 text-sm">
       <li

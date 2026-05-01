@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .entities import Assistant, ChatMessage, Conversation, Document
-from .value_objects import AssistantId, CollectionName, ConversationId, DocumentId
+from .value_objects import (
+    AssistantId,
+    CollectionName,
+    ConversationId,
+    DocumentId,
+)
 
 
 class AssistantRepository(Protocol):
@@ -14,23 +19,39 @@ class AssistantRepository(Protocol):
 
     def get_by_id(self, assistant_id: AssistantId) -> Assistant | None: ...
 
+    def delete(self, assistant_id: AssistantId) -> bool: ...
+
 
 class DocumentRepository(Protocol):
     def save(self, document: Document) -> Document: ...
 
-    def list_by_assistant(self, assistant_id: AssistantId) -> list[Document]: ...
+    def list_by_assistant(
+        self,
+        assistant_id: AssistantId,
+    ) -> list[Document]: ...
 
 
 class ConversationRepository(Protocol):
     def save(self, conversation: Conversation) -> Conversation: ...
 
-    def get_by_id(self, conversation_id: ConversationId) -> Conversation | None: ...
+    def get_by_id(
+        self,
+        conversation_id: ConversationId,
+    ) -> Conversation | None: ...
 
-    def list_by_assistant(self, assistant_id: AssistantId) -> list[Conversation]: ...
+    def list_by_assistant(
+        self,
+        assistant_id: AssistantId,
+    ) -> list[Conversation]: ...
 
     def save_message(self, message: ChatMessage) -> ChatMessage: ...
 
-    def list_messages(self, conversation_id: ConversationId) -> list[ChatMessage]: ...
+    def list_messages(
+        self,
+        conversation_id: ConversationId,
+    ) -> list[ChatMessage]: ...
+
+    def delete(self, conversation_id: ConversationId) -> bool: ...
 
 
 class SecretSettingsRepository(Protocol):
@@ -69,9 +90,17 @@ class SearchResult:
 
 
 class VectorStoreGateway(Protocol):
-    def ensure_collection(self, collection_name: CollectionName, vector_size: int) -> None: ...
+    def ensure_collection(
+        self,
+        collection_name: CollectionName,
+        vector_size: int,
+    ) -> None: ...
 
-    def upsert_chunks(self, collection_name: CollectionName, chunks: list[VectorChunk]) -> None: ...
+    def upsert_chunks(
+        self,
+        collection_name: CollectionName,
+        chunks: list[VectorChunk],
+    ) -> None: ...
 
     def search(
         self,
@@ -79,6 +108,8 @@ class VectorStoreGateway(Protocol):
         query_vector: list[float],
         limit: int,
     ) -> list[SearchResult]: ...
+
+    def delete_collection(self, collection_name: CollectionName) -> None: ...
 
 
 class LLMGateway(Protocol):

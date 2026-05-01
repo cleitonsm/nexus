@@ -38,8 +38,18 @@
               </ng-template>
             </div>
           </div>
-          <div *ngIf="messages().length === 0" class="py-10 text-center text-sm text-slate-500">
+          <div *ngIf="messages().length === 0 && !loading().sendChat" class="py-10 text-center text-sm text-slate-500">
             Selecione ou crie uma conversa na sidebar para começar.
+          </div>
+
+          <div *ngIf="loading().sendChat" class="flex justify-start">
+            <div class="max-w-[85%] rounded-2xl rounded-bl-md border border-slate-700 bg-slate-900 px-4 py-3 text-sm shadow-sm">
+              <div class="flex items-center gap-1.5">
+                <span class="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]"></span>
+                <span class="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]"></span>
+                <span class="h-2 w-2 animate-bounce rounded-full bg-slate-400"></span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -52,14 +62,22 @@
             <input
               formControlName="question"
               placeholder="Digite sua pergunta..."
-              class="flex-1 rounded-full border border-slate-700 bg-slate-950 px-4 py-2 text-sm"
+              [attr.disabled]="loading().sendChat ? true : null"
+              class="flex-1 rounded-full border border-slate-700 bg-slate-950 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
             />
             <button
               type="submit"
-              [disabled]="!currentConversationId() || loading().sendChat"
+              [disabled]="!activeAssistantId() || loading().sendChat"
               class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
-              {{ loading().sendChat ? "Enviando..." : "Enviar" }}
+              <span *ngIf="loading().sendChat; else sendLabel" class="flex items-center gap-2">
+                <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Aguardando...
+              </span>
+              <ng-template #sendLabel>Enviar</ng-template>
             </button>
           </div>
         </form>

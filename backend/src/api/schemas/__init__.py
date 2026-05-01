@@ -1,4 +1,4 @@
-from .admin import ApiKeyStatusResponse, SaveApiKeyRequest
+from .admin import ApiKeyStatusResponse, ApiKeyTestResponse, SaveApiKeyRequest
 from .assistants import AssistantResponse, CreateAssistantRequest
 from .conversations import (
     AddMessageRequest,
@@ -15,6 +15,7 @@ from .documents import DocumentIngestionResponse
 __all__ = [
     "AddMessageRequest",
     "ApiKeyStatusResponse",
+    "ApiKeyTestResponse",
     "AssistantResponse",
     "ChatRequest",
     "ChatResponse",

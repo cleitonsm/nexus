@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+from pathlib import Path
+import time
 from typing import TypedDict
 from uuid import uuid4
 
@@ -9,6 +12,7 @@ from langgraph.graph import END, StateGraph  # type: ignore[import-untyped]
 from src.application.dto import ChatTurnResult, MessageDTO
 from src.domain import (
     AssistantId,
+    AssistantRepository,
     ChatMessage,
     CollectionName,
     ConversationId,
@@ -24,6 +28,31 @@ from src.domain import (
 
 class ConversationNotFoundError(ValueError):
     pass
+
+
+def _agent_debug_log(
+    *,
+    run_id: str,
+    hypothesis_id: str,
+    location: str,
+    message: str,
+    data: dict[str, object],
+) -> None:
+    payload = {
+        "sessionId": "a1f259",
+        "id": f"log_{int(time.time() * 1000)}_{uuid4().hex[:8]}",
+        "timestamp": int(time.time() * 1000),
+        "runId": run_id,
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "message": message,
+        "data": data,
+    }
+    try:
+        with Path("debug-a1f259.log").open("a", encoding="utf-8") as log_file:
+            log_file.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except OSError:
+        pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +72,7 @@ class ChatState(TypedDict):
     question: str
     top_k: int
     fallback_answer: str
+    assistant_initial_prompt: str | None
     conversation_history: list[ChatMessage]
     user_message: ChatMessage
     search_results: list[SearchResult]
@@ -56,11 +86,13 @@ class ChatWithAssistantUseCase:
     def __init__(
         self,
         *,
+        assistant_repository: AssistantRepository,
         conversation_repository: ConversationRepository,
         embedding_gateway: EmbeddingGateway,
         vector_store_gateway: VectorStoreGateway,
         llm_gateway: LLMGateway,
     ) -> None:
+        self._assistant_repository = assistant_repository
         self._conversation_repository = conversation_repository
         self._embedding_gateway = embedding_gateway
         self._vector_store_gateway = vector_store_gateway
@@ -76,6 +108,9 @@ class ChatWithAssistantUseCase:
         conversation = self._conversation_repository.get_by_id(conversation_id)
         if conversation is None:
             raise ConversationNotFoundError("conversation not found.")
+        assistant = self._assistant_repository.get_by_id(
+            conversation.assistant_id
+        )
 
         final_state = self._graph.invoke(
             {
@@ -84,6 +119,9 @@ class ChatWithAssistantUseCase:
                 "question": question,
                 "top_k": max(data.top_k, 1),
                 "fallback_answer": data.fallback_answer,
+                "assistant_initial_prompt": (
+                    assistant.initial_prompt if assistant else None
+                ),
             }
         )
         return ChatTurnResult(
@@ -99,7 +137,10 @@ class ChatWithAssistantUseCase:
 
     def _build_graph(self):
         graph = StateGraph(ChatState)
-        graph.add_node("load_conversation_history", self._load_conversation_history)
+        graph.add_node(
+            "load_conversation_history",
+            self._load_conversation_history,
+        )
         graph.add_node("persist_user_message", self._persist_user_message)
         graph.add_node("retrieve_context", self._retrieve_context)
         graph.add_node("evaluate_context", self._evaluate_context)
@@ -128,7 +169,9 @@ class ChatWithAssistantUseCase:
         return graph.compile()
 
     def _load_conversation_history(self, state: ChatState) -> ChatState:
-        history = self._conversation_repository.list_messages(state["conversation_id"])
+        history = self._conversation_repository.list_messages(
+            state["conversation_id"]
+        )
         return {
             **state,
             "conversation_history": history,
@@ -174,6 +217,18 @@ class ChatWithAssistantUseCase:
         }
 
     def _evaluate_context(self, state: ChatState) -> ChatState:
+        # region agent log
+        _agent_debug_log(
+            run_id="llm-ui-pre-fix",
+            hypothesis_id="H8",
+            location="backend/src/application/use_cases/chat_with_assistant.py:evaluate_context",
+            message="evaluating retrieved chat context",
+            data={
+                "searchResults": len(state["search_results"]),
+                "contextChunks": len(state["context_chunks"]),
+            },
+        )
+        # endregion
         return {
             **state,
             "fallback_used": len(state["context_chunks"]) == 0,
@@ -185,10 +240,31 @@ class ChatWithAssistantUseCase:
         return "generate_answer"
 
     def _generate_answer(self, state: ChatState) -> ChatState:
+        instruction = (
+            state["assistant_initial_prompt"].strip()
+            if state["assistant_initial_prompt"]
+            else (
+                "Responda de forma objetiva usando apenas o contexto "
+                "recuperado."
+            )
+        )
         prompt = (
-            "Responda de forma objetiva usando apenas o contexto recuperado.\n"
+            f"{instruction}\n"
             f"Pergunta: {state['question']}"
         )
+        # region agent log
+        _agent_debug_log(
+            run_id="llm-ui-pre-fix",
+            hypothesis_id="H7,H9",
+            location="backend/src/application/use_cases/chat_with_assistant.py:generate_answer",
+            message="calling llm gateway",
+            data={
+                "contextChunks": len(state["context_chunks"]),
+                "historyMessages": len(state["conversation_history"]),
+                "promptLength": len(prompt),
+            },
+        )
+        # endregion
         answer = self._llm_gateway.generate(
             prompt=prompt,
             context_chunks=state["context_chunks"],
@@ -206,6 +282,15 @@ class ChatWithAssistantUseCase:
         }
 
     def _fallback_answer(self, state: ChatState) -> ChatState:
+        # region agent log
+        _agent_debug_log(
+            run_id="llm-ui-pre-fix",
+            hypothesis_id="H8",
+            location="backend/src/application/use_cases/chat_with_assistant.py:fallback_answer",
+            message="using fallback answer without llm call",
+            data={"contextChunks": len(state["context_chunks"])},
+        )
+        # endregion
         return {
             **state,
             "answer": state["fallback_answer"],

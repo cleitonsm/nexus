@@ -7,3 +7,10 @@ class SaveApiKeyRequest(BaseModel):
 
 class ApiKeyStatusResponse(BaseModel):
     configured: bool
+
+
+class ApiKeyTestResponse(BaseModel):
+    ok: bool
+    model: str
+    message: str
+    response_preview: str

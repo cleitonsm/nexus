@@ -1,6 +1,7 @@
 import { createReducer, on } from "@ngrx/store";
 
 import {
+  ApiKeyTestResult,
   ApiKeyStatus,
   Assistant,
   ChatMessage,
@@ -20,14 +21,18 @@ export interface NexusState {
   messagesByConversation: Record<string, ChatMessage[]>;
   documents: IngestedDocument[];
   apiKeyStatus: ApiKeyStatus | null;
+  apiKeyTestResult: ApiKeyTestResult | null;
   loading: {
     assistants: boolean;
     createAssistant: boolean;
+    deleteAssistant: boolean;
     createConversation: boolean;
+    deleteConversation: boolean;
     uploadDocument: boolean;
     sendChat: boolean;
     apiKeyStatus: boolean;
     saveApiKey: boolean;
+    testApiKey: boolean;
   };
   error: string | null;
 }
@@ -41,14 +46,18 @@ export const initialNexusState: NexusState = {
   messagesByConversation: {},
   documents: [],
   apiKeyStatus: null,
+  apiKeyTestResult: null,
   loading: {
     assistants: false,
     createAssistant: false,
+    deleteAssistant: false,
     createConversation: false,
+    deleteConversation: false,
     uploadDocument: false,
     sendChat: false,
     apiKeyStatus: false,
-    saveApiKey: false
+    saveApiKey: false,
+    testApiKey: false
   },
   error: null
 };
@@ -88,6 +97,56 @@ export const nexusReducer = createReducer(
   on(nexusActions.createAssistantFailure, (state, { error }) => ({
     ...state,
     loading: { ...state.loading, createAssistant: false },
+    error
+  })),
+  on(nexusActions.deleteAssistant, (state) => ({
+    ...state,
+    loading: { ...state.loading, deleteAssistant: true },
+    error: null
+  })),
+  on(nexusActions.deleteAssistantSuccess, (state, { assistantId }) => {
+    const remainingAssistants = state.assistants.filter((assistant) => assistant.id !== assistantId);
+    const {
+      [assistantId]: _removedConversations,
+      ...conversationHistoryByAssistant
+    } = state.conversationHistoryByAssistant;
+    const {
+      [assistantId]: _removedSelectedConversation,
+      ...selectedConversationByAssistant
+    } = state.selectedConversationByAssistant;
+    const removedConversationIds = new Set(
+      state.conversationHistoryByAssistant[assistantId]?.map((conversation) => conversation.id) ?? []
+    );
+    const messagesByConversation = Object.fromEntries(
+      Object.entries(state.messagesByConversation).filter(
+        ([conversationId]) => !removedConversationIds.has(conversationId)
+      )
+    );
+    const nextActiveAssistantId =
+      state.activeAssistantId === assistantId
+        ? remainingAssistants[0]?.id ?? null
+        : state.activeAssistantId;
+    const nextConversationId = nextActiveAssistantId
+      ? selectedConversationByAssistant[nextActiveAssistantId] ??
+        conversationHistoryByAssistant[nextActiveAssistantId]?.[0]?.id ??
+        null
+      : null;
+
+    return {
+      ...state,
+      assistants: remainingAssistants,
+      activeAssistantId: nextActiveAssistantId,
+      conversationHistoryByAssistant,
+      selectedConversationByAssistant,
+      currentConversationId: nextConversationId,
+      messagesByConversation,
+      documents: state.documents.filter((document) => document.assistant_id !== assistantId),
+      loading: { ...state.loading, deleteAssistant: false }
+    };
+  }),
+  on(nexusActions.deleteAssistantFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, deleteAssistant: false },
     error
   })),
 
@@ -173,6 +232,47 @@ export const nexusReducer = createReducer(
       }
     };
   }),
+  on(nexusActions.deleteConversation, (state) => ({
+    ...state,
+    loading: { ...state.loading, deleteConversation: true },
+    error: null
+  })),
+  on(nexusActions.deleteConversationSuccess, (state, { assistantId, conversationId }) => {
+    const remainingConversations = (state.conversationHistoryByAssistant[assistantId] ?? []).filter(
+      (conversation) => conversation.id !== conversationId
+    );
+    const nextConversationId =
+      state.currentConversationId === conversationId
+        ? remainingConversations[0]?.id ?? null
+        : state.currentConversationId;
+    const {
+      [conversationId]: _removedMessages,
+      ...messagesByConversation
+    } = state.messagesByConversation;
+
+    return {
+      ...state,
+      conversationHistoryByAssistant: {
+        ...state.conversationHistoryByAssistant,
+        [assistantId]: remainingConversations
+      },
+      selectedConversationByAssistant: {
+        ...state.selectedConversationByAssistant,
+        [assistantId]:
+          state.selectedConversationByAssistant[assistantId] === conversationId
+            ? remainingConversations[0]?.id ?? null
+            : state.selectedConversationByAssistant[assistantId] ?? null
+      },
+      currentConversationId: nextConversationId,
+      messagesByConversation,
+      loading: { ...state.loading, deleteConversation: false }
+    };
+  }),
+  on(nexusActions.deleteConversationFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, deleteConversation: false },
+    error
+  })),
 
   on(nexusActions.loadConversationSuccess, (state, { conversationId, messages }) => ({
     ...state,
@@ -251,11 +351,28 @@ export const nexusReducer = createReducer(
   on(nexusActions.saveApiKeySuccess, (state, { status }) => ({
     ...state,
     apiKeyStatus: status,
+    apiKeyTestResult: null,
     loading: { ...state.loading, saveApiKey: false }
   })),
   on(nexusActions.saveApiKeyFailure, (state, { error }) => ({
     ...state,
     loading: { ...state.loading, saveApiKey: false },
+    error
+  })),
+  on(nexusActions.testApiKey, (state) => ({
+    ...state,
+    apiKeyTestResult: null,
+    loading: { ...state.loading, testApiKey: true },
+    error: null
+  })),
+  on(nexusActions.testApiKeySuccess, (state, { result }) => ({
+    ...state,
+    apiKeyTestResult: result,
+    loading: { ...state.loading, testApiKey: false }
+  })),
+  on(nexusActions.testApiKeyFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, testApiKey: false },
     error
   }))
 );

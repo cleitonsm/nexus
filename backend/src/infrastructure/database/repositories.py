@@ -40,12 +40,14 @@ class PostgresAssistantRepository:
                 id=assistant.id.value,
                 name=assistant.name.value,
                 description=assistant.description,
+                initial_prompt=assistant.initial_prompt,
                 created_at=assistant.created_at,
             )
             self._session.add(model)
         else:
             model.name = assistant.name.value
             model.description = assistant.description
+            model.initial_prompt = assistant.initial_prompt
         self._session.commit()
         self._session.refresh(model)
         return _assistant_to_entity(model)
@@ -64,6 +66,14 @@ class PostgresAssistantRepository:
         if model is None:
             return None
         return _assistant_to_entity(model)
+
+    def delete(self, assistant_id: AssistantId) -> bool:
+        model = self._session.get(AssistantModel, assistant_id.value)
+        if model is None:
+            return False
+        self._session.delete(model)
+        self._session.commit()
+        return True
 
 
 class PostgresConversationRepository:
@@ -173,6 +183,14 @@ class PostgresConversationRepository:
             for item in self._session.scalars(stmt).all()
         ]
 
+    def delete(self, conversation_id: ConversationId) -> bool:
+        model = self._session.get(ConversationModel, conversation_id.value)
+        if model is None:
+            return False
+        self._session.delete(model)
+        self._session.commit()
+        return True
+
 
 class PostgresDocumentRepository:
     def __init__(self, session: Session) -> None:
@@ -248,6 +266,7 @@ def _assistant_to_entity(model: AssistantModel) -> Assistant:
         id=AssistantId(model.id),
         name=AssistantName(model.name),
         description=model.description,
+        initial_prompt=model.initial_prompt,
         created_at=model.created_at,
     )
 

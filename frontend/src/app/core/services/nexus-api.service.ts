@@ -3,6 +3,7 @@ import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 
 import {
+  ApiKeyTestResult,
   ApiKeyStatus,
   Assistant,
   ChatResponse,
@@ -14,6 +15,7 @@ import {
 interface CreateAssistantPayload {
   name: string;
   description: string | null;
+  initial_prompt: string | null;
 }
 
 interface CreateConversationPayload {
@@ -43,6 +45,10 @@ export class NexusApiService {
     return this.http.post<Assistant>(`${this.baseUrl}/assistants`, payload);
   }
 
+  deleteAssistant(assistantId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/assistants/${assistantId}`);
+  }
+
   uploadDocument(
     assistantId: string,
     file: File,
@@ -53,6 +59,9 @@ export class NexusApiService {
     if (metadata && Object.keys(metadata).length > 0) {
       formData.set("metadata", JSON.stringify(metadata));
     }
+    // #region agent log
+    fetch("http://127.0.0.1:7657/ingest/1e04e285-e754-4529-87f1-5953edf93f4e", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a1f259" }, body: JSON.stringify({ sessionId: "a1f259", runId: "pre-fix", hypothesisId: "H3", location: "frontend/src/app/core/services/nexus-api.service.ts:uploadDocument", message: "frontend starting document upload", data: { fileSizeBytes: file.size, fileType: file.type, hasMetadata: Boolean(metadata && Object.keys(metadata).length > 0), metadataKeysCount: metadata ? Object.keys(metadata).length : 0, url: `${this.baseUrl}/assistants/${assistantId}/documents` }, timestamp: Date.now() }) }).catch(() => {});
+    // #endregion
     return this.http.post<IngestedDocument>(
       `${this.baseUrl}/assistants/${assistantId}/documents`,
       formData
@@ -61,6 +70,10 @@ export class NexusApiService {
 
   createConversation(payload: CreateConversationPayload): Observable<Conversation> {
     return this.http.post<Conversation>(`${this.baseUrl}/conversations`, payload);
+  }
+
+  deleteConversation(conversationId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/conversations/${conversationId}`);
   }
 
   getConversation(conversationId: string): Observable<ConversationDetail> {
@@ -88,5 +101,9 @@ export class NexusApiService {
 
   saveApiKey(payload: SaveApiKeyPayload): Observable<ApiKeyStatus> {
     return this.http.post<ApiKeyStatus>(`${this.baseUrl}/admin/api-key`, payload);
+  }
+
+  testApiKey(): Observable<ApiKeyTestResult> {
+    return this.http.post<ApiKeyTestResult>(`${this.baseUrl}/admin/api-key/test`, {});
   }
 }

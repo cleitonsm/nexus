@@ -30,11 +30,18 @@ class Assistant:
     id: AssistantId
     name: AssistantName
     description: str | None = None
+    initial_prompt: str | None = None
     created_at: datetime = field(default_factory=_utc_now)
 
     def __post_init__(self) -> None:
         if self.description is not None and not self.description.strip():
-            raise DomainValidationError("assistant description must not be empty when provided.")
+            raise DomainValidationError(
+                "assistant description must not be empty when provided."
+            )
+        if self.initial_prompt is not None and not self.initial_prompt.strip():
+            raise DomainValidationError(
+                "assistant initial_prompt must not be empty when provided."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,7 +50,9 @@ class Document:
     assistant_id: AssistantId
     source_name: str
     content_hash: str
-    metadata: DocumentMetadata = field(default_factory=lambda: DocumentMetadata(values={}))
+    metadata: DocumentMetadata = field(
+        default_factory=lambda: DocumentMetadata(values={})
+    )
     created_at: datetime = field(default_factory=_utc_now)
 
     def __post_init__(self) -> None:
@@ -76,7 +85,9 @@ class Conversation:
 
     def append_message(self, message: ChatMessage) -> "Conversation":
         if message.conversation_id != self.id:
-            raise DomainValidationError("message conversation_id does not match conversation id.")
+            raise DomainValidationError(
+                "message conversation_id does not match conversation id."
+            )
         return Conversation(
             id=self.id,
             assistant_id=self.assistant_id,

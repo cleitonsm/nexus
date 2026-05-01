@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from src.api.dependencies import (
     get_assistant_repository,
@@ -131,6 +131,32 @@ def get_conversation(
     )
 
 
+@router.delete(
+    "/{conversation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_conversation(
+    conversation_id: str,
+    repository: PostgresConversationRepository = Depends(get_conversation_repository),
+) -> Response:
+    try:
+        conversation_ref = ConversationId(conversation_id)
+    except DomainValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    deleted = repository.delete(conversation_ref)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="conversation not found",
+        )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.post(
     "/{conversation_id}/messages",
     response_model=MessageResponse,
@@ -188,6 +214,9 @@ def add_message(
 def chat_with_assistant(
     conversation_id: str,
     payload: ChatRequest,
+    assistant_repository: PostgresAssistantRepository = Depends(
+        get_assistant_repository
+    ),
     conversation_repository: PostgresConversationRepository = Depends(
         get_conversation_repository
     ),
@@ -196,6 +225,7 @@ def chat_with_assistant(
     llm_gateway: LLMGateway = Depends(get_llm_gateway),
 ) -> ChatResponse:
     use_case = ChatWithAssistantUseCase(
+        assistant_repository=assistant_repository,
         conversation_repository=conversation_repository,
         embedding_gateway=embedding_gateway,
         vector_store_gateway=vector_store_gateway,

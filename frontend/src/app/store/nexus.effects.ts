@@ -33,11 +33,38 @@ export const createAssistantEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
     actions$.pipe(
       ofType(nexusActions.createAssistant),
-      switchMap(({ name, description }) =>
-        api.createAssistant({ name, description }).pipe(
-          map((assistant) => nexusActions.createAssistantSuccess({ assistant })),
+      switchMap(({ name, description, initialPrompt, documentFiles, documentMetadata }) =>
+        api.createAssistant({ name, description, initial_prompt: initialPrompt }).pipe(
+          mergeMap((assistant) =>
+            of(
+              nexusActions.createAssistantSuccess({ assistant }),
+              ...documentFiles.map((file) =>
+                nexusActions.uploadDocument({
+                  assistantId: assistant.id,
+                  file,
+                  metadata: documentMetadata
+                })
+              )
+            )
+          ),
           catchError((error) =>
             of(nexusActions.createAssistantFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const deleteAssistantEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.deleteAssistant),
+      switchMap(({ assistantId }) =>
+        api.deleteAssistant(assistantId).pipe(
+          map(() => nexusActions.deleteAssistantSuccess({ assistantId })),
+          catchError((error) =>
+            of(nexusActions.deleteAssistantFailure({ error: resolveError(error) }))
           )
         )
       )
@@ -97,6 +124,22 @@ export const loadAssistantConversationsEffect = createEffect(
   { functional: true }
 );
 
+export const deleteConversationEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.deleteConversation),
+      switchMap(({ assistantId, conversationId }) =>
+        api.deleteConversation(conversationId).pipe(
+          map(() => nexusActions.deleteConversationSuccess({ assistantId, conversationId })),
+          catchError((error) =>
+            of(nexusActions.deleteConversationFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
 export const loadConversationEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
     actions$.pipe(
@@ -138,20 +181,62 @@ export const sendChatQuestionEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
     actions$.pipe(
       ofType(nexusActions.sendChatQuestion),
-      switchMap(({ conversationId, question, topK }) =>
-        api.sendChatMessage(conversationId, { question, top_k: topK }).pipe(
-          map((response) =>
-            nexusActions.sendChatQuestionSuccess({
-              conversationId: response.conversation_id,
-              userMessage: response.user_message,
-              assistantMessage: response.assistant_message
-            })
+      switchMap(({ assistantId, conversationId, question, topK }) => {
+        // #region agent log
+        fetch("http://127.0.0.1:7657/ingest/1e04e285-e754-4529-87f1-5953edf93f4e", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "a1f259"
+          },
+          body: JSON.stringify({
+            sessionId: "a1f259",
+            runId: "manual-send-flow-fix",
+            hypothesisId: "H5,H6",
+            location: "frontend/src/app/store/nexus.effects.ts:sendChatQuestionEffect:start",
+            message: "starting send chat question flow",
+            data: {
+              assistantId,
+              hasConversation: Boolean(conversationId),
+              questionLength: question.trim().length
+            },
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+        // #endregion
+        const sendWithConversation = (targetConversationId: string) =>
+          api.sendChatMessage(targetConversationId, { question, top_k: topK }).pipe(
+            map((response) =>
+              nexusActions.sendChatQuestionSuccess({
+                conversationId: response.conversation_id,
+                userMessage: response.user_message,
+                assistantMessage: response.assistant_message
+              })
+            )
+          );
+        if (conversationId) {
+          return sendWithConversation(conversationId).pipe(
+            catchError((error) =>
+              of(nexusActions.sendChatQuestionFailure({ error: resolveError(error) }))
+            )
+          );
+        }
+        return api.createConversation({ assistant_id: assistantId }).pipe(
+          mergeMap((conversation) =>
+            sendWithConversation(conversation.id).pipe(
+              mergeMap((sendSuccessAction) =>
+                of(
+                  nexusActions.createConversationSuccess({ assistantId, conversation }),
+                  sendSuccessAction
+                )
+              )
+            )
           ),
           catchError((error) =>
             of(nexusActions.sendChatQuestionFailure({ error: resolveError(error) }))
           )
-        )
-      )
+        );
+      })
     ),
   { functional: true }
 );
@@ -193,16 +278,35 @@ export const saveApiKeyEffect = createEffect(
   { functional: true }
 );
 
+export const testApiKeyEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.testApiKey),
+      switchMap(() =>
+        api.testApiKey().pipe(
+          map((result) => nexusActions.testApiKeySuccess({ result })),
+          catchError((error) =>
+            of(nexusActions.testApiKeyFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
 export const nexusEffects = {
   loadAssistantsEffect,
   createAssistantEffect,
+  deleteAssistantEffect,
   selectCreatedAssistantEffect,
   selectAssistantEffect,
   createConversationEffect,
   loadAssistantConversationsEffect,
+  deleteConversationEffect,
   loadConversationEffect,
   uploadDocumentEffect,
   sendChatQuestionEffect,
   loadApiKeyStatusEffect,
-  saveApiKeyEffect
+  saveApiKeyEffect,
+  testApiKeyEffect
 };

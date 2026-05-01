@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from src.api.dependencies import get_assistant_repository, get_conversation_repository
+from src.api.dependencies import (
+    get_assistant_repository,
+    get_conversation_repository,
+    get_vector_store_gateway,
+)
 from src.api.schemas import (
     AssistantResponse,
     ConversationHistoryResponse,
@@ -15,7 +19,7 @@ from src.application.use_cases import (
     ListConversationsUseCase,
     ListAssistantsUseCase,
 )
-from src.domain import AssistantId, DomainValidationError
+from src.domain import AssistantId, CollectionName, DomainValidationError, VectorStoreGateway
 from src.infrastructure.database import (
     PostgresAssistantRepository,
     PostgresConversationRepository,
@@ -37,6 +41,7 @@ def create_assistant(
             CreateAssistantInput(
                 name=payload.name,
                 description=payload.description,
+                initial_prompt=payload.initial_prompt,
             )
         )
     except DomainValidationError as exc:
@@ -48,6 +53,7 @@ def create_assistant(
         id=created.id,
         name=created.name,
         description=created.description,
+        initial_prompt=created.initial_prompt,
         created_at=created.created_at,
     )
 
@@ -65,10 +71,43 @@ def list_assistants(
             id=item.id,
             name=item.name,
             description=item.description,
+            initial_prompt=item.initial_prompt,
             created_at=item.created_at,
         )
         for item in assistants
     ]
+
+
+@router.delete(
+    "/{assistant_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_assistant(
+    assistant_id: str,
+    repository: PostgresAssistantRepository = Depends(
+        get_assistant_repository
+    ),
+    vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
+) -> Response:
+    try:
+        assistant_ref = AssistantId(assistant_id)
+    except DomainValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    deleted = repository.delete(assistant_ref)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="assistant not found",
+        )
+    vector_store_gateway.delete_collection(
+        CollectionName.from_assistant_id(assistant_ref)
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(

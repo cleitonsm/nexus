@@ -36,6 +36,7 @@ const assistant = (id: string): Assistant => ({
   id,
   name: `Assistant ${id}`,
   description: null,
+  initial_prompt: null,
   created_at: "2026-04-30T10:00:00Z"
 });
 
@@ -111,6 +112,67 @@ describe("nexusReducer", () => {
     expect(loadedState.loading.apiKeyStatus).toBe(false);
     expect(savedState.apiKeyStatus?.configured).toBe(true);
     expect(savedState.loading.saveApiKey).toBe(false);
+  });
+
+  it("removes assistant related state when deleting assistant", () => {
+    const state: NexusState = {
+      ...initialNexusState,
+      assistants: [assistant("assistant-1"), assistant("assistant-2")],
+      activeAssistantId: "assistant-1",
+      currentConversationId: "conv-1",
+      conversationHistoryByAssistant: {
+        "assistant-1": [assistantConversation("conv-1")]
+      },
+      selectedConversationByAssistant: {
+        "assistant-1": "conv-1"
+      },
+      messagesByConversation: {
+        "conv-1": [chatMessage("msg-1", "user")]
+      },
+      loading: { ...initialNexusState.loading, deleteAssistant: true }
+    };
+
+    const nextState = nexusReducer(
+      state,
+      nexusActions.deleteAssistantSuccess({ assistantId: "assistant-1" })
+    );
+
+    expect(nextState.assistants).toHaveLength(1);
+    expect(nextState.activeAssistantId).toBe("assistant-2");
+    expect(nextState.currentConversationId).toBeNull();
+    expect(nextState.messagesByConversation["conv-1"]).toBeUndefined();
+    expect(nextState.loading.deleteAssistant).toBe(false);
+  });
+
+  it("removes deleted conversation from active assistant history", () => {
+    const state: NexusState = {
+      ...initialNexusState,
+      activeAssistantId: "assistant-1",
+      currentConversationId: "conv-1",
+      conversationHistoryByAssistant: {
+        "assistant-1": [assistantConversation("conv-1"), assistantConversation("conv-2")]
+      },
+      selectedConversationByAssistant: {
+        "assistant-1": "conv-1"
+      },
+      messagesByConversation: {
+        "conv-1": [chatMessage("msg-1", "user")]
+      },
+      loading: { ...initialNexusState.loading, deleteConversation: true }
+    };
+
+    const nextState = nexusReducer(
+      state,
+      nexusActions.deleteConversationSuccess({
+        assistantId: "assistant-1",
+        conversationId: "conv-1"
+      })
+    );
+
+    expect(nextState.conversationHistoryByAssistant["assistant-1"]).toHaveLength(1);
+    expect(nextState.currentConversationId).toBe("conv-2");
+    expect(nextState.messagesByConversation["conv-1"]).toBeUndefined();
+    expect(nextState.loading.deleteConversation).toBe(false);
   });
 });
 

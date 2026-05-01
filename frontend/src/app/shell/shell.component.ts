@@ -1,13 +1,14 @@
 import { CommonModule } from "@angular/common";
 import { Component, computed, inject, signal } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
-import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
+import { RouterOutlet } from "@angular/router";
 import { Store } from "@ngrx/store";
 
 import { nexusActions } from "../store/nexus.actions";
 import {
   selectActiveAssistantConversations,
   selectActiveAssistantId,
+  selectApiKeyTestResult,
   selectApiKeyStatus,
   selectAssistants,
   selectCurrentConversationId,
@@ -18,7 +19,7 @@ import {
 @Component({
   selector: "app-shell",
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [CommonModule, ReactiveFormsModule, RouterOutlet],
   templateUrl: "./shell.component.html"
 })
 export class ShellComponent {
@@ -32,6 +33,7 @@ export class ShellComponent {
   protected readonly loading = this.store.selectSignal(selectLoadingState);
   protected readonly error = this.store.selectSignal(selectError);
   protected readonly apiKeyStatus = this.store.selectSignal(selectApiKeyStatus);
+  protected readonly apiKeyTestResult = this.store.selectSignal(selectApiKeyTestResult);
 
   protected readonly sidebarCollapsed = signal(false);
   protected readonly mobileSidebarOpen = signal(false);
@@ -48,12 +50,16 @@ export class ShellComponent {
 
   protected readonly assistantForm = this.formBuilder.nonNullable.group({
     name: ["", [Validators.required, Validators.maxLength(80)]],
-    description: [""]
+    description: [""],
+    initialPrompt: [""],
+    documentMetadata: [""]
   });
 
   protected readonly apiKeyForm = this.formBuilder.nonNullable.group({
     apiKey: ["", [Validators.required]]
   });
+
+  private selectedAssistantFiles: File[] = [];
 
   constructor() {
     this.store.dispatch(nexusActions.loadAssistants());
@@ -78,7 +84,13 @@ export class ShellComponent {
 
   protected closeCreateAssistantModal(): void {
     this.createAssistantModalOpen.set(false);
-    this.assistantForm.reset({ name: "", description: "" });
+    this.assistantForm.reset({
+      name: "",
+      description: "",
+      initialPrompt: "",
+      documentMetadata: ""
+    });
+    this.selectedAssistantFiles = [];
   }
 
   protected openAdminModal(): void {
@@ -101,13 +113,36 @@ export class ShellComponent {
     }
 
     const value = this.assistantForm.getRawValue();
+    const metadataRaw = value.documentMetadata.trim();
+    let documentMetadata: Record<string, string> = {};
+    if (metadataRaw) {
+      try {
+        documentMetadata = JSON.parse(metadataRaw) as Record<string, string>;
+      } catch {
+        this.store.dispatch(
+          nexusActions.createAssistantFailure({
+            error: "Metadata deve estar em JSON válido, por exemplo {\"origem\":\"manual\"}."
+          })
+        );
+        return;
+      }
+    }
+
     this.store.dispatch(
       nexusActions.createAssistant({
         name: value.name.trim(),
-        description: value.description.trim() ? value.description.trim() : null
+        description: value.description.trim() ? value.description.trim() : null,
+        initialPrompt: value.initialPrompt.trim() ? value.initialPrompt.trim() : null,
+        documentFiles: this.selectedAssistantFiles,
+        documentMetadata
       })
     );
     this.closeCreateAssistantModal();
+  }
+
+  protected onAssistantFilesSelected(event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    this.selectedAssistantFiles = Array.from(target?.files ?? []);
   }
 
   protected createConversation(): void {
@@ -122,6 +157,31 @@ export class ShellComponent {
     this.store.dispatch(nexusActions.selectConversation({ conversationId }));
   }
 
+  protected deleteAssistant(assistantId: string, assistantName: string): void {
+    if (this.loading().deleteAssistant) {
+      return;
+    }
+    const confirmed = window.confirm(
+      `Excluir o assistente "${assistantName}" e todo o seu histórico?`
+    );
+    if (!confirmed) {
+      return;
+    }
+    this.store.dispatch(nexusActions.deleteAssistant({ assistantId }));
+  }
+
+  protected deleteConversation(conversationId: string): void {
+    const assistantId = this.activeAssistantId();
+    if (!assistantId || this.loading().deleteConversation) {
+      return;
+    }
+    const confirmed = window.confirm("Excluir esta conversa?");
+    if (!confirmed) {
+      return;
+    }
+    this.store.dispatch(nexusActions.deleteConversation({ assistantId, conversationId }));
+  }
+
   protected saveApiKey(): void {
     if (this.apiKeyForm.invalid || this.loading().saveApiKey) {
       this.apiKeyForm.markAllAsTouched();
@@ -134,6 +194,13 @@ export class ShellComponent {
       })
     );
     this.apiKeyForm.reset({ apiKey: "" });
+  }
+
+  protected testApiKey(): void {
+    if (this.loading().testApiKey || !this.apiKeyStatus()?.configured) {
+      return;
+    }
+    this.store.dispatch(nexusActions.testApiKey());
   }
 
   protected clearError(): void {

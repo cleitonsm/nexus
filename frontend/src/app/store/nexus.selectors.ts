@@ -47,6 +47,11 @@ export const selectApiKeyStatus = createSelector(
   (state) => state.apiKeyStatus
 );
 
+export const selectApiKeyTestResult = createSelector(
+  selectNexusState,
+  (state) => state.apiKeyTestResult
+);
+
 export const selectLoadingState = createSelector(
   selectNexusState,
   (state) => state.loading

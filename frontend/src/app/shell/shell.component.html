@@ -56,27 +56,6 @@
         </span>
       </button>
 
-      <nav class="mt-4 space-y-2">
-        <a
-          routerLink="/chat"
-          routerLinkActive="border-indigo-400 bg-indigo-500/10 text-indigo-100"
-          class="flex items-center gap-3 rounded-full border border-transparent px-3 py-2 text-sm text-slate-300 hover:border-slate-700"
-          [ngClass]="{ 'justify-center px-0': !sidebarContentVisible() }"
-        >
-          <span>CH</span>
-          <span *ngIf="sidebarContentVisible()">Chat</span>
-        </a>
-        <a
-          routerLink="/assistants"
-          routerLinkActive="border-indigo-400 bg-indigo-500/10 text-indigo-100"
-          class="flex items-center gap-3 rounded-full border border-transparent px-3 py-2 text-sm text-slate-300 hover:border-slate-700"
-          [ngClass]="{ 'justify-center px-0': !sidebarContentVisible() }"
-        >
-          <span>DOC</span>
-          <span *ngIf="sidebarContentVisible()">Documentos</span>
-        </a>
-      </nav>
-
       <div *ngIf="sidebarContentVisible()" class="mt-5 min-h-0 flex-1 space-y-5 overflow-hidden">
         <section>
           <div class="flex items-center justify-between">
@@ -86,22 +65,34 @@
             <span class="text-xs text-slate-500">{{ assistants().length }}</span>
           </div>
           <ul class="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
-            <li *ngFor="let assistant of assistants()">
+            <li
+              *ngFor="let assistant of assistants()"
+              class="flex items-stretch gap-2 rounded-2xl border p-1 transition"
+              [ngClass]="{
+                'border-indigo-400 bg-indigo-500/10 text-indigo-50':
+                  assistant.id === activeAssistantId(),
+                'border-slate-800 bg-slate-900/60 text-slate-200 hover:border-slate-700':
+                  assistant.id !== activeAssistantId()
+              }"
+            >
               <button
                 type="button"
                 (click)="selectAssistant(assistant.id)"
-                class="w-full rounded-2xl border px-3 py-2 text-left text-sm transition"
-                [ngClass]="{
-                  'border-indigo-400 bg-indigo-500/10 text-indigo-50':
-                    assistant.id === activeAssistantId(),
-                  'border-slate-800 bg-slate-900/60 text-slate-200 hover:border-slate-700':
-                    assistant.id !== activeAssistantId()
-                }"
+                class="min-w-0 flex-1 px-2 py-1 text-left text-sm"
               >
                 <div class="truncate font-medium">{{ assistant.name }}</div>
                 <p class="mt-0.5 truncate text-xs text-slate-400">
                   {{ assistant.description || "Sem descrição" }}
                 </p>
+              </button>
+              <button
+                type="button"
+                (click)="deleteAssistant(assistant.id, assistant.name)"
+                [disabled]="loading().deleteAssistant"
+                class="self-center rounded-full border border-rose-400/40 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/10 disabled:opacity-50"
+                aria-label="Excluir assistente"
+              >
+                Excluir
               </button>
             </li>
             <li
@@ -121,20 +112,32 @@
             {{ activeAssistant()!.name }}
           </p>
           <ul class="mt-2 max-h-[calc(100vh-32rem)] min-h-32 space-y-2 overflow-y-auto pr-1">
-            <li *ngFor="let conversation of conversations()">
+            <li
+              *ngFor="let conversation of conversations()"
+              class="flex items-stretch gap-2 rounded-2xl border p-1 transition"
+              [ngClass]="{
+                'border-indigo-400 bg-indigo-500/10 text-indigo-50':
+                  conversation.id === currentConversationId(),
+                'border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700':
+                  conversation.id !== currentConversationId()
+              }"
+            >
               <button
                 type="button"
                 (click)="selectConversation(conversation.id)"
-                class="w-full rounded-2xl border px-3 py-2 text-left text-xs transition"
-                [ngClass]="{
-                  'border-indigo-400 bg-indigo-500/10 text-indigo-50':
-                    conversation.id === currentConversationId(),
-                  'border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700':
-                    conversation.id !== currentConversationId()
-                }"
+                class="min-w-0 flex-1 px-2 py-1 text-left text-xs"
               >
                 <div class="font-medium">Conversa {{ conversation.id.slice(0, 8) }}</div>
                 <div class="mt-1 text-slate-500">{{ conversation.message_count }} mensagens</div>
+              </button>
+              <button
+                type="button"
+                (click)="deleteConversation(conversation.id)"
+                [disabled]="loading().deleteConversation"
+                class="self-center rounded-full border border-rose-400/40 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/10 disabled:opacity-50"
+                aria-label="Excluir conversa"
+              >
+                Excluir
               </button>
             </li>
             <li
@@ -153,16 +156,6 @@
         class="flex h-16 items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/90 px-4 backdrop-blur"
       >
         <div class="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            (click)="toggleNavigation()"
-            class="rounded-full border border-slate-700 p-2 text-slate-200 hover:border-indigo-400"
-            aria-label="Abrir menu"
-          >
-            <span class="block h-0.5 w-4 bg-current"></span>
-            <span class="mt-1 block h-0.5 w-4 bg-current"></span>
-            <span class="mt-1 block h-0.5 w-4 bg-current"></span>
-          </button>
           <div class="min-w-0">
             <p class="text-xs text-slate-500">Nexus</p>
             <h2 class="truncate text-base font-semibold">
@@ -208,12 +201,12 @@
   aria-modal="true"
   aria-labelledby="create-assistant-title"
 >
-  <article class="w-full max-w-lg rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+  <article class="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
     <div class="flex items-start justify-between gap-4">
       <div>
         <h2 id="create-assistant-title" class="text-lg font-semibold">Criar assistente</h2>
         <p class="mt-1 text-sm text-slate-400">
-          Dê um nome para organizar documentos, conversas e contexto.
+          Dê um nome, defina o comportamento e anexe documentos para criar a base RAG do assistente.
         </p>
       </div>
       <button
@@ -244,6 +237,40 @@
           placeholder="Contexto de uso (opcional)"
         ></textarea>
       </label>
+      <label class="block text-sm text-slate-300">
+        Prompt inicial
+        <textarea
+          class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+          rows="4"
+          formControlName="initialPrompt"
+          placeholder="Ex: Aja como um especialista em questões jurídicas e use a documentação RAG como fonte de verdade."
+        ></textarea>
+      </label>
+      <div class="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <h3 class="text-sm font-medium text-slate-200">Documentos do assistente</h3>
+        <p class="mt-1 text-xs text-slate-500">
+          Arquivos enviados aqui serão indexados na collection própria deste assistente após a criação.
+        </p>
+        <label class="mt-3 block text-sm text-slate-300">
+          Arquivos
+          <input
+            type="file"
+            multiple
+            accept=".txt,.md,.markdown,.pdf,.doc,.docx,text/plain,text/markdown,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            (change)="onAssistantFilesSelected($event)"
+            class="mt-1 block w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm"
+          />
+        </label>
+        <label class="mt-3 block text-sm text-slate-300">
+          Metadata dos documentos
+          <textarea
+            formControlName="documentMetadata"
+            rows="2"
+            placeholder='JSON opcional. Ex: {"origem":"manual"}'
+            class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+          ></textarea>
+        </label>
+      </div>
       <div class="flex justify-end gap-2">
         <button
           type="button"
@@ -313,6 +340,16 @@
           placeholder="Cole a chave aqui"
         />
       </label>
+      <div
+        *ngIf="apiKeyTestResult()"
+        class="rounded-2xl border border-emerald-400/50 bg-emerald-500/10 p-3 text-sm text-emerald-100"
+      >
+        <p class="font-medium">{{ apiKeyTestResult()!.message }}</p>
+        <p class="mt-1 text-xs text-emerald-200">
+          Modelo: {{ apiKeyTestResult()!.model }} |
+          Resposta: {{ apiKeyTestResult()!.response_preview }}
+        </p>
+      </div>
       <div class="flex justify-end gap-2">
         <button
           type="button"
@@ -320,6 +357,14 @@
           class="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300"
         >
           Fechar
+        </button>
+        <button
+          type="button"
+          (click)="testApiKey()"
+          [disabled]="!apiKeyStatus()?.configured || loading().testApiKey"
+          class="rounded-full border border-emerald-400/50 px-4 py-2 text-sm text-emerald-100 disabled:opacity-50"
+        >
+          {{ loading().testApiKey ? "Testando..." : "Testar LLM" }}
         </button>
         <button
           type="submit"

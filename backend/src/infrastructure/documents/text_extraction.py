@@ -13,7 +13,8 @@ _SUPPORTED_CONTENT_TYPES_BY_SUFFIX = {
     ".markdown": {"text/markdown", "text/plain"},
     ".pdf": {"application/pdf"},
     ".docx": {
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "application/vnd.openxmlformats-officedocument."
+        "wordprocessingml.document"
     },
     ".doc": {"application/msword"},
 }
@@ -65,7 +66,7 @@ def resolve_document_type(
             "binary/octet-stream",
         }:
             return suffix
-        return suffix
+        return None
 
     if not normalized_content_type:
         return None
@@ -100,7 +101,9 @@ def _extract_pdf_text(raw_content: bytes) -> str:
 
 def _extract_docx_text(raw_content: bytes) -> str:
     try:
-        from docx import Document as DocxDocument  # type: ignore[import-not-found]
+        from docx import (  # type: ignore[import-not-found]
+            Document as DocxDocument,
+        )
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(
             "python-docx dependency is required to process DOCX files."

@@ -11,6 +11,7 @@ class AssistantDTO:
     id: str
     name: str
     description: str | None
+    initial_prompt: str | None
     created_at: datetime
 
     @classmethod
@@ -19,5 +20,6 @@ class AssistantDTO:
             id=assistant.id.value,
             name=assistant.name.value,
             description=assistant.description,
+            initial_prompt=assistant.initial_prompt,
             created_at=assistant.created_at,
         )

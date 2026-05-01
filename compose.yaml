@@ -10,6 +10,9 @@ services:
         required: false
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     healthcheck:
       test:
         [
@@ -64,6 +67,8 @@ services:
 
   qdrant:
     image: qdrant/qdrant:v1.11.3
+    environment:
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY:-nexus-local}
     ports:
       - "${QDRANT_PORT:-6333}:6333"
     volumes:
