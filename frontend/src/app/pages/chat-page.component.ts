@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, computed, effect, inject } from "@angular/core";
+import { AfterViewChecked, Component, ElementRef, ViewChild, computed, effect, inject } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { Store } from "@ngrx/store";
 
@@ -17,11 +17,16 @@ import {
   selector: "app-chat-page",
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, MarkdownPipe],
-  templateUrl: "./chat-page.component.html"
+  templateUrl: "./chat-page.component.html",
+  host: { class: "flex-1 min-h-0 flex flex-col overflow-hidden" }
 })
-export class ChatPageComponent {
+export class ChatPageComponent implements AfterViewChecked {
+  @ViewChild("messagesContainer") private messagesContainer!: ElementRef<HTMLDivElement>;
+
   private readonly formBuilder = inject(FormBuilder);
   private readonly store = inject(Store);
+
+  private pendingScroll = false;
 
   protected readonly assistants = this.store.selectSignal(selectAssistants);
   protected readonly activeAssistantId = this.store.selectSignal(selectActiveAssistantId);
@@ -37,6 +42,14 @@ export class ChatPageComponent {
     question: ["", [Validators.required]]
   });
 
+  ngAfterViewChecked(): void {
+    if (this.pendingScroll) {
+      const el = this.messagesContainer?.nativeElement;
+      if (el) el.scrollTop = el.scrollHeight;
+      this.pendingScroll = false;
+    }
+  }
+
   constructor() {
     effect(() => {
       const conversationId = this.currentConversationId();
@@ -44,6 +57,11 @@ export class ChatPageComponent {
         return;
       }
       this.store.dispatch(nexusActions.loadConversation({ conversationId }));
+    });
+    effect(() => {
+      this.messages();
+      this.loading().sendChat;
+      this.pendingScroll = true;
     });
     effect(() => {
       // #region agent log
@@ -55,6 +73,13 @@ export class ChatPageComponent {
       });
       // #endregion
     });
+  }
+
+  protected onTextareaKeydown(event: KeyboardEvent): void {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      this.sendQuestion();
+    }
   }
 
   protected sendQuestion(): void {

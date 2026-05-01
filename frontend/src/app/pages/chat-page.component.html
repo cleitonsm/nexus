@@ -1,87 +1,79 @@
-<section class="space-y-4">
-  <article class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-semibold">
-          {{ activeAssistant() ? "Chat com " + activeAssistant()!.name : "Chat" }}
-        </h2>
-        <p class="mt-1 text-sm text-slate-400">
-          Escolha assistentes e conversas na sidebar para manter o chat focado nas mensagens.
-        </p>
+<section class="flex-1 min-h-0 flex flex-col overflow-hidden">
+  <div class="shrink-0 border-b border-slate-800 px-4 py-2">
+    <h2 class="text-sm font-semibold">
+      {{ activeAssistant() ? "Chat com " + activeAssistant()!.name : "Chat" }}
+    </h2>
+    <p class="text-xs text-slate-400">
+      Escolha assistentes e conversas na sidebar para manter o chat focado nas mensagens.
+    </p>
+  </div>
+
+  <div #messagesContainer class="flex-1 overflow-y-auto p-4 space-y-4">
+    <div
+      *ngFor="let message of messages()"
+      class="flex"
+      [class.justify-end]="message.role === 'user'"
+      [class.justify-start]="message.role !== 'user'"
+    >
+      <div
+        class="max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm"
+        [ngClass]="{
+          'rounded-br-md bg-indigo-500/25 text-indigo-50': message.role === 'user',
+          'rounded-bl-md border border-slate-700 bg-slate-900 text-slate-100':
+            message.role !== 'user'
+        }"
+      >
+        <div
+          *ngIf="message.role === 'assistant'; else plainMessage"
+          class="prose prose-invert prose-sm max-w-none"
+          [innerHTML]="message.content | markdown"
+        ></div>
+        <ng-template #plainMessage>
+          <p class="whitespace-pre-wrap">{{ message.content }}</p>
+        </ng-template>
       </div>
     </div>
+    <div *ngIf="messages().length === 0 && !loading().sendChat" class="py-10 text-center text-sm text-slate-500">
+      Selecione ou crie uma conversa na sidebar para começar.
+    </div>
 
-    <div class="mt-4">
-      <div class="flex min-h-[calc(100vh-12rem)] flex-1 flex-col rounded-3xl border border-slate-800 bg-slate-950">
-        <div class="flex-1 space-y-4 overflow-y-auto p-4">
-          <div
-            *ngFor="let message of messages()"
-            class="flex"
-            [class.justify-end]="message.role === 'user'"
-            [class.justify-start]="message.role !== 'user'"
-          >
-            <div
-              class="max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm"
-              [ngClass]="{
-                'rounded-br-md bg-indigo-500/25 text-indigo-50': message.role === 'user',
-                'rounded-bl-md border border-slate-700 bg-slate-900 text-slate-100':
-                  message.role !== 'user'
-              }"
-            >
-              <div
-                *ngIf="message.role === 'assistant'; else plainMessage"
-                class="prose prose-invert prose-sm max-w-none"
-                [innerHTML]="message.content | markdown"
-              ></div>
-              <ng-template #plainMessage>
-                <p class="whitespace-pre-wrap">{{ message.content }}</p>
-              </ng-template>
-            </div>
-          </div>
-          <div *ngIf="messages().length === 0 && !loading().sendChat" class="py-10 text-center text-sm text-slate-500">
-            Selecione ou crie uma conversa na sidebar para começar.
-          </div>
-
-          <div *ngIf="loading().sendChat" class="flex justify-start">
-            <div class="max-w-[85%] rounded-2xl rounded-bl-md border border-slate-700 bg-slate-900 px-4 py-3 text-sm shadow-sm">
-              <div class="flex items-center gap-1.5">
-                <span class="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]"></span>
-                <span class="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]"></span>
-                <span class="h-2 w-2 animate-bounce rounded-full bg-slate-400"></span>
-              </div>
-            </div>
-          </div>
+    <div *ngIf="loading().sendChat" class="flex justify-start">
+      <div class="max-w-[85%] rounded-2xl rounded-bl-md border border-slate-700 bg-slate-900 px-4 py-3 text-sm shadow-sm">
+        <div class="flex items-center gap-1.5">
+          <span class="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]"></span>
+          <span class="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]"></span>
+          <span class="h-2 w-2 animate-bounce rounded-full bg-slate-400"></span>
         </div>
-
-        <form
-          class="border-t border-slate-800 bg-slate-900/80 p-3"
-          [formGroup]="chatForm"
-          (ngSubmit)="sendQuestion()"
-        >
-          <div class="flex gap-2">
-            <input
-              formControlName="question"
-              placeholder="Digite sua pergunta..."
-              [attr.disabled]="loading().sendChat ? true : null"
-              class="flex-1 rounded-full border border-slate-700 bg-slate-950 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              [disabled]="!activeAssistantId() || loading().sendChat"
-              class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
-            >
-              <span *ngIf="loading().sendChat; else sendLabel" class="flex items-center gap-2">
-                <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-                Aguardando...
-              </span>
-              <ng-template #sendLabel>Enviar</ng-template>
-            </button>
-          </div>
-        </form>
       </div>
     </div>
-  </article>
+  </div>
+
+  <div class="shrink-0 border-t border-slate-800 bg-slate-900/80 p-3">
+    <form [formGroup]="chatForm" (ngSubmit)="sendQuestion()">
+      <div class="flex gap-2 items-end">
+        <textarea
+          formControlName="question"
+          placeholder="Digite sua pergunta..."
+          rows="1"
+          [attr.disabled]="loading().sendChat ? true : null"
+          (keydown)="onTextareaKeydown($event)"
+          class="flex-1 resize-none rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm leading-relaxed disabled:cursor-not-allowed disabled:opacity-50 focus:border-indigo-400 outline-none"
+        ></textarea>
+        <button
+          type="submit"
+          [disabled]="!activeAssistantId() || loading().sendChat"
+          class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white disabled:opacity-50 shrink-0"
+        >
+          <span *ngIf="loading().sendChat; else sendLabel" class="flex items-center gap-2">
+            <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            Aguardando...
+          </span>
+          <ng-template #sendLabel>Enviar</ng-template>
+        </button>
+      </div>
+    </form>
+  </div>
 </section>
