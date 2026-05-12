@@ -1,5 +1,10 @@
 from .admin import ApiKeyStatusResponse, ApiKeyTestResponse, SaveApiKeyRequest
-from .assistants import AssistantResponse, CreateAssistantRequest
+from .assistants import (
+    AssistantResponse,
+    CreateAssistantRequest,
+    InferAssistantRequest,
+    InferAssistantResponse,
+)
 from .conversations import (
     AddMessageRequest,
     ChatRequest,
@@ -23,6 +28,8 @@ __all__ = [
     "ConversationHistoryResponse",
     "ConversationResponse",
     "CreateAssistantRequest",
+    "InferAssistantRequest",
+    "InferAssistantResponse",
     "CreateConversationRequest",
     "DocumentIngestionResponse",
     "MessageResponse",

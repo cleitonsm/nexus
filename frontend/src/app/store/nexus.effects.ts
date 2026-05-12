@@ -177,6 +177,44 @@ export const uploadDocumentEffect = createEffect(
   { functional: true }
 );
 
+export const inferAssistantAndSendEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.inferAssistantAndSend),
+      switchMap(({ question, topK }) =>
+        api.inferAssistant(question).pipe(
+          mergeMap(({ assistant_id: assistantId }) => {
+            if (!assistantId) {
+              return of(
+                nexusActions.inferAssistantAndSendFailure({
+                  error: "Nao foi possivel inferir um assistente para esta pergunta."
+                })
+              );
+            }
+            return of(
+              nexusActions.inferAssistantAndSendSuccess({
+                assistantId,
+                question,
+                topK
+              }),
+              nexusActions.selectAssistant({ assistantId }),
+              nexusActions.sendChatQuestion({
+                assistantId,
+                conversationId: null,
+                question,
+                topK
+              })
+            );
+          }),
+          catchError((error) =>
+            of(nexusActions.inferAssistantAndSendFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
 export const sendChatQuestionEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
     actions$.pipe(
@@ -305,6 +343,7 @@ export const nexusEffects = {
   deleteConversationEffect,
   loadConversationEffect,
   uploadDocumentEffect,
+  inferAssistantAndSendEffect,
   sendChatQuestionEffect,
   loadApiKeyStatusEffect,
   saveApiKeyEffect,

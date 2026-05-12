@@ -11,6 +11,14 @@ class CreateAssistantRequest(BaseModel):
     initial_prompt: str | None = None
 
 
+class InferAssistantRequest(BaseModel):
+    question: str = Field(min_length=1)
+
+
+class InferAssistantResponse(BaseModel):
+    assistant_id: str | None
+
+
 class AssistantResponse(BaseModel):
     id: str
     name: str

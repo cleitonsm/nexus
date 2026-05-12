@@ -5,21 +5,32 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from src.api.dependencies import (
     get_assistant_repository,
     get_conversation_repository,
+    get_llm_gateway,
     get_vector_store_gateway,
 )
 from src.api.schemas import (
     AssistantResponse,
     ConversationHistoryResponse,
     CreateAssistantRequest,
+    InferAssistantRequest,
+    InferAssistantResponse,
 )
 from src.application.use_cases import (
     CreateAssistantInput,
     CreateAssistantUseCase,
+    InferAssistantInput,
+    InferAssistantUseCase,
+    ListAssistantsUseCase,
     ListConversationsInput,
     ListConversationsUseCase,
-    ListAssistantsUseCase,
 )
-from src.domain import AssistantId, CollectionName, DomainValidationError, VectorStoreGateway
+from src.domain import (
+    AssistantId,
+    CollectionName,
+    DomainValidationError,
+    LLMGateway,
+    VectorStoreGateway,
+)
 from src.infrastructure.database import (
     PostgresAssistantRepository,
     PostgresConversationRepository,
@@ -76,6 +87,32 @@ def list_assistants(
         )
         for item in assistants
     ]
+
+
+@router.post("/infer", response_model=InferAssistantResponse)
+def infer_assistant(
+    payload: InferAssistantRequest,
+    repository: PostgresAssistantRepository = Depends(
+        get_assistant_repository
+    ),
+    llm_gateway: LLMGateway = Depends(get_llm_gateway),
+) -> InferAssistantResponse:
+    assistants = ListAssistantsUseCase(repository=repository).execute()
+    result = InferAssistantUseCase(llm_gateway=llm_gateway).execute(
+        InferAssistantInput(
+            question=payload.question,
+            assistants=[
+                {
+                    "id": item.id,
+                    "name": item.name,
+                    "description": item.description,
+                    "initial_prompt": item.initial_prompt,
+                }
+                for item in assistants
+            ],
+        )
+    )
+    return InferAssistantResponse(assistant_id=result.assistant_id)
 
 
 @router.delete(
@@ -146,6 +183,7 @@ def list_assistant_conversations(
         ConversationHistoryResponse(
             id=conversation.id,
             assistant_id=conversation.assistant_id,
+            name=conversation.name,
             created_at=conversation.created_at,
             updated_at=conversation.updated_at,
             message_count=conversation.message_count,

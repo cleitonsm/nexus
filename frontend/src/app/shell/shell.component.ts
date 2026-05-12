@@ -11,6 +11,7 @@ import {
   selectApiKeyTestResult,
   selectApiKeyStatus,
   selectAssistants,
+  selectCreateAssistantModalOpen,
   selectCurrentConversationId,
   selectError,
   selectLoadingState
@@ -34,11 +35,15 @@ export class ShellComponent {
   protected readonly error = this.store.selectSignal(selectError);
   protected readonly apiKeyStatus = this.store.selectSignal(selectApiKeyStatus);
   protected readonly apiKeyTestResult = this.store.selectSignal(selectApiKeyTestResult);
+  protected readonly createAssistantModalOpen = this.store.selectSignal(
+    selectCreateAssistantModalOpen
+  );
 
   protected readonly sidebarCollapsed = signal(false);
   protected readonly mobileSidebarOpen = signal(false);
-  protected readonly createAssistantModalOpen = signal(false);
   protected readonly adminModalOpen = signal(false);
+  protected readonly assistantsCollapsed = signal(false);
+  protected readonly conversationsCollapsed = signal(false);
 
   protected readonly sidebarContentVisible = computed(
     () => !this.sidebarCollapsed() || this.mobileSidebarOpen()
@@ -66,6 +71,14 @@ export class ShellComponent {
     this.store.dispatch(nexusActions.loadApiKeyStatus());
   }
 
+  protected toggleAssistants(): void {
+    this.assistantsCollapsed.update((v) => !v);
+  }
+
+  protected toggleConversations(): void {
+    this.conversationsCollapsed.update((v) => !v);
+  }
+
   protected toggleNavigation(): void {
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
       this.mobileSidebarOpen.update((isOpen) => !isOpen);
@@ -79,11 +92,11 @@ export class ShellComponent {
   }
 
   protected openCreateAssistantModal(): void {
-    this.createAssistantModalOpen.set(true);
+    this.store.dispatch(nexusActions.openCreateAssistantModal());
   }
 
   protected closeCreateAssistantModal(): void {
-    this.createAssistantModalOpen.set(false);
+    this.store.dispatch(nexusActions.closeCreateAssistantModal());
     this.assistantForm.reset({
       name: "",
       description: "",

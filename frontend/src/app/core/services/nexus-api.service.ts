@@ -31,6 +31,10 @@ interface SaveApiKeyPayload {
   api_key: string;
 }
 
+interface InferAssistantPayload {
+  question: string;
+}
+
 @Injectable({ providedIn: "root" })
 export class NexusApiService {
   private readonly baseUrl = "/api";
@@ -39,6 +43,14 @@ export class NexusApiService {
 
   listAssistants(): Observable<Assistant[]> {
     return this.http.get<Assistant[]>(`${this.baseUrl}/assistants`);
+  }
+
+  inferAssistant(question: string): Observable<{ assistant_id: string | null }> {
+    const payload: InferAssistantPayload = { question };
+    return this.http.post<{ assistant_id: string | null }>(
+      `${this.baseUrl}/assistants/infer`,
+      payload
+    );
   }
 
   createAssistant(payload: CreateAssistantPayload): Observable<Assistant> {

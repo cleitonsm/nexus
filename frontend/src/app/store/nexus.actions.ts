@@ -26,6 +26,8 @@ export const nexusActions = createActionGroup({
     }>(),
     "Create Assistant Success": props<{ assistant: Assistant }>(),
     "Create Assistant Failure": props<{ error: string }>(),
+    "Open Create Assistant Modal": emptyProps(),
+    "Close Create Assistant Modal": emptyProps(),
     "Delete Assistant": props<{ assistantId: string }>(),
     "Delete Assistant Success": props<{ assistantId: string }>(),
     "Delete Assistant Failure": props<{ error: string }>(),
@@ -67,6 +69,14 @@ export const nexusActions = createActionGroup({
       question: string;
       topK: number;
     }>(),
+    "Infer Assistant And Send": props<{ question: string; topK: number }>(),
+    "Infer Assistant And Send Success": props<{
+      assistantId: string;
+      question: string;
+      topK: number;
+    }>(),
+    "Infer Assistant And Send Failure": props<{ error: string }>(),
+    "Clear Infer Assistant Error": emptyProps(),
     "Send Chat Question Success": props<{
       conversationId: string;
       userMessage: ChatMessage;

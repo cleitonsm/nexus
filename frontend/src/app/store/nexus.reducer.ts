@@ -20,6 +20,8 @@ export interface NexusState {
   currentConversationId: string | null;
   messagesByConversation: Record<string, ChatMessage[]>;
   documents: IngestedDocument[];
+  createAssistantModalOpen: boolean;
+  inferAssistantError: string | null;
   apiKeyStatus: ApiKeyStatus | null;
   apiKeyTestResult: ApiKeyTestResult | null;
   loading: {
@@ -30,6 +32,7 @@ export interface NexusState {
     deleteConversation: boolean;
     uploadDocument: boolean;
     sendChat: boolean;
+    inferAssistant: boolean;
     apiKeyStatus: boolean;
     saveApiKey: boolean;
     testApiKey: boolean;
@@ -45,6 +48,8 @@ export const initialNexusState: NexusState = {
   currentConversationId: null,
   messagesByConversation: {},
   documents: [],
+  createAssistantModalOpen: false,
+  inferAssistantError: null,
   apiKeyStatus: null,
   apiKeyTestResult: null,
   loading: {
@@ -55,6 +60,7 @@ export const initialNexusState: NexusState = {
     deleteConversation: false,
     uploadDocument: false,
     sendChat: false,
+    inferAssistant: false,
     apiKeyStatus: false,
     saveApiKey: false,
     testApiKey: false
@@ -65,6 +71,14 @@ export const initialNexusState: NexusState = {
 export const nexusReducer = createReducer(
   initialNexusState,
   on(nexusActions.clearError, (state) => ({ ...state, error: null })),
+  on(nexusActions.openCreateAssistantModal, (state) => ({
+    ...state,
+    createAssistantModalOpen: true
+  })),
+  on(nexusActions.closeCreateAssistantModal, (state) => ({
+    ...state,
+    createAssistantModalOpen: false
+  })),
 
   on(nexusActions.loadAssistants, (state) => ({
     ...state,
@@ -307,12 +321,47 @@ export const nexusReducer = createReducer(
     loading: { ...state.loading, sendChat: true },
     error: null
   })),
+  on(nexusActions.inferAssistantAndSend, (state) => ({
+    ...state,
+    inferAssistantError: null,
+    loading: { ...state.loading, inferAssistant: true },
+    error: null
+  })),
+  on(nexusActions.inferAssistantAndSendSuccess, (state, { assistantId }) => ({
+    ...state,
+    activeAssistantId: assistantId,
+    inferAssistantError: null,
+    loading: { ...state.loading, inferAssistant: false }
+  })),
+  on(nexusActions.inferAssistantAndSendFailure, (state, { error }) => ({
+    ...state,
+    inferAssistantError: error,
+    loading: { ...state.loading, inferAssistant: false }
+  })),
+  on(nexusActions.clearInferAssistantError, (state) => ({
+    ...state,
+    inferAssistantError: null
+  })),
   on(
     nexusActions.sendChatQuestionSuccess,
     (state, { conversationId, userMessage, assistantMessage }) => {
       const existingMessages = state.messagesByConversation[conversationId] ?? [];
+      const conversationHistoryByAssistant = Object.fromEntries(
+        Object.entries(state.conversationHistoryByAssistant).map(([assistantId, conversations]) => [
+          assistantId,
+          conversations.map((conv) => {
+            if (conv.id === conversationId && !conv.name) {
+              const raw = userMessage.content.trim();
+              const name = raw.length > 100 ? raw.slice(0, 97) + "..." : raw;
+              return { ...conv, name };
+            }
+            return conv;
+          })
+        ])
+      );
       return {
         ...state,
+        conversationHistoryByAssistant,
         messagesByConversation: {
           ...state.messagesByConversation,
           [conversationId]: [...existingMessages, userMessage, assistantMessage]

@@ -10,6 +10,7 @@ import {
   selectAssistants,
   selectCurrentConversationId,
   selectCurrentMessages,
+  selectInferAssistantError,
   selectLoadingState
 } from "../store/nexus.selectors";
 
@@ -22,6 +23,7 @@ import {
 })
 export class ChatPageComponent implements AfterViewChecked {
   @ViewChild("messagesContainer") private messagesContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild("chatTextarea") private chatTextarea!: ElementRef<HTMLTextAreaElement>;
 
   private readonly formBuilder = inject(FormBuilder);
   private readonly store = inject(Store);
@@ -33,6 +35,12 @@ export class ChatPageComponent implements AfterViewChecked {
   protected readonly currentConversationId = this.store.selectSignal(selectCurrentConversationId);
   protected readonly messages = this.store.selectSignal(selectCurrentMessages);
   protected readonly loading = this.store.selectSignal(selectLoadingState);
+  protected readonly isInferring = computed(() => this.loading().inferAssistant);
+  protected readonly inferAssistantError = this.store.selectSignal(selectInferAssistantError);
+  protected readonly hasAssistants = computed(() => this.assistants().length > 0);
+  protected readonly topAssistants = computed(() => this.assistants().slice(0, 3));
+
+  protected readonly hasInteracted = computed(() => this.messages().length > 0 || this.loading().sendChat);
 
   protected readonly activeAssistant = computed(() =>
     this.assistants().find((assistant) => assistant.id === this.activeAssistantId()) ?? null
@@ -82,6 +90,31 @@ export class ChatPageComponent implements AfterViewChecked {
     }
   }
 
+  protected autoResize(event: Event): void {
+    const textarea = event.target as HTMLTextAreaElement;
+    this.resizeTextarea(textarea);
+  }
+
+  private resizeTextarea(textarea: HTMLTextAreaElement): void {
+    const maxHeight = 262;
+    textarea.style.height = "auto";
+    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+    textarea.style.height = `${newHeight}px`;
+    if (textarea.scrollHeight > maxHeight) {
+      textarea.classList.add("is-overflowing");
+    } else {
+      textarea.classList.remove("is-overflowing");
+    }
+  }
+
+  private resetTextareaHeight(): void {
+    const textarea = this.chatTextarea?.nativeElement;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.classList.remove("is-overflowing");
+    }
+  }
+
   protected sendQuestion(): void {
     if (this.chatForm.invalid) {
       // #region agent log
@@ -95,6 +128,21 @@ export class ChatPageComponent implements AfterViewChecked {
     }
     const conversationId = this.currentConversationId();
     const assistantId = this.activeAssistantId();
+    if (!assistantId && this.hasAssistants()) {
+      const question = this.chatForm.controls.question.value.trim();
+      if (!question) {
+        return;
+      }
+      this.store.dispatch(
+        nexusActions.inferAssistantAndSend({
+          question,
+          topK: 4
+        })
+      );
+      this.chatForm.reset({ question: "" });
+      this.resetTextareaHeight();
+      return;
+    }
     if (!assistantId) {
       // #region agent log
       this.agentDebugLog("H5", "send question blocked by missing assistant", {
@@ -131,6 +179,19 @@ export class ChatPageComponent implements AfterViewChecked {
       })
     );
     this.chatForm.reset({ question: "" });
+    this.resetTextareaHeight();
+  }
+
+  protected openCreateAssistantModal(): void {
+    this.store.dispatch(nexusActions.openCreateAssistantModal());
+  }
+
+  protected selectAssistantCard(assistantId: string): void {
+    this.store.dispatch(nexusActions.selectAssistant({ assistantId }));
+  }
+
+  protected dismissInferError(): void {
+    this.store.dispatch(nexusActions.clearInferAssistantError());
   }
 
   private agentDebugLog(hypothesisId: string, message: string, data: object): void {

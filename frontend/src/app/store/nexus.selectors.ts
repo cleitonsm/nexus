@@ -39,6 +39,15 @@ export const selectActiveAssistantConversations = createSelector(selectNexusStat
 });
 
 export const selectDocuments = createSelector(selectNexusState, (state) => state.documents);
+export const selectCreateAssistantModalOpen = createSelector(
+  selectNexusState,
+  (state) => state.createAssistantModalOpen
+);
+
+export const selectInferAssistantError = createSelector(
+  selectNexusState,
+  (state) => state.inferAssistantError
+);
 
 export const selectError = createSelector(selectNexusState, (state) => state.error);
 
