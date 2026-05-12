@@ -1,193 +1,167 @@
-<main class="h-screen overflow-hidden bg-slate-950 text-slate-100">
+<main class="h-screen overflow-hidden bg-gemini-bg text-gemini-text font-sans">
   <div
     *ngIf="mobileSidebarOpen()"
-    class="fixed inset-0 z-30 bg-slate-950/70 backdrop-blur-sm lg:hidden"
+    class="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
     (click)="closeMobileSidebar()"
   ></div>
 
   <div class="flex h-full">
+    <!-- Sidebar -->
     <aside
-      class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-800 bg-slate-950/95 p-3 shadow-2xl transition-all duration-200 lg:static lg:z-auto lg:shadow-none"
+      class="fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col bg-nexus-sidebar p-3 transition-all duration-300 ease-in-out lg:static lg:z-auto"
       [ngClass]="{
         'translate-x-0': mobileSidebarOpen(),
         '-translate-x-full lg:translate-x-0': !mobileSidebarOpen(),
-        'lg:w-64': !sidebarCollapsed(),
+        'lg:w-[280px]': !sidebarCollapsed(),
         'lg:w-20': sidebarCollapsed()
       }"
-      aria-label="Navegação principal"
     >
-      <div class="flex items-center gap-2 px-1 py-1">
+      <!-- Menu Toggle & Logo -->
+      <div class="flex items-center gap-3 px-2 py-3">
         <button
           type="button"
           (click)="toggleNavigation()"
-          class="rounded-full border border-slate-700 p-2 text-slate-200 hover:border-indigo-400 hover:text-indigo-100"
-          aria-label="Expandir ou recolher menu"
+          class="flex h-10 w-10 items-center justify-center rounded-full text-nexus-text hover:bg-nexus-hover transition-colors"
         >
-          <span class="block h-0.5 w-4 bg-current"></span>
-          <span class="mt-1 block h-0.5 w-4 bg-current"></span>
-          <span class="mt-1 block h-0.5 w-4 bg-current"></span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          </svg>
         </button>
-        <div *ngIf="sidebarContentVisible()" class="min-w-0">
-          <h1 class="text-sm font-semibold">Nexus</h1>
-          <p class="truncate text-xs text-slate-400">Workspace de assistentes</p>
-        </div>
+        <h1 *ngIf="sidebarContentVisible()" class="text-xl font-medium tracking-tight">Nexus</h1>
       </div>
 
-      <button
-        type="button"
-        (click)="openCreateAssistantModal()"
-        class="mt-2 flex items-center justify-center gap-2 rounded-full bg-indigo-500 px-4 py-1.5 text-sm font-medium text-white shadow-lg shadow-indigo-950/30 hover:bg-indigo-400"
-        [ngClass]="{ 'px-0': !sidebarContentVisible() }"
-      >
-        <span class="text-lg leading-none">+</span>
-        <span *ngIf="sidebarContentVisible()">Criar assistente</span>
-      </button>
-
+      <!-- New Chat Button -->
       <button
         type="button"
         (click)="createConversation()"
         [disabled]="!activeAssistantId() || loading().createConversation"
-        class="mt-1.5 flex items-center justify-center gap-2 rounded-full border border-slate-700 px-4 py-1.5 text-sm text-slate-200 hover:border-indigo-400 disabled:opacity-50"
-        [ngClass]="{ 'px-0': !sidebarContentVisible() }"
+        class="mt-4 flex items-center gap-3 rounded-full bg-nexus-hover px-4 py-3 text-sm font-medium text-nexus-text hover:bg-nexus-active transition-all disabled:opacity-50"
+        [ngClass]="{ 'w-10 h-10 p-0 justify-center self-center': !sidebarContentVisible() }"
       >
-        <span class="text-base leading-none">+</span>
-        <span *ngIf="sidebarContentVisible()">
-          {{ loading().createConversation ? "Criando..." : "Nova conversa" }}
-        </span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        <span *ngIf="sidebarContentVisible()">Nova conversa</span>
       </button>
 
-      <div *ngIf="sidebarContentVisible()" class="mt-5 min-h-0 flex-1 space-y-5 overflow-hidden">
-        <section>
-          <div class="flex items-center justify-between">
-            <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Assistentes
-            </h2>
-            <span class="text-xs text-slate-500">{{ assistants().length }}</span>
-          </div>
-          <ul class="mt-2 max-h-64 space-y-1 overflow-y-auto pr-1">
-            <li
-              *ngFor="let assistant of assistants()"
-              class="flex items-stretch gap-2 rounded-2xl border p-0.5 transition"
-              [ngClass]="{
-                'border-indigo-400 bg-indigo-500/10 text-indigo-50':
-                  assistant.id === activeAssistantId(),
-                'border-slate-800 bg-slate-900/60 text-slate-200 hover:border-slate-700':
-                  assistant.id !== activeAssistantId()
-              }"
-            >
-              <button
-                type="button"
-                (click)="selectAssistant(assistant.id)"
-                class="min-w-0 flex-1 px-2 py-1 text-left text-xs"
-              >
-                <div class="truncate font-medium">{{ assistant.name }}</div>
-                <p class="mt-0.5 truncate text-xs text-slate-400">
-                  {{ assistant.description || "Sem descrição" }}
-                </p>
-              </button>
-              <button
-                type="button"
-                (click)="deleteAssistant(assistant.id, assistant.name)"
-                [disabled]="loading().deleteAssistant"
-                class="self-center rounded-full border border-rose-400/40 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/10 disabled:opacity-50"
-                aria-label="Excluir assistente"
-              >
-                Excluir
-              </button>
-            </li>
-            <li
-              *ngIf="assistants().length === 0"
-              class="rounded-2xl border border-dashed border-slate-800 px-3 py-3 text-xs text-slate-500"
-            >
-              Nenhum assistente cadastrado.
-            </li>
-          </ul>
-        </section>
+      <!-- Sidebar Content -->
+      <div *ngIf="sidebarContentVisible()" class="mt-6 flex-1 overflow-y-auto px-2">
 
-        <section class="min-h-0">
-          <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Histórico
-          </h2>
-          <p *ngIf="activeAssistant()" class="mt-1 truncate text-xs text-slate-500">
-            {{ activeAssistant()!.name }}
-          </p>
-          <ul class="mt-2 max-h-[calc(100vh-32rem)] min-h-32 space-y-1 overflow-y-auto pr-1">
-            <li
-              *ngFor="let conversation of conversations()"
-              class="flex items-stretch gap-2 rounded-2xl border p-0.5 transition"
-              [ngClass]="{
-                'border-indigo-400 bg-indigo-500/10 text-indigo-50':
-                  conversation.id === currentConversationId(),
-                'border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700':
-                  conversation.id !== currentConversationId()
-              }"
-            >
-              <button
-                type="button"
-                (click)="selectConversation(conversation.id)"
-                class="min-w-0 flex-1 px-2 py-1 text-left text-xs"
+        <!-- Assistants Section -->
+        <div class="mb-2">
+          <button
+            type="button"
+            (click)="toggleAssistants()"
+            class="flex w-full items-center justify-between px-2 py-1 mb-1 rounded-lg hover:bg-nexus-hover transition-colors group"
+          >
+            <h2 class="text-xs font-medium text-nexus-dim uppercase tracking-wider">Assistentes</h2>
+            <div class="flex items-center gap-2">
+              <span
+                (click)="$event.stopPropagation(); openCreateAssistantModal()"
+                class="text-nexus-accent hover:underline text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              >Criar</span>
+              <svg
+                width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                class="text-nexus-dim transition-transform duration-200"
+                [ngClass]="{ 'rotate-180': !assistantsCollapsed() }"
               >
-                <div class="font-medium">Conversa {{ conversation.id.slice(0, 8) }}</div>
-                <div class="mt-1 text-slate-500">{{ conversation.message_count }} mensagens</div>
-              </button>
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </div>
+          </button>
+
+          <ul *ngIf="!assistantsCollapsed()" class="space-y-1 overflow-hidden">
+            <li *ngFor="let assistant of assistants()">
               <button
-                type="button"
-                (click)="deleteConversation(conversation.id)"
-                [disabled]="loading().deleteConversation"
-                class="self-center rounded-full border border-rose-400/40 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/10 disabled:opacity-50"
-                aria-label="Excluir conversa"
+                (click)="selectAssistant(assistant.id)"
+                class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+                [ngClass]="{ 'bg-nexus-active font-medium': assistant.id === activeAssistantId() }"
               >
-                Excluir
+                <div class="h-2 w-2 rounded-full bg-nexus-accent shrink-0"></div>
+                <span class="truncate">{{ assistant.name }}</span>
               </button>
-            </li>
-            <li
-              *ngIf="conversations().length === 0"
-              class="rounded-2xl border border-dashed border-slate-800 px-3 py-3 text-xs text-slate-500"
-            >
-              {{ activeAssistantId() ? "Nenhuma conversa para este assistente." : "Selecione um assistente." }}
             </li>
           </ul>
-        </section>
+        </div>
+
+        <!-- Recent Conversations Section -->
+        <div class="mt-4">
+          <button
+            type="button"
+            (click)="toggleConversations()"
+            class="flex w-full items-center justify-between px-2 py-1 mb-1 rounded-lg hover:bg-nexus-hover transition-colors"
+          >
+            <h2 class="text-xs font-medium text-nexus-dim uppercase tracking-wider">Recentes</h2>
+            <svg
+              width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              class="text-nexus-dim transition-transform duration-200"
+              [ngClass]="{ 'rotate-180': !conversationsCollapsed() }"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+
+          <ul *ngIf="!conversationsCollapsed()" class="space-y-1">
+            <li *ngFor="let conversation of conversations()">
+              <div
+                class="group flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors relative"
+                [ngClass]="{ 'bg-nexus-active': conversation.id === currentConversationId() }"
+              >
+                <button
+                  (click)="selectConversation(conversation.id)"
+                  class="flex-1 flex items-center gap-3 min-w-0 text-left"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-nexus-dim shrink-0">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                  </svg>
+                  <span class="truncate">{{ conversation.name || ('Conversa ' + conversation.id.slice(0, 8)) }}</span>
+                </button>
+
+                <button
+                  (click)="deleteConversation(conversation.id)"
+                  [disabled]="loading().deleteConversation"
+                  class="opacity-0 group-hover:opacity-100 p-1 hover:bg-nexus-active rounded-full transition-all text-nexus-dim hover:text-rose-400 shrink-0"
+                  title="Excluir conversa"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="mt-auto border-t border-nexus-hover p-2">
+        <button
+          (click)="openAdminModal()"
+          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+          </svg>
+          <span *ngIf="sidebarContentVisible()">Configurações</span>
+        </button>
       </div>
     </aside>
 
-    <section class="flex min-w-0 flex-1 flex-col overflow-hidden">
-      <header
-        class="flex h-12 items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/90 px-4 backdrop-blur"
-      >
-        <div class="flex min-w-0 items-center gap-3">
-          <div class="min-w-0">
-            <p class="text-xs text-slate-500">Nexus</p>
-            <h2 class="truncate text-sm font-semibold">
-              {{ activeAssistant() ? activeAssistant()!.name : "Chat com assistentes" }}
-            </h2>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          (click)="openAdminModal()"
-          class="rounded-full border px-4 py-2 text-sm font-medium"
-          [ngClass]="{
-            'border-emerald-400/60 bg-emerald-500/10 text-emerald-100': apiKeyStatus()?.configured,
-            'border-amber-400/60 bg-amber-500/10 text-amber-100': !apiKeyStatus()?.configured
-          }"
-        >
-          Administração
+    <!-- Main Content -->
+    <section class="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+      <!-- Header (Mobile Only) -->
+      <header class="flex h-14 items-center px-4 lg:hidden">
+        <button (click)="toggleNavigation()" class="p-2 text-nexus-text">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          </svg>
         </button>
+        <span class="ml-4 text-lg font-medium">Nexus</span>
       </header>
 
-      <div
-        *ngIf="error()"
-        class="mx-4 mt-4 rounded-md border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
-      >
-        <div class="flex items-center justify-between gap-2">
-          <span>{{ error() }}</span>
-          <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
-        </div>
-      </div>
-
-      <div class="min-h-0 flex-1 flex flex-col overflow-hidden">
+      <div class="flex-1 overflow-hidden flex flex-col">
         <router-outlet />
       </div>
     </section>

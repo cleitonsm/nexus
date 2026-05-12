@@ -4,9 +4,30 @@
 
 @import "highlight.js/styles/github-dark.css";
 
-body {
-  margin: 0;
-  min-height: 100vh;
+@layer base {
+  body {
+    @apply bg-nexus-bg text-nexus-text antialiased;
+    margin: 0;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .prose-nexus {
+    @apply prose-invert max-w-none;
+  }
+  .prose-nexus p {
+    @apply leading-relaxed mb-4 text-nexus-text;
+  }
+  .prose-nexus pre {
+    @apply bg-nexus-sidebar border border-nexus-hover rounded-xl my-4;
+  }
+  .prose-nexus code {
+    @apply text-nexus-accent bg-nexus-hover px-1.5 py-0.5 rounded text-sm;
+  }
+  .prose-nexus pre code {
+    @apply text-nexus-text bg-transparent p-0;
+  }
 }
 
 pre {
@@ -17,4 +38,71 @@ pre {
 
 code {
   font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
+}
+
+/* =============================================
+   Scrollbars: hidden by default, appear on hover
+   Compatible with Chrome 121+ (fluent/overlay)
+   and Firefox via scrollbar-width/color API
+   ============================================= */
+
+/* 1. Hide all scrollbars by default */
+* {
+  scrollbar-width: none;
+}
+
+/* WebKit legacy fallback: zero-width hides the bar */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+/* 2. Show slim dark scrollbar when hovering the scrollable container */
+*:hover {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* WebKit hover fallback */
+*:hover::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+/* =============================================
+   Chat textarea special behaviour:
+   hidden even when overflowing, appears only
+   at max-height AND on hover
+   ============================================= */
+.chat-textarea {
+  overflow-y: hidden;
+  scrollbar-width: none;
+  transition: height 0.1s ease;
+}
+
+.chat-textarea::-webkit-scrollbar {
+  width: 0;
+}
+
+.chat-textarea.is-overflowing {
+  overflow-y: auto;
+}
+
+/* Textarea at max height — show bar on hover */
+.chat-textarea.is-overflowing:hover {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.chat-textarea.is-overflowing:hover::-webkit-scrollbar {
+  width: 4px;
 }
