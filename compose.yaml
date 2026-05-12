@@ -10,9 +10,6 @@ services:
         required: false
     ports:
       - "${BACKEND_PORT:-8000}:8000"
-    dns:
-      - 1.1.1.1
-      - 8.8.8.8
     healthcheck:
       test:
         [
