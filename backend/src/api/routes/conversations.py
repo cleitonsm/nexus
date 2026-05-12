@@ -88,6 +88,7 @@ def create_conversation(
     return ConversationResponse(
         id=result.conversation.id,
         assistant_id=result.conversation.assistant_id,
+        name=result.conversation.name,
         created_at=result.conversation.created_at,
         updated_at=result.conversation.updated_at,
         message_count=result.conversation.message_count,

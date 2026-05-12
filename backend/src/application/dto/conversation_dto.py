@@ -10,6 +10,7 @@ from src.domain import ChatMessage, Conversation
 class ConversationDTO:
     id: str
     assistant_id: str
+    name: str | None
     created_at: datetime
     updated_at: datetime
     message_count: int
@@ -19,6 +20,7 @@ class ConversationDTO:
         return cls(
             id=conversation.id.value,
             assistant_id=conversation.assistant_id.value,
+            name=conversation.name,
             created_at=conversation.created_at,
             updated_at=conversation.updated_at,
             message_count=len(conversation.messages),

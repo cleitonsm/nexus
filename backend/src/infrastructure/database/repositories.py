@@ -86,6 +86,7 @@ class PostgresConversationRepository:
             model = ConversationModel(
                 id=conversation.id.value,
                 assistant_id=conversation.assistant_id.value,
+                name=conversation.name,
                 created_at=conversation.created_at,
                 updated_at=conversation.updated_at,
             )
@@ -93,6 +94,8 @@ class PostgresConversationRepository:
         else:
             model.assistant_id = conversation.assistant_id.value
             model.updated_at = conversation.updated_at
+            if conversation.name is not None:
+                model.name = conversation.name
         self._session.commit()
         return self.get_by_id(conversation.id) or conversation
 
@@ -116,6 +119,7 @@ class PostgresConversationRepository:
         return Conversation(
             id=ConversationId(model.id),
             assistant_id=AssistantId(model.assistant_id),
+            name=model.name,
             created_at=model.created_at,
             updated_at=model.updated_at,
             messages=messages,
@@ -142,6 +146,7 @@ class PostgresConversationRepository:
                 Conversation(
                     id=ConversationId(model.id),
                     assistant_id=AssistantId(model.assistant_id),
+                    name=model.name,
                     created_at=model.created_at,
                     updated_at=model.updated_at,
                     messages=tuple(
@@ -166,6 +171,9 @@ class PostgresConversationRepository:
         )
         if conversation is not None:
             conversation.updated_at = message.created_at
+            if conversation.name is None and message.role == MessageRole.USER:
+                raw = message.content.strip()
+                conversation.name = raw[:97] + "..." if len(raw) > 100 else raw
         self._session.commit()
         return _message_to_entity(model)
 

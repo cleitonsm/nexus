@@ -13,6 +13,7 @@ class CreateConversationRequest(BaseModel):
 class ConversationResponse(BaseModel):
     id: str
     assistant_id: str
+    name: str | None
     created_at: datetime
     updated_at: datetime
     message_count: int
@@ -21,6 +22,7 @@ class ConversationResponse(BaseModel):
 class ConversationHistoryResponse(BaseModel):
     id: str
     assistant_id: str
+    name: str | None
     created_at: datetime
     updated_at: datetime
     message_count: int

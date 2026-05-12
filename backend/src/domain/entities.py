@@ -79,6 +79,7 @@ class ChatMessage:
 class Conversation:
     id: ConversationId
     assistant_id: AssistantId
+    name: str | None = None
     created_at: datetime = field(default_factory=_utc_now)
     updated_at: datetime = field(default_factory=_utc_now)
     messages: tuple[ChatMessage, ...] = ()
@@ -91,6 +92,7 @@ class Conversation:
         return Conversation(
             id=self.id,
             assistant_id=self.assistant_id,
+            name=self.name,
             created_at=self.created_at,
             updated_at=message.created_at,
             messages=(*self.messages, message),

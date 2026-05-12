@@ -72,6 +72,7 @@ class ConversationModel(Base):
         nullable=False,
         index=True,
     )
+    name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=_utc_now,

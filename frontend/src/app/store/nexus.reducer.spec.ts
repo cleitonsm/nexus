@@ -19,6 +19,7 @@ const assistantConversation = (
 ): Conversation => ({
   id,
   assistant_id: assistantId,
+  name: null,
   created_at: "2026-04-30T10:00:00Z",
   updated_at: "2026-04-30T10:00:00Z",
   message_count: 0

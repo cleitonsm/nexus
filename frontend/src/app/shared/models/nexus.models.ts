@@ -20,6 +20,7 @@ export interface IngestedDocument {
 export interface Conversation {
   id: string;
   assistant_id: string;
+  name: string | null;
   created_at: string;
   updated_at: string;
   message_count: number;
