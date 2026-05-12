@@ -110,9 +110,20 @@ def test_api_key(
             conversation_history=[],
         )
     except (RuntimeError, ValueError) as exc:
+        # region agent log
+        from src.api.main import _agent_debug_log
+        import time
+        _agent_debug_log(
+            run_id="pre-fix",
+            hypothesis_id="H2",
+            location="backend/src/api/routes/admin.py:test_api_key:error",
+            message=f"LLM test failed: {str(exc)}",
+            data={"error": str(exc)},
+        )
+        # endregion
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
+            detail=f"Falha na comunicação com a LLM: {str(exc)}",
         ) from exc
 
     return ApiKeyTestResponse(

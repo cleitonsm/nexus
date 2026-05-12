@@ -27,7 +27,7 @@ def _agent_debug_log(
     data: dict[str, object],
 ) -> None:
     payload = {
-        "sessionId": "a1f259",
+        "sessionId": "8fd7a3",
         "id": f"log_{int(time.time() * 1000)}_{uuid4().hex[:8]}",
         "timestamp": int(time.time() * 1000),
         "runId": run_id,
@@ -37,7 +37,7 @@ def _agent_debug_log(
         "data": data,
     }
     try:
-        with Path("debug-a1f259.log").open("a", encoding="utf-8") as log_file:
+        with Path("debug-8fd7a3.log").open("a", encoding="utf-8") as log_file:
             log_file.write(json.dumps(payload, ensure_ascii=True) + "\n")
     except OSError:
         pass
@@ -98,6 +98,15 @@ class HttpChatCompletionsLLM(LLMGateway):
             "temperature": 0.2,
         }
         body = json.dumps(payload).encode("utf-8")
+        # region agent log
+        _agent_debug_log(
+            run_id="pre-fix",
+            hypothesis_id="H3,H5",
+            location="backend/src/infrastructure/llm/http_chat_llm.py:generate:start",
+            message="Calling LLM API",
+            data={"url": self._api_url, "model": self._model},
+        )
+        # endregion
         parsed_url = urlparse(self._api_url)
         # region agent log
         _agent_debug_log(
