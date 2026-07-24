@@ -176,3 +176,4 @@ nexus/
 | [LangGraph conversacional](docs/arquitetura/langgraph-fluxo-conversacional.md) | Etapas do grafo, memória e regras de produto |
 | [Plano incremental](docs/plano-incremental.md) | As 8 etapas de construção do MVP |
 | [Docker local](docs/infraestrutura/docker-local.md) | Guia de execução e validação local |
+| [Gestão de riscos e comunicação](docs/gestao-riscos/README.md) | Atividade de identificação, análise e resposta a riscos com apoio de genAI |
