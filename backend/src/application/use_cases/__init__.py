@@ -3,7 +3,15 @@ from .chat_with_assistant import (
     ChatWithAssistantUseCase,
     ConversationNotFoundError,
 )
+from .compare_evaluation_reports import (
+    CompareEvaluationReportsInput,
+    CompareEvaluationReportsUseCase,
+)
 from .create_assistant import CreateAssistantInput, CreateAssistantUseCase
+from .evaluate_assistant import (
+    EvaluateAssistantInput,
+    EvaluateAssistantUseCase,
+)
 from .ingest_document import IngestDocumentInput, IngestDocumentUseCase
 from .infer_assistant import (
     InferAssistantInput,
@@ -29,9 +37,13 @@ from .register_conversation import (
 __all__ = [
     "ChatWithAssistantInput",
     "ChatWithAssistantUseCase",
+    "CompareEvaluationReportsInput",
+    "CompareEvaluationReportsUseCase",
     "ConversationNotFoundError",
     "CreateAssistantInput",
     "CreateAssistantUseCase",
+    "EvaluateAssistantInput",
+    "EvaluateAssistantUseCase",
     "IngestDocumentInput",
     "IngestDocumentUseCase",
     "InferAssistantInput",

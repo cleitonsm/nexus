@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+import logging
 import time
 from urllib import error, request
 from urllib.parse import urlparse
-from uuid import uuid4
 
 from src.domain import ChatMessage, LLMGateway
 
@@ -18,29 +17,7 @@ class LLMProviderError(RuntimeError):
     pass
 
 
-def _agent_debug_log(
-    *,
-    run_id: str,
-    hypothesis_id: str,
-    location: str,
-    message: str,
-    data: dict[str, object],
-) -> None:
-    payload = {
-        "sessionId": "8fd7a3",
-        "id": f"log_{int(time.time() * 1000)}_{uuid4().hex[:8]}",
-        "timestamp": int(time.time() * 1000),
-        "runId": run_id,
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data,
-    }
-    try:
-        with Path("debug-8fd7a3.log").open("a", encoding="utf-8") as log_file:
-            log_file.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except OSError:
-        pass
+logger = logging.getLogger(__name__)
 
 
 class HttpChatCompletionsLLM(LLMGateway):
@@ -98,32 +75,18 @@ class HttpChatCompletionsLLM(LLMGateway):
             "temperature": 0.2,
         }
         body = json.dumps(payload).encode("utf-8")
-        # region agent log
-        _agent_debug_log(
-            run_id="pre-fix",
-            hypothesis_id="H3,H5",
-            location="backend/src/infrastructure/llm/http_chat_llm.py:generate:start",
-            message="Calling LLM API",
-            data={"url": self._api_url, "model": self._model},
-        )
-        # endregion
         parsed_url = urlparse(self._api_url)
-        # region agent log
-        _agent_debug_log(
-            run_id="llm-ui-pre-fix",
-            hypothesis_id="H7,H9",
-            location="backend/src/infrastructure/llm/http_chat_llm.py:start",
-            message="starting llm provider request",
-            data={
-                "apiHost": parsed_url.netloc,
-                "apiPath": parsed_url.path,
-                "model": self._model,
-                "messageCount": len(messages),
-                "contextChunks": len(context_chunks),
-                "bodySizeBytes": len(body),
+        logger.info(
+            "llm.request.started",
+            extra={
+                "api_host": parsed_url.netloc,
+                "llm_model": self._model,
+                "message_count": len(messages),
+                "context_chunks": len(context_chunks),
+                "body_size_bytes": len(body),
             },
         )
-        # endregion
+        started_at = time.perf_counter()
         http_request = request.Request(
             url=self._api_url,
             data=body,
@@ -142,69 +105,37 @@ class HttpChatCompletionsLLM(LLMGateway):
                 raw = response.read().decode("utf-8")
         except error.HTTPError as exc:
             details = exc.read().decode("utf-8", errors="ignore")
-            # region agent log
-            _agent_debug_log(
-                run_id="llm-ui-pre-fix",
-                hypothesis_id="H7,H9",
-                location=(
-                    "backend/src/infrastructure/llm/"
-                    "http_chat_llm.py:http_error"
-                ),
-                message="llm provider rejected request",
-                data={
-                    "statusCode": exc.code,
-                    "detailLength": len(details),
-                    "model": self._model,
-                },
+            logger.warning(
+                "llm.request.rejected",
+                extra={"status_code": exc.code, "llm_model": self._model},
             )
-            # endregion
             raise LLMProviderError(
                 f"LLM provider rejected request: {exc.code} {details}"
             ) from exc
         except error.URLError as exc:
-            # region agent log
-            _agent_debug_log(
-                run_id="llm-ui-pre-fix",
-                hypothesis_id="H7,H9",
-                location=(
-                    "backend/src/infrastructure/llm/"
-                    "http_chat_llm.py:url_error"
-                ),
-                message="llm provider unreachable",
-                data={"reason": str(exc.reason), "model": self._model},
+            logger.warning(
+                "llm.request.unreachable",
+                extra={"reason": str(exc.reason), "llm_model": self._model},
             )
-            # endregion
             raise LLMProviderError("LLM provider is unreachable.") from exc
 
         try:
             data = json.loads(raw)
             content = data["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            # region agent log
-            _agent_debug_log(
-                run_id="llm-ui-pre-fix",
-                hypothesis_id="H9",
-                location=(
-                    "backend/src/infrastructure/llm/"
-                    "http_chat_llm.py:invalid_response"
-                ),
-                message="llm provider returned invalid response",
-                data={"statusCode": status_code, "rawLength": len(raw)},
+            logger.warning(
+                "llm.response.invalid",
+                extra={"status_code": status_code, "raw_length": len(raw)},
             )
-            # endregion
             raise LLMProviderError(
                 "LLM provider returned an invalid response payload."
             ) from exc
-        # region agent log
-        _agent_debug_log(
-            run_id="llm-ui-pre-fix",
-            hypothesis_id="H9",
-            location="backend/src/infrastructure/llm/http_chat_llm.py:success",
-            message="llm provider returned content",
-            data={
-                "statusCode": status_code,
-                "contentLength": len(str(content)),
+        logger.info(
+            "llm.request.finished",
+            extra={
+                "status_code": status_code,
+                "content_length": len(str(content)),
+                "duration_ms": round((time.perf_counter() - started_at) * 1000),
             },
         )
-        # endregion
         return str(content).strip()

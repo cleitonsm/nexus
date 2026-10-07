@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -25,6 +26,8 @@ from src.infrastructure.llm import HttpChatCompletionsLLM
 from src.infrastructure.secrets import FernetSecretCipher
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+logger = logging.getLogger(__name__)
 
 
 @router.get("/api-key/status", response_model=ApiKeyStatusResponse)
@@ -110,17 +113,11 @@ def test_api_key(
             conversation_history=[],
         )
     except (RuntimeError, ValueError) as exc:
-        # region agent log
-        from src.api.main import _agent_debug_log
-        import time
-        _agent_debug_log(
-            run_id="pre-fix",
-            hypothesis_id="H2",
-            location="backend/src/api/routes/admin.py:test_api_key:error",
-            message=f"LLM test failed: {str(exc)}",
-            data={"error": str(exc)},
+        logger.warning(
+            "admin.llm_test.failed",
+            extra={"llm_model": model},
+            exc_info=exc,
         )
-        # endregion
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Falha na comunicação com a LLM: {str(exc)}",

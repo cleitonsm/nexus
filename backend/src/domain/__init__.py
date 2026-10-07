@@ -1,6 +1,16 @@
 from .entities import Assistant, ChatMessage, Conversation, Document, MessageRole
 from .errors import DomainValidationError
+from .evaluation import (
+    EvaluationItem,
+    EvaluationItemResult,
+    EvaluationMetrics,
+    EvaluationReport,
+    first_relevant_rank,
+    mean_reciprocal_rank,
+    recall_at_k,
+)
 from .interfaces import (
+    AnswerJudge,
     AssistantRepository,
     ConversationRepository,
     DocumentRepository,
@@ -22,6 +32,7 @@ from .value_objects import (
 )
 
 __all__ = [
+    "AnswerJudge",
     "Assistant",
     "AssistantId",
     "AssistantName",
@@ -37,6 +48,10 @@ __all__ = [
     "DocumentRepository",
     "DomainValidationError",
     "EmbeddingGateway",
+    "EvaluationItem",
+    "EvaluationItemResult",
+    "EvaluationMetrics",
+    "EvaluationReport",
     "LLMGateway",
     "MessageId",
     "MessageRole",
@@ -44,4 +59,7 @@ __all__ = [
     "SearchResult",
     "VectorChunk",
     "VectorStoreGateway",
+    "first_relevant_rank",
+    "mean_reciprocal_rank",
+    "recall_at_k",
 ]

@@ -120,3 +120,15 @@ class LLMGateway(Protocol):
         context_chunks: list[str],
         conversation_history: list[ChatMessage],
     ) -> str: ...
+
+
+class AnswerJudge(Protocol):
+    """Julga se uma resposta e sustentada pelo contexto recuperado."""
+
+    def is_faithful(
+        self,
+        *,
+        question: str,
+        answer: str,
+        context_chunks: list[str],
+    ) -> bool: ...

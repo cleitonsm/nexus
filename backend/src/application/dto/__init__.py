@@ -7,12 +7,15 @@ from .conversation_dto import (
     RegisterConversationResult,
 )
 from .document_ingestion_dto import DocumentIngestionDTO
+from .evaluation_dto import EvaluationComparisonDTO, EvaluationReportDTO
 
 __all__ = [
     "AssistantDTO",
     "ChatTurnResult",
     "ConversationDTO",
     "DocumentIngestionDTO",
+    "EvaluationComparisonDTO",
+    "EvaluationReportDTO",
     "ListConversationsResult",
     "MessageDTO",
     "RegisterConversationResult",

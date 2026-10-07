@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
 from json import JSONDecodeError
-from pathlib import Path
-import time
-from uuid import uuid4
 
 from fastapi import (
     APIRouter,
@@ -42,29 +40,7 @@ router = APIRouter(
 )
 
 
-def _agent_debug_log(
-    *,
-    run_id: str,
-    hypothesis_id: str,
-    location: str,
-    message: str,
-    data: dict[str, object],
-) -> None:
-    payload = {
-        "sessionId": "a1f259",
-        "id": f"log_{int(time.time() * 1000)}_{uuid4().hex[:8]}",
-        "timestamp": int(time.time() * 1000),
-        "runId": run_id,
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data,
-    }
-    try:
-        with Path("debug-a1f259.log").open("a", encoding="utf-8") as log_file:
-            log_file.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except OSError:
-        pass
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -89,20 +65,14 @@ async def ingest_document(
         get_vector_store_gateway
     ),
 ) -> DocumentIngestionResponse:
-    # region agent log
-    _agent_debug_log(
-        run_id="pre-fix",
-        hypothesis_id="H2,H4",
-        location="backend/src/api/routes/documents.py:ingest_document:entry",
-        message="document upload handler started",
-        data={
-            "assistantId": assistant_id,
-            "contentType": file.content_type,
-            "filenameLength": len(file.filename or ""),
-            "hasMetadata": metadata is not None,
+    logger.info(
+        "document.upload.started",
+        extra={
+            "assistant_id": assistant_id,
+            "content_type": file.content_type,
+            "has_metadata": metadata is not None,
         },
     )
-    # endregion
     try:
         assistant_ref = AssistantId(assistant_id)
     except DomainValidationError as exc:
@@ -119,15 +89,10 @@ async def ingest_document(
         )
 
     file_bytes = await file.read()
-    # region agent log
-    _agent_debug_log(
-        run_id="pre-fix",
-        hypothesis_id="H2,H3",
-        location="backend/src/api/routes/documents.py:file_read",
-        message="document upload file bytes read",
-        data={"fileSizeBytes": len(file_bytes)},
+    logger.info(
+        "document.upload.read",
+        extra={"file_size_bytes": len(file_bytes)},
     )
-    # endregion
     try:
         extracted_text = extract_supported_text(
             filename=file.filename,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -11,7 +12,11 @@ from src.api.routes import (
     conversations_router,
     documents_router,
 )
+from src.api.middleware import register_request_context
 from src.infrastructure.database import Base, engine
+from src.infrastructure.observability import configure_logging
+
+configure_logging(level=os.getenv("LOG_LEVEL", "INFO"))
 
 
 @asynccontextmanager
@@ -22,6 +27,7 @@ async def lifespan(_: FastAPI):
     yield
 
 app = FastAPI(title="Nexus API", version="0.1.0", lifespan=lifespan)
+register_request_context(app)
 app.include_router(admin_router)
 app.include_router(assistants_router)
 app.include_router(conversations_router)

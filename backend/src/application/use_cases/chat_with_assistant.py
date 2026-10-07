@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import json
-from pathlib import Path
-import time
+import logging
 from typing import TypedDict
 from uuid import uuid4
 
@@ -30,29 +28,11 @@ class ConversationNotFoundError(ValueError):
     pass
 
 
-def _agent_debug_log(
-    *,
-    run_id: str,
-    hypothesis_id: str,
-    location: str,
-    message: str,
-    data: dict[str, object],
-) -> None:
-    payload = {
-        "sessionId": "a1f259",
-        "id": f"log_{int(time.time() * 1000)}_{uuid4().hex[:8]}",
-        "timestamp": int(time.time() * 1000),
-        "runId": run_id,
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data,
-    }
-    try:
-        with Path("debug-a1f259.log").open("a", encoding="utf-8") as log_file:
-            log_file.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except OSError:
-        pass
+logger = logging.getLogger(__name__)
+
+DEFAULT_ANSWER_INSTRUCTION = (
+    "Responda de forma objetiva usando apenas o contexto recuperado."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,18 +197,13 @@ class ChatWithAssistantUseCase:
         }
 
     def _evaluate_context(self, state: ChatState) -> ChatState:
-        # region agent log
-        _agent_debug_log(
-            run_id="llm-ui-pre-fix",
-            hypothesis_id="H8",
-            location="backend/src/application/use_cases/chat_with_assistant.py:evaluate_context",
-            message="evaluating retrieved chat context",
-            data={
-                "searchResults": len(state["search_results"]),
-                "contextChunks": len(state["context_chunks"]),
+        logger.info(
+            "chat.context.evaluated",
+            extra={
+                "search_results": len(state["search_results"]),
+                "context_chunks": len(state["context_chunks"]),
             },
         )
-        # endregion
         return {
             **state,
             "fallback_used": len(state["context_chunks"]) == 0,
@@ -243,28 +218,20 @@ class ChatWithAssistantUseCase:
         instruction = (
             state["assistant_initial_prompt"].strip()
             if state["assistant_initial_prompt"]
-            else (
-                "Responda de forma objetiva usando apenas o contexto "
-                "recuperado."
-            )
+            else DEFAULT_ANSWER_INSTRUCTION
         )
         prompt = (
             f"{instruction}\n"
             f"Pergunta: {state['question']}"
         )
-        # region agent log
-        _agent_debug_log(
-            run_id="llm-ui-pre-fix",
-            hypothesis_id="H7,H9",
-            location="backend/src/application/use_cases/chat_with_assistant.py:generate_answer",
-            message="calling llm gateway",
-            data={
-                "contextChunks": len(state["context_chunks"]),
-                "historyMessages": len(state["conversation_history"]),
-                "promptLength": len(prompt),
+        logger.info(
+            "chat.answer.generating",
+            extra={
+                "context_chunks": len(state["context_chunks"]),
+                "history_messages": len(state["conversation_history"]),
+                "prompt_length": len(prompt),
             },
         )
-        # endregion
         answer = self._llm_gateway.generate(
             prompt=prompt,
             context_chunks=state["context_chunks"],
@@ -282,15 +249,10 @@ class ChatWithAssistantUseCase:
         }
 
     def _fallback_answer(self, state: ChatState) -> ChatState:
-        # region agent log
-        _agent_debug_log(
-            run_id="llm-ui-pre-fix",
-            hypothesis_id="H8",
-            location="backend/src/application/use_cases/chat_with_assistant.py:fallback_answer",
-            message="using fallback answer without llm call",
-            data={"contextChunks": len(state["context_chunks"])},
+        logger.info(
+            "chat.fallback.used",
+            extra={"context_chunks": len(state["context_chunks"])},
         )
-        # endregion
         return {
             **state,
             "answer": state["fallback_answer"],
