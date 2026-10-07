@@ -78,6 +78,50 @@
               <p class="whitespace-pre-wrap">{{ message.content }}</p>
             </ng-template>
           </div>
+
+          <!-- Fontes da resposta (RF-38): um clique mostra o trecho citado -->
+          <div
+            *ngIf="citationsByMessage()[message.id] as citations"
+            class="mt-3 text-left"
+          >
+            <p class="text-[11px] font-medium text-nexus-dim uppercase tracking-wider mb-2">Fontes</p>
+            <ul class="flex flex-wrap gap-2">
+              <li *ngFor="let citation of citations">
+                <button
+                  type="button"
+                  (click)="toggleCitation(message.id, citation)"
+                  [attr.aria-expanded]="isCitationOpen(message.id, citation)"
+                  [attr.aria-controls]="'citation-panel-' + message.id"
+                  class="flex items-center gap-2 max-w-full rounded-full border px-3 py-1 text-xs transition-colors"
+                  [ngClass]="isCitationOpen(message.id, citation)
+                    ? 'border-nexus-accent bg-nexus-accent/20 text-nexus-text'
+                    : 'border-nexus-active bg-nexus-sidebar text-nexus-dim hover:text-nexus-text hover:bg-nexus-hover'"
+                >
+                  <span class="font-semibold">[{{ citation.number }}]</span>
+                  <span class="truncate">{{ citation.source_name }}</span>
+                  <span *ngIf="citation.page" class="flex-shrink-0">p. {{ citation.page }}</span>
+                </button>
+              </li>
+            </ul>
+            <div
+              *ngIf="openCitationOf(message.id) as citation"
+              [id]="'citation-panel-' + message.id"
+              role="region"
+              [attr.aria-label]="'Trecho citado em [' + citation.number + ']'"
+              class="mt-3 rounded-xl border border-nexus-active bg-nexus-sidebar p-4"
+            >
+              <p class="text-sm font-medium text-nexus-text break-words">
+                [{{ citation.number }}] {{ citation.source_name }}
+              </p>
+              <p class="mt-1 text-xs text-nexus-dim">
+                <span *ngIf="citation.section_path">Seção: {{ citation.section_path }}</span>
+                <span *ngIf="citation.section_path && citation.page"> · </span>
+                <span *ngIf="citation.page">Página {{ citation.page }}</span>
+                <span *ngIf="!citation.section_path && !citation.page">Seção e página não informadas</span>
+              </p>
+              <p class="mt-3 text-sm text-nexus-text leading-relaxed whitespace-pre-wrap break-words">{{ citation.excerpt }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

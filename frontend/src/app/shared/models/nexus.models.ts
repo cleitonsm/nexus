@@ -26,12 +26,24 @@ export interface Conversation {
   message_count: number;
 }
 
+export interface Citation {
+  number: number;
+  document_id: string;
+  chunk_id: string;
+  source_name: string;
+  section_path: string;
+  page: number | null;
+  score: number;
+  excerpt: string;
+}
+
 export interface ChatMessage {
   id: string;
   conversation_id: string;
   role: "user" | "assistant" | "system" | string;
   content: string;
   created_at: string;
+  citations?: Citation[];
 }
 
 export interface ConversationDetail {
@@ -49,6 +61,8 @@ export interface ChatResponse {
   assistant_message: ChatMessage;
   used_context_chunks: number;
   fallback_used: boolean;
+  citations: Citation[];
+  rewritten_query: string;
 }
 
 export interface ApiKeyStatus {

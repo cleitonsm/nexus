@@ -1,7 +1,12 @@
 import "@angular/compiler";
 import { describe, expect, it } from "vitest";
 
-import { Assistant, ChatMessage, Conversation } from "../shared/models/nexus.models";
+import {
+  Assistant,
+  ChatMessage,
+  Citation,
+  Conversation
+} from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
 import {
   initialNexusState,
@@ -10,6 +15,7 @@ import {
 } from "./nexus.reducer";
 import {
   selectActiveAssistantConversations,
+  selectCurrentCitationsByMessage,
   selectCurrentMessages
 } from "./nexus.selectors";
 
@@ -31,6 +37,17 @@ const chatMessage = (id: string, role: "user" | "assistant"): ChatMessage => ({
   role,
   content: `${role}-${id}`,
   created_at: "2026-04-30T10:00:00Z"
+});
+
+const citation = (number: number, sourceName = "politica.pdf"): Citation => ({
+  number,
+  document_id: "doc-1",
+  chunk_id: `doc-1:${number}`,
+  source_name: sourceName,
+  section_path: "Ferias > Duracao",
+  page: 3,
+  score: 0.9,
+  excerpt: `Trecho ${number}.`
 });
 
 const assistant = (id: string): Assistant => ({
@@ -204,5 +221,76 @@ describe("nexusSelectors", () => {
     };
 
     expect(selectActiveAssistantConversations(state)).toHaveLength(2);
+  });
+});
+
+// CT-21 (SPEC-20261007-003): o reducer armazena as fontes e o seletor as expoe.
+describe("citations", () => {
+  const answered: ChatMessage = {
+    ...chatMessage("msg-2", "assistant"),
+    citations: [citation(2), citation(1)]
+  };
+
+  it("stores the sources returned with a chat answer", () => {
+    const nextState = nexusReducer(
+      { ...initialNexusState, currentConversationId: "conv-1" },
+      nexusActions.sendChatQuestionSuccess({
+        conversationId: "conv-1",
+        userMessage: chatMessage("msg-1", "user"),
+        assistantMessage: answered
+      })
+    );
+
+    const [, stored] = nextState.messagesByConversation["conv-1"];
+    expect(stored.citations).toHaveLength(2);
+    expect(stored.citations?.[0].source_name).toBe("politica.pdf");
+  });
+
+  it("stores the sources of a loaded conversation", () => {
+    const nextState = nexusReducer(
+      initialNexusState,
+      nexusActions.loadConversationSuccess({
+        conversationId: "conv-1",
+        messages: [chatMessage("msg-1", "user"), answered]
+      })
+    );
+
+    expect(nextState.messagesByConversation["conv-1"][1].citations).toHaveLength(2);
+  });
+
+  it("exposes the sources by message, ordered by number", () => {
+    const state = {
+      nexus: {
+        ...initialNexusState,
+        currentConversationId: "conv-1",
+        messagesByConversation: {
+          "conv-1": [chatMessage("msg-1", "user"), answered],
+          "conv-2": [{ ...answered, id: "msg-9" }]
+        }
+      }
+    };
+
+    const byMessage = selectCurrentCitationsByMessage(state);
+
+    expect(Object.keys(byMessage)).toEqual(["msg-2"]);
+    expect(byMessage["msg-2"].map((item) => item.number)).toEqual([1, 2]);
+  });
+
+  it("exposes nothing for answers without sources", () => {
+    const state = {
+      nexus: {
+        ...initialNexusState,
+        currentConversationId: "conv-1",
+        messagesByConversation: {
+          "conv-1": [
+            chatMessage("msg-1", "user"),
+            { ...chatMessage("msg-2", "assistant"), citations: [] },
+            chatMessage("msg-3", "assistant")
+          ]
+        }
+      }
+    };
+
+    expect(selectCurrentCitationsByMessage(state)).toEqual({});
   });
 });

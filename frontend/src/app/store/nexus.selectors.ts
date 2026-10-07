@@ -1,5 +1,6 @@
 import { createFeatureSelector, createSelector } from "@ngrx/store";
 
+import { Citation } from "../shared/models/nexus.models";
 import { NexusState, nexusFeatureKey } from "./nexus.reducer";
 
 export const selectNexusState = createFeatureSelector<NexusState>(nexusFeatureKey);
@@ -30,6 +31,20 @@ export const selectCurrentMessages = createSelector(selectNexusState, (state) =>
   }
   return state.messagesByConversation[state.currentConversationId] ?? [];
 });
+
+/** Fontes de cada resposta da conversa atual, por id da mensagem (RF-38). */
+export const selectCurrentCitationsByMessage = createSelector(
+  selectCurrentMessages,
+  (messages): Record<string, Citation[]> =>
+    Object.fromEntries(
+      messages
+        .filter((message) => (message.citations?.length ?? 0) > 0)
+        .map((message) => [
+          message.id,
+          [...(message.citations ?? [])].sort((left, right) => left.number - right.number)
+        ])
+    )
+);
 
 export const selectActiveAssistantConversations = createSelector(selectNexusState, (state) => {
   if (!state.activeAssistantId) {

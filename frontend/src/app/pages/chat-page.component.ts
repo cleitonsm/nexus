@@ -1,13 +1,15 @@
 import { CommonModule } from "@angular/common";
-import { AfterViewChecked, Component, ElementRef, ViewChild, computed, effect, inject } from "@angular/core";
+import { AfterViewChecked, Component, ElementRef, ViewChild, computed, effect, inject, signal } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { Store } from "@ngrx/store";
 
+import { Citation } from "../shared/models/nexus.models";
 import { MarkdownPipe } from "../shared/pipes/markdown.pipe";
 import { nexusActions } from "../store/nexus.actions";
 import {
   selectActiveAssistantId,
   selectAssistants,
+  selectCurrentCitationsByMessage,
   selectCurrentConversationId,
   selectCurrentMessages,
   selectInferAssistantError,
@@ -34,6 +36,9 @@ export class ChatPageComponent implements AfterViewChecked {
   protected readonly activeAssistantId = this.store.selectSignal(selectActiveAssistantId);
   protected readonly currentConversationId = this.store.selectSignal(selectCurrentConversationId);
   protected readonly messages = this.store.selectSignal(selectCurrentMessages);
+  protected readonly citationsByMessage = this.store.selectSignal(selectCurrentCitationsByMessage);
+  /** Fonte aberta no painel: um clique abre, outro clique na mesma fecha. */
+  protected readonly openCitation = signal<{ messageId: string; number: number } | null>(null);
   protected readonly loading = this.store.selectSignal(selectLoadingState);
   protected readonly isInferring = computed(() => this.loading().inferAssistant);
   protected readonly inferAssistantError = this.store.selectSignal(selectInferAssistantError);
@@ -180,6 +185,27 @@ export class ChatPageComponent implements AfterViewChecked {
     );
     this.chatForm.reset({ question: "" });
     this.resetTextareaHeight();
+  }
+
+  protected toggleCitation(messageId: string, citation: Citation): void {
+    const current = this.openCitation();
+    const isOpen = current?.messageId === messageId && current.number === citation.number;
+    this.openCitation.set(isOpen ? null : { messageId, number: citation.number });
+  }
+
+  protected isCitationOpen(messageId: string, citation: Citation): boolean {
+    const current = this.openCitation();
+    return current?.messageId === messageId && current.number === citation.number;
+  }
+
+  protected openCitationOf(messageId: string): Citation | null {
+    const current = this.openCitation();
+    if (current?.messageId !== messageId) {
+      return null;
+    }
+    return (
+      this.citationsByMessage()[messageId]?.find((item) => item.number === current.number) ?? null
+    );
   }
 
   protected openCreateAssistantModal(): void {
