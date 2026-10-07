@@ -2,7 +2,11 @@
 
 ## Status
 
-Aceita em 2026-10-07 (dependência Alembic autorizada); ainda não implementada.
+Aceita em 2026-10-07 (dependência Alembic autorizada). Implementada na Fase 2; ainda não
+executada no ambiente Docker.
+
+Diferença em relação ao texto abaixo: a migração inicial é idempotente (não recria tabelas que já
+existem), o que dispensa marcar manualmente os bancos existentes.
 
 ## Contexto
 

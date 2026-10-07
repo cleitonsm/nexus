@@ -113,6 +113,24 @@ Já disponível, sem serviço novo no `compose.yaml`.
 
 Detalhes em `backend/tests/evaluation/README.md`.
 
+## Recuperação Semântica (Fase 2)
+
+Código entregue; ainda não executado neste ambiente.
+
+- O `backend` passa a usar os volumes `backend_cache` (modelos locais, em `/app/cache`) e
+  `documents_data` (arquivos originais, em `/app/data/documents`).
+- A imagem inclui PyTorch para CPU e `sentence-transformers`; a primeira construção demora mais e
+  a imagem fica bem maior.
+- As migrações de banco são aplicadas na subida da API. Bancos do MVP são aproveitados.
+- O modelo de embedding é baixado no primeiro uso (primeiro upload, pergunta ou avaliação) e fica
+  no volume. Depois disso, `HF_HUB_OFFLINE=1` impede qualquer download.
+- Assistentes criados antes desta fase ficam com a base desatualizada: reindexe com
+  `POST /assistants/{id}/reindex`, acompanhe em `GET /assistants/{id}/index-status` e reenvie os
+  documentos que não têm arquivo original.
+
+O roteiro de validação está em
+[`SPEC-002-plano-de-implementacao.md`](../especificacao/specs/SPEC-002-plano-de-implementacao.md).
+
 ## Evolução RAG Enterprise (Planejado)
 
 Esta seção descreve como o ambiente local ficará após as próximas fases. **Nada aqui está no

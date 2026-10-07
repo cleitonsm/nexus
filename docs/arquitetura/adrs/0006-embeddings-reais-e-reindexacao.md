@@ -2,7 +2,8 @@
 
 ## Status
 
-Aceita em 2026-10-07, com a aprovação da SPEC-002; implementação em andamento. Complementa a [ADR 0004](0004-embedding-local-sem-llm.md), sem alterá-la.
+Aceita em 2026-10-07, com a aprovação da SPEC-002. Implementada; ainda não
+executada no ambiente Docker. Complementa a [ADR 0004](0004-embedding-local-sem-llm.md), sem alterá-la.
 
 ## Contexto
 

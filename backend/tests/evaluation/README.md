@@ -52,6 +52,27 @@ Na primeira execução o comando cria o assistente "Nexus Docs (avaliacao)" e in
 `.md` de `docs/negocio` e `docs/arquitetura`. Nas seguintes, reutiliza a base existente; para
 reindexar depois de alterar os documentos, exclua o assistente pela interface.
 
+A partir da Fase 2, se a base do piloto tiver sido gerada por outro modelo de embedding ou por
+outra versão do pipeline, o comando a descarta e a reconstrói a partir dos mesmos diretórios. O
+relatório registra o modelo, a versão do pipeline e os parâmetros de chunking.
+
+### Linha de base anterior à Fase 2
+
+O pipeline do MVP (hash de palavras e corte de 700 caracteres) deixou de existir no código. Para
+registrar a linha de base com ele, execute a avaliação no commit `9dcf007` e volte ao ramo:
+
+```bash
+git stash -u            # se houver alterações locais
+git checkout 9dcf007
+docker compose up -d --build
+scripts/eval.sh nexus-docs --no-generation
+git checkout feat/rag-enterprise-fase-1
+docker compose up -d --build
+scripts/eval.sh nexus-docs --no-generation
+```
+
+O segundo relatório é comparado automaticamente com o primeiro.
+
 Opções úteis:
 
 - `--no-generation`: mede apenas a recuperação (recall@k e MRR), sem chamar o LLM.

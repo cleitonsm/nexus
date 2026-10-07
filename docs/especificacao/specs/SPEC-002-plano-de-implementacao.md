@@ -1,36 +1,55 @@
 # Plano de Implementação — SPEC-002 Recuperação Semântica
 
 **Spec**: [SPEC-20261007-002](SPEC-002-recuperacao-semantica.md) (Aprovada em 2026-10-07)
-**Status do plano**: Em execução — P2 (parcial), P3 e P4 entregues em 2026-10-07
+**Status do plano**: Código de P1 a P7 entregue em 2026-10-07; P8 e a validação no Docker pendentes
 **Data**: 2026-10-07
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
 ## 0. Andamento
 
-| Pacote | Situação em 2026-10-07 |
-|--------|------------------------|
-| P1 Migrações | Não iniciado |
-| P2 Domínio | Parcial: blocos, chunk, portas `DocumentChunker` e `TokenCounter`, nome de collection versionado. Faltam os campos novos de `Document` e `VectorChunk`, `embed_documents`/`embed_query` e as operações de alias, que entram com P1, P6 e P7 para não deixar contrato sem adaptador |
-| P3 Extração | Entregue: `extract_supported_document` (Markdown, TXT, PDF, DOCX, DOC). A rota de upload ainda usa `extract_supported_text` |
-| P4 Chunker | Entregue: `StructuralDocumentChunker`; CT-06 e CT-07 passam; CT-08 parcial |
-| P5 Embeddings | Não iniciado |
-| P6 Ingestão | Não iniciado |
-| P6b Originais | Não iniciado |
-| P7 Reindexação | Não iniciado |
-| P8 Avaliação | Não iniciado |
+| Pacote | Situação em 2026-10-07 | Verificado por |
+|--------|------------------------|----------------|
+| P1 Migrações | Código entregue: Alembic, migração inicial idempotente, migração da SPEC-002, aplicação na subida da API | Nada: Alembic e SQLAlchemy não estavam disponíveis fora do Docker |
+| P2 Domínio | Entregue | Testes unitários |
+| P3 Extração | Entregue | Testes unitários |
+| P4 Chunker | Entregue | Testes unitários com contador de tokens dublê |
+| P5 Embeddings | Código entregue: adaptador e contador de tokens com `sentence-transformers`, imagem com PyTorch CPU, volume `backend_cache` | Nada: o modelo não pôde ser carregado fora do Docker |
+| P6 Ingestão | Entregue: ingestão, chat e avaliação no pipeline novo | Casos de uso por testes unitários; rota e comando de avaliação não executados |
+| P6b Originais | Entregue: armazenamento em volume, limite de 20 MB | Testes unitários (adaptador e caso de uso) |
+| P7 Reindexação | Entregue: casos de uso, tabela de andamento, rotas, alias no Qdrant | Casos de uso por testes unitários; adaptador Qdrant e rotas não executados |
+| P8 Avaliação | Não iniciado: depende do ambiente Docker | — |
 
-O que foi entregue é aditivo: ingestão, chat e avaliação continuam no pipeline do MVP (hash e
-corte de 700 caracteres). Isso é proposital — a linha de base da Fase 1 precisa ser gerada com
-esse pipeline antes de P6 trocá-lo.
+Verificação feita: 190 testes unitários passam, fora do Docker, em Python 3.13, com o LangGraph
+substituído por um dublê local.
 
-Verificação: 143 testes unitários passam (74 anteriores e 69 novos), executados fora do Docker,
-em Python 3.13, com o LangGraph substituído por um dublê local. Nada foi executado no Docker.
+**Não verificado**, por falta de `fastapi`, `sqlalchemy`, `alembic`, `qdrant-client` e
+`sentence-transformers` no ambiente em que o código foi escrito: as migrações, os repositórios
+PostgreSQL, o adaptador Qdrant, o adaptador de embeddings, as rotas, a subida da API, a
+construção da imagem e todos os testes de integração. Esse código só passou por verificação de
+sintaxe. É esperado que a primeira execução no Docker revele ajustes.
+
+## 0.1 Como validar no Docker
+
+1. **Linha de base do MVP**, antes de tudo — o pipeline antigo saiu do código. Seguir
+   `backend/tests/evaluation/README.md` (seção "Linha de base anterior à Fase 2").
+2. Subir o ambiente no ramo atual: `docker compose up -d --build`. A imagem cresce (PyTorch CPU)
+   e a primeira subida aplica as migrações. Conferir `docker compose logs backend`.
+3. Testes dentro do container (os testes não fazem parte da imagem; monte a pasta):
+   `docker compose run --rm --no-deps -v ./backend/tests:/app/tests backend python -m unittest discover -s tests/unit`
+   e o mesmo com `-s tests/integration`. O primeiro uso do modelo faz o download para o volume
+   `backend_cache`.
+4. Avaliação do piloto: `scripts\eval.ps1 nexus-docs`. O comando descarta a base antiga do piloto
+   e a reconstrói; o relatório é comparado com a linha de base (CT-13, meta recall@5 ≥ 0,80).
+5. Assistentes criados no MVP: `POST /assistants/{id}/reindex`, acompanhar em
+   `GET /assistants/{id}/index-status` e reenviar os documentos listados em
+   `documents_without_original`.
+6. Sem rede: com o modelo já no cache, definir `HF_HUB_OFFLINE=1` no `.env` e repetir um upload.
 
 ## 1. Pré-requisitos (bloqueiam o aceite, não o início)
 
 | # | Item | Situação | Por que importa |
 |---|------|----------|-----------------|
-| 1 | Linha de base oficial da Fase 1 | `backend/tests/evaluation/reports/` está vazio | CT-13 e RN-14 comparam com ela. Precisa ser gerada **com o embedding de hash**, antes de qualquer troca. |
+| 1 | Linha de base oficial da Fase 1 | `backend/tests/evaluation/reports/` está vazio | CT-13 e RN-14 comparam com ela. O pipeline do MVP saiu do código; ela precisa ser gerada no commit `9dcf007` (seção 0.1). |
 | 2 | Testes de integração da Fase 1 no Docker | Não executados | A Fase 2 altera a subida da API (migrações); convém partir de um ambiente comprovado. |
 | 3 | Aprovação da SPEC-002 e das ADRs 0006 e 0011 | Feita em 2026-10-07 | Regra do ciclo SDD. |
 | 4 | Autorização de dependências novas | Feita em 2026-10-07 | `sentence-transformers`, PyTorch (CPU) e Alembic. |
@@ -49,13 +68,13 @@ Registradas por Cleiton Medeiros em 2026-10-07 e incorporadas ao desenho da SPEC
 | D7 | Aprovação da SPEC-002 | Aprovada | Código liberado. |
 | D8 | Limite de tamanho dos originais | 20 MB por arquivo | O upload passa a recusar arquivos maiores. |
 | D9 | Andamento da reindexação | Tabela no PostgreSQL | Sobrevive ao reinício da API; impede duas reindexações simultâneas do mesmo assistente. |
+| D10 | Orçamento do prefixo de seção | 32 tokens (`CHUNK_PREFIX_MAX_TOKENS`) | Decisão delegada ("manter um tamanho confortável, mas analise"). Um teto de 128 não é possível: é o chunk inteiro e não sobraria espaço para conteúdo. Nos 15 documentos do piloto, com contagem aproximada, os caminhos de títulos têm mediana de 18 tokens, percentil 90 de 28 e máximo de 35; com 32, 97% cabem inteiros e restam ao menos 96 tokens de conteúdo. A reconferir com o tokenizador real. |
 
 Ainda em aberto:
 
 | # | Decisão | Opções | Observação |
 |---|---------|--------|------------|
 | D5 | Conduta se o recall@5 ficar abaixo de 0,80 | Ajustar chunking; propor revisão da ADR 0004 | Só se decide diante do resultado de P8. |
-| D10 | Orçamento de tokens do prefixo de seção | Valor fixo; fração do limite do chunk | O chunker recebe `max_prefix_tokens` e não tem valor padrão. Bloqueia P6. |
 
 Limitações conhecidas do que foi entregue:
 
@@ -64,6 +83,10 @@ Limitações conhecidas do que foi entregue:
   tomado por título.
 - **Frase maior que o limite** é cortada por palavras, fora de fronteira de frase.
 - **Linha de tabela maior que o limite** é cortada e perde o cabeçalho.
+- **Chat com base desatualizada** não é bloqueado: responde com a base antiga até a reindexação.
+- **Documentos do MVP** continuam listados, sem original, até serem excluídos (Fase 5).
+- **O upload continua síncrono**: em CPU, um documento grande demora na requisição.
+- **`extract_supported_text`** ficou sem uso na aplicação; permanece até decisão de remoção.
 - **Volume de vetores:** em seis documentos do piloto, medidos com um contador aproximado, o
   chunker gerou 116 chunks onde o corte de 700 caracteres gera cerca de 43.
 

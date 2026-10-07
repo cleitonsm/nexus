@@ -28,10 +28,15 @@ implementada; as Fases 2 a 6 ainda não.
 
 ### Estado Atual Relevante
 
-- Embeddings: `LocalHashEmbeddingGateway` (hash de palavras); passará a ser apenas dublê de testes.
-- Chunking: corte fixo dentro de `IngestDocumentUseCase`.
+- Embeddings: `SentenceTransformerEmbeddingGateway`, local (Fase 2); `LocalHashEmbeddingGateway`
+  é apenas dublê de testes.
+- Chunking: `StructuralDocumentChunker`, por seção e medido em tokens (Fase 2).
+- Collections versionadas (`assistant-{id}-v{n}`) atrás do alias `assistant-{id}`; reindexação por
+  `POST /assistants/{id}/reindex` e situação em `GET /assistants/{id}/index-status` (Fase 2).
+- Arquivos originais guardados em volume, com limite de 20 MB (Fase 2).
 - Busca: densa, sem nota mínima.
-- Esquema do banco: criado por `create_all` na subida da API.
+- Esquema do banco: migrações Alembic aplicadas na subida da API (Fase 2).
+- A Fase 2 ainda não foi executada no Docker: só os testes unitários rodaram.
 - Rotas sem autenticação.
 
 ### Estrutura Prevista (Fases 2 a 6)

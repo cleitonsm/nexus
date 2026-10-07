@@ -1,7 +1,7 @@
 # Spec: Recuperação Semântica
 
 **ID**: SPEC-20261007-002
-**Status**: Aprovada em 2026-10-07 por Cleiton Medeiros — implementação em andamento (ver [plano](SPEC-002-plano-de-implementacao.md))
+**Status**: Aprovada em 2026-10-07 por Cleiton Medeiros — código entregue, aguardando validação no ambiente Docker (ver [plano](SPEC-002-plano-de-implementacao.md))
 **Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa)
 **Data**: 2026-10-07
 **Fase**: 2 de 6 — etapa 10 do [plano incremental](../../plano-incremental.md)
@@ -215,10 +215,23 @@ Por Cleiton Medeiros, em 2026-10-07, já incorporadas ao desenho acima.
 | Execução da reindexação | Em segundo plano, no processo da API, até existir o `worker` (Fase 5) |
 | Andamento da reindexação | Tabela no PostgreSQL |
 | Dependências novas | Autorizadas: `sentence-transformers`, PyTorch (CPU) e Alembic |
+| Orçamento de tokens do prefixo de seção | 32 tokens (`CHUNK_PREFIX_MAX_TOKENS`), definido por análise delegada pelo autor: nos 15 documentos do piloto, 97% dos caminhos de títulos cabem inteiros e o maior tem cerca de 35 tokens (contagem aproximada); restam ao menos 96 tokens de conteúdo por chunk |
+
+## Comportamentos Definidos na Implementação
+
+- Um assistente com base desatualizada (collection do MVP, ou documentos indexados por outro
+  modelo ou versão do pipeline) **recusa novos uploads** até ser reindexado (RN-16). O chat não é
+  bloqueado; o `index-status` informa `outdated`.
+- Uploads são recusados enquanto há reindexação em curso no mesmo assistente.
+- Documentos sem arquivo original são ignorados pela reindexação e listados no `index-status`.
+- `content_hash` passa a ser o hash do arquivo enviado, e não do texto extraído.
+- A exclusão de um assistente remove a collection vigente; os arquivos originais permanecem no
+  volume até o ciclo de vida da Fase 5.
+- O pipeline do MVP foi removido: a linha de base anterior só pode ser gerada no commit
+  `9dcf007` (ver `backend/tests/evaluation/README.md`).
 
 ## Decisões Pendentes
 
 | Decisão | Opções | Impacto |
 |---------|--------|---------|
-| Orçamento de tokens do prefixo de seção | Valor fixo; fração do limite do chunk | Quanto do chunk pode ser ocupado por títulos; bloqueia a ligação do chunker à ingestão |
 | Manter o modelo da ADR 0004 se a meta de recall não for atingida | Ajustar chunking; propor revisão da ADR com base na avaliação | Exige nova decisão registrada antes de trocar o modelo |

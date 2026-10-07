@@ -198,7 +198,7 @@ Cada fase tem uma especificação que precisa ser aprovada antes de qualquer có
 | Fase | Entrega | Especificação | Situação |
 |---|---|---|---|
 | 1 | Avaliação e linha de base | [SPEC-001](docs/especificacao/specs/SPEC-001-avaliacao-e-linha-de-base.md) | Implementada, em validação |
-| 2 | Recuperação semântica | [SPEC-002](docs/especificacao/specs/SPEC-002-recuperacao-semantica.md) | Especificada |
+| 2 | Recuperação semântica | [SPEC-002](docs/especificacao/specs/SPEC-002-recuperacao-semantica.md) | Código entregue; validação no Docker pendente |
 | 3 | Busca híbrida, reranking e citações | [SPEC-003](docs/especificacao/specs/SPEC-003-busca-hibrida-reranking-citacoes.md) | Especificada |
 | 4 | Autenticação e controle de acesso | [SPEC-004](docs/especificacao/specs/SPEC-004-autenticacao-e-controle-de-acesso.md) | Especificada |
 | 5 | Ingestão e ciclo de vida de documentos | [SPEC-005](docs/especificacao/specs/SPEC-005-ingestao-e-ciclo-de-vida.md) | Especificada |

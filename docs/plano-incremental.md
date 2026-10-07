@@ -186,6 +186,11 @@ chunking estrutural.
 Especificação: [SPEC-002](especificacao/specs/SPEC-002-recuperacao-semantica.md).
 Estimativa: 3 a 4 semanas.
 
+Situação: especificação aprovada e código entregue em 2026-10-07, com testes unitários. Faltam a
+execução no ambiente Docker (migrações, modelo real, Qdrant), os testes de integração e a
+avaliação do piloto. Ver o
+[plano de implementação](especificacao/specs/SPEC-002-plano-de-implementacao.md).
+
 Entregáveis:
 
 - adaptador de embeddings com sentence-transformers

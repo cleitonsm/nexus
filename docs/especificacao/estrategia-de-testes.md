@@ -146,10 +146,14 @@ Atualizado em 2026-10-07.
 | CT-05 (com a API) | Implementado, ainda não executado | `backend/tests/integration/test_request_context.py` |
 | CT-04 | Depende da execução de `scripts/eval.sh` no ambiente Docker, ainda não realizada | `backend/tests/evaluation/` |
 | CT-06, CT-07 | Implementados e executados com sucesso, com contador de tokens dublê | `backend/tests/unit/test_structural_chunker.py` |
-| CT-08 | Parcial: seção e página por chunk; modelo e versão do pipeline dependem da ligação à ingestão | `backend/tests/unit/test_structural_chunker.py` |
-| CT-09 a CT-48 | Não implementados; pertencem às Fases 2 a 6 | — |
+| CT-08, CT-09 | Implementados e executados com sucesso | `backend/tests/unit/test_indexing.py` |
+| CT-07 (tokenizador real), CT-10, CT-11 | Implementados, ainda não executados (exigem o modelo) | `backend/tests/integration/test_semantic_embedding.py` |
+| CT-12 | Implementado, ainda não executado (exige o Qdrant) | `backend/tests/integration/test_qdrant_alias.py` |
+| CT-13 | Depende da avaliação do piloto no ambiente Docker | `backend/tests/evaluation/` |
+| CT-14 a CT-48 | Não implementados; pertencem às Fases 3 a 6 | — |
 
-A suíte unitária soma 143 testes (21 do MVP, 53 da Fase 1 e 69 da Fase 2). Ela foi executada fora do Docker, com
+A suíte unitária soma 190 testes (19 do MVP, 53 da Fase 1 e 118 da Fase 2; dois testes de
+ingestão do MVP foram substituídos pelos da Fase 2). Ela foi executada fora do Docker, com
 o LangGraph substituído por um dublê local; a execução dentro do container ainda está pendente.
 
 O projeto utiliza `unittest`, sem dependência adicional de framework de testes.

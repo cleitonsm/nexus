@@ -31,20 +31,29 @@
 
 ## Evolução RAG Enterprise
 
-As variáveis da Fase 1 já estão no `.env.example`. As demais são previstas nas especificações,
-**ainda não estão no `.env.example`** e terão seus valores padrão definidos na implementação de
-cada fase.
+As variáveis das Fases 1 e 2 já estão no `.env.example`. As demais são previstas nas
+especificações, **ainda não estão no `.env.example`** e terão seus valores padrão definidos na
+implementação de cada fase.
 
-### Situação das variáveis atuais
+### Recuperação Semântica (Fase 2, já no `.env.example`)
 
-- `EMBEDDING_VECTOR_SIZE` é lida pelo código.
-- `EMBEDDING_MODEL_NAME` existe no `.env.example`, mas o código atual não a utiliza; passa a ser
-  usada na Fase 2.
+- `EMBEDDING_MODEL_NAME`: modelo local carregado pelo `sentence-transformers` (ADR 0004).
+- `EMBEDDING_VECTOR_SIZE`: dimensão esperada; a API recusa um modelo com dimensão diferente.
+- `CHUNK_MAX_TOKENS`: tamanho máximo do chunk. Vazio significa o limite de sequência do modelo
+  carregado; um valor acima desse limite é recusado.
+- `CHUNK_OVERLAP_SENTENCES`: frases de sobreposição entre chunks consecutivos (padrão `1`).
+- `CHUNK_PREFIX_MAX_TOKENS`: teto do prefixo de seção em cada chunk (padrão `32`). Caminhos de
+  títulos maiores perdem os títulos mais externos no prefixo.
+- `UPLOAD_MAX_BYTES`: tamanho máximo de upload (padrão 20 MB).
+- `DOCUMENTS_STORAGE_PATH`: diretório dos arquivos originais, no volume `documents_data`.
+- `HF_HOME`: cache dos modelos locais, no volume `backend_cache`.
+- `HF_HUB_OFFLINE`: com `1`, nenhum download é tentado; o modelo precisa estar no cache.
 
-### Recuperação (Fases 2 e 3)
+Trocar `EMBEDDING_MODEL_NAME` ou os parâmetros de chunking deixa as bases desatualizadas: novos
+uploads são recusados até `POST /assistants/{id}/reindex` (RN-16).
 
-- `CHUNK_MAX_TOKENS`: tamanho máximo do chunk, limitado à capacidade do modelo de embedding.
-- `CHUNK_OVERLAP_SENTENCES`: frases de sobreposição entre chunks consecutivos.
+### Recuperação (Fase 3)
+
 - `RERANKER_MODEL_NAME`: modelo local de reranking.
 - `RETRIEVAL_CANDIDATES`: candidatos recuperados antes do reranking.
 - `RERANK_TOP_N`: trechos mantidos após o reranking.
@@ -63,10 +72,8 @@ cada fase.
 
 ### Ingestão (Fase 5)
 
-- `UPLOAD_MAX_BYTES`: tamanho máximo de upload.
 - `INGESTION_MAX_ATTEMPTS`: tentativas antes do estado "falhou".
 - `INGESTION_JOB_TIMEOUT_SECONDS`: tempo após o qual um job reservado volta à fila.
-- `DOCUMENTS_STORAGE_PATH`: diretório dos arquivos originais.
 - `OCR_LANGUAGES`: idiomas do OCR.
 
 ### Avaliação e Logs (Fase 1, já no `.env.example`)
