@@ -145,9 +145,11 @@ Atualizado em 2026-10-07.
 | CT-05 (formato e identificador) | Parte unitária implementada e executada com sucesso | `backend/tests/unit/test_structured_logging.py` |
 | CT-05 (com a API) | Implementado, ainda não executado | `backend/tests/integration/test_request_context.py` |
 | CT-04 | Depende da execução de `scripts/eval.sh` no ambiente Docker, ainda não realizada | `backend/tests/evaluation/` |
-| CT-06 a CT-48 | Não implementados; pertencem às Fases 2 a 6 | — |
+| CT-06, CT-07 | Implementados e executados com sucesso, com contador de tokens dublê | `backend/tests/unit/test_structural_chunker.py` |
+| CT-08 | Parcial: seção e página por chunk; modelo e versão do pipeline dependem da ligação à ingestão | `backend/tests/unit/test_structural_chunker.py` |
+| CT-09 a CT-48 | Não implementados; pertencem às Fases 2 a 6 | — |
 
-A suíte unitária soma 74 testes (21 do MVP e 53 da Fase 1). Ela foi executada fora do Docker, com
+A suíte unitária soma 143 testes (21 do MVP, 53 da Fase 1 e 69 da Fase 2). Ela foi executada fora do Docker, com
 o LangGraph substituído por um dublê local; a execução dentro do container ainda está pendente.
 
 O projeto utiliza `unittest`, sem dependência adicional de framework de testes.

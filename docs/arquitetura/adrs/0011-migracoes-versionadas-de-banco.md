@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposta.
+Aceita em 2026-10-07 (dependência Alembic autorizada); ainda não implementada.
 
 ## Contexto
 

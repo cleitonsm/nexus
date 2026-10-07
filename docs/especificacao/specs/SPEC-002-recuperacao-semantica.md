@@ -1,8 +1,8 @@
 # Spec: Recuperação Semântica
 
 **ID**: SPEC-20261007-002
-**Status**: Rascunho
-**Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa, pendente de revisão)
+**Status**: Aprovada em 2026-10-07 por Cleiton Medeiros — implementação em andamento (ver [plano](SPEC-002-plano-de-implementacao.md))
+**Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa)
 **Data**: 2026-10-07
 **Fase**: 2 de 6 — etapa 10 do [plano incremental](../../plano-incremental.md)
 **Depende de**: SPEC-20261007-001
@@ -95,7 +95,7 @@ Funcionalidade: Recuperação semântica
 | Adaptador | `SentenceTransformerEmbeddingGateway`, implementando o `EmbeddingGateway` existente |
 | Modelo | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (ADR 0004), lido de `EMBEDDING_MODEL_NAME` |
 | Dimensão | 384, lida de `EMBEDDING_VECTOR_SIZE` e conferida com o modelo na inicialização |
-| Execução | CPU, dentro dos containers `backend` e `worker`; modelo carregado uma única vez por processo |
+| Execução | CPU, no container `backend` (e no `worker`, quando existir, na Fase 5); modelo carregado uma única vez por processo |
 | Cache | Volume `backend_cache` montado no diretório de modelos |
 | Testes | `LocalHashEmbeddingGateway` permanece apenas como dublê em testes unitários |
 
@@ -113,7 +113,16 @@ alterar os casos de uso novamente.
   3. divide blocos maiores que o limite em fronteiras de frase;
   4. aplica sobreposição de frases entre chunks consecutivos da mesma seção;
   5. prefixa cada chunk com o caminho de títulos da seção.
-- O tamanho é medido com o tokenizador do próprio modelo de embedding.
+- O tamanho é medido com o tokenizador do próprio modelo de embedding, por meio da porta de
+  domínio `TokenCounter`; o domínio não importa a biblioteca do modelo.
+- `CHUNK_MAX_TOKENS` é o limite do modelo carregado e a sobreposição é de uma frase.
+- O prefixo de seção e os tokens especiais contam no limite. Se o caminho de títulos exceder o
+  orçamento do prefixo, descartam-se os títulos mais externos; o metadado `section_path` guarda
+  sempre o caminho completo.
+- PDF: `pypdf`, com a página de cada bloco e títulos reconhecidos por heurística (linha curta e
+  numerada, como `2.1 Escopo`). PDFs sem títulos numerados ficam sem seção.
+- Uma frase maior que o limite é cortada por palavras; é o único caso em que um chunk termina
+  fora de uma fronteira de frase.
 - A extração de texto passa a devolver blocos estruturados em vez de uma única string.
 
 **Atenção ao limite do modelo:** o modelo definido na ADR 0004 trunca entradas longas (limite de
@@ -145,30 +154,38 @@ Aos campos do MVP (`assistant_id`, `document_id`, `chunk_index`, `source_name`, 
   do futuro alias. A migração cria `-v2` com os novos vetores, remove a collection antiga e só
   então cria o alias; nesse intervalo o assistente fica indisponível, o que é aceitável uma única
   vez em ambiente local.
-- Como os arquivos originais só passam a ser armazenados na Fase 5, a reindexação desta fase exige
-  **novo upload** dos documentos existentes.
+- A reindexação lê os **arquivos originais**, cujo armazenamento mínimo é antecipado da Fase 5:
+  o upload grava o original em volume local, por meio de uma porta de domínio, com limite de
+  20 MB por arquivo. Documentos ingeridos antes desta fase não têm original e exigem novo upload
+  uma única vez; o `index-status` os lista. Exclusão, substituição e deduplicação continuam na
+  Fase 5.
+- A reindexação roda **em segundo plano no processo da API**, até existir o `worker`:
+  `POST /reindex` responde 202. O andamento fica em tabela do PostgreSQL, que também impede duas
+  reindexações simultâneas do mesmo assistente. Na subida da API, uma reindexação interrompida é
+  marcada como falha e a versão parcial é descartada, sem mudar o alias.
 
 ### Modelo de dados
 
-Tabela `documents` recebe `embedding_model`, `pipeline_version` e `chunk_count`. A alteração é
-feita por migração versionada (ADR 0011), substituindo o `create_all` executado na subida da API.
+Tabela `documents` recebe `embedding_model`, `pipeline_version`, `chunk_count` e a localização do
+arquivo original. Nova tabela registra o andamento das reindexações. As alterações são feitas por
+migração versionada (ADR 0011), substituindo o `create_all` executado na subida da API.
 
 ### API
 
 | Rota | Papel exigido a partir da Fase 4 | Descrição |
 |------|----------------------------------|-----------|
-| `POST /assistants/{id}/reindex` | administrador | Inicia a reindexação |
-| `GET /assistants/{id}/index-status` | administrador, curador | Informa modelo, versão do pipeline e se a base está desatualizada |
+| `POST /assistants/{id}/reindex` | administrador | Inicia a reindexação em segundo plano (202) |
+| `GET /assistants/{id}/index-status` | administrador, curador | Informa modelo, versão do pipeline, andamento da reindexação, documentos sem original e se a base está desatualizada |
 
 ## Impacto Arquitetural
 
-- Domínio: nova porta `DocumentChunker`; `EmbeddingGateway` e `VectorStoreGateway` estendidas;
+- Domínio: novas portas `DocumentChunker`, `TokenCounter` e de armazenamento de originais; `EmbeddingGateway` e `VectorStoreGateway` estendidas;
   `VectorChunk` com novos campos.
 - Aplicação: `IngestDocumentUseCase` deixa de conter o algoritmo de chunking; novo
   `ReindexAssistantUseCase`.
 - Infraestrutura: novos adaptadores de embedding e chunking; Qdrant com alias.
-- Docker: imagem do backend passa a incluir `sentence-transformers` e PyTorch (CPU); novo volume
-  `backend_cache`.
+- Docker: imagem do backend passa a incluir `sentence-transformers`, PyTorch (CPU) e Alembic;
+  novos volumes `backend_cache` (modelos) e de arquivos originais.
 - ADRs: [0006](../../arquitetura/adrs/0006-embeddings-reais-e-reindexacao.md) (complementa a 0004)
   e [0011](../../arquitetura/adrs/0011-migracoes-versionadas-de-banco.md).
 
@@ -181,14 +198,27 @@ feita por migração versionada (ADR 0011), substituindo o `create_all` executad
 ## Riscos e Dependências
 
 - Limite de sequência do modelo restringe o tamanho do chunk (risco R11).
-- Reindexação exige novo upload dos documentos atuais (risco R9).
+- Documentos anteriores a esta fase exigem novo upload uma única vez (risco R9, reduzido pelo
+  armazenamento antecipado dos originais).
 - Imagem maior e uso de memória mais alto no ambiente local (risco R17).
 - Latência de vetorização em CPU durante a ingestão (risco R10).
+
+## Decisões Registradas
+
+Por Cleiton Medeiros, em 2026-10-07, já incorporadas ao desenho acima.
+
+| Decisão | Escolha |
+|---------|---------|
+| Valor de `CHUNK_MAX_TOKENS` e da sobreposição | Limite do modelo carregado; sobreposição de uma frase |
+| Extração estruturada de PDF | Manter `pypdf` com heurísticas |
+| Armazenamento dos arquivos originais | Antecipar uma versão mínima da Fase 5; limite de 20 MB por arquivo |
+| Execução da reindexação | Em segundo plano, no processo da API, até existir o `worker` (Fase 5) |
+| Andamento da reindexação | Tabela no PostgreSQL |
+| Dependências novas | Autorizadas: `sentence-transformers`, PyTorch (CPU) e Alembic |
 
 ## Decisões Pendentes
 
 | Decisão | Opções | Impacto |
 |---------|--------|---------|
-| Valor de `CHUNK_MAX_TOKENS` e da sobreposição | Até o limite do modelo; sobreposição de uma ou duas frases | Granularidade do contexto e número de chunks |
-| Extração estruturada de PDF | Manter `pypdf` com heurísticas; adotar biblioteca de layout | Qualidade de seções e tabelas; tamanho da imagem |
+| Orçamento de tokens do prefixo de seção | Valor fixo; fração do limite do chunk | Quanto do chunk pode ser ocupado por títulos; bloqueia a ligação do chunker à ingestão |
 | Manter o modelo da ADR 0004 se a meta de recall não for atingida | Ajustar chunking; propor revisão da ADR com base na avaliação | Exige nova decisão registrada antes de trocar o modelo |

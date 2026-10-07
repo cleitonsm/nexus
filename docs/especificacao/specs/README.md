@@ -13,7 +13,7 @@ testes são escritos antes da implementação.
 | ID | Fase | Arquivo | Status | Requisitos |
 |----|------|---------|--------|------------|
 | SPEC-20261007-001 | 1 — Avaliação e linha de base | [`SPEC-001-avaliacao-e-linha-de-base.md`](SPEC-001-avaliacao-e-linha-de-base.md) | Aprovada (em validação) | RF-24 a RF-27 |
-| SPEC-20261007-002 | 2 — Recuperação semântica | [`SPEC-002-recuperacao-semantica.md`](SPEC-002-recuperacao-semantica.md) | Rascunho | RF-28 a RF-32 |
+| SPEC-20261007-002 | 2 — Recuperação semântica | [`SPEC-002-recuperacao-semantica.md`](SPEC-002-recuperacao-semantica.md) | Aprovada (em implementação) | RF-28 a RF-32 |
 | SPEC-20261007-003 | 3 — Busca híbrida, reranking e citações | [`SPEC-003-busca-hibrida-reranking-citacoes.md`](SPEC-003-busca-hibrida-reranking-citacoes.md) | Rascunho | RF-33 a RF-39 |
 | SPEC-20261007-004 | 4 — Autenticação e controle de acesso | [`SPEC-004-autenticacao-e-controle-de-acesso.md`](SPEC-004-autenticacao-e-controle-de-acesso.md) | Rascunho | RF-40 a RF-47 |
 | SPEC-20261007-005 | 5 — Ingestão e ciclo de vida | [`SPEC-005-ingestao-e-ciclo-de-vida.md`](SPEC-005-ingestao-e-ciclo-de-vida.md) | Rascunho | RF-48 a RF-55 |
@@ -42,13 +42,18 @@ avaliação na integração contínua.
 ## Situação
 
 Em 2026-10-07 a SPEC-001 foi aprovada e implementada; falta executar os testes de integração e a
-avaliação no ambiente Docker para marcá-la como `Implementada`. As demais aguardam revisão.
+avaliação no ambiente Docker para marcá-la como `Implementada`. A SPEC-002 foi aprovada na mesma
+data e está em implementação, conforme o
+[plano de implementação](SPEC-002-plano-de-implementacao.md). As demais aguardam revisão.
 
 ## Decisões já tomadas
 
 - **Embeddings locais**, conforme a ADR 0004: nenhum conteúdo de documento sai do ambiente na
   vetorização, na busca esparsa, no reranking ou no OCR.
 - **Keycloak** como único provedor de identidade, em todos os ambientes (ADR 0008).
+- **SPEC-002**: chunk no limite do modelo com uma frase de sobreposição; PDF com `pypdf`;
+  armazenamento mínimo dos originais antecipado (20 MB por arquivo); reindexação em segundo plano
+  na API, com andamento no PostgreSQL.
 - **SPEC-001**: assistente piloto com a documentação do próprio Nexus, tolerância de regressão de
   0,02 e fidelidade julgada pelo mesmo `LLM_MODEL`.
 
