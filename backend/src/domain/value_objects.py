@@ -89,6 +89,19 @@ class CollectionName:
     def from_assistant_id(cls, assistant_id: AssistantId) -> "CollectionName":
         return cls(value=f"assistant-{assistant_id.value}")
 
+    @classmethod
+    def versioned(
+        cls,
+        assistant_id: AssistantId,
+        version: int,
+    ) -> "CollectionName":
+        """Collection fisica de uma versao; o nome sem sufixo e o alias."""
+        if version < 1:
+            raise DomainValidationError(
+                "collection version must be greater than or equal to 1."
+            )
+        return cls(value=f"{cls.from_assistant_id(assistant_id).value}-v{version}")
+
     def __str__(self) -> str:
         return self.value
 

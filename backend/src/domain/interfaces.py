@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from .chunking import DocumentChunk, ExtractedDocument
 from .entities import Assistant, ChatMessage, Conversation, Document
 from .value_objects import (
     AssistantId,
@@ -110,6 +111,23 @@ class VectorStoreGateway(Protocol):
     ) -> list[SearchResult]: ...
 
     def delete_collection(self, collection_name: CollectionName) -> None: ...
+
+
+class TokenCounter(Protocol):
+    """Mede textos com o tokenizador do modelo de embedding."""
+
+    @property
+    def max_tokens(self) -> int:
+        """Limite de sequencia do modelo, incluidos os tokens especiais."""
+        ...
+
+    def count(self, text: str) -> int:
+        """Tokens que o modelo consome para o texto, incluidos os especiais."""
+        ...
+
+
+class DocumentChunker(Protocol):
+    def chunk(self, document: ExtractedDocument) -> list[DocumentChunk]: ...
 
 
 class LLMGateway(Protocol):
