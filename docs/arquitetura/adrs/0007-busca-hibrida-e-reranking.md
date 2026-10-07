@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposta.
+Aceita em 2026-10-07, com a aprovação da SPEC-003. Implementada; ainda não executada no ambiente
+Docker.
 
 ## Contexto
 
@@ -29,6 +30,21 @@ preferir honestidade a alucinação.
 - O reranking em CPU acrescenta latência por pergunta; o número de candidatos é o principal
   controle.
 - O fallback volta a cumprir seu papel para perguntas fora do escopo.
+
+## Notas de Implementação
+
+- Vetores nomeados `dense` e `sparse`; o esparso usa o modificador `idf` do Qdrant, de modo que o
+  adaptador local calcula apenas o componente de frequência do BM25 (`BM25_K1`, `BM25_B` e
+  `BM25_AVG_LENGTH`, com padrões 1,2, 0,75 e 64).
+- O BM25 é implementado em Python puro (`Bm25SparseEmbeddingGateway`), sem dependência nova:
+  minúsculas, sem acentos, sem palavras vazias do português e sem radicalização. Códigos como
+  `NR-35` valem também como um termo único.
+- O reranker é o `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`, carregado pelo
+  `sentence-transformers` já presente na imagem. A nota é a sigmoide da saída do modelo, para que
+  `RELEVANCE_MIN_SCORE` tenha escala de 0 a 1 em qualquer modelo.
+- A mudança de formato da collection é sinalizada pela versão `3` do pipeline: bases da Fase 2
+  ficam desatualizadas até `POST /assistants/{id}/reindex`; enquanto isso o upload é recusado e o
+  chat consulta essas bases apenas pelo vetor denso.
 
 ## Alternativas Consideradas
 

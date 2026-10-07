@@ -42,8 +42,10 @@ limitação.
 
 ## Evolução RAG Enterprise (Fluxo Alvo)
 
-Fluxo **planejado** pela [SPEC-003](../especificacao/specs/SPEC-003-busca-hibrida-reranking-citacoes.md);
-o fluxo acima continua sendo o implementado.
+Fluxo definido pela [SPEC-003](../especificacao/specs/SPEC-003-busca-hibrida-reranking-citacoes.md).
+As etapas da reescrita à validação das citações estão implementadas desde 2026-10-07 (ainda não
+executadas no ambiente Docker) e substituem o fluxo acima. Verificação de acesso, limite de uso,
+filtro de grupos, consumo e auditoria continuam **planejados** (Fases 4 e 6).
 
 ```mermaid
 flowchart TD

@@ -150,10 +150,15 @@ Atualizado em 2026-10-07.
 | CT-07 (tokenizador real), CT-10, CT-11 | Implementados, ainda não executados (exigem o modelo) | `backend/tests/integration/test_semantic_embedding.py` |
 | CT-12 | Implementado, ainda não executado (exige o Qdrant) | `backend/tests/integration/test_qdrant_alias.py` |
 | CT-13 | Depende da avaliação do piloto no ambiente Docker | `backend/tests/evaluation/` |
-| CT-14 a CT-48 | Não implementados; pertencem às Fases 3 a 6 | — |
+| CT-14, CT-15, CT-16, CT-17 | Implementados e executados com sucesso | `backend/tests/unit/test_chat_flow.py` |
+| CT-18, CT-19 | Implementados, ainda não executados (exigem o Qdrant e os modelos); a parte que não depende deles está em `backend/tests/unit/test_retrieval_components.py` | `backend/tests/integration/test_hybrid_search.py` |
+| CT-20 | Implementado, ainda não executado (exige FastAPI e PostgreSQL) | `backend/tests/integration/test_chat_citations.py` |
+| CT-21 | Implementado, ainda não executado (o Vitest não pôde ser instalado onde o código foi escrito) | `frontend/src/app/store/nexus.reducer.spec.ts` |
+| CT-22 | Depende da avaliação do piloto no ambiente Docker | `backend/tests/evaluation/` |
+| CT-23 a CT-48 | Não implementados; pertencem às Fases 4 a 6 | — |
 
-A suíte unitária soma 190 testes (19 do MVP, 53 da Fase 1 e 118 da Fase 2; dois testes de
-ingestão do MVP foram substituídos pelos da Fase 2). Ela foi executada fora do Docker, com
+A suíte unitária soma 265 testes; a Fase 3 acrescentou 75 e substituiu os três testes de chat do
+MVP pelos de `test_chat_flow.py`. Ela foi executada fora do Docker, com
 o LangGraph substituído por um dublê local; a execução dentro do container ainda está pendente.
 
 O projeto utiliza `unittest`, sem dependência adicional de framework de testes.

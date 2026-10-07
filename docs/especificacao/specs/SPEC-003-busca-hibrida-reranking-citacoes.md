@@ -1,8 +1,8 @@
 # Spec: Busca Híbrida, Reranking e Citações
 
 **ID**: SPEC-20261007-003
-**Status**: Rascunho
-**Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa, pendente de revisão)
+**Status**: Aprovada em 2026-10-07 por Cleiton Medeiros — código entregue, aguardando validação no ambiente Docker (ver [plano](SPEC-003-plano-de-implementacao.md))
+**Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa)
 **Data**: 2026-10-07
 **Fase**: 3 de 6 — etapa 11 do [plano incremental](../../plano-incremental.md)
 **Depende de**: SPEC-20261007-002
@@ -200,7 +200,33 @@ flowchart TD
   conjunto de referência.
 - Trechos recuperados são enviados ao provedor de LLM (risco R15).
 
+## Decisões Registradas
+
+Por Cleiton Medeiros, em 2026-10-07.
+
+| Decisão | Escolha |
+|---------|---------|
+| Aprovação da SPEC-003 e da ADR 0007 | Aprovadas; implementação liberada sobre a Fase 2 ainda não validada no Docker |
+| Formato da citação no texto | Marcadores `[n]` |
+| Modelo de reranking | `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` |
+| `RETRIEVAL_CANDIDATES`, `RERANK_TOP_N`, `RELEVANCE_MIN_SCORE` | Pontos de partida 30, 5 e 0,5 (nota entre 0 e 1, sigmoide da saída do reranker), a calibrar no CT-22 |
+| Orçamentos de tokens | Valores fixos: contexto 2000, histórico 1500 |
+| Marcador que aponta para trecho inexistente | A resposta é aceita se houver ao menos um marcador válido; os inválidos são removidos do texto |
+| Falha do LLM na reescrita | Segue com a pergunta original e registra aviso no log |
+| Base anterior à busca híbrida | O chat consulta só o vetor denso até a reindexação; o upload continua recusado |
+| Fontes devolvidas | Apenas os trechos citados |
+| Medida dos orçamentos | Tokenizador do modelo de embedding, por aproximação |
+| Janela de histórico | Mensagens recentes contíguas, sem pular as que não cabem |
+| `top_k` do `POST /chat` | Teto por pergunta: reduz a quantidade de trechos abaixo de `RERANK_TOP_N`, nunca acima |
+| Parâmetros do BM25 | Variáveis `BM25_K1`, `BM25_B` e `BM25_AVG_LENGTH` (padrões 1,2, 0,75 e 64) |
+
+Os demais comportamentos definidos na implementação estão no
+[plano de implementação](SPEC-003-plano-de-implementacao.md).
+
 ## Decisões Pendentes
+
+As quatro decisões abaixo foram tomadas (tabela acima); permanecem aqui como histórico das opções.
+Fica em aberto apenas a calibração dos valores com o conjunto de referência (CT-22).
 
 | Decisão | Opções | Impacto |
 |---------|--------|---------|

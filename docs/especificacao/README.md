@@ -143,8 +143,8 @@ Atualizado em 2026-10-07.
 | Fase | Especificação | Situação |
 |------|---------------|----------|
 | 1 — Avaliação e linha de base | SPEC-001 | Aprovada e implementada; em validação no ambiente Docker |
-| 2 — Recuperação semântica | SPEC-002 | Rascunho; não iniciada |
-| 3 — Busca híbrida, reranking e citações | SPEC-003 | Rascunho; não iniciada |
+| 2 — Recuperação semântica | SPEC-002 | Aprovada; código entregue, em validação no ambiente Docker |
+| 3 — Busca híbrida, reranking e citações | SPEC-003 | Aprovada; código entregue, em validação no ambiente Docker |
 | 4 — Autenticação e controle de acesso | SPEC-004 | Rascunho; não iniciada |
 | 5 — Ingestão e ciclo de vida | SPEC-005 | Rascunho; não iniciada |
 | 6 — Operação e governança | SPEC-006 | Rascunho; não iniciada |

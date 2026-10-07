@@ -31,7 +31,7 @@
 
 ## Evolução RAG Enterprise
 
-As variáveis das Fases 1 e 2 já estão no `.env.example`. As demais são previstas nas
+As variáveis das Fases 1, 2 e 3 já estão no `.env.example`. As demais são previstas nas
 especificações, **ainda não estão no `.env.example`** e terão seus valores padrão definidos na
 implementação de cada fase.
 
@@ -52,13 +52,24 @@ implementação de cada fase.
 Trocar `EMBEDDING_MODEL_NAME` ou os parâmetros de chunking deixa as bases desatualizadas: novos
 uploads são recusados até `POST /assistants/{id}/reindex` (RN-16).
 
-### Recuperação (Fase 3)
+### Recuperação (Fase 3, já no `.env.example`)
 
-- `RERANKER_MODEL_NAME`: modelo local de reranking.
-- `RETRIEVAL_CANDIDATES`: candidatos recuperados antes do reranking.
-- `RERANK_TOP_N`: trechos mantidos após o reranking.
-- `RELEVANCE_MIN_SCORE`: nota mínima para um trecho compor o contexto.
-- `CONTEXT_TOKEN_BUDGET` e `HISTORY_TOKEN_BUDGET`: orçamentos de tokens enviados ao LLM.
+- `RERANKER_MODEL_NAME`: modelo local de reranking (padrão
+  `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`), no mesmo cache de `HF_HOME`.
+- `RETRIEVAL_CANDIDATES`: candidatos recuperados pela busca híbrida antes do reranking (padrão `30`).
+- `RERANK_TOP_N`: trechos mantidos após o reranking (padrão `5`).
+- `RELEVANCE_MIN_SCORE`: nota mínima, de 0 a 1, para um trecho compor o contexto (padrão `0.5`).
+  Sem trecho acima dela, a resposta é o fallback, sem chamada ao LLM de geração.
+- `CONTEXT_TOKEN_BUDGET` e `HISTORY_TOKEN_BUDGET`: orçamentos de tokens enviados ao LLM (padrões
+  `2000` e `1500`), medidos com o tokenizador do modelo de embedding, por aproximação.
+
+- `BM25_K1`, `BM25_B` e `BM25_AVG_LENGTH`: parâmetros do BM25 da busca híbrida (padrões `1.2`,
+  `0.75` e `64` termos). **Mudar qualquer um deles exige reindexar os assistentes**: os vetores
+  esparsos já gravados não são recalculados e nada detecta a diferença.
+
+Os valores são pontos de partida, a calibrar com o conjunto de referência (CT-22). As bases
+indexadas antes da Fase 3 não têm o vetor esparso: até `POST /assistants/{id}/reindex`, o upload
+é recusado (409) e o chat do assistente funciona apenas com a busca densa.
 
 ### Autenticação (Fase 4)
 
