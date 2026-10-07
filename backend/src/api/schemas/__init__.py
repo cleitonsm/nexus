@@ -16,6 +16,7 @@ from .conversations import (
     MessageResponse,
 )
 from .documents import DocumentIngestionResponse
+from .index import IndexStatusResponse, ReindexJobResponse
 
 __all__ = [
     "AddMessageRequest",
@@ -32,6 +33,8 @@ __all__ = [
     "InferAssistantResponse",
     "CreateConversationRequest",
     "DocumentIngestionResponse",
+    "IndexStatusResponse",
     "MessageResponse",
+    "ReindexJobResponse",
     "SaveApiKeyRequest",
 ]

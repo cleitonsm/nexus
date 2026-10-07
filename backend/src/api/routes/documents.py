@@ -13,26 +13,35 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.concurrency import run_in_threadpool
 
 from src.api.dependencies import (
     get_assistant_repository,
+    get_document_indexer,
     get_document_repository,
-    get_embedding_gateway,
+    get_file_storage,
+    get_max_file_bytes,
+    get_reindex_job_repository,
     get_vector_store_gateway,
 )
 from src.api.schemas import DocumentIngestionResponse
+from src.application.services import DocumentIndexer
 from src.application.use_cases import (
+    DocumentTooLargeError,
     IngestDocumentInput,
     IngestDocumentUseCase,
 )
-from src.domain import AssistantId, DomainValidationError
-from src.infrastructure.database import (
-    PostgresAssistantRepository,
-    PostgresDocumentRepository,
+from src.domain import (
+    AssistantId,
+    AssistantRepository,
+    DocumentFileStorage,
+    DocumentRepository,
+    DomainValidationError,
+    IndexOutdatedError,
+    ReindexInProgressError,
+    ReindexJobRepository,
+    VectorStoreGateway,
 )
-from src.infrastructure.documents import extract_supported_text
-from src.infrastructure.embeddings import LocalHashEmbeddingGateway
-from src.infrastructure.vector_store import QdrantVectorStoreGateway
 
 router = APIRouter(
     prefix="/assistants/{assistant_id}/documents",
@@ -52,18 +61,15 @@ async def ingest_document(
     assistant_id: str,
     file: UploadFile = File(...),
     metadata: str | None = Form(default=None),
-    assistant_repository: PostgresAssistantRepository = Depends(
-        get_assistant_repository
+    assistant_repository: AssistantRepository = Depends(get_assistant_repository),
+    document_repository: DocumentRepository = Depends(get_document_repository),
+    vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
+    document_indexer: DocumentIndexer = Depends(get_document_indexer),
+    file_storage: DocumentFileStorage = Depends(get_file_storage),
+    reindex_job_repository: ReindexJobRepository = Depends(
+        get_reindex_job_repository
     ),
-    document_repository: PostgresDocumentRepository = Depends(
-        get_document_repository
-    ),
-    embedding_gateway: LocalHashEmbeddingGateway = Depends(
-        get_embedding_gateway
-    ),
-    vector_store_gateway: QdrantVectorStoreGateway = Depends(
-        get_vector_store_gateway
-    ),
+    max_file_bytes: int = Depends(get_max_file_bytes),
 ) -> DocumentIngestionResponse:
     logger.info(
         "document.upload.started",
@@ -93,34 +99,38 @@ async def ingest_document(
         "document.upload.read",
         extra={"file_size_bytes": len(file_bytes)},
     )
-    try:
-        extracted_text = extract_supported_text(
-            filename=file.filename,
-            content_type=file.content_type,
-            raw_content=file_bytes,
-        )
-        parsed_metadata = _parse_metadata_field(metadata)
-    except (ValueError, RuntimeError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
-
     use_case = IngestDocumentUseCase(
         document_repository=document_repository,
-        embedding_gateway=embedding_gateway,
         vector_store_gateway=vector_store_gateway,
+        document_indexer=document_indexer,
+        file_storage=file_storage,
+        reindex_job_repository=reindex_job_repository,
+        max_file_bytes=max_file_bytes,
     )
     try:
-        result = use_case.execute(
+        # A vetorizacao em CPU e demorada: fora do laco de eventos, a API
+        # continua respondendo (inclusive ao healthcheck) durante o upload.
+        result = await run_in_threadpool(
+            use_case.execute,
             IngestDocumentInput(
                 assistant_id=assistant_ref.value,
                 source_name=file.filename or "uploaded-document.txt",
-                content=extracted_text,
-                metadata=parsed_metadata,
-            )
+                raw_content=file_bytes,
+                content_type=file.content_type,
+                metadata=_parse_metadata_field(metadata),
+            ),
         )
-    except (DomainValidationError, ValueError) as exc:
+    except DocumentTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=str(exc),
+        ) from exc
+    except (IndexOutdatedError, ReindexInProgressError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except (DomainValidationError, ValueError, RuntimeError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -135,6 +145,8 @@ async def ingest_document(
         collection_name=result.collection_name,
         chunk_count=result.chunk_count,
         embedding_dimension=result.embedding_dimension,
+        embedding_model=result.embedding_model,
+        pipeline_version=result.pipeline_version,
     )
 
 

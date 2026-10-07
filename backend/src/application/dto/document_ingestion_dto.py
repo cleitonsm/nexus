@@ -16,6 +16,8 @@ class DocumentIngestionDTO:
     collection_name: str
     chunk_count: int
     embedding_dimension: int
+    embedding_model: str | None = None
+    pipeline_version: str | None = None
 
     @classmethod
     def from_entity(
@@ -35,4 +37,6 @@ class DocumentIngestionDTO:
             collection_name=collection_name,
             chunk_count=chunk_count,
             embedding_dimension=embedding_dimension,
+            embedding_model=document.embedding_model,
+            pipeline_version=document.pipeline_version,
         )

@@ -25,16 +25,33 @@ from src.application.use_cases import (
     IngestDocumentInput,
     IngestDocumentUseCase,
 )
-from src.domain import AssistantId, EvaluationItem, LLMGateway
+from src.application.services import (
+    PIPELINE_VERSION,
+    is_index_outdated,
+    read_index_state,
+)
+from src.domain import (
+    AssistantId,
+    DocumentRepository,
+    EmbeddingGateway,
+    EvaluationItem,
+    LLMGateway,
+    VectorStoreGateway,
+)
+from src.infrastructure.composition import (
+    build_document_indexer,
+    build_embedding_gateway,
+    build_file_storage,
+    max_file_bytes,
+)
 from src.infrastructure.database import (
-    Base,
     PostgresAssistantRepository,
     PostgresDocumentRepository,
+    PostgresReindexJobRepository,
     PostgresSecretSettingsRepository,
     SessionLocal,
-    engine,
+    run_migrations,
 )
-from src.infrastructure.embeddings import LocalHashEmbeddingGateway
 from src.infrastructure.evaluation import (
     EvaluationDatasetError,
     JsonEvaluationReportStore,
@@ -68,7 +85,7 @@ def main(argv: list[str] | None = None) -> int:
             logger.error("evaluation.dataset.invalid", extra={"problem": problem})
         return EXIT_INVALID_DATASET
 
-    Base.metadata.create_all(bind=engine)
+    run_migrations()
     with SessionLocal() as session:
         return _run(args, items, session)
 
@@ -96,22 +113,29 @@ def _run(
     items: list[EvaluationItem],
     session: Session,
 ) -> int:
-    embedding_gateway = LocalHashEmbeddingGateway(
-        vector_size=int(os.getenv("EMBEDDING_VECTOR_SIZE", "384"))
-    )
+    embedding_gateway = build_embedding_gateway()
     vector_store_gateway = QdrantVectorStoreGateway(
         url=os.getenv("QDRANT_URL", "http://qdrant:6333"),
         api_key=os.getenv("QDRANT_API_KEY", "") or None,
     )
     document_repository = PostgresDocumentRepository(session=session)
     assistant_id = _ensure_assistant(args, session)
+    _discard_outdated_index(
+        assistant_id,
+        document_repository,
+        vector_store_gateway,
+        embedding_gateway,
+    )
     _seed_documents(
         args.seed_dir,
         assistant_id,
         IngestDocumentUseCase(
             document_repository=document_repository,
-            embedding_gateway=embedding_gateway,
             vector_store_gateway=vector_store_gateway,
+            document_indexer=build_document_indexer(),
+            file_storage=build_file_storage(),
+            reindex_job_repository=PostgresReindexJobRepository(session=session),
+            max_file_bytes=max_file_bytes(),
         ),
         document_repository,
     )
@@ -152,6 +176,38 @@ def _ensure_assistant(args: argparse.Namespace, session: Session) -> AssistantId
     return AssistantId(created.id)
 
 
+def _discard_outdated_index(
+    assistant_id: AssistantId,
+    document_repository: DocumentRepository,
+    vector_store_gateway: VectorStoreGateway,
+    embedding_gateway: EmbeddingGateway,
+) -> None:
+    """Descarta a base do piloto gerada por outro modelo ou pipeline.
+
+    O piloto e sempre reconstruido a partir dos diretorios de origem, entao
+    nao depende dos arquivos originais nem da rotina de reindexacao.
+    """
+    documents = document_repository.list_by_assistant(assistant_id)
+    state = read_index_state(vector_store_gateway, assistant_id)
+    outdated = is_index_outdated(
+        state,
+        documents,
+        embedding_model=embedding_gateway.model_name,
+        pipeline_version=PIPELINE_VERSION,
+    )
+    if not outdated and all(document.is_indexed for document in documents):
+        return
+    for collection in (state.current, state.alias if state.legacy else None):
+        if collection is not None:
+            vector_store_gateway.delete_collection(collection)
+    for document in documents:
+        document_repository.delete(document.id)
+    logger.info(
+        "evaluation.index.discarded",
+        extra={"assistant_id": assistant_id.value, "documents": len(documents)},
+    )
+
+
 def _seed_documents(
     seed_directories: list[Path],
     assistant_id: AssistantId,
@@ -167,7 +223,8 @@ def _seed_documents(
                 IngestDocumentInput(
                     assistant_id=assistant_id.value,
                     source_name=path.name,
-                    content=path.read_text(encoding="utf-8"),
+                    raw_content=path.read_bytes(),
+                    content_type="text/markdown",
                 )
             )
             logger.info(
@@ -199,14 +256,19 @@ def _llm_model() -> str:
 
 def _parameters(
     args: argparse.Namespace,
-    embedding_gateway: object,
+    embedding_gateway: EmbeddingGateway,
     llm_gateway: LLMGateway | None,
 ) -> dict[str, str]:
     return {
         "commit": os.getenv("GIT_COMMIT", "unknown"),
         "dataset": args.dataset.name,
-        "embedding": type(embedding_gateway).__name__,
-        "embedding_vector_size": os.getenv("EMBEDDING_VECTOR_SIZE", "384"),
+        "embedding": embedding_gateway.model_name,
+        "embedding_vector_size": str(embedding_gateway.dimension),
+        "pipeline_version": PIPELINE_VERSION,
+        "chunk_max_tokens": os.getenv("CHUNK_MAX_TOKENS", "").strip()
+        or "limite do modelo",
+        "chunk_overlap_sentences": os.getenv("CHUNK_OVERLAP_SENTENCES", "1"),
+        "chunk_prefix_max_tokens": os.getenv("CHUNK_PREFIX_MAX_TOKENS", "32"),
         "context_top_k": str(args.context_top_k),
         "llm_model": _llm_model() if llm_gateway else "nao utilizado",
         "judge": "LLMAnswerJudge" if llm_gateway else "nao utilizado",

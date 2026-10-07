@@ -141,8 +141,10 @@ def delete_assistant(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="assistant not found",
         )
+    # O nome do assistente e um alias; a collection vigente e versionada.
+    alias = CollectionName.from_assistant_id(assistant_ref)
     vector_store_gateway.delete_collection(
-        CollectionName.from_assistant_id(assistant_ref)
+        vector_store_gateway.resolve_alias(alias) or alias
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

@@ -4,8 +4,20 @@ from .chunking import (
     DocumentChunk,
     ExtractedDocument,
 )
-from .entities import Assistant, ChatMessage, Conversation, Document, MessageRole
-from .errors import DomainValidationError
+from .entities import (
+    Assistant,
+    ChatMessage,
+    Conversation,
+    Document,
+    MessageRole,
+    ReindexJob,
+    ReindexStatus,
+)
+from .errors import (
+    DomainValidationError,
+    IndexOutdatedError,
+    ReindexInProgressError,
+)
 from .evaluation import (
     EvaluationItem,
     EvaluationItemResult,
@@ -20,9 +32,12 @@ from .interfaces import (
     AssistantRepository,
     ConversationRepository,
     DocumentChunker,
+    DocumentExtractor,
+    DocumentFileStorage,
     DocumentRepository,
     EmbeddingGateway,
     LLMGateway,
+    ReindexJobRepository,
     SecretSettingsRepository,
     SearchResult,
     TokenCounter,
@@ -55,6 +70,8 @@ __all__ = [
     "DocumentBlock",
     "DocumentChunk",
     "DocumentChunker",
+    "DocumentExtractor",
+    "DocumentFileStorage",
     "DocumentId",
     "DocumentMetadata",
     "DocumentRepository",
@@ -65,9 +82,14 @@ __all__ = [
     "EvaluationItemResult",
     "EvaluationMetrics",
     "EvaluationReport",
+    "IndexOutdatedError",
     "LLMGateway",
     "MessageId",
     "MessageRole",
+    "ReindexInProgressError",
+    "ReindexJob",
+    "ReindexJobRepository",
+    "ReindexStatus",
     "SecretSettingsRepository",
     "SearchResult",
     "TokenCounter",

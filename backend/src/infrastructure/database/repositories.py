@@ -4,6 +4,7 @@ import json
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from src.domain import (
@@ -18,6 +19,9 @@ from src.domain import (
     DocumentMetadata,
     MessageId,
     MessageRole,
+    ReindexInProgressError,
+    ReindexJob,
+    ReindexStatus,
 )
 
 from .models import (
@@ -25,6 +29,7 @@ from .models import (
     ConversationModel,
     DocumentModel,
     MessageModel,
+    ReindexJobModel,
     SecretSettingModel,
 )
 
@@ -214,6 +219,10 @@ class PostgresDocumentRepository:
                 content_hash=document.content_hash,
                 metadata_json=json.dumps(document.metadata.values),
                 created_at=document.created_at,
+                embedding_model=document.embedding_model,
+                pipeline_version=document.pipeline_version,
+                chunk_count=document.chunk_count,
+                storage_key=document.storage_key,
             )
             self._session.add(model)
         else:
@@ -221,6 +230,10 @@ class PostgresDocumentRepository:
             model.source_name = document.source_name
             model.content_hash = document.content_hash
             model.metadata_json = json.dumps(document.metadata.values)
+            model.embedding_model = document.embedding_model
+            model.pipeline_version = document.pipeline_version
+            model.chunk_count = document.chunk_count
+            model.storage_key = document.storage_key
         self._session.commit()
         self._session.refresh(model)
         return _document_to_entity(model)
@@ -233,6 +246,76 @@ class PostgresDocumentRepository:
         )
         return [
             _document_to_entity(item)
+            for item in self._session.scalars(stmt).all()
+        ]
+
+
+    def delete(self, document_id: DocumentId) -> bool:
+        model = self._session.get(DocumentModel, document_id.value)
+        if model is None:
+            return False
+        self._session.delete(model)
+        self._session.commit()
+        return True
+
+
+class PostgresReindexJobRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def save(self, job: ReindexJob) -> ReindexJob:
+        model = self._session.get(ReindexJobModel, job.id)
+        if model is None:
+            model = ReindexJobModel(
+                id=job.id,
+                assistant_id=job.assistant_id.value,
+                started_at=job.started_at,
+            )
+            self._session.add(model)
+        model.target_collection = job.target_collection
+        model.status = job.status.value
+        model.total_documents = job.total_documents
+        model.processed_documents = job.processed_documents
+        model.error = job.error
+        model.finished_at = job.finished_at
+        try:
+            self._session.commit()
+        except IntegrityError as exc:
+            self._session.rollback()
+            raise ReindexInProgressError(
+                "a reindex is already in progress for this assistant."
+            ) from exc
+        self._session.refresh(model)
+        return _reindex_job_to_entity(model)
+
+    def get_by_id(self, job_id: str) -> ReindexJob | None:
+        model = self._session.get(ReindexJobModel, job_id)
+        return _reindex_job_to_entity(model) if model else None
+
+    def get_latest(self, assistant_id: AssistantId) -> ReindexJob | None:
+        stmt = (
+            select(ReindexJobModel)
+            .where(ReindexJobModel.assistant_id == assistant_id.value)
+            .order_by(ReindexJobModel.started_at.desc())
+            .limit(1)
+        )
+        model = self._session.scalars(stmt).first()
+        return _reindex_job_to_entity(model) if model else None
+
+    def get_running(self, assistant_id: AssistantId) -> ReindexJob | None:
+        stmt = select(ReindexJobModel).where(
+            ReindexJobModel.assistant_id == assistant_id.value,
+            ReindexJobModel.status == ReindexStatus.RUNNING.value,
+        )
+        model = self._session.scalars(stmt).first()
+        return _reindex_job_to_entity(model) if model else None
+
+    def list_running(self) -> list[ReindexJob]:
+        stmt = select(ReindexJobModel).where(
+            ReindexJobModel.status == ReindexStatus.RUNNING.value
+        )
+        return [
+            _reindex_job_to_entity(item)
             for item in self._session.scalars(stmt).all()
         ]
 
@@ -298,4 +381,22 @@ def _document_to_entity(model: DocumentModel) -> Document:
         content_hash=model.content_hash,
         metadata=DocumentMetadata.from_dict(metadata),
         created_at=model.created_at,
+        embedding_model=model.embedding_model,
+        pipeline_version=model.pipeline_version,
+        chunk_count=model.chunk_count,
+        storage_key=model.storage_key,
+    )
+
+
+def _reindex_job_to_entity(model: ReindexJobModel) -> ReindexJob:
+    return ReindexJob(
+        id=model.id,
+        assistant_id=AssistantId(model.assistant_id),
+        target_collection=model.target_collection,
+        status=ReindexStatus(model.status),
+        total_documents=model.total_documents,
+        processed_documents=model.processed_documents,
+        error=model.error,
+        started_at=model.started_at,
+        finished_at=model.finished_at,
     )

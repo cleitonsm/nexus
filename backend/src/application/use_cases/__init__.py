@@ -12,7 +12,11 @@ from .evaluate_assistant import (
     EvaluateAssistantInput,
     EvaluateAssistantUseCase,
 )
-from .ingest_document import IngestDocumentInput, IngestDocumentUseCase
+from .ingest_document import (
+    DocumentTooLargeError,
+    IngestDocumentInput,
+    IngestDocumentUseCase,
+)
 from .infer_assistant import (
     InferAssistantInput,
     InferAssistantOutput,
@@ -33,6 +37,16 @@ from .register_conversation import (
     RegisterConversationInput,
     RegisterConversationUseCase,
 )
+from .reindex_assistant import (
+    FailInterruptedReindexesUseCase,
+    GetIndexStatusInput,
+    GetIndexStatusUseCase,
+    ReindexJobNotFoundError,
+    RunReindexInput,
+    RunReindexUseCase,
+    StartReindexInput,
+    StartReindexUseCase,
+)
 
 __all__ = [
     "ChatWithAssistantInput",
@@ -42,8 +56,12 @@ __all__ = [
     "ConversationNotFoundError",
     "CreateAssistantInput",
     "CreateAssistantUseCase",
+    "DocumentTooLargeError",
     "EvaluateAssistantInput",
     "EvaluateAssistantUseCase",
+    "FailInterruptedReindexesUseCase",
+    "GetIndexStatusInput",
+    "GetIndexStatusUseCase",
     "IngestDocumentInput",
     "IngestDocumentUseCase",
     "InferAssistantInput",
@@ -56,6 +74,11 @@ __all__ = [
     "GetGlobalApiKeyValueUseCase",
     "RegisterConversationInput",
     "RegisterConversationUseCase",
+    "ReindexJobNotFoundError",
+    "RunReindexInput",
+    "RunReindexUseCase",
     "SaveGlobalApiKeyInput",
     "SaveGlobalApiKeyUseCase",
+    "StartReindexInput",
+    "StartReindexUseCase",
 ]

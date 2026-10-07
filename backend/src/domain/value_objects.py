@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from re import sub
+from re import search, sub
 from typing import Any
 
 from .errors import DomainValidationError
@@ -101,6 +101,12 @@ class CollectionName:
                 "collection version must be greater than or equal to 1."
             )
         return cls(value=f"{cls.from_assistant_id(assistant_id).value}-v{version}")
+
+    @property
+    def version(self) -> int | None:
+        """Numero da versao, quando o nome e de uma collection versionada."""
+        match = search(r"-v(\d+)$", self.value)
+        return int(match.group(1)) if match else None
 
     def __str__(self) -> str:
         return self.value

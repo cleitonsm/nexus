@@ -4,10 +4,14 @@ from src.domain import (
     AssistantId,
     BlockType,
     CollectionName,
+    Document,
     DocumentBlock,
     DocumentChunk,
+    DocumentId,
     DomainValidationError,
     ExtractedDocument,
+    ReindexJob,
+    ReindexStatus,
 )
 
 
@@ -106,6 +110,106 @@ class VersionedCollectionNameTestCase(unittest.TestCase):
     def test_versioned_name_rejects_version_below_one(self) -> None:
         with self.assertRaises(DomainValidationError):
             CollectionName.versioned(AssistantId("a1"), 0)
+
+    def test_version_is_read_from_versioned_name(self) -> None:
+        assistant_id = AssistantId("a1")
+        self.assertEqual(CollectionName.versioned(assistant_id, 12).version, 12)
+        self.assertIsNone(CollectionName.from_assistant_id(assistant_id).version)
+
+
+def _document(**fields: object) -> Document:
+    return Document(
+        id=DocumentId("doc-1"),
+        assistant_id=AssistantId("a1"),
+        source_name="manual.md",
+        content_hash="hash",
+        **fields,
+    )
+
+
+class DocumentIndexingStateTestCase(unittest.TestCase):
+    def test_document_from_the_mvp_is_not_indexed(self) -> None:
+        document = _document()
+        self.assertFalse(document.is_indexed)
+        self.assertFalse(document.has_original)
+        self.assertEqual(document.chunk_count, 0)
+
+    def test_is_current_requires_same_model_and_pipeline(self) -> None:
+        document = _document(embedding_model="m1", pipeline_version="2")
+        self.assertTrue(
+            document.is_current(embedding_model="m1", pipeline_version="2")
+        )
+        self.assertFalse(
+            document.is_current(embedding_model="m2", pipeline_version="2")
+        )
+        self.assertFalse(
+            document.is_current(embedding_model="m1", pipeline_version="3")
+        )
+
+    def test_indexed_with_returns_updated_copy(self) -> None:
+        original = _document(storage_key="a1/doc-1.md")
+        updated = original.indexed_with(
+            embedding_model="m1",
+            pipeline_version="2",
+            chunk_count=7,
+        )
+        self.assertFalse(original.is_indexed)
+        self.assertEqual(updated.chunk_count, 7)
+        self.assertEqual(updated.storage_key, "a1/doc-1.md")
+        self.assertEqual(updated.created_at, original.created_at)
+
+    def test_negative_chunk_count_is_rejected(self) -> None:
+        with self.assertRaises(DomainValidationError):
+            _document(chunk_count=-1)
+
+
+class ReindexJobTestCase(unittest.TestCase):
+    def _job(self) -> ReindexJob:
+        return ReindexJob(
+            id="job-1",
+            assistant_id=AssistantId("a1"),
+            target_collection="assistant-a1-v2",
+            total_documents=3,
+        )
+
+    def test_new_job_is_running(self) -> None:
+        job = self._job()
+        self.assertTrue(job.is_running)
+        self.assertIsNone(job.finished_at)
+
+    def test_progress_keeps_job_running(self) -> None:
+        job = self._job().with_progress(total=3, processed=2)
+        self.assertEqual(job.processed_documents, 2)
+        self.assertTrue(job.is_running)
+
+    def test_succeed_closes_the_job(self) -> None:
+        job = self._job().succeed()
+        self.assertEqual(job.status, ReindexStatus.SUCCEEDED)
+        self.assertIsNotNone(job.finished_at)
+        self.assertFalse(job.is_running)
+
+    def test_fail_records_the_error(self) -> None:
+        job = self._job().fail("  qdrant indisponivel  ")
+        self.assertEqual(job.status, ReindexStatus.FAILED)
+        self.assertEqual(job.error, "qdrant indisponivel")
+        self.assertIsNotNone(job.finished_at)
+
+    def test_empty_target_collection_is_rejected(self) -> None:
+        with self.assertRaises(DomainValidationError):
+            ReindexJob(
+                id="job-1",
+                assistant_id=AssistantId("a1"),
+                target_collection=" ",
+            )
+
+    def test_negative_counters_are_rejected(self) -> None:
+        with self.assertRaises(DomainValidationError):
+            ReindexJob(
+                id="job-1",
+                assistant_id=AssistantId("a1"),
+                target_collection="assistant-a1-v2",
+                processed_documents=-1,
+            )
 
 
 if __name__ == "__main__":

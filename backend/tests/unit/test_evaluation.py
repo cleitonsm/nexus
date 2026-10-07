@@ -49,8 +49,14 @@ class InMemoryDocumentRepository:
 
 
 class SingleVectorEmbeddingGateway:
-    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+    model_name = "fake"
+    dimension = 1
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [[1.0] for _ in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return [1.0]
 
 
 class ScriptedVectorStoreGateway:

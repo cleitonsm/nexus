@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -55,6 +55,25 @@ class DocumentModel(Base):
         DateTime(timezone=True),
         default=_utc_now,
         nullable=False,
+    )
+
+    embedding_model: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    pipeline_version: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+    )
+    chunk_count: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    storage_key: Mapped[str | None] = mapped_column(
+        String(512),
+        nullable=True,
     )
 
     assistant: Mapped[AssistantModel] = relationship(
@@ -131,4 +150,49 @@ class SecretSettingModel(Base):
         DateTime(timezone=True),
         default=_utc_now,
         nullable=False,
+    )
+
+
+class ReindexJobModel(Base):
+    __tablename__ = "reindex_jobs"
+    __table_args__ = (
+        # No maximo uma reindexacao em curso por assistente.
+        Index(
+            "uq_reindex_jobs_running",
+            "assistant_id",
+            unique=True,
+            postgresql_where=text("status = 'running'"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    assistant_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("assistants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_collection: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    total_documents: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    processed_documents: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    error: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=_utc_now,
+        nullable=False,
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )

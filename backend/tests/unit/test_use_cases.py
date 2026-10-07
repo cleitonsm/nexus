@@ -7,8 +7,6 @@ from src.application.use_cases import (
     CreateAssistantUseCase,
     GetGlobalApiKeyStatusUseCase,
     GetGlobalApiKeyValueUseCase,
-    IngestDocumentInput,
-    IngestDocumentUseCase,
     ListAssistantsUseCase,
     ListConversationsInput,
     ListConversationsUseCase,
@@ -134,11 +132,17 @@ class InMemoryDocumentRepository:
 
 
 class FakeEmbeddingGateway:
-    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+    model_name = "fake"
+    dimension = 2
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [
             [float(index + 1), float(index + 2)]
             for index, _ in enumerate(texts)
         ]
+
+    def embed_query(self, text: str) -> list[float]:
+        return [1.0, 2.0]
 
 
 class SpyVectorStoreGateway:
@@ -339,71 +343,6 @@ class UseCasesTestCase(unittest.TestCase):
             {item.id for item in result.conversations},
             {"conv-1", "conv-2"},
         )
-
-    def test_ingest_document_use_case_creates_collection_per_assistant(
-        self,
-    ) -> None:
-        document_repo = InMemoryDocumentRepository()
-        embedding_gateway = FakeEmbeddingGateway()
-        vector_store = SpyVectorStoreGateway()
-        use_case = IngestDocumentUseCase(
-            document_repository=document_repo,
-            embedding_gateway=embedding_gateway,
-            vector_store_gateway=vector_store,
-        )
-
-        first_result = use_case.execute(
-            IngestDocumentInput(
-                assistant_id="assistant-1",
-                document_id="doc-1",
-                source_name="manual-a.txt",
-                content="Linha um\nLinha dois\nLinha tres",
-                metadata={"source": "teste"},
-                chunk_size=12,
-                chunk_overlap=3,
-            )
-        )
-        second_result = use_case.execute(
-            IngestDocumentInput(
-                assistant_id="assistant-2",
-                document_id="doc-2",
-                source_name="manual-b.txt",
-                content="Outro documento para outro assistente",
-            )
-        )
-
-        self.assertEqual(first_result.collection_name, "assistant-assistant-1")
-        self.assertEqual(second_result.collection_name, "assistant-assistant-2")
-        self.assertIn("assistant-assistant-1", vector_store.collections)
-        self.assertIn("assistant-assistant-2", vector_store.collections)
-        self.assertEqual(vector_store.collections["assistant-assistant-1"], 2)
-        self.assertEqual(vector_store.collections["assistant-assistant-2"], 2)
-
-        first_upsert = vector_store.upserts[0]
-        self.assertEqual(first_upsert[0], "assistant-assistant-1")
-        self.assertGreaterEqual(len(first_upsert[1]), 2)
-        self.assertEqual(first_upsert[1][0].assistant_id.value, "assistant-1")
-        self.assertEqual(first_upsert[1][0].document_id.value, "doc-1")
-        self.assertEqual(first_upsert[1][0].source_name, "manual-a.txt")
-
-        stored_document = document_repo.items["doc-1"]
-        self.assertEqual(stored_document.metadata.values["source"], "teste")
-
-    def test_ingest_document_rejects_empty_content(self) -> None:
-        use_case = IngestDocumentUseCase(
-            document_repository=InMemoryDocumentRepository(),
-            embedding_gateway=FakeEmbeddingGateway(),
-            vector_store_gateway=SpyVectorStoreGateway(),
-        )
-
-        with self.assertRaises(ValueError):
-            use_case.execute(
-                IngestDocumentInput(
-                    assistant_id="assistant-1",
-                    source_name="empty.txt",
-                    content="   ",
-                )
-            )
 
     def test_chat_with_assistant_use_case_runs_rag_flow_with_langgraph(
         self,

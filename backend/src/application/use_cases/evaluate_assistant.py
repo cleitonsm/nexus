@@ -115,12 +115,12 @@ class EvaluateAssistantUseCase:
         assistant_id: AssistantId,
         data: EvaluateAssistantInput,
     ) -> list[SearchResult]:
-        vectors = self._embedding_gateway.embed_texts([question])
-        if not vectors:
+        query_vector = self._embedding_gateway.embed_query(question)
+        if not query_vector:
             return []
         return self._vector_store_gateway.search(
             collection_name=CollectionName.from_assistant_id(assistant_id),
-            query_vector=vectors[0],
+            query_vector=query_vector,
             limit=max(data.k, data.context_top_k),
         )
 

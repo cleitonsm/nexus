@@ -172,7 +172,7 @@ class ChatWithAssistantUseCase:
         }
 
     def _retrieve_context(self, state: ChatState) -> ChatState:
-        query_vector = self._embedding_gateway.embed_texts([state["question"]])
+        query_vector = self._embedding_gateway.embed_query(state["question"])
         if not query_vector:
             return {
                 **state,
@@ -185,7 +185,7 @@ class ChatWithAssistantUseCase:
         )
         search_results = self._vector_store_gateway.search(
             collection_name=collection_name,
-            query_vector=query_vector[0],
+            query_vector=query_vector,
             limit=state["top_k"],
         )
         return {

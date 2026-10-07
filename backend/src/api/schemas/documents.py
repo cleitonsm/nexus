@@ -14,3 +14,5 @@ class DocumentIngestionResponse(BaseModel):
     collection_name: str
     chunk_count: int
     embedding_dimension: int
+    embedding_model: str | None = None
+    pipeline_version: str | None = None

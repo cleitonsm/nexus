@@ -10,6 +10,9 @@ services:
         required: false
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - backend_cache:/app/cache
+      - documents_data:/app/data/documents
     healthcheck:
       test:
         [
@@ -80,3 +83,5 @@ services:
 volumes:
   postgres_data:
   qdrant_data:
+  backend_cache:
+  documents_data:

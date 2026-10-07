@@ -2,21 +2,38 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from src.application.use_cases import GetGlobalApiKeyValueUseCase
-from src.domain import ChatMessage, LLMGateway
+from src.application.services import DocumentIndexer
+from src.application.use_cases import (
+    GetGlobalApiKeyValueUseCase,
+    RunReindexInput,
+    RunReindexUseCase,
+)
+from src.domain import (
+    ChatMessage,
+    DocumentFileStorage,
+    EmbeddingGateway,
+    LLMGateway,
+)
+from src.infrastructure.composition import (
+    build_document_indexer,
+    build_embedding_gateway,
+    build_file_storage,
+    max_file_bytes,
+)
 from src.infrastructure.database import (
     PostgresAssistantRepository,
     PostgresConversationRepository,
     PostgresDocumentRepository,
+    PostgresReindexJobRepository,
     PostgresSecretSettingsRepository,
+    SessionLocal,
     get_db_session,
 )
-from src.infrastructure.embeddings import LocalHashEmbeddingGateway
 from src.infrastructure.llm import HttpChatCompletionsLLM
 from src.infrastructure.secrets import FernetSecretCipher
 from src.infrastructure.vector_store import QdrantVectorStoreGateway
@@ -59,9 +76,43 @@ def get_secret_cipher() -> FernetSecretCipher:
     return FernetSecretCipher(master_key=master_key)
 
 
-def get_embedding_gateway() -> LocalHashEmbeddingGateway:
-    vector_size = int(os.getenv("EMBEDDING_VECTOR_SIZE", "384"))
-    return LocalHashEmbeddingGateway(vector_size=vector_size)
+def get_reindex_job_repository(
+    session: Session = Depends(get_session),
+) -> PostgresReindexJobRepository:
+    return PostgresReindexJobRepository(session=session)
+
+
+def get_embedding_gateway() -> EmbeddingGateway:
+    """O modelo e carregado uma unica vez por processo."""
+    return build_embedding_gateway()
+
+
+def get_document_indexer() -> DocumentIndexer:
+    return build_document_indexer()
+
+
+def get_file_storage() -> DocumentFileStorage:
+    return build_file_storage()
+
+
+def get_max_file_bytes() -> int:
+    return max_file_bytes()
+
+
+def run_reindex_job(job_id: str) -> None:
+    """Executa a reindexacao em segundo plano, com sessao de banco propria."""
+    with SessionLocal() as session:
+        RunReindexUseCase(
+            document_repository=PostgresDocumentRepository(session=session),
+            vector_store_gateway=get_vector_store_gateway(),
+            document_indexer=build_document_indexer(),
+            file_storage=build_file_storage(),
+            reindex_job_repository=PostgresReindexJobRepository(session=session),
+        ).execute(RunReindexInput(job_id=job_id))
+
+
+def get_reindex_runner() -> Callable[[str], None]:
+    return run_reindex_job
 
 
 def get_vector_store_gateway() -> QdrantVectorStoreGateway:

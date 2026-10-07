@@ -4,7 +4,13 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .chunking import DocumentChunk, ExtractedDocument
-from .entities import Assistant, ChatMessage, Conversation, Document
+from .entities import (
+    Assistant,
+    ChatMessage,
+    Conversation,
+    Document,
+    ReindexJob,
+)
 from .value_objects import (
     AssistantId,
     CollectionName,
@@ -30,6 +36,20 @@ class DocumentRepository(Protocol):
         self,
         assistant_id: AssistantId,
     ) -> list[Document]: ...
+
+    def delete(self, document_id: DocumentId) -> bool: ...
+
+
+class ReindexJobRepository(Protocol):
+    def save(self, job: ReindexJob) -> ReindexJob: ...
+
+    def get_by_id(self, job_id: str) -> ReindexJob | None: ...
+
+    def get_latest(self, assistant_id: AssistantId) -> ReindexJob | None: ...
+
+    def get_running(self, assistant_id: AssistantId) -> ReindexJob | None: ...
+
+    def list_running(self) -> list[ReindexJob]: ...
 
 
 class ConversationRepository(Protocol):
@@ -67,7 +87,17 @@ class SecretSettingsRepository(Protocol):
 
 
 class EmbeddingGateway(Protocol):
-    def embed_texts(self, texts: list[str]) -> list[list[float]]: ...
+    """Vetoriza localmente; documentos e consultas tem entradas distintas."""
+
+    @property
+    def model_name(self) -> str: ...
+
+    @property
+    def dimension(self) -> int: ...
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]: ...
+
+    def embed_query(self, text: str) -> list[float]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +110,10 @@ class VectorChunk:
     content_hash: str
     text: str
     vector: list[float]
+    section_path: str = ""
+    page: int | None = None
+    embedding_model: str = ""
+    pipeline_version: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +146,24 @@ class VectorStoreGateway(Protocol):
 
     def delete_collection(self, collection_name: CollectionName) -> None: ...
 
+    def collection_exists(self, collection_name: CollectionName) -> bool:
+        """Indica se existe uma collection fisica com esse nome (nao um alias)."""
+        ...
+
+    def count_points(self, collection_name: CollectionName) -> int: ...
+
+    def resolve_alias(self, alias: CollectionName) -> CollectionName | None:
+        """Collection para a qual o alias aponta, ou None se nao existir."""
+        ...
+
+    def point_alias(
+        self,
+        alias: CollectionName,
+        collection_name: CollectionName,
+    ) -> None:
+        """Cria o alias ou o troca de forma atomica."""
+        ...
+
 
 class TokenCounter(Protocol):
     """Mede textos com o tokenizador do modelo de embedding."""
@@ -128,6 +180,35 @@ class TokenCounter(Protocol):
 
 class DocumentChunker(Protocol):
     def chunk(self, document: ExtractedDocument) -> list[DocumentChunk]: ...
+
+
+class DocumentExtractor(Protocol):
+    """Converte o arquivo enviado em blocos; ValueError para arquivo invalido."""
+
+    def extract(
+        self,
+        *,
+        filename: str | None,
+        content_type: str | None,
+        raw_content: bytes,
+    ) -> ExtractedDocument: ...
+
+
+class DocumentFileStorage(Protocol):
+    """Guarda o arquivo original para reprocessamento."""
+
+    def save(
+        self,
+        *,
+        assistant_id: AssistantId,
+        document_id: DocumentId,
+        filename: str,
+        content: bytes,
+    ) -> str:
+        """Grava o arquivo e devolve a chave de armazenamento."""
+        ...
+
+    def load(self, storage_key: str) -> bytes: ...
 
 
 class LLMGateway(Protocol):

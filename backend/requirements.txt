@@ -8,3 +8,5 @@ langgraph
 cryptography
 pypdf
 python-docx
+alembic==1.14.0
+sentence-transformers==3.3.1
