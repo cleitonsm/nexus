@@ -28,11 +28,15 @@ from src.domain import (
     ReindexJob,
     ReindexStatus,
     SearchResult,
+    SparseVector,
     VectorChunk,
 )
 from src.infrastructure.chunking import StructuralDocumentChunker
 from src.infrastructure.documents import SupportedDocumentExtractor
-from src.infrastructure.embeddings import LocalHashEmbeddingGateway
+from src.infrastructure.embeddings import (
+    Bm25SparseEmbeddingGateway,
+    LocalHashEmbeddingGateway,
+)
 from src.infrastructure.storage import LocalDocumentFileStorage
 
 MODEL = "modelo-teste"
@@ -98,11 +102,13 @@ class InMemoryVectorStore:
             chunks = chunks[:-1]
         self.collections[physical].update({chunk.id: chunk for chunk in chunks})
 
-    def search(
+    def hybrid_search(
         self,
         collection_name: CollectionName,
-        query_vector: list[float],
+        dense_vector: list[float],
+        sparse_vector: SparseVector,
         limit: int,
+        payload_filter: dict[str, str] | None = None,
     ) -> list[SearchResult]:
         return []
 
@@ -204,6 +210,7 @@ class Scenario:
                 max_prefix_tokens=8,
             ),
             embedding_gateway=self.embedding,
+            sparse_embedding_gateway=Bm25SparseEmbeddingGateway(),
         )
 
     def ingest(

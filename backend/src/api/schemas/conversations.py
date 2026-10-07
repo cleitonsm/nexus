@@ -39,17 +39,31 @@ class AddMessageRequest(BaseModel):
     content: str = Field(min_length=1)
 
 
+class CitationResponse(BaseModel):
+    number: int
+    document_id: str
+    chunk_id: str
+    source_name: str
+    section_path: str
+    page: int | None
+    score: float
+    excerpt: str
+
+
 class MessageResponse(BaseModel):
     id: str
     conversation_id: str
     role: str
     content: str
     created_at: datetime
+    citations: list[CitationResponse] = Field(default_factory=list)
 
 
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1)
-    top_k: int = Field(default=4, ge=1, le=20)
+    # Teto por pergunta: reduz a quantidade de trechos abaixo de
+    # RERANK_TOP_N, nunca acima (SPEC-003).
+    top_k: int | None = Field(default=None, ge=1, le=20)
 
 
 class ChatResponse(BaseModel):
@@ -59,6 +73,8 @@ class ChatResponse(BaseModel):
     assistant_message: MessageResponse
     used_context_chunks: int
     fallback_used: bool
+    citations: list[CitationResponse] = Field(default_factory=list)
+    rewritten_query: str = ""
 
 
 class ConversationDetailResponse(BaseModel):

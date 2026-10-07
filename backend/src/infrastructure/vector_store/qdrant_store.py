@@ -1,11 +1,26 @@
 from __future__ import annotations
 
+import logging
 from uuid import NAMESPACE_URL, uuid5
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
+from qdrant_client.http.exceptions import UnexpectedResponse
 
-from src.domain import CollectionName, DocumentId, SearchResult, VectorChunk
+from src.domain import (
+    CollectionName,
+    DocumentId,
+    IndexOutdatedError,
+    SearchResult,
+    SparseVector,
+    VectorChunk,
+)
+
+DENSE_VECTOR = "dense"
+SPARSE_VECTOR = "sparse"
+_NOT_FOUND = 404
+
+logger = logging.getLogger(__name__)
 
 
 class QdrantVectorStoreGateway:
@@ -23,10 +38,18 @@ class QdrantVectorStoreGateway:
             return
         self._client.create_collection(
             collection_name=collection_name.value,
-            vectors_config=models.VectorParams(
-                size=vector_size,
-                distance=models.Distance.COSINE,
-            ),
+            vectors_config={
+                DENSE_VECTOR: models.VectorParams(
+                    size=vector_size,
+                    distance=models.Distance.COSINE,
+                )
+            },
+            # O IDF do BM25 e calculado pelo Qdrant sobre a collection.
+            sparse_vectors_config={
+                SPARSE_VECTOR: models.SparseVectorParams(
+                    modifier=models.Modifier.IDF,
+                )
+            },
         )
 
     def upsert_chunks(
@@ -41,7 +64,7 @@ class QdrantVectorStoreGateway:
             points=[
                 models.PointStruct(
                     id=str(uuid5(NAMESPACE_URL, chunk.id)),
-                    vector=chunk.vector,
+                    vector=_vectors(chunk),
                     payload=_payload(chunk),
                 )
                 for chunk in chunks
@@ -49,50 +72,96 @@ class QdrantVectorStoreGateway:
             wait=True,
         )
 
-    def search(
+    def hybrid_search(
         self,
         collection_name: CollectionName,
-        query_vector: list[float],
+        dense_vector: list[float],
+        sparse_vector: SparseVector,
         limit: int,
+        payload_filter: dict[str, str] | None = None,
     ) -> list[SearchResult]:
+        """Pre-busca densa e esparsa, fundidas por RRF na Query API (RF-33)."""
         if limit <= 0:
             return []
-        if hasattr(self._client, "search"):
-            hits = self._client.search(
-                collection_name=collection_name.value,
-                query_vector=query_vector,
+        query_filter = _filter(payload_filter)
+        prefetch = [
+            models.Prefetch(
+                query=dense_vector,
+                using=DENSE_VECTOR,
                 limit=limit,
-                with_payload=True,
+                filter=query_filter,
             )
-        else:
-            query_result = self._client.query_points(
-                collection_name=collection_name.value,
-                query=query_vector,
-                limit=limit,
-                with_payload=True,
-            )
-            hits = query_result.points
-        results: list[SearchResult] = []
-        for hit in hits:
-            payload = hit.payload or {}
-            document_id = payload.get("document_id")
-            chunk_id = payload.get("chunk_id", str(hit.id))
-            text = payload.get("text", "")
-            if (
-                not isinstance(document_id, str)
-                or not isinstance(chunk_id, str)
-                or not isinstance(text, str)
-            ):
-                continue
-            results.append(
-                SearchResult(
-                    chunk_id=chunk_id,
-                    document_id=DocumentId(document_id),
-                    score=float(hit.score),
-                    text=text,
+        ]
+        if not sparse_vector.is_empty:
+            prefetch.append(
+                models.Prefetch(
+                    query=_sparse(sparse_vector),
+                    using=SPARSE_VECTOR,
+                    limit=limit,
+                    filter=query_filter,
                 )
             )
-        return results
+        try:
+            response = self._client.query_points(
+                collection_name=collection_name.value,
+                prefetch=prefetch,
+                query=models.FusionQuery(fusion=models.Fusion.RRF),
+                limit=limit,
+                with_payload=True,
+            )
+        except UnexpectedResponse as exc:
+            if exc.status_code == _NOT_FOUND:
+                return []
+            if self._has_hybrid_vectors(collection_name):
+                raise
+            response = self._legacy_dense_search(
+                collection_name, dense_vector, limit, query_filter
+            )
+        return [
+            result
+            for result in (_to_result(point) for point in response.points)
+            if result is not None
+        ]
+
+    def _legacy_dense_search(
+        self,
+        collection_name: CollectionName,
+        dense_vector: list[float],
+        limit: int,
+        query_filter: models.Filter | None,
+    ) -> models.QueryResponse:
+        """Collection anterior a SPEC-003 (vetor sem nome): busca so densa.
+
+        Mantem o chat no ar ate a reindexacao; termos exatos so voltam a ser
+        encontrados depois dela.
+        """
+        logger.warning(
+            "vector_store.legacy_dense_search",
+            extra={"collection": collection_name.value},
+        )
+        try:
+            return self._client.query_points(
+                collection_name=collection_name.value,
+                query=dense_vector,
+                limit=limit,
+                query_filter=query_filter,
+                with_payload=True,
+            )
+        except UnexpectedResponse as exc:
+            raise IndexOutdatedError(
+                "the assistant index is incompatible with the current "
+                "embedding model; reindex it."
+            ) from exc
+
+    def _has_hybrid_vectors(self, collection_name: CollectionName) -> bool:
+        params = self._client.get_collection(collection_name.value).config.params
+        dense = params.vectors
+        sparse = params.sparse_vectors or {}
+        return (
+            isinstance(dense, dict)
+            and DENSE_VECTOR in dense
+            and SPARSE_VECTOR in sparse
+        )
 
     def delete_collection(self, collection_name: CollectionName) -> None:
         if not self.collection_exists(collection_name):
@@ -141,6 +210,54 @@ class QdrantVectorStoreGateway:
         self._client.update_collection_aliases(
             change_aliases_operations=operations
         )
+
+
+def _vectors(chunk: VectorChunk) -> dict[str, object]:
+    vectors: dict[str, object] = {DENSE_VECTOR: chunk.vector}
+    if chunk.sparse_vector is not None and not chunk.sparse_vector.is_empty:
+        vectors[SPARSE_VECTOR] = _sparse(chunk.sparse_vector)
+    return vectors
+
+
+def _sparse(vector: SparseVector) -> models.SparseVector:
+    return models.SparseVector(
+        indices=list(vector.indices),
+        values=list(vector.values),
+    )
+
+
+def _filter(payload_filter: dict[str, str] | None) -> models.Filter | None:
+    if not payload_filter:
+        return None
+    return models.Filter(
+        must=[
+            models.FieldCondition(key=key, match=models.MatchValue(value=value))
+            for key, value in payload_filter.items()
+        ]
+    )
+
+
+def _to_result(point: models.ScoredPoint) -> SearchResult | None:
+    payload = point.payload or {}
+    document_id = payload.get("document_id")
+    chunk_id = payload.get("chunk_id", str(point.id))
+    text = payload.get("text", "")
+    if (
+        not isinstance(document_id, str)
+        or not isinstance(chunk_id, str)
+        or not isinstance(text, str)
+    ):
+        return None
+    page = payload.get("page")
+    return SearchResult(
+        chunk_id=chunk_id,
+        document_id=DocumentId(document_id),
+        score=float(point.score),
+        text=text,
+        source_name=str(payload.get("source_name") or ""),
+        section_path=str(payload.get("section_path") or ""),
+        page=page if isinstance(page, int) and page >= 1 else None,
+    )
 
 
 def _payload(chunk: VectorChunk) -> dict[str, object]:

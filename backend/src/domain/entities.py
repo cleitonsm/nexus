@@ -4,6 +4,7 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from enum import StrEnum
 
+from .citations import Citation
 from .errors import DomainValidationError
 from .value_objects import (
     AssistantId,
@@ -104,10 +105,15 @@ class ChatMessage:
     role: MessageRole
     content: str
     created_at: datetime = field(default_factory=_utc_now)
+    citations: tuple[Citation, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.content.strip():
             raise DomainValidationError("chat message content must not be empty.")
+        if self.citations and self.role is not MessageRole.ASSISTANT:
+            raise DomainValidationError(
+                "only assistant messages may carry citations."
+            )
 
 
 @dataclass(frozen=True, slots=True)

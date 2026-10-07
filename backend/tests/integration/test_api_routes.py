@@ -38,10 +38,12 @@ from src.domain import (
     DocumentMetadata,
     ReindexJob,
     SearchResult,
+    SparseVector,
     VectorChunk,
 )
 from src.infrastructure.chunking import StructuralDocumentChunker
 from src.infrastructure.documents import SupportedDocumentExtractor
+from src.infrastructure.embeddings import Bm25SparseEmbeddingGateway
 
 
 class InMemorySecretSettingsRepository:
@@ -132,6 +134,7 @@ def _fake_document_indexer() -> DocumentIndexer:
             max_prefix_tokens=32,
         ),
         embedding_gateway=FakeEmbeddingGateway(),
+        sparse_embedding_gateway=Bm25SparseEmbeddingGateway(),
     )
 
 
@@ -198,11 +201,13 @@ class SpyVectorStoreGateway:
     ) -> None:
         self.upserts.append((collection_name.value, chunks))
 
-    def search(
+    def hybrid_search(
         self,
         collection_name: CollectionName,
-        query_vector: list[float],
+        dense_vector: list[float],
+        sparse_vector: SparseVector,
         limit: int,
+        payload_filter: dict[str, str] | None = None,
     ) -> list[SearchResult]:
         return []
 

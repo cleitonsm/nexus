@@ -7,7 +7,11 @@ from collections.abc import Callable, Generator
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from src.application.services import DocumentIndexer
+from src.application.services import (
+    ContextRetriever,
+    DocumentIndexer,
+    GroundedAnswerGenerator,
+)
 from src.application.use_cases import (
     GetGlobalApiKeyValueUseCase,
     RunReindexInput,
@@ -15,15 +19,21 @@ from src.application.use_cases import (
 )
 from src.domain import (
     ChatMessage,
+    ContextChunk,
     DocumentFileStorage,
     EmbeddingGateway,
     LLMGateway,
+    TokenCounter,
 )
 from src.infrastructure.composition import (
     build_document_indexer,
     build_embedding_gateway,
     build_file_storage,
+    build_reranker_gateway,
+    build_sparse_embedding_gateway,
+    build_token_counter,
     max_file_bytes,
+    retrieval_settings,
 )
 from src.infrastructure.database import (
     PostgresAssistantRepository,
@@ -121,12 +131,32 @@ def get_vector_store_gateway() -> QdrantVectorStoreGateway:
     return QdrantVectorStoreGateway(url=qdrant_url, api_key=qdrant_api_key)
 
 
+def get_token_counter() -> TokenCounter:
+    return build_token_counter()
+
+
+def get_context_retriever(
+    embedding_gateway: EmbeddingGateway = Depends(get_embedding_gateway),
+    vector_store_gateway: QdrantVectorStoreGateway = Depends(
+        get_vector_store_gateway
+    ),
+) -> ContextRetriever:
+    """Os modelos locais sao carregados uma unica vez por processo."""
+    return ContextRetriever(
+        embedding_gateway=embedding_gateway,
+        sparse_embedding_gateway=build_sparse_embedding_gateway(),
+        vector_store_gateway=vector_store_gateway,
+        reranker_gateway=build_reranker_gateway(),
+        settings=retrieval_settings(),
+    )
+
+
 class UnconfiguredLLMGateway(LLMGateway):
     def generate(
         self,
         *,
         prompt: str,
-        context_chunks: list[str],
+        context_chunks: list[ContextChunk],
         conversation_history: list[ChatMessage],
     ) -> str:
         raise ValueError(
@@ -170,3 +200,9 @@ def get_configured_llm_model() -> str:
     if not model or model == "placeholder":
         return DEFAULT_LLM_MODEL
     return model
+
+
+def get_answer_generator(
+    llm_gateway: LLMGateway = Depends(get_llm_gateway),
+) -> GroundedAnswerGenerator:
+    return GroundedAnswerGenerator(llm_gateway=llm_gateway)

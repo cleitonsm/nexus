@@ -10,7 +10,14 @@ import threading
 import unittest
 from uuid import uuid4
 
-from src.domain import AssistantId, CollectionName, DocumentId, VectorChunk
+from src.domain import (
+    AssistantId,
+    CollectionName,
+    DocumentId,
+    SearchResult,
+    SparseVector,
+    VectorChunk,
+)
 
 try:
     from src.infrastructure.vector_store import QdrantVectorStoreGateway
@@ -48,8 +55,18 @@ def _chunk(assistant_id: AssistantId, index: int, marker: str) -> VectorChunk:
         section_path="Secao",
         page=None,
         embedding_model="modelo-teste",
-        pipeline_version="2",
+        pipeline_version="3",
     )
+
+
+def _search(
+    gateway: "QdrantVectorStoreGateway",
+    collection: CollectionName,
+    vector: list[float],
+    limit: int,
+) -> list[SearchResult]:
+    """So a parte densa: o alias independe do vetor esparso."""
+    return gateway.hybrid_search(collection, vector, SparseVector(), limit)
 
 
 class QdrantAliasTestCase(unittest.TestCase):
@@ -81,7 +98,7 @@ class QdrantAliasTestCase(unittest.TestCase):
 
     def test_payload_carries_phase_two_metadata(self) -> None:
         self.gateway.point_alias(self.alias, self.first)
-        hits = self.gateway.search(self.alias, [1.0, 0.0, 0.5, 0.25], limit=1)
+        hits = _search(self.gateway, self.alias, [1.0, 0.0, 0.5, 0.25], 1)
         self.assertEqual(len(hits), 1)
         self.assertEqual(hits[0].document_id.value, "doc-v1")
 
@@ -95,8 +112,8 @@ class QdrantAliasTestCase(unittest.TestCase):
         def _search() -> None:
             while not stop.is_set():
                 try:
-                    hits = self.gateway.search(
-                        self.alias, [1.0, 1.0, 0.5, 0.25], limit=3
+                    hits = _search(
+                        self.gateway, self.alias, [1.0, 1.0, 0.5, 0.25], 3
                     )
                     if not hits:
                         empty_results.append(1)
@@ -123,7 +140,7 @@ class QdrantAliasTestCase(unittest.TestCase):
         self.gateway.point_alias(self.alias, self.first)
         self.gateway.point_alias(self.alias, self.second)
         self.gateway.delete_collection(self.first)
-        hits = self.gateway.search(self.alias, [1.0, 0.0, 0.5, 0.25], limit=1)
+        hits = _search(self.gateway, self.alias, [1.0, 0.0, 0.5, 0.25], 1)
         self.assertEqual(hits[0].document_id.value, "doc-v2")
 
 

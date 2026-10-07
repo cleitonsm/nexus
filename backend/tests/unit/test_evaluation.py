@@ -7,6 +7,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from chat_doubles import (
+    ScriptedLLM,
+    ScriptedVectorStore,
+    WordTokenCounter,
+    build_retriever,
+    hit,
+)
+from src.application.services import GroundedAnswerGenerator
 from src.application.use_cases import (
     CompareEvaluationReportsInput,
     CompareEvaluationReportsUseCase,
@@ -15,8 +23,6 @@ from src.application.use_cases import (
 )
 from src.domain import (
     AssistantId,
-    ChatMessage,
-    CollectionName,
     Document,
     DocumentId,
     DomainValidationError,
@@ -48,52 +54,11 @@ class InMemoryDocumentRepository:
         ]
 
 
-class SingleVectorEmbeddingGateway:
-    model_name = "fake"
-    dimension = 1
+class RecordingLLM(ScriptedLLM):
+    """Por padrao responde citando o primeiro trecho, como exige a RN-18."""
 
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        return [[1.0] for _ in texts]
-
-    def embed_query(self, text: str) -> list[float]:
-        return [1.0]
-
-
-class ScriptedVectorStoreGateway:
-    """Devolve, para cada pergunta, a lista de resultados roteirizada."""
-
-    def __init__(self, results: list[list[SearchResult]]) -> None:
-        self._results = list(results)
-        self.requested_limits: list[int] = []
-        self.collections: list[str] = []
-
-    def search(
-        self,
-        collection_name: CollectionName,
-        query_vector: list[float],
-        limit: int,
-    ) -> list[SearchResult]:
-        self.requested_limits.append(limit)
-        self.collections.append(collection_name.value)
-        return self._results.pop(0)[:limit]
-
-
-class RecordingLLM:
-    def __init__(self, answer: str = "Resposta gerada.") -> None:
-        self.answer = answer
-        self.calls: list[dict[str, object]] = []
-
-    def generate(
-        self,
-        *,
-        prompt: str,
-        context_chunks: list[str],
-        conversation_history: list[ChatMessage],
-    ) -> str:
-        self.calls.append(
-            {"prompt": prompt, "context_chunks": list(context_chunks)}
-        )
-        return self.answer
+    def __init__(self, answer: str = "Resposta gerada [1].") -> None:
+        super().__init__(answer)
 
 
 class ScriptedJudge:
@@ -121,13 +86,8 @@ def _document(document_id: str, source_name: str) -> Document:
     )
 
 
-def _hit(document_id: str, text: str = "trecho") -> SearchResult:
-    return SearchResult(
-        chunk_id=f"{document_id}:0",
-        document_id=DocumentId(document_id),
-        score=0.9,
-        text=text,
-    )
+def _hit(document_id: str, text: str = "trecho", score: float = 0.9) -> SearchResult:
+    return hit(document_id, text, score=score)
 
 
 def _in_scope(item_id: str, source: str) -> EvaluationItem:
@@ -285,15 +245,17 @@ class EvaluateAssistantUseCaseTests(unittest.TestCase):
         results: list[list[SearchResult]],
         llm: RecordingLLM | None = None,
         judge: ScriptedJudge | None = None,
-    ) -> tuple[EvaluateAssistantUseCase, ScriptedVectorStoreGateway]:
-        vector_store = ScriptedVectorStoreGateway(results)
+    ) -> tuple[EvaluateAssistantUseCase, ScriptedVectorStore]:
+        vector_store = ScriptedVectorStore(results)
         use_case = EvaluateAssistantUseCase(
             document_repository=InMemoryDocumentRepository(
                 [_document("d1", "manual.md"), _document("d2", "outro.md")]
             ),
-            embedding_gateway=SingleVectorEmbeddingGateway(),
-            vector_store_gateway=vector_store,
-            llm_gateway=llm,
+            context_retriever=build_retriever(vector_store),
+            token_counter=WordTokenCounter(),
+            answer_generator=(
+                GroundedAnswerGenerator(llm_gateway=llm) if llm else None
+            ),
             answer_judge=judge,
         )
         return use_case, vector_store
@@ -301,8 +263,8 @@ class EvaluateAssistantUseCaseTests(unittest.TestCase):
     def test_computes_recall_and_mrr_from_source_names(self) -> None:
         use_case, vector_store = self._use_case(
             results=[
-                [_hit("d1"), _hit("d2")],
-                [_hit("d2"), _hit("d1")],
+                [_hit("d1", score=0.9), _hit("d2", score=0.8)],
+                [_hit("d2", score=0.9), _hit("d1", score=0.8)],
                 [_hit("d2")],
             ]
         )
@@ -318,34 +280,76 @@ class EvaluateAssistantUseCaseTests(unittest.TestCase):
         )
         self.assertAlmostEqual(report.metrics["recall_at_k"], 2 / 3)
         self.assertAlmostEqual(report.metrics["mrr"], (1 + 0.5 + 0) / 3)
-        self.assertEqual(vector_store.collections[0], "assistant-assistant-1")
+        self.assertEqual(
+            vector_store.calls[0]["collection"], "assistant-assistant-1"
+        )
         self.assertEqual(report.items[1]["first_relevant_rank"], 2)
 
-    def test_search_uses_the_largest_of_k_and_context_size(self) -> None:
+    def test_search_requests_the_configured_number_of_candidates(self) -> None:
         use_case, vector_store = self._use_case(results=[[_hit("d1")]])
         use_case.execute(
             EvaluateAssistantInput(
                 assistant_id="assistant-1",
                 items=(_in_scope("q1", "manual.md"),),
                 k=5,
-                context_top_k=4,
             )
         )
-        self.assertEqual(vector_store.requested_limits, [5])
+        self.assertEqual(vector_store.calls[0]["limit"], 30)
 
-    def test_generation_uses_only_the_context_window(self) -> None:
+    def test_recall_is_measured_after_the_reranking(self) -> None:
+        """A ordem que conta e a do reranker, nao a da busca."""
+        use_case, _ = self._use_case(
+            results=[[_hit("d2", score=0.2), _hit("d1", score=0.95)]]
+        )
+        report = use_case.execute(
+            EvaluateAssistantInput(
+                assistant_id="assistant-1",
+                items=(_in_scope("q1", "manual.md"),),
+            )
+        )
+        self.assertEqual(report.items[0]["first_relevant_rank"], 1)
+
+    def test_generation_uses_only_the_top_n_chunks(self) -> None:
         llm = RecordingLLM()
-        hits = [_hit("d2", f"trecho {index}") for index in range(5)]
+        hits = [_hit("d2", f"trecho {index}") for index in range(7)]
         use_case, _ = self._use_case(results=[hits], llm=llm)
         use_case.execute(
             EvaluateAssistantInput(
                 assistant_id="assistant-1",
                 items=(_in_scope("q1", "manual.md"),),
-                k=5,
-                context_top_k=4,
+                k=7,
             )
         )
-        self.assertEqual(len(llm.calls[0]["context_chunks"]), 4)
+        self.assertEqual(len(llm.calls[0]["context_chunks"]), 5)
+
+    def test_candidates_below_the_minimum_score_count_as_fallback(self) -> None:
+        """CT-14 na avaliacao: sem trecho relevante o LLM nao e chamado."""
+        llm = RecordingLLM()
+        use_case, _ = self._use_case(
+            results=[[_hit("d1", score=0.49)]],
+            llm=llm,
+        )
+        report = use_case.execute(
+            EvaluateAssistantInput(
+                assistant_id="assistant-1",
+                items=(_out_of_scope("o1"),),
+            )
+        )
+        self.assertEqual(report.metrics["fallback_accuracy"], 1.0)
+        self.assertEqual(llm.calls, [])
+
+    def test_answer_without_valid_citation_counts_as_fallback(self) -> None:
+        use_case, _ = self._use_case(
+            results=[[_hit("d1")]],
+            llm=RecordingLLM(answer="Resposta sem fonte [9]."),
+        )
+        report = use_case.execute(
+            EvaluateAssistantInput(
+                assistant_id="assistant-1",
+                items=(_out_of_scope("o1"),),
+            )
+        )
+        self.assertEqual(report.metrics["fallback_accuracy"], 1.0)
 
     def test_out_of_scope_without_context_counts_as_correct_fallback(self) -> None:
         llm = RecordingLLM()

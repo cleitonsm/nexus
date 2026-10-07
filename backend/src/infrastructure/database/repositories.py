@@ -12,6 +12,7 @@ from src.domain import (
     AssistantId,
     AssistantName,
     ChatMessage,
+    Citation,
     Conversation,
     ConversationId,
     Document,
@@ -169,6 +170,7 @@ class PostgresConversationRepository:
             role=message.role.value,
             content=message.content,
             created_at=message.created_at,
+            citations=_citations_to_json(message.citations),
         )
         self._session.add(model)
         conversation = self._session.get(
@@ -369,6 +371,47 @@ def _message_to_entity(model: MessageModel) -> ChatMessage:
         role=MessageRole(model.role),
         content=model.content,
         created_at=model.created_at,
+        citations=_citations_from_json(model.citations),
+    )
+
+
+def _citations_to_json(
+    citations: tuple[Citation, ...],
+) -> list[dict[str, object]] | None:
+    if not citations:
+        return None
+    return [
+        {
+            "number": item.number,
+            "document_id": item.document_id.value,
+            "chunk_id": item.chunk_id,
+            "source_name": item.source_name,
+            "section_path": item.section_path,
+            "page": item.page,
+            "score": item.score,
+            "excerpt": item.excerpt,
+        }
+        for item in citations
+    ]
+
+
+def _citations_from_json(
+    raw: list[dict[str, object]] | None,
+) -> tuple[Citation, ...]:
+    return tuple(_citation_from_json(item) for item in raw or [])
+
+
+def _citation_from_json(item: dict[str, object]) -> Citation:
+    page = item.get("page")
+    return Citation(
+        number=int(str(item["number"])),
+        document_id=DocumentId(str(item["document_id"])),
+        chunk_id=str(item["chunk_id"]),
+        source_name=str(item.get("source_name") or ""),
+        section_path=str(item.get("section_path") or ""),
+        page=page if isinstance(page, int) else None,
+        score=float(str(item.get("score") or 0.0)),
+        excerpt=str(item["excerpt"]),
     )
 
 

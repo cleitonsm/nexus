@@ -76,7 +76,8 @@ O segundo relatório é comparado automaticamente com o primeiro.
 Opções úteis:
 
 - `--no-generation`: mede apenas a recuperação (recall@k e MRR), sem chamar o LLM.
-- `--k 5` e `--context-top-k 4`: profundidade da busca e tamanho do contexto.
+- `--k 5`: profundidade em que a recuperação é medida, já depois do reranking. O tamanho do
+  contexto vem de `RERANK_TOP_N`, `RELEVANCE_MIN_SCORE` e `CONTEXT_TOKEN_BUDGET`, como no chat.
 - `--tolerance 0.02`: regressão máxima aceita; o padrão vem de `EVAL_REGRESSION_TOLERANCE`.
 
 Sem chave de LLM configurada, a geração é ignorada automaticamente.

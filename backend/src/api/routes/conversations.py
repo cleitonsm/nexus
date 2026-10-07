@@ -5,21 +5,24 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from src.api.dependencies import (
+    get_answer_generator,
     get_assistant_repository,
+    get_context_retriever,
     get_conversation_repository,
-    get_embedding_gateway,
-    get_llm_gateway,
-    get_vector_store_gateway,
+    get_token_counter,
 )
 from src.api.schemas import (
     AddMessageRequest,
     ChatRequest,
     ChatResponse,
+    CitationResponse,
     ConversationDetailResponse,
     ConversationResponse,
     CreateConversationRequest,
     MessageResponse,
 )
+from src.application.dto import MessageDTO
+from src.application.services import ContextRetriever, GroundedAnswerGenerator
 from src.application.use_cases import (
     ChatWithAssistantInput,
     ChatWithAssistantUseCase,
@@ -32,11 +35,10 @@ from src.domain import (
     ChatMessage,
     ConversationId,
     DomainValidationError,
-    EmbeddingGateway,
-    LLMGateway,
+    IndexOutdatedError,
     MessageId,
     MessageRole,
-    VectorStoreGateway,
+    TokenCounter,
 )
 from src.infrastructure.database import (
     PostgresAssistantRepository,
@@ -120,13 +122,7 @@ def get_conversation(
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,
         messages=[
-            MessageResponse(
-                id=message.id.value,
-                conversation_id=message.conversation_id.value,
-                role=message.role.value,
-                content=message.content,
-                created_at=message.created_at,
-            )
+            _message_response(MessageDTO.from_entity(message))
             for message in conversation.messages
         ],
     )
@@ -198,13 +194,7 @@ def add_message(
             detail=str(exc),
         ) from exc
 
-    return MessageResponse(
-        id=saved.id.value,
-        conversation_id=saved.conversation_id.value,
-        role=saved.role.value,
-        content=saved.content,
-        created_at=saved.created_at,
-    )
+    return _message_response(MessageDTO.from_entity(saved))
 
 
 @router.post(
@@ -221,16 +211,16 @@ def chat_with_assistant(
     conversation_repository: PostgresConversationRepository = Depends(
         get_conversation_repository
     ),
-    embedding_gateway: EmbeddingGateway = Depends(get_embedding_gateway),
-    vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
-    llm_gateway: LLMGateway = Depends(get_llm_gateway),
+    context_retriever: ContextRetriever = Depends(get_context_retriever),
+    answer_generator: GroundedAnswerGenerator = Depends(get_answer_generator),
+    token_counter: TokenCounter = Depends(get_token_counter),
 ) -> ChatResponse:
     use_case = ChatWithAssistantUseCase(
         assistant_repository=assistant_repository,
         conversation_repository=conversation_repository,
-        embedding_gateway=embedding_gateway,
-        vector_store_gateway=vector_store_gateway,
-        llm_gateway=llm_gateway,
+        context_retriever=context_retriever,
+        answer_generator=answer_generator,
+        token_counter=token_counter,
     )
     try:
         result = use_case.execute(
@@ -243,6 +233,11 @@ def chat_with_assistant(
     except ConversationNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except IndexOutdatedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
     except DomainValidationError as exc:
@@ -261,23 +256,37 @@ def chat_with_assistant(
             detail=str(exc),
         ) from exc
 
+    assistant_message = _message_response(result.assistant_message)
     return ChatResponse(
         conversation_id=result.conversation_id,
         assistant_id=result.assistant_id,
-        user_message=MessageResponse(
-            id=result.user_message.id,
-            conversation_id=result.user_message.conversation_id,
-            role=result.user_message.role,
-            content=result.user_message.content,
-            created_at=result.user_message.created_at,
-        ),
-        assistant_message=MessageResponse(
-            id=result.assistant_message.id,
-            conversation_id=result.assistant_message.conversation_id,
-            role=result.assistant_message.role,
-            content=result.assistant_message.content,
-            created_at=result.assistant_message.created_at,
-        ),
+        user_message=_message_response(result.user_message),
+        assistant_message=assistant_message,
         used_context_chunks=result.used_context_chunks,
         fallback_used=result.fallback_used,
+        citations=assistant_message.citations,
+        rewritten_query=result.rewritten_query,
+    )
+
+
+def _message_response(message: MessageDTO) -> MessageResponse:
+    return MessageResponse(
+        id=message.id,
+        conversation_id=message.conversation_id,
+        role=message.role,
+        content=message.content,
+        created_at=message.created_at,
+        citations=[
+            CitationResponse(
+                number=item.number,
+                document_id=item.document_id,
+                chunk_id=item.chunk_id,
+                source_name=item.source_name,
+                section_path=item.section_path,
+                page=item.page,
+                score=item.score,
+                excerpt=item.excerpt,
+            )
+            for item in message.citations
+        ],
     )

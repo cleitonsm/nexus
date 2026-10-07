@@ -1,6 +1,7 @@
 from .assistant_dto import AssistantDTO
 from .conversation_dto import (
     ChatTurnResult,
+    CitationDTO,
     ConversationDTO,
     ListConversationsResult,
     MessageDTO,
@@ -13,6 +14,7 @@ from .index_dto import IndexStatusDTO, ReindexJobDTO
 __all__ = [
     "AssistantDTO",
     "ChatTurnResult",
+    "CitationDTO",
     "ConversationDTO",
     "DocumentIngestionDTO",
     "EvaluationComparisonDTO",

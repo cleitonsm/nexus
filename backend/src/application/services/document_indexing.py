@@ -8,12 +8,14 @@ from src.domain import (
     DocumentExtractor,
     DocumentId,
     EmbeddingGateway,
+    SparseEmbeddingGateway,
     VectorChunk,
 )
 
 # Muda sempre que extracao, chunking ou metadados dos chunks mudarem de forma
 # que exija reindexar (RF-32).
-PIPELINE_VERSION = "2"
+# "3": chunks passam a levar o vetor esparso da busca hibrida (SPEC-003).
+PIPELINE_VERSION = "3"
 
 
 def hash_content(raw_content: bytes) -> str:
@@ -29,10 +31,12 @@ class DocumentIndexer:
         extractor: DocumentExtractor,
         chunker: DocumentChunker,
         embedding_gateway: EmbeddingGateway,
+        sparse_embedding_gateway: SparseEmbeddingGateway,
     ) -> None:
         self._extractor = extractor
         self._chunker = chunker
         self._embedding_gateway = embedding_gateway
+        self._sparse_embedding_gateway = sparse_embedding_gateway
 
     @property
     def embedding_model(self) -> str:
@@ -57,10 +61,10 @@ class DocumentIndexer:
             raw_content=raw_content,
         )
         chunks = self._chunker.chunk(extracted)
-        vectors = self._embedding_gateway.embed_documents(
-            [chunk.text for chunk in chunks]
-        )
-        if len(vectors) != len(chunks):
+        texts = [chunk.text for chunk in chunks]
+        vectors = self._embedding_gateway.embed_documents(texts)
+        sparse_vectors = self._sparse_embedding_gateway.embed_documents(texts)
+        if len(vectors) != len(chunks) or len(sparse_vectors) != len(chunks):
             raise ValueError(
                 "embedding provider returned an unexpected vector count."
             )
@@ -79,6 +83,7 @@ class DocumentIndexer:
                 page=chunk.page,
                 embedding_model=self.embedding_model,
                 pipeline_version=PIPELINE_VERSION,
+                sparse_vector=sparse_vector,
             )
-            for chunk, vector in zip(chunks, vectors)
+            for chunk, vector, sparse_vector in zip(chunks, vectors, sparse_vectors)
         ]

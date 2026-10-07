@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from src.domain import ChatMessage, Conversation
+from src.domain import ChatMessage, Citation, Conversation
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,12 +38,38 @@ class ListConversationsResult:
 
 
 @dataclass(frozen=True, slots=True)
+class CitationDTO:
+    number: int
+    document_id: str
+    chunk_id: str
+    source_name: str
+    section_path: str
+    page: int | None
+    score: float
+    excerpt: str
+
+    @classmethod
+    def from_entity(cls, citation: Citation) -> "CitationDTO":
+        return cls(
+            number=citation.number,
+            document_id=citation.document_id.value,
+            chunk_id=citation.chunk_id,
+            source_name=citation.source_name,
+            section_path=citation.section_path,
+            page=citation.page,
+            score=citation.score,
+            excerpt=citation.excerpt,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class MessageDTO:
     id: str
     conversation_id: str
     role: str
     content: str
     created_at: datetime
+    citations: tuple[CitationDTO, ...] = ()
 
     @classmethod
     def from_entity(cls, message: ChatMessage) -> "MessageDTO":
@@ -53,6 +79,9 @@ class MessageDTO:
             role=message.role.value,
             content=message.content,
             created_at=message.created_at,
+            citations=tuple(
+                CitationDTO.from_entity(item) for item in message.citations
+            ),
         )
 
 
@@ -64,3 +93,8 @@ class ChatTurnResult:
     assistant_message: MessageDTO
     used_context_chunks: int
     fallback_used: bool
+    rewritten_query: str = ""
+
+    @property
+    def citations(self) -> tuple[CitationDTO, ...]:
+        return self.assistant_message.citations

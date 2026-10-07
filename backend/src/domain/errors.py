@@ -3,7 +3,7 @@ class DomainValidationError(ValueError):
 
 
 class IndexOutdatedError(Exception):
-    """A base do assistente precisa ser reindexada antes de receber documentos."""
+    """A base do assistente precisa ser reindexada antes de ser usada."""
 
 
 class ReindexInProgressError(Exception):

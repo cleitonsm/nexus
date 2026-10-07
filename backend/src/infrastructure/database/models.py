@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -129,6 +138,11 @@ class MessageModel(Base):
         DateTime(timezone=True),
         default=_utc_now,
         nullable=False,
+    )
+    # Fontes da resposta (SPEC-003); nulo em mensagens sem citacoes.
+    citations: Mapped[list[dict[str, object]] | None] = mapped_column(
+        JSON(),
+        nullable=True,
     )
 
     conversation: Mapped[ConversationModel] = relationship(

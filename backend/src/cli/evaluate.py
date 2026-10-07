@@ -27,6 +27,9 @@ from src.application.use_cases import (
 )
 from src.application.services import (
     PIPELINE_VERSION,
+    ContextRetriever,
+    GroundedAnswerGenerator,
+    RetrievalSettings,
     is_index_outdated,
     read_index_state,
 )
@@ -39,10 +42,16 @@ from src.domain import (
     VectorStoreGateway,
 )
 from src.infrastructure.composition import (
+    bm25_parameters,
     build_document_indexer,
     build_embedding_gateway,
     build_file_storage,
+    build_reranker_gateway,
+    build_sparse_embedding_gateway,
+    build_token_counter,
     max_file_bytes,
+    reranker_model_name,
+    retrieval_settings,
 )
 from src.infrastructure.database import (
     PostgresAssistantRepository,
@@ -97,7 +106,6 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--assistant-name", default="Nexus Docs (avaliacao)")
     parser.add_argument("--seed-dir", type=Path, action="append", default=[])
     parser.add_argument("--k", type=int, default=5)
-    parser.add_argument("--context-top-k", type=int, default=4)
     parser.add_argument("--no-generation", action="store_true")
     parser.add_argument("--allow-unvalidated", action="store_true")
     parser.add_argument(
@@ -141,11 +149,22 @@ def _run(
     )
 
     llm_gateway = None if args.no_generation else _build_llm_gateway(session)
+    settings = retrieval_settings()
     report = EvaluateAssistantUseCase(
         document_repository=document_repository,
-        embedding_gateway=embedding_gateway,
-        vector_store_gateway=vector_store_gateway,
-        llm_gateway=llm_gateway,
+        context_retriever=ContextRetriever(
+            embedding_gateway=embedding_gateway,
+            sparse_embedding_gateway=build_sparse_embedding_gateway(),
+            vector_store_gateway=vector_store_gateway,
+            reranker_gateway=build_reranker_gateway(),
+            settings=settings,
+        ),
+        token_counter=build_token_counter(),
+        answer_generator=(
+            GroundedAnswerGenerator(llm_gateway=llm_gateway)
+            if llm_gateway
+            else None
+        ),
         answer_judge=(
             LLMAnswerJudge(llm_gateway=llm_gateway) if llm_gateway else None
         ),
@@ -154,8 +173,9 @@ def _run(
             assistant_id=assistant_id.value,
             items=tuple(items),
             k=args.k,
-            context_top_k=args.context_top_k,
-            parameters=_parameters(args, embedding_gateway, llm_gateway),
+            parameters=_parameters(
+                args, embedding_gateway, llm_gateway, settings
+            ),
         )
     )
     return _store_and_compare(args, report.to_dict(), report.metrics)
@@ -258,6 +278,7 @@ def _parameters(
     args: argparse.Namespace,
     embedding_gateway: EmbeddingGateway,
     llm_gateway: LLMGateway | None,
+    settings: RetrievalSettings,
 ) -> dict[str, str]:
     return {
         "commit": os.getenv("GIT_COMMIT", "unknown"),
@@ -269,7 +290,16 @@ def _parameters(
         or "limite do modelo",
         "chunk_overlap_sentences": os.getenv("CHUNK_OVERLAP_SENTENCES", "1"),
         "chunk_prefix_max_tokens": os.getenv("CHUNK_PREFIX_MAX_TOKENS", "32"),
-        "context_top_k": str(args.context_top_k),
+        "sparse": "bm25 (idf no Qdrant), fusao RRF",
+        "bm25": ", ".join(
+            f"{name}={value}" for name, value in bm25_parameters().items()
+        ),
+        "reranker": reranker_model_name(),
+        "retrieval_candidates": str(settings.candidates),
+        "rerank_top_n": str(settings.top_n),
+        "relevance_min_score": str(settings.min_score),
+        "context_token_budget": str(settings.context_token_budget),
+        "history_token_budget": str(settings.history_token_budget),
         "llm_model": _llm_model() if llm_gateway else "nao utilizado",
         "judge": "LLMAnswerJudge" if llm_gateway else "nao utilizado",
         "tolerance": str(args.tolerance),

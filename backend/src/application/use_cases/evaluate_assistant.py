@@ -3,25 +3,26 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from src.application.dto import EvaluationReportDTO
+from src.application.services import (
+    ContextRetriever,
+    GroundedAnswerGenerator,
+    fit_context,
+)
 from src.domain import (
     AnswerJudge,
     AssistantId,
-    CollectionName,
+    ContextChunk,
     DocumentRepository,
-    EmbeddingGateway,
     EvaluationItem,
     EvaluationItemResult,
     EvaluationMetrics,
     EvaluationReport,
-    LLMGateway,
     SearchResult,
-    VectorStoreGateway,
+    TokenCounter,
     first_relevant_rank,
     mean_reciprocal_rank,
     recall_at_k,
 )
-
-from .chat_with_assistant import DEFAULT_ANSWER_INSTRUCTION
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,37 +30,37 @@ class EvaluateAssistantInput:
     assistant_id: str
     items: tuple[EvaluationItem, ...]
     k: int = 5
-    context_top_k: int = 4
     parameters: dict[str, str] = field(default_factory=dict)
 
 
 class EvaluateAssistantUseCase:
-    """Mede recuperacao e resposta com as mesmas portas usadas pelo chat.
+    """Mede recuperacao e resposta com os mesmos servicos usados pelo chat.
 
-    Sem `llm_gateway` a execucao mede apenas a recuperacao; sem `answer_judge`
-    a fidelidade nao e calculada.
+    A recuperacao e medida sobre os ``k`` primeiros apos o reranking. Sem
+    `answer_generator` a execucao mede apenas a recuperacao; sem
+    `answer_judge` a fidelidade nao e calculada.
     """
 
     def __init__(
         self,
         *,
         document_repository: DocumentRepository,
-        embedding_gateway: EmbeddingGateway,
-        vector_store_gateway: VectorStoreGateway,
-        llm_gateway: LLMGateway | None = None,
+        context_retriever: ContextRetriever,
+        token_counter: TokenCounter,
+        answer_generator: GroundedAnswerGenerator | None = None,
         answer_judge: AnswerJudge | None = None,
     ) -> None:
         self._document_repository = document_repository
-        self._embedding_gateway = embedding_gateway
-        self._vector_store_gateway = vector_store_gateway
-        self._llm_gateway = llm_gateway
+        self._retriever = context_retriever
+        self._token_counter = token_counter
+        self._answer_generator = answer_generator
         self._answer_judge = answer_judge
 
     def execute(self, data: EvaluateAssistantInput) -> EvaluationReportDTO:
         if not data.items:
             raise ValueError("evaluation requires at least one item.")
-        if data.k <= 0 or data.context_top_k <= 0:
-            raise ValueError("k and context_top_k must be positive.")
+        if data.k <= 0:
+            raise ValueError("k must be positive.")
 
         assistant_id = AssistantId(data.assistant_id)
         source_names = self._source_names(assistant_id)
@@ -88,13 +89,16 @@ class EvaluateAssistantUseCase:
         source_names: dict[str, str],
         data: EvaluateAssistantInput,
     ) -> EvaluationItemResult:
-        hits = self._retrieve(item.question, assistant_id, data)
+        ranked = self._retrieve(item.question, assistant_id, data)
         sources = tuple(
-            source_names.get(hit.document_id.value, "") for hit in hits[: data.k]
+            source_names.get(hit.document_id.value, "")
+            for hit in ranked[: data.k]
         )
-        context = [
-            hit.text for hit in hits[: data.context_top_k] if hit.text.strip()
-        ]
+        context = fit_context(
+            self._retriever.select_relevant(ranked),
+            self._token_counter,
+            self._retriever.settings.context_token_budget,
+        )
         answer, fallback_used = self._answer(item.question, context)
         return EvaluationItemResult(
             item_id=item.id,
@@ -115,46 +119,42 @@ class EvaluateAssistantUseCase:
         assistant_id: AssistantId,
         data: EvaluateAssistantInput,
     ) -> list[SearchResult]:
-        query_vector = self._embedding_gateway.embed_query(question)
-        if not query_vector:
-            return []
-        return self._vector_store_gateway.search(
-            collection_name=CollectionName.from_assistant_id(assistant_id),
-            query_vector=query_vector,
-            limit=max(data.k, data.context_top_k),
+        candidates = self._retriever.search(assistant_id, question)
+        return self._retriever.rerank(
+            question,
+            candidates,
+            limit=max(data.k, self._retriever.settings.top_n),
         )
 
     def _answer(
         self,
         question: str,
-        context: list[str],
+        context: list[ContextChunk],
     ) -> tuple[str | None, bool | None]:
         """Reproduz a decisao de fallback do grafo do chat, sem persistir nada."""
-        if self._llm_gateway is None:
+        if self._answer_generator is None:
             return None, None
-        if not context:
-            return None, True
-        answer = self._llm_gateway.generate(
-            prompt=f"{DEFAULT_ANSWER_INSTRUCTION}\nPergunta: {question}",
+        grounded = self._answer_generator.answer(
+            question=question,
             context_chunks=context,
-            conversation_history=[],
-        ).strip()
-        if not answer:
+            history=[],
+        )
+        if grounded is None:
             return None, True
-        return answer, False
+        return grounded.text, False
 
     def _judge(
         self,
         item: EvaluationItem,
         answer: str | None,
-        context: list[str],
+        context: list[ContextChunk],
     ) -> bool | None:
         if self._answer_judge is None or answer is None or item.out_of_scope:
             return None
         return self._answer_judge.is_faithful(
             question=item.question,
             answer=answer,
-            context_chunks=context,
+            context_chunks=[chunk.text for chunk in context],
         )
 
 

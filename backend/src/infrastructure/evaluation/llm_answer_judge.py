@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.domain import LLMGateway
+from src.domain import ContextChunk, LLMGateway
 
 # A rubrica e versionada com o codigo: altera-la muda o significado da metrica
 # de fidelidade e exige registrar nova linha de base.
@@ -24,7 +24,8 @@ class LLMAnswerJudge:
         answer: str,
         context_chunks: list[str],
     ) -> bool:
-        if not any(chunk.strip() for chunk in context_chunks):
+        texts = [chunk for chunk in context_chunks if chunk.strip()]
+        if not texts:
             return False
         verdict = self._llm_gateway.generate(
             prompt=(
@@ -32,7 +33,10 @@ class LLMAnswerJudge:
                 f"Pergunta: {question}\n"
                 f"Resposta a avaliar: {answer}"
             ),
-            context_chunks=context_chunks,
+            context_chunks=[
+                ContextChunk(number=number, text=text)
+                for number, text in enumerate(texts, start=1)
+            ],
             conversation_history=[],
         )
         return verdict.strip().upper().startswith("SIM")

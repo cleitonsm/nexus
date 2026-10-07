@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .chunking import DocumentChunk, ExtractedDocument
+from .citations import ContextChunk
+from .errors import DomainValidationError
 from .entities import (
     Assistant,
     ChatMessage,
@@ -101,6 +103,34 @@ class EmbeddingGateway(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class SparseVector:
+    """Vetor esparso: pesos de termos em posicoes de um vocabulario aberto."""
+
+    indices: tuple[int, ...] = ()
+    values: tuple[float, ...] = ()
+
+    def __post_init__(self) -> None:
+        if len(self.indices) != len(self.values):
+            raise DomainValidationError(
+                "sparse vector indices and values must have the same length."
+            )
+        if len(set(self.indices)) != len(self.indices):
+            raise DomainValidationError("sparse vector indices must be unique.")
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.indices
+
+
+class SparseEmbeddingGateway(Protocol):
+    """Gera vetores esparsos localmente (RNF-26); o IDF fica com o indice."""
+
+    def embed_documents(self, texts: list[str]) -> list[SparseVector]: ...
+
+    def embed_query(self, text: str) -> SparseVector: ...
+
+
+@dataclass(frozen=True, slots=True)
 class VectorChunk:
     id: str
     document_id: DocumentId
@@ -114,14 +144,20 @@ class VectorChunk:
     page: int | None = None
     embedding_model: str = ""
     pipeline_version: str = ""
+    sparse_vector: SparseVector | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class SearchResult:
+    """Trecho recuperado; ``score`` e a nota da etapa que o produziu."""
+
     chunk_id: str
     document_id: DocumentId
     score: float
     text: str
+    source_name: str = ""
+    section_path: str = ""
+    page: int | None = None
 
 
 class VectorStoreGateway(Protocol):
@@ -137,12 +173,22 @@ class VectorStoreGateway(Protocol):
         chunks: list[VectorChunk],
     ) -> None: ...
 
-    def search(
+    def hybrid_search(
         self,
         collection_name: CollectionName,
-        query_vector: list[float],
+        dense_vector: list[float],
+        sparse_vector: SparseVector,
         limit: int,
-    ) -> list[SearchResult]: ...
+        payload_filter: dict[str, str] | None = None,
+    ) -> list[SearchResult]:
+        """Busca densa e esparsa com fusao RRF (RF-33).
+
+        ``payload_filter`` restringe os candidatos por igualdade de campos do
+        payload. Collection inexistente devolve lista vazia. Collection
+        anterior a busca hibrida e consultada so pelo vetor denso; se nem isso
+        for possivel, levanta ``IndexOutdatedError``.
+        """
+        ...
 
     def delete_collection(self, collection_name: CollectionName) -> None: ...
 
@@ -211,12 +257,27 @@ class DocumentFileStorage(Protocol):
     def load(self, storage_key: str) -> bytes: ...
 
 
+class RerankerGateway(Protocol):
+    """Reordena candidatos localmente com uma nota de relevancia (RF-34)."""
+
+    @property
+    def model_name(self) -> str: ...
+
+    def rerank(
+        self,
+        query: str,
+        candidates: list[SearchResult],
+    ) -> list[SearchResult]:
+        """Devolve os candidatos com ``score`` entre 0 e 1, do maior ao menor."""
+        ...
+
+
 class LLMGateway(Protocol):
     def generate(
         self,
         *,
         prompt: str,
-        context_chunks: list[str],
+        context_chunks: list[ContextChunk],
         conversation_history: list[ChatMessage],
     ) -> str: ...
 
