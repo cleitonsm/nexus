@@ -28,3 +28,61 @@
 - Mudanca em `EMBEDDING_MODEL_NAME` exige compatibilizar dimensao dos vetores no Qdrant.
 - Sempre que o modelo de embedding for trocado, executar rotina explicita de reindexacao.
 - A variavel `NEXUS_SECRETS_KEY` deve ser estavel por ambiente; trocar sem recriptografar invalida segredos existentes.
+
+## Evolução RAG Enterprise
+
+As variáveis da Fase 1 já estão no `.env.example`. As demais são previstas nas especificações,
+**ainda não estão no `.env.example`** e terão seus valores padrão definidos na implementação de
+cada fase.
+
+### Situação das variáveis atuais
+
+- `EMBEDDING_VECTOR_SIZE` é lida pelo código.
+- `EMBEDDING_MODEL_NAME` existe no `.env.example`, mas o código atual não a utiliza; passa a ser
+  usada na Fase 2.
+
+### Recuperação (Fases 2 e 3)
+
+- `CHUNK_MAX_TOKENS`: tamanho máximo do chunk, limitado à capacidade do modelo de embedding.
+- `CHUNK_OVERLAP_SENTENCES`: frases de sobreposição entre chunks consecutivos.
+- `RERANKER_MODEL_NAME`: modelo local de reranking.
+- `RETRIEVAL_CANDIDATES`: candidatos recuperados antes do reranking.
+- `RERANK_TOP_N`: trechos mantidos após o reranking.
+- `RELEVANCE_MIN_SCORE`: nota mínima para um trecho compor o contexto.
+- `CONTEXT_TOKEN_BUDGET` e `HISTORY_TOKEN_BUDGET`: orçamentos de tokens enviados ao LLM.
+
+### Autenticação (Fase 4)
+
+- `KEYCLOAK_URL`: endereço do Keycloak.
+- `KEYCLOAK_REALM`: realm utilizado (`nexus`).
+- `OIDC_AUDIENCE`: audiência esperada no token de acesso.
+- `OIDC_FRONTEND_CLIENT_ID`: cliente público usado pelo frontend.
+- `KEYCLOAK_ADMIN` e `KEYCLOAK_ADMIN_PASSWORD`: credenciais administrativas do Keycloak (segredo).
+- `CORS_ALLOWED_ORIGINS`: origens autorizadas a chamar a API.
+- `AUDIT_RETENTION_DAYS`: retenção da trilha de auditoria.
+
+### Ingestão (Fase 5)
+
+- `UPLOAD_MAX_BYTES`: tamanho máximo de upload.
+- `INGESTION_MAX_ATTEMPTS`: tentativas antes do estado "falhou".
+- `INGESTION_JOB_TIMEOUT_SECONDS`: tempo após o qual um job reservado volta à fila.
+- `DOCUMENTS_STORAGE_PATH`: diretório dos arquivos originais.
+- `OCR_LANGUAGES`: idiomas do OCR.
+
+### Avaliação e Logs (Fase 1, já no `.env.example`)
+
+- `LOG_LEVEL`: nível dos logs estruturados em JSON (padrão `INFO`).
+- `EVAL_REGRESSION_TOLERANCE`: queda máxima aceita em uma métrica entre duas avaliações (padrão `0.02`).
+
+### Operação (Fase 6)
+
+- `OTEL_EXPORTER_OTLP_ENDPOINT` e `OTEL_SERVICE_NAME`: exportação de rastreamentos.
+- `RATE_LIMIT_QUESTIONS` e `RATE_LIMIT_WINDOW_SECONDS`: limite de uso por usuário.
+- `LLM_PRICE_INPUT_PER_1K` e `LLM_PRICE_OUTPUT_PER_1K`: preços para a estimativa de custo.
+- `BACKUP_PATH`: destino dos backups.
+
+### Observações
+
+- Segredos novos (credenciais do Keycloak) seguem a convenção existente: apenas no `.env` local ou
+  em secret manager.
+- Parâmetros de recuperação não devem ser alterados sem nova avaliação registrada (RN-14).

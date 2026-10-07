@@ -77,3 +77,108 @@ técnico desnecessário.
   discutido no material do curso.
 - Foi adicionada a frase final oferecendo disponibilidade para ajuste de prioridades,
   ausente na versão gerada, para reforçar o caráter colaborativo da comunicação.
+
+---
+
+# Ciclo 2 — Evolução RAG Enterprise
+
+## Prompt utilizado
+
+Reconstruído no formato adotado nesta pasta.
+
+```
+Persona: Você atua como um gerente de projetos experiente em comunicação com
+stakeholders não técnicos.
+
+Tarefa: Elaborar uma comunicação sobre a evolução planejada do Nexus para um RAG
+de nível corporativo, incluindo contexto, o que muda para as pessoas, riscos
+identificados, decisões necessárias e próximos passos.
+
+Contexto: o MVP está concluído. A evolução foi especificada em seis fases e ainda
+não começou a ser implementada. Embeddings permanecem locais e o login será pelo
+Keycloak. Principais riscos: proteção de conteúdo restrito, envio de trechos ao
+provedor de IA, qualidade da medida e capacidade de um único desenvolvedor.
+
+Saída esperada: texto claro, objetivo, com foco em tomada de decisão, sem jargão
+técnico desnecessário.
+```
+
+## Saída gerada pela IA (pendente de revisão e ajuste do autor)
+
+> **Assunto: Nexus — Proposta de evolução para uso corporativo**
+>
+> Olá,
+>
+> O Nexus concluiu sua primeira versão: já é possível criar assistentes, enviar documentos e
+> conversar com eles. Compartilho agora a proposta do próximo ciclo, cujo objetivo é tornar o
+> Nexus adequado para uso por diferentes áreas de uma organização.
+>
+> **Por que evoluir:** a versão atual tem três limites importantes. Ela só encontra a resposta
+> quando a pergunta usa as mesmas palavras do documento; não mostra de onde a resposta veio; e
+> não controla quem pode ver cada conteúdo.
+>
+> **O que muda para as pessoas:**
+>
+> - Quem pergunta poderá usar as próprias palavras e verá, em cada resposta, o documento e a
+>   página de onde a informação saiu.
+> - Cada pessoa entrará com sua conta e verá apenas os assistentes e documentos da sua área.
+> - Quem cuida do conteúdo poderá atualizar, substituir e remover documentos sem interromper o uso.
+> - Passaremos a medir, com números, se o assistente está respondendo bem.
+>
+> **Como será feito:** em seis etapas, cada uma utilizável por si só. As três primeiras tratam da
+> qualidade das respostas; a quarta, do controle de acesso; as duas últimas, da gestão dos
+> documentos e da operação. Nada foi implementado ainda: o que existe hoje é a especificação.
+>
+> **Riscos que precisam de atenção:**
+>
+> 1. **Proteção de conteúdo restrito.** Ao permitir documentos visíveis só para alguns grupos,
+>    uma falha nesse controle teria impacto alto. Por isso ele terá testes automáticos próprios,
+>    executados a cada mudança.
+> 2. **Envio de trechos ao serviço de IA externo.** A preparação e a busca dos documentos
+>    acontecem dentro do nosso ambiente, mas os trechos usados em cada resposta são enviados ao
+>    serviço que redige o texto. É preciso confirmar se isso é aceitável para todo tipo de conteúdo.
+> 3. **Qualidade da medida.** Os indicadores dependem de um conjunto de perguntas e respostas
+>    preparado por quem conhece os documentos. Sem essa participação, os números enganam.
+> 4. **Capacidade de execução.** O trabalho continua com um único desenvolvedor. As etapas foram
+>    desenhadas para serem entregues uma a uma, com um ponto de reavaliação após a terceira.
+>
+> **Decisões que precisamos de vocês:**
+>
+> - Quem serão os responsáveis pelo conteúdo de cada assistente piloto.
+> - Se algum conteúdo não pode ser enviado ao serviço de IA externo.
+> - Se o controle por documento é necessário desde o início ou se o controle por assistente basta.
+>
+> **Próximos passos:** revisar e aprovar a especificação da primeira etapa, escolher o assistente
+> piloto e preparar o conjunto inicial de perguntas.
+>
+> Fico à disposição para detalhar qualquer ponto.
+
+## Ajustes do autor
+
+Ainda não realizados. A comunicação acima é a versão gerada pela IA e deve ser revisada antes do
+envio, como feito no ciclo anterior. Dois cuidados já aplicados na geração, em linha com os ajustes
+do ciclo 1: evitar termos técnicos (embeddings, reranking, chunking) e manter os riscos de
+segurança explícitos, sem atenuá-los.
+
+## Atualização após a Fase 1 (2026-10-07)
+
+Rascunho gerado pela IA, pendente de revisão do autor antes de qualquer envio.
+
+> **Assunto: Nexus — Primeira etapa da evolução entregue**
+>
+> Olá,
+>
+> A primeira das seis etapas da evolução do Nexus foi concluída no código: agora conseguimos
+> medir, com um comando, se o assistente encontra o documento certo e se responde de forma fiel ao
+> que está escrito. Também passamos a conseguir acompanhar cada pergunta por todas as etapas do
+> processamento.
+>
+> **O que a primeira medição mostra:** com a busca atual, cerca de 40% das perguntas de teste
+> não localizam o documento correto, e perguntas fora do assunto não são recusadas como deveriam.
+> Isso confirma a prioridade das duas próximas etapas, dedicadas à qualidade da busca.
+>
+> **Ressalvas:** a medição oficial ainda depende de executar a avaliação no ambiente completo, e o
+> conjunto de perguntas de teste é pequeno (27 perguntas) e precisa crescer.
+>
+> **Decisão necessária:** aprovar a especificação da segunda etapa, que troca o mecanismo de busca
+> e exige reenviar os documentos já carregados.

@@ -95,3 +95,57 @@ Se as portas padrao do host ja estiverem em uso:
 - Backend em estado `healthy` apos responder no endpoint `/health`.
 - PostgreSQL apto a aceitar conexoes internas no servico `postgres`.
 - Qdrant respondendo na API HTTP da porta `6333`.
+
+## Avaliação de Qualidade e Logs (Fase 1)
+
+Já disponível, sem serviço novo no `compose.yaml`.
+
+- Executar a avaliação, com o ambiente no ar:
+  - PowerShell: `scripts\eval.ps1 nexus-docs`
+  - bash: `scripts/eval.sh nexus-docs`
+- Na primeira execução o comando cria o assistente "Nexus Docs (avaliacao)" e indexa
+  `docs/negocio` e `docs/arquitetura`. Os relatórios ficam em `backend/tests/evaluation/reports/`.
+- Código de saída: `0` sem regressão, `1` com regressão acima da tolerância, `2` com conjunto de
+  referência inválido.
+- Os logs do backend passam a ser uma linha JSON por evento: `docker compose logs -f backend`.
+- Para seguir uma requisição, envie o cabeçalho `X-Request-ID` (ou leia-o na resposta) e filtre os
+  logs pelo campo `request_id`.
+
+Detalhes em `backend/tests/evaluation/README.md`.
+
+## Evolução RAG Enterprise (Planejado)
+
+Esta seção descreve como o ambiente local ficará após as próximas fases. **Nada aqui está no
+`compose.yaml` atual**; os serviços entram conforme as fases forem implementadas.
+
+### Serviços Previstos
+
+| Serviço | Fase | Observação |
+|---------|------|------------|
+| `backend` | 2 | Imagem passa a incluir os modelos locais; usa o volume `backend_cache` |
+| `keycloak` | 4 | Importa o realm `nexus` na subida; banco próprio no `postgres` |
+| `worker` | 5 | Mesma imagem do `backend`, outro comando de entrada |
+| observabilidade | 6 | Perfil opcional do Compose |
+
+### Fluxo de Execução Previsto
+
+1. Copiar as variáveis de ambiente, como hoje.
+2. Subir o ambiente com `docker compose up -d --build`.
+3. Aguardar a aplicação das migrações de banco e a importação do realm.
+4. Acessar o frontend, autenticar-se pelo Keycloak com um usuário de desenvolvimento.
+5. Executar a avaliação de qualidade, já disponível, sempre que houver mudanças no pipeline.
+
+### Validação Prevista
+
+O roteiro ponta a ponta da evolução está em
+[`docs/qa/validacao-manual-rag-enterprise.md`](../qa/validacao-manual-rag-enterprise.md).
+
+### Persistência Adicional
+
+- `backend_cache`: modelos de embedding e de reranking.
+- `documents_data`: arquivos originais.
+
+### Backup e Restauração
+
+Rotinas `scripts/backup.sh` e `scripts/restore.sh`, previstas na Fase 6, cobrem o PostgreSQL
+(Nexus e Keycloak), os snapshots do Qdrant e o volume de documentos.

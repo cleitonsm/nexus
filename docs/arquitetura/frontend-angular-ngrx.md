@@ -32,3 +32,36 @@ A arquitetura inicial deve ser previsível sem criar camadas excessivas para o M
 
 Componentes devem concentrar apresentação e interação. Chamadas HTTP, normalização de estado e
 efeitos assíncronos devem ficar em services, effects e stores.
+
+## Evolução RAG Enterprise
+
+Conteúdo **planejado**; as seções acima continuam descrevendo o frontend do MVP.
+
+### Rotas e Acesso
+
+- Todas as rotas passam a exigir sessão autenticada pelo Keycloak.
+- `/chat`: qualquer usuário autenticado, restrito aos assistentes dos seus grupos.
+- `/assistants`: curadores e administradores; gestão de documentos com estado, exclusão,
+  substituição e restrição por grupo.
+- `/admin`: administradores; chave do LLM, permissões de assistentes, auditoria e consumo.
+- Guards de rota por papel; itens de menu ocultos quando o papel não permite.
+
+### Estado Global (acréscimos)
+
+- sessão: usuário, papéis, grupos e situação da autenticação
+- documentos com estado de ingestão, versão e motivo de falha
+- citações e feedback por mensagem
+- resposta em andamento durante o streaming
+- avisos de limite de uso e de acesso negado
+
+### Integração
+
+- Serviço OIDC em `core/services`, com Authorization Code e PKCE; tokens mantidos em memória.
+- Interceptor HTTP anexa o token e trata 401, 403 e 429.
+- O estado de ingestão é atualizado por consulta periódica enquanto houver documentos em processamento.
+- O chat consome a rota de streaming e exibe as fontes ao final da resposta.
+
+### Diretriz
+
+Permanece: componentes apresentam e despacham actions; autenticação, HTTP e streaming ficam em
+services e effects. O frontend nunca é a única barreira de acesso (RNF-23).
