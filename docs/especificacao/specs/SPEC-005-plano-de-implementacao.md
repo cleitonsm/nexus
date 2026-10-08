@@ -72,8 +72,8 @@ Registradas por Cleiton Medeiros em 2026-10-08, antes do código.
 
 ## 2. Comportamentos definidos na implementação
 
-C1 a C8 foram aprovados com o plano (D1); C9 em diante surgiram na implementação e podem ser
-alterados.
+C1 a C8 foram aprovados com o plano (D1); C9 a C16 surgiram na implementação e foram aprovados
+pelo autor como estão em 2026-10-08 (ver o [plano de conclusão](../../plano-de-conclusao.md)).
 
 | # | Comportamento | Como ficou |
 |---|---------------|------------|
@@ -135,5 +135,6 @@ mudança de `PIPELINE_VERSION` nem reindexação geral. Tabelas de DOCX e Markdo
 - Sem tela para documentos substituídos (D5 não guarda versões para consulta).
 - Corrida residual: uma reindexação iniciada entre a reserva de um job e a verificação do worker
   é detectada e o job volta à fila; a janela entre a verificação e a gravação não é bloqueada.
-- Os blocos `#region agent log` continuam em outras partes do frontend; o do envio de documentos
-  saiu junto com a reescrita da função.
+- Os blocos `#region agent log` foram removidos de todo o frontend em `b6aaf2f` (2026-10-08).
+- A conferência R18, a reindexação no worker e a aceitação das limitações (PC-D3, PC-D4 e PC-D7)
+  estão nas etapas E5 e E10 do [plano de conclusão](../../plano-de-conclusao.md).

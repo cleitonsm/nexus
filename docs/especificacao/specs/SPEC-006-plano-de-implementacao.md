@@ -42,7 +42,8 @@ Prometheus e Grafana, backup e restauração, workflow do GitHub, build do Angul
 
 ## 2. Comportamentos definidos na implementação
 
-Escolhas de detalhe, para revisão do autor:
+Escolhas de detalhe, aprovadas pelo autor como estão em 2026-10-08 (C2 e C9 ficam como limitações
+aceitas, decisão PC-D7 do [plano de conclusão](../../plano-de-conclusao.md)):
 
 - **C1** O limite conta perguntas registradas em `usage_records`, inclusive as que falharam ou
   tiveram o cliente desconectado. Os registros sobrevivem à exclusão da conversa, para que apagar

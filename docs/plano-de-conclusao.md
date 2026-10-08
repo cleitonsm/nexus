@@ -1,6 +1,6 @@
 # Plano de Conclusão — Evolução RAG Enterprise
 
-**Status**: Rascunho para aprovação do autor; decisões PC-D1 a PC-D7 pendentes (seção 5)
+**Status**: Aprovado pelo autor em 2026-10-08, com as decisões PC-D1 a PC-D7 (seção 5); em execução (seção 8)
 **Autor**: Cleiton Medeiros (elaborado com apoio de IA generativa, pendente de revisão)
 **Data**: 2026-10-08
 **Abrange**: tudo o que falta para encerrar as etapas 9 a 14 do [plano incremental](plano-incremental.md)
@@ -193,10 +193,11 @@ Atualização final da documentação (seção 6.2) e do estado no projeto. Esfo
 ## 5. Decisões pendentes
 
 A regra da skill `desenvolvedor-nexus` exige decisão do autor antes de implementar escolhas de
-formato, limite ou comportamento. Sugestões abaixo; nada será implementado antes da resposta.
+formato, limite ou comportamento. Em 2026-10-08 o autor aceitou todas as sugestões (coluna
+"Sugestão") e aprovou como estão os comportamentos C1–C11 da SPEC-006 e C9–C16 da SPEC-005.
 
-| ID | Decisão | Opções | Sugestão |
-|----|---------|--------|----------|
+| ID | Decisão | Opções | Sugestão (decidida) |
+|----|---------|--------|---------------------|
 | PC-D1 | Origens do realm | (a) Placeholders de variável de ambiente no `nexus-realm.json` (o Keycloak substitui `${VAR}` na importação), com `NEXUS_FRONTEND_URL` no `.env`; (b) script que gera o JSON a partir de um modelo | (a): sem script novo, e o padrão continua `http://localhost:4200` |
 | PC-D2 | Mudança em `BM25_*` sem reindexar | (a) Gravar `k1`, `b` e comprimento médio no estado do índice; divergência gera aviso no log, métrica e marca "reindexação necessária" na tela, sem bloquear; (b) recusar buscas até reindexar | (a): bloquear a busca derruba o assistente por um ajuste de parâmetro |
 | PC-D3 | Conferência PostgreSQL × Qdrant (R18) | (a) Comando `python -m src.cli.check_consistency` sob demanda; (b) (a) + execução diária pelo worker com métrica; (c) rota de administrador | (a) agora; (b) fica registrada como evolução |
@@ -262,10 +263,10 @@ refeito ao fim da semana 1.
 
 | Etapa | Situação | Data | Observação |
 |-------|----------|------|------------|
-| E0 | Pendente | — | 4 commits locais sem push |
-| E1 | Pendente | — | Depende do autor |
+| E0 | Concluída, exceto apagar branches | 2026-10-08 | Push até `8518f7b`. O primeiro CI no GitHub passou no backend e na infraestrutura e falhou no frontend: faltava `@tailwindcss/typography` no `package-lock.json` (corrigido em `ea66f5d`, lock gerado pelo npm no GitHub Actions). Falta o autor apagar `feat/rag-enterprise-fase-1` e `chore/sync-lock` no GitHub (o proxy da sessão não permite) |
+| E1 | Roteiro pronto | 2026-10-08 | `scripts/validation/quick-check.ps1` grava as evidências em `docs/qa/relatorios/<data>-e1/`; falta o autor executar |
 | E2 | Pendente | — | — |
-| E3 | Pendente | — | Aguarda PC-D1 a PC-D7 |
+| E3 | Concluída | 2026-10-08 | PC-D1 a PC-D7 decididas; C1–C11 (SPEC-006) e C9–C16 (SPEC-005) aprovados; skill `desenvolvedor-nexus` atualizada nas duas cópias |
 | E4 | Pendente | — | Versões já fixadas; falta a compatibilidade do Qdrant |
 | E5 | Pendente | — | — |
 | E6 | Pendente | — | CT-41 a CT-45 escritos |
