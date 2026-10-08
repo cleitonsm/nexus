@@ -9,6 +9,7 @@ from src.domain import (
     DocumentId,
     EmbeddingGateway,
     SparseEmbeddingGateway,
+    SparseEncodingParameters,
     VectorChunk,
 )
 
@@ -45,6 +46,12 @@ class DocumentIndexer:
     @property
     def embedding_dimension(self) -> int:
         return self._embedding_gateway.dimension
+
+    @property
+    def sparse_parameters(self) -> SparseEncodingParameters | None:
+        """Parametros do BM25 vigentes; ``None`` se o adaptador nao os expoe."""
+        parameters = getattr(self._sparse_embedding_gateway, "parameters", None)
+        return parameters if isinstance(parameters, SparseEncodingParameters) else None
 
     def supports(self, *, source_name: str, content_type: str | None) -> bool:
         return self._extractor.supports(

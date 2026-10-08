@@ -27,6 +27,7 @@ from src.application.services import (
     JobTimeoutError,
     is_index_outdated,
     read_index_state,
+    record_sparse_parameters,
 )
 from src.domain import (
     AuditAction,
@@ -38,6 +39,7 @@ from src.domain import (
     DocumentStatus,
     DomainValidationError,
     IndexOutdatedError,
+    IndexParametersRepository,
     IngestionJob,
     IngestionJobQueue,
     ReindexInProgressError,
@@ -198,8 +200,10 @@ class ProcessNextIngestionJobUseCase:
         access_control: AccessControl,
         settings: IngestionSettings | None = None,
         clock: Callable[[], datetime] = _utc_now,
+        index_parameters: IndexParametersRepository | None = None,
     ) -> None:
         self._queue = job_queue
+        self._index_parameters = index_parameters
         self._documents = document_repository
         self._vector_store = vector_store_gateway
         self._indexer = document_indexer
@@ -310,6 +314,10 @@ class ProcessNextIngestionJobUseCase:
                 vector_size=self._indexer.embedding_dimension,
             )
             self._vector_store.point_alias(state.alias, first)
+            # PC-D2: parametros do BM25 com que a collection nasce.
+            record_sparse_parameters(
+                self._index_parameters, first, self._indexer.sparse_parameters
+            )
         return state.alias
 
     def _previous_version(self, document: Document) -> Document | None:

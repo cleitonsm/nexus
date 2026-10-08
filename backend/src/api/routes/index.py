@@ -11,8 +11,10 @@ from src.api.dependencies import (
     get_current_user,
     get_document_repository,
     get_embedding_gateway,
+    get_index_parameters_repository,
     get_reindex_job_repository,
     get_reindex_runner,
+    get_sparse_encoding_parameters,
     get_vector_store_gateway,
 )
 from src.api.schemas import IndexStatusResponse, ReindexJobResponse
@@ -31,9 +33,11 @@ from src.domain import (
     DocumentRepository,
     DomainValidationError,
     EmbeddingGateway,
+    IndexParametersRepository,
     IngestionInProgressError,
     ReindexInProgressError,
     ReindexJobRepository,
+    SparseEncodingParameters,
     VectorStoreGateway,
 )
 
@@ -117,6 +121,12 @@ def get_index_status(
     reindex_job_repository: ReindexJobRepository = Depends(
         get_reindex_job_repository
     ),
+    index_parameters: IndexParametersRepository = Depends(
+        get_index_parameters_repository
+    ),
+    sparse_parameters: SparseEncodingParameters = Depends(
+        get_sparse_encoding_parameters
+    ),
 ) -> IndexStatusResponse:
     assistant_ref = _existing_assistant_id(assistant_id, assistant_repository)
     result = GetIndexStatusUseCase(
@@ -125,6 +135,8 @@ def get_index_status(
         embedding_gateway=embedding_gateway,
         reindex_job_repository=reindex_job_repository,
         access_control=access_control,
+        index_parameters=index_parameters,
+        sparse_parameters=sparse_parameters,
     ).execute(GetIndexStatusInput(user=user, assistant_id=assistant_ref.value))
     return IndexStatusResponse(
         assistant_id=result.assistant_id,
@@ -138,4 +150,7 @@ def get_index_status(
         last_reindex=(
             _job_response(result.last_reindex) if result.last_reindex else None
         ),
+        sparse_parameters_changed=result.sparse_parameters_changed,
+        sparse_parameters_recorded=result.sparse_parameters_recorded,
+        sparse_parameters_current=result.sparse_parameters_current,
     )

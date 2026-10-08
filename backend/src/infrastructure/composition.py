@@ -16,7 +16,7 @@ from src.application.services import (
     RetrievalSettings,
     UsageSettings,
 )
-from src.domain import LLMPricing, UsageLimits
+from src.domain import LLMPricing, SparseEncodingParameters, UsageLimits
 from src.infrastructure.auth import (
     KeycloakTokenVerifier,
     http_jwks_fetcher,
@@ -95,7 +95,11 @@ def build_token_counter() -> SentenceTransformerTokenCounter:
 
 @lru_cache(maxsize=1)
 def build_sparse_embedding_gateway() -> Bm25SparseEmbeddingGateway:
-    """Mudar estes parametros exige reindexar: os vetores ja gravados nao mudam."""
+    """Mudar estes parametros exige reindexar: os vetores ja gravados nao mudam.
+
+    A mudanca e detectada (PC-D2): cada collection registra os parametros com
+    que foi gerada, e a diferenca aparece no estado do indice e no log.
+    """
     return Bm25SparseEmbeddingGateway(**bm25_parameters())
 
 
@@ -107,6 +111,20 @@ def bm25_parameters() -> dict[str, float]:
             "BM25_AVG_LENGTH", DEFAULT_BM25_AVERAGE_LENGTH
         ),
     }
+
+
+def sparse_encoding_parameters() -> SparseEncodingParameters:
+    """Parametros do BM25 vigentes no ambiente."""
+    return SparseEncodingParameters(**bm25_parameters())
+
+
+def default_sparse_encoding_parameters() -> SparseEncodingParameters:
+    """Parametros assumidos para collections anteriores ao registro (PC-D2)."""
+    return SparseEncodingParameters(
+        k1=DEFAULT_BM25_K1,
+        b=DEFAULT_BM25_B,
+        average_length=DEFAULT_BM25_AVERAGE_LENGTH,
+    )
 
 
 def reranker_model_name() -> str:

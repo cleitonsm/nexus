@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -7,7 +8,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
-from src.api.dependencies import get_vector_store_gateway
+from src.api.dependencies import (
+    build_index_parameters_repository,
+    get_vector_store_gateway,
+)
 from src.api.errors import register_error_handlers
 from src.api.routes import (
     admin_router,
@@ -20,20 +24,27 @@ from src.api.routes import (
     me_router,
 )
 from src.api.middleware import register_request_context
-from src.application.use_cases import FailInterruptedReindexesUseCase
+from src.application.use_cases import (
+    FailInterruptedReindexesUseCase,
+    ReportSparseParameterChangesUseCase,
+)
 from src.infrastructure.composition import (
     api_docs_enabled,
     build_metrics,
     build_tracer,
     cors_allowed_origins,
+    sparse_encoding_parameters,
 )
 from src.infrastructure.database import (
+    PostgresAssistantRepository,
     PostgresReindexJobRepository,
     SessionLocal,
     ingestion_job_gauges,
     run_migrations,
 )
 from src.infrastructure.observability import configure_logging
+
+logger = logging.getLogger(__name__)
 
 configure_logging(level=os.getenv("LOG_LEVEL", "INFO"))
 
@@ -43,6 +54,7 @@ async def lifespan(_: FastAPI):
     # As migracoes sao aplicadas antes de a API aceitar requisicoes (ADR 0011).
     run_migrations()
     _fail_interrupted_reindexes()
+    _report_sparse_parameter_changes()
     yield
 
 
@@ -107,3 +119,21 @@ def _fail_interrupted_reindexes() -> None:
             vector_store_gateway=get_vector_store_gateway(),
             reindex_job_repository=PostgresReindexJobRepository(session=session),
         ).execute()
+
+
+def _report_sparse_parameter_changes() -> None:
+    """PC-D2: avisa (log e metrica) quando ``BM25_*`` mudou sem reindexar.
+
+    Melhor esforco: uma falha aqui nao impede a API de subir.
+    """
+    try:
+        with SessionLocal() as session:
+            ReportSparseParameterChangesUseCase(
+                assistant_repository=PostgresAssistantRepository(session=session),
+                vector_store_gateway=get_vector_store_gateway(),
+                index_parameters=build_index_parameters_repository(session),
+                sparse_parameters=sparse_encoding_parameters(),
+                metrics=build_metrics(),
+            ).execute()
+    except Exception:  # noqa: BLE001 - verificacao opcional na subida
+        logger.exception("index.sparse_parameters_check_failed")

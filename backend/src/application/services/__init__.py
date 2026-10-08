@@ -21,7 +21,14 @@ from .ingestion import (
     IngestionSettings,
     JobTimeoutError,
 )
-from .index_state import IndexState, is_index_outdated, read_index_state
+from .index_state import (
+    IndexState,
+    SparseParametersCheck,
+    check_sparse_parameters,
+    is_index_outdated,
+    read_index_state,
+    record_sparse_parameters,
+)
 from .retrieval import ContextRetriever, RetrievalSettings
 from .usage import UsageGovernance, UsageSettings
 
@@ -51,7 +58,10 @@ __all__ = [
     "build_answer_instruction",
     "build_answer_prompt",
     "fit_context",
+    "SparseParametersCheck",
+    "check_sparse_parameters",
     "is_index_outdated",
+    "record_sparse_parameters",
     "read_index_state",
     "trim_history",
 ]

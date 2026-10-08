@@ -4,17 +4,20 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from hashlib import blake2b
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from src.domain import (
     DAY,
+    CollectionName,
     FeedbackQuery,
     FeedbackRating,
     FeedbackReview,
     FeedbackStatus,
     MessageFeedback,
+    SparseEncodingParameters,
     UsageLimitDecision,
     UsageLimits,
     UsageQuery,
@@ -33,6 +36,8 @@ from .models import (
 )
 
 USAGE_LIMITS_KEY = "usage_limits"
+SPARSE_PARAMETERS_KEY_PREFIX = "bm25:"
+_SETTINGS_KEY_MAX_LENGTH = 64
 
 
 class PostgresUsageRecordRepository:
@@ -210,6 +215,68 @@ class PostgresUsageSettingsRepository:
             model.updated_at = now
         self._session.commit()
         return limits
+
+
+class PostgresIndexParametersRepository:
+    """Parametros do BM25 por collection em ``app_settings`` (PC-D2).
+
+    Collections criadas antes deste registro nao tem linha: valem os
+    parametros ``assumed_when_missing`` (os padroes do adaptador), que foram
+    os unicos possiveis ate entao sem mudar o ambiente.
+    """
+
+    def __init__(
+        self,
+        session: Session,
+        *,
+        assumed_when_missing: SparseEncodingParameters | None = None,
+    ) -> None:
+        self._session = session
+        self._assumed = assumed_when_missing
+
+    def get_sparse_parameters(
+        self, collection_name: CollectionName
+    ) -> SparseEncodingParameters | None:
+        model = self._session.get(AppSettingModel, _sparse_key(collection_name))
+        if model is None:
+            return self._assumed
+        value = model.value or {}
+        return SparseEncodingParameters(
+            k1=float(value["k1"]),
+            b=float(value["b"]),
+            average_length=float(value["average_length"]),
+        )
+
+    def save_sparse_parameters(
+        self,
+        collection_name: CollectionName,
+        parameters: SparseEncodingParameters,
+    ) -> None:
+        key = _sparse_key(collection_name)
+        model = self._session.get(AppSettingModel, key)
+        now = datetime.now(UTC)
+        if model is None:
+            self._session.add(
+                AppSettingModel(
+                    key_name=key,
+                    value=parameters.as_dict(),
+                    updated_by=None,
+                    updated_at=now,
+                )
+            )
+        else:
+            model.value = parameters.as_dict()
+            model.updated_at = now
+        self._session.commit()
+
+
+def _sparse_key(collection_name: CollectionName) -> str:
+    """Chave em ``app_settings`` (ate 64 caracteres; nomes longos viram hash)."""
+    key = f"{SPARSE_PARAMETERS_KEY_PREFIX}{collection_name.value}"
+    if len(key) <= _SETTINGS_KEY_MAX_LENGTH:
+        return key
+    digest = blake2b(collection_name.value.encode("utf-8"), digest_size=16).hexdigest()
+    return f"{SPARSE_PARAMETERS_KEY_PREFIX}#{digest}"
 
 
 class PostgresFeedbackRepository:

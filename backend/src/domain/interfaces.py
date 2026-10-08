@@ -191,11 +191,61 @@ class SparseVector:
 
 
 class SparseEmbeddingGateway(Protocol):
-    """Gera vetores esparsos localmente (RNF-26); o IDF fica com o indice."""
+    """Gera vetores esparsos localmente (RNF-26); o IDF fica com o indice.
+
+    Adaptadores que dependem de parametros (BM25) os expoem em
+    ``parameters`` (``SparseEncodingParameters``), para que a mudanca deles
+    seja detectada (PC-D2).
+    """
 
     def embed_documents(self, texts: list[str]) -> list[SparseVector]: ...
 
     def embed_query(self, text: str) -> SparseVector: ...
+
+
+_PARAMETER_TOLERANCE = 1e-9
+
+
+@dataclass(frozen=True, slots=True)
+class SparseEncodingParameters:
+    """Parametros do BM25 com que os vetores esparsos foram gerados (PC-D2).
+
+    Os vetores gravados nao mudam quando o ambiente muda: comparar o que foi
+    usado na collection com o vigente revela a necessidade de reindexar.
+    """
+
+    k1: float
+    b: float
+    average_length: float
+
+    def __post_init__(self) -> None:
+        if self.k1 < 0 or not 0.0 <= self.b <= 1.0 or self.average_length <= 0:
+            raise DomainValidationError("invalid sparse encoding parameters.")
+
+    def matches(self, other: "SparseEncodingParameters") -> bool:
+        return (
+            abs(self.k1 - other.k1) <= _PARAMETER_TOLERANCE
+            and abs(self.b - other.b) <= _PARAMETER_TOLERANCE
+            and abs(self.average_length - other.average_length)
+            <= _PARAMETER_TOLERANCE
+        )
+
+    def as_dict(self) -> dict[str, float]:
+        return {"k1": self.k1, "b": self.b, "average_length": self.average_length}
+
+
+class IndexParametersRepository(Protocol):
+    """Parametros de codificacao registrados por collection (PC-D2)."""
+
+    def get_sparse_parameters(
+        self, collection_name: CollectionName
+    ) -> SparseEncodingParameters | None: ...
+
+    def save_sparse_parameters(
+        self,
+        collection_name: CollectionName,
+        parameters: SparseEncodingParameters,
+    ) -> None: ...
 
 
 @dataclass(frozen=True, slots=True)

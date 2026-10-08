@@ -44,3 +44,8 @@ class IndexStatusDTO:
     documents_indexed: int
     documents_without_original: tuple[str, ...]
     last_reindex: ReindexJobDTO | None
+    # PC-D2: parametros do BM25 da collection vigente diferentes dos do
+    # ambiente. So aviso; a correcao e reindexar.
+    sparse_parameters_changed: bool = False
+    sparse_parameters_recorded: dict[str, float] | None = None
+    sparse_parameters_current: dict[str, float] | None = None

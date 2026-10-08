@@ -5,7 +5,7 @@ import unicodedata
 from collections import Counter
 from hashlib import blake2b
 
-from src.domain import SparseVector
+from src.domain import SparseEncodingParameters, SparseVector
 
 # Compostos como "NR-35", "ISO/IEC-27001" ou "v1.11.3" valem tambem como um
 # termo unico: e a correspondencia exata que a busca densa nao garante.
@@ -69,6 +69,13 @@ class Bm25SparseEmbeddingGateway:
         self._k1 = k1
         self._b = b
         self._average_length = average_length
+
+    @property
+    def parameters(self) -> SparseEncodingParameters:
+        """Parametros vigentes, registrados com cada collection (PC-D2)."""
+        return SparseEncodingParameters(
+            k1=self._k1, b=self._b, average_length=self._average_length
+        )
 
     def embed_documents(self, texts: list[str]) -> list[SparseVector]:
         return [self._embed_document(text) for text in texts]

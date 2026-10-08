@@ -27,3 +27,7 @@ class IndexStatusResponse(BaseModel):
     documents_indexed: int
     documents_without_original: list[str]
     last_reindex: ReindexJobResponse | None
+    # PC-D2: parametros do BM25 mudaram desde a geracao da collection vigente.
+    sparse_parameters_changed: bool = False
+    sparse_parameters_recorded: dict[str, float] | None = None
+    sparse_parameters_current: dict[str, float] | None = None

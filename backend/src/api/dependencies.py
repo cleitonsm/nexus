@@ -32,6 +32,7 @@ from src.domain import (
     LLMGateway,
     LLMStreamChunk,
     MetricsRecorder,
+    SparseEncodingParameters,
     TokenCounter,
     TokenVerifier,
     Tracer,
@@ -48,8 +49,10 @@ from src.infrastructure.composition import (
     build_sparse_embedding_gateway,
     build_token_counter,
     build_token_verifier,
+    default_sparse_encoding_parameters,
     max_file_bytes,
     retrieval_settings,
+    sparse_encoding_parameters,
 )
 from src.infrastructure.database import (
     PostgresAssistantPermissionRepository,
@@ -58,6 +61,7 @@ from src.infrastructure.database import (
     PostgresConversationRepository,
     PostgresDocumentRepository,
     PostgresFeedbackRepository,
+    PostgresIndexParametersRepository,
     PostgresIngestionJobQueue,
     PostgresReindexJobRepository,
     PostgresSecretSettingsRepository,
@@ -182,6 +186,26 @@ def get_reindex_job_repository(
     return PostgresReindexJobRepository(session=session)
 
 
+def build_index_parameters_repository(
+    session: Session,
+) -> PostgresIndexParametersRepository:
+    """PC-D2: collections sem registro assumem os parametros padrao do BM25."""
+    return PostgresIndexParametersRepository(
+        session=session,
+        assumed_when_missing=default_sparse_encoding_parameters(),
+    )
+
+
+def get_index_parameters_repository(
+    session: Session = Depends(get_session),
+) -> PostgresIndexParametersRepository:
+    return build_index_parameters_repository(session)
+
+
+def get_sparse_encoding_parameters() -> SparseEncodingParameters:
+    return sparse_encoding_parameters()
+
+
 def get_ingestion_job_queue(
     session: Session = Depends(get_session),
 ) -> PostgresIngestionJobQueue:
@@ -217,6 +241,7 @@ def run_reindex_job(job_id: str) -> None:
             permission_repository=PostgresAssistantPermissionRepository(
                 session=session
             ),
+            index_parameters=build_index_parameters_repository(session),
         ).execute(RunReindexInput(job_id=job_id))
 
 

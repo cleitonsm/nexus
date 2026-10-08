@@ -32,12 +32,14 @@ from src.domain import DocumentFileStorage, VectorStoreGateway
 from src.infrastructure.composition import (
     build_document_indexer,
     build_file_storage,
+    default_sparse_encoding_parameters,
     ingestion_settings,
 )
 from src.infrastructure.database import (
     PostgresAssistantPermissionRepository,
     PostgresAuditLogRepository,
     PostgresDocumentRepository,
+    PostgresIndexParametersRepository,
     PostgresIngestionJobQueue,
     PostgresReindexJobRepository,
     SessionLocal,
@@ -87,6 +89,10 @@ def run_once(session: Session, adapters: WorkerAdapters) -> bool:
         reindex_job_repository=PostgresReindexJobRepository(session=session),
         access_control=access_control,
         settings=adapters.settings,
+        index_parameters=PostgresIndexParametersRepository(
+            session=session,
+            assumed_when_missing=default_sparse_encoding_parameters(),
+        ),
     ).execute()
     return outcome is not None
 

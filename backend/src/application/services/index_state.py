@@ -6,6 +6,8 @@ from src.domain import (
     AssistantId,
     CollectionName,
     Document,
+    IndexParametersRepository,
+    SparseEncodingParameters,
     VectorStoreGateway,
 )
 
@@ -71,3 +73,45 @@ def is_index_outdated(
         )
         for document in documents
     )
+
+
+@dataclass(frozen=True, slots=True)
+class SparseParametersCheck:
+    """Parametros do BM25 da collection vigente comparados aos do ambiente.
+
+    ``recorded`` vazio (collection sem registro ou sem repositorio) nao conta
+    como mudanca. PC-D2: a divergencia so avisa; nada e bloqueado.
+    """
+
+    recorded: SparseEncodingParameters | None
+    current: SparseEncodingParameters | None
+
+    @property
+    def changed(self) -> bool:
+        if self.recorded is None or self.current is None:
+            return False
+        return not self.recorded.matches(self.current)
+
+
+def check_sparse_parameters(
+    state: IndexState,
+    repository: IndexParametersRepository | None,
+    current: SparseEncodingParameters | None,
+) -> SparseParametersCheck:
+    if repository is None or state.current is None:
+        return SparseParametersCheck(recorded=None, current=current)
+    return SparseParametersCheck(
+        recorded=repository.get_sparse_parameters(state.current),
+        current=current,
+    )
+
+
+def record_sparse_parameters(
+    repository: IndexParametersRepository | None,
+    collection_name: CollectionName,
+    parameters: SparseEncodingParameters | None,
+) -> None:
+    """Registra os parametros com que a collection passa a ser gerada."""
+    if repository is None or parameters is None:
+        return
+    repository.save_sparse_parameters(collection_name, parameters)

@@ -10,12 +10,15 @@ from src.application.services import (
     AccessControl,
     DocumentIndexer,
     IndexState,
+    check_sparse_parameters,
     is_index_outdated,
     read_index_state,
+    record_sparse_parameters,
 )
 from src.domain import (
     AssistantId,
     AssistantPermissionRepository,
+    AssistantRepository,
     AuditAction,
     AuditResource,
     AuthenticatedUser,
@@ -25,16 +28,20 @@ from src.domain import (
     DocumentRepository,
     DocumentStatus,
     EmbeddingGateway,
+    IndexParametersRepository,
     IngestionInProgressError,
+    MetricsRecorder,
     ReindexInProgressError,
     ReindexJob,
     ReindexJobRepository,
+    SparseEncodingParameters,
     VectorStoreGateway,
 )
 
 logger = logging.getLogger(__name__)
 
 INTERRUPTED_MESSAGE = "reindex interrupted by an application restart."
+SPARSE_PARAMETERS_CHANGED_METRIC = "nexus_index_sparse_parameters_changed_total"
 
 
 class ReindexJobNotFoundError(LookupError):
@@ -130,7 +137,9 @@ class RunReindexUseCase:
         file_storage: DocumentFileStorage,
         reindex_job_repository: ReindexJobRepository,
         permission_repository: AssistantPermissionRepository,
+        index_parameters: IndexParametersRepository | None = None,
     ) -> None:
+        self._index_parameters = index_parameters
         self._permission_repository = permission_repository
         self._document_repository = document_repository
         self._vector_store_gateway = vector_store_gateway
@@ -186,6 +195,12 @@ class RunReindexUseCase:
         self._vector_store_gateway.ensure_collection(
             collection_name=target,
             vector_size=self._document_indexer.embedding_dimension,
+        )
+        # PC-D2: a nova versao nasce com os parametros do BM25 vigentes.
+        record_sparse_parameters(
+            self._index_parameters,
+            target,
+            self._document_indexer.sparse_parameters,
         )
         groups = self._permission_repository.list_document_groups(job.assistant_id)
         reindexed: list[Document] = []
@@ -288,8 +303,12 @@ class GetIndexStatusUseCase:
         embedding_gateway: EmbeddingGateway,
         reindex_job_repository: ReindexJobRepository,
         access_control: AccessControl,
+        index_parameters: IndexParametersRepository | None = None,
+        sparse_parameters: SparseEncodingParameters | None = None,
     ) -> None:
         self._access = access_control
+        self._index_parameters = index_parameters
+        self._sparse_parameters = sparse_parameters
         self._document_repository = document_repository
         self._vector_store_gateway = vector_store_gateway
         self._embedding_gateway = embedding_gateway
@@ -305,6 +324,11 @@ class GetIndexStatusUseCase:
         model = self._embedding_gateway.model_name
         last_job = self._reindex_job_repository.get_latest(assistant_id)
         collection = state.current or (state.alias if state.legacy else None)
+        sparse = check_sparse_parameters(
+            state, self._index_parameters, self._sparse_parameters
+        )
+        if sparse.changed:
+            _warn_sparse_parameters_changed(assistant_id, sparse.recorded, sparse.current)
         return IndexStatusDTO(
             assistant_id=assistant_id.value,
             embedding_model=model,
@@ -332,4 +356,65 @@ class GetIndexStatusUseCase:
                 )
             ),
             last_reindex=ReindexJobDTO.from_entity(last_job) if last_job else None,
+            sparse_parameters_changed=sparse.changed,
+            sparse_parameters_recorded=(
+                sparse.recorded.as_dict() if sparse.recorded else None
+            ),
+            sparse_parameters_current=(
+                sparse.current.as_dict() if sparse.current else None
+            ),
         )
+
+
+def _warn_sparse_parameters_changed(
+    assistant_id: AssistantId,
+    recorded: SparseEncodingParameters | None,
+    current: SparseEncodingParameters | None,
+) -> None:
+    logger.warning(
+        "index.sparse_parameters_changed",
+        extra={
+            "assistant_id": assistant_id.value,
+            "recorded": recorded.as_dict() if recorded else None,
+            "current": current.as_dict() if current else None,
+        },
+    )
+
+
+class ReportSparseParameterChangesUseCase:
+    """PC-D2: na subida, aponta assistentes cujos vetores esparsos foram
+    gerados com outros parametros do BM25.
+
+    So avisa (log e metrica); a busca e os envios continuam. A correcao e
+    reindexar o assistente. Sem usuario: roda na inicializacao da API.
+    """
+
+    def __init__(
+        self,
+        *,
+        assistant_repository: AssistantRepository,
+        vector_store_gateway: VectorStoreGateway,
+        index_parameters: IndexParametersRepository,
+        sparse_parameters: SparseEncodingParameters | None,
+        metrics: MetricsRecorder | None = None,
+    ) -> None:
+        self._assistants = assistant_repository
+        self._vector_store = vector_store_gateway
+        self._index_parameters = index_parameters
+        self._sparse_parameters = sparse_parameters
+        self._metrics = metrics
+
+    def execute(self) -> list[str]:
+        changed: list[str] = []
+        for assistant in self._assistants.list_all():
+            state = read_index_state(self._vector_store, assistant.id)
+            check = check_sparse_parameters(
+                state, self._index_parameters, self._sparse_parameters
+            )
+            if not check.changed:
+                continue
+            changed.append(assistant.id.value)
+            _warn_sparse_parameters_changed(assistant.id, check.recorded, check.current)
+            if self._metrics is not None:
+                self._metrics.increment(SPARSE_PARAMETERS_CHANGED_METRIC)
+        return changed
