@@ -1,3 +1,6 @@
+from datetime import datetime
+
+
 class DomainValidationError(ValueError):
     """Raised when domain invariants are violated."""
 
@@ -39,3 +42,19 @@ class DuplicateDocumentError(Exception):
 
 class IngestionInProgressError(Exception):
     """Ha documentos do assistente sendo processados pelo worker."""
+
+
+class InvalidFeedbackStateError(Exception):
+    """A avaliacao ja foi revisada ou nao admite a operacao (RN-33)."""
+
+
+class UsageLimitExceededError(Exception):
+    """RN-32: o usuario atingiu o limite de perguntas da janela."""
+
+    def __init__(
+        self, message: str, *, window: str, limit: int, retry_at: datetime
+    ) -> None:
+        super().__init__(message)
+        self.window = window
+        self.limit = limit
+        self.retry_at = retry_at

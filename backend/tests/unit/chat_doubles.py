@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import replace
 
 from src.application.services import ContextRetriever, RetrievalSettings
@@ -10,8 +11,11 @@ from src.domain import (
     CollectionName,
     ContextChunk,
     DocumentId,
+    LLMCompletion,
+    LLMStreamChunk,
     SearchResult,
     SparseVector,
+    TokenUsage,
 )
 from src.infrastructure.embeddings import Bm25SparseEmbeddingGateway
 
@@ -92,11 +96,60 @@ class ScriptedReranker:
 
 
 class ScriptedLLM:
-    """Devolve as respostas na ordem roteirizada e registra as chamadas."""
+    """Devolve as respostas na ordem roteirizada e registra as chamadas.
 
-    def __init__(self, *answers: str) -> None:
+    ``usage`` e o consumo informado a cada chamada; no streaming, a resposta
+    sai em partes de ``chunk_size`` caracteres e o consumo vem no fim.
+    """
+
+    def __init__(
+        self,
+        *answers: str,
+        usage: TokenUsage | None = None,
+        chunk_size: int = 4,
+    ) -> None:
         self._answers = list(answers)
         self.calls: list[dict[str, object]] = []
+        self.usage = usage or TokenUsage()
+        self.chunk_size = chunk_size
+        self.system_instructions: list[str | None] = []
+
+    def generate_with_usage(
+        self,
+        *,
+        prompt: str,
+        context_chunks: list[ContextChunk],
+        conversation_history: list[ChatMessage],
+        system_instruction: str | None = None,
+    ) -> LLMCompletion:
+        self.system_instructions.append(system_instruction)
+        text = self.generate(
+            prompt=prompt,
+            context_chunks=context_chunks,
+            conversation_history=conversation_history,
+        )
+        if self.calls:
+            self.calls[-1]["system_instruction"] = system_instruction
+        return LLMCompletion(text=text, usage=self.usage)
+
+    def generate_stream(
+        self,
+        *,
+        prompt: str,
+        context_chunks: list[ContextChunk],
+        conversation_history: list[ChatMessage],
+        system_instruction: str | None = None,
+    ) -> Iterator[LLMStreamChunk]:
+        completion = self.generate_with_usage(
+            prompt=prompt,
+            context_chunks=context_chunks,
+            conversation_history=conversation_history,
+            system_instruction=system_instruction,
+        )
+        text = completion.text
+        for start in range(0, len(text), self.chunk_size):
+            yield LLMStreamChunk(text=text[start : start + self.chunk_size])
+        yield LLMStreamChunk(usage=completion.usage)
 
     def generate(
         self,

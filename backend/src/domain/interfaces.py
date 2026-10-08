@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from collections.abc import Iterator
 from typing import Protocol
 
 from .access import AuthenticatedUser
@@ -9,6 +10,16 @@ from .audit import AuditEvent, AuditQuery
 from .chunking import DocumentChunk, ExtractedDocument
 from .citations import ContextChunk
 from .errors import DomainValidationError
+from .feedback import FeedbackQuery, MessageFeedback
+from .usage import (
+    LLMCompletion,
+    LLMStreamChunk,
+    UsageLimitDecision,
+    UsageLimits,
+    UsageQuery,
+    UsageRecord,
+    UsageSummary,
+)
 from .entities import (
     Assistant,
     ChatMessage,
@@ -128,6 +139,10 @@ class ConversationRepository(Protocol):
     ) -> list[ChatMessage]: ...
 
     def delete(self, conversation_id: ConversationId) -> bool: ...
+
+    def get_message(self, message_id: str) -> ChatMessage | None:
+        """Mensagem pelo id, de qualquer conversa; quem chama confere o dono."""
+        ...
 
 
 class SecretSettingsRepository(Protocol):
@@ -384,6 +399,32 @@ class LLMGateway(Protocol):
         conversation_history: list[ChatMessage],
     ) -> str: ...
 
+    def generate_with_usage(
+        self,
+        *,
+        prompt: str,
+        context_chunks: list[ContextChunk],
+        conversation_history: list[ChatMessage],
+        system_instruction: str | None = None,
+    ) -> LLMCompletion:
+        """Como ``generate``, com o consumo de tokens (RF-57).
+
+        ``system_instruction`` vai nas instrucoes de sistema, separada dos
+        trechos recuperados, que nunca chegam la (RN-31).
+        """
+        ...
+
+    def generate_stream(
+        self,
+        *,
+        prompt: str,
+        context_chunks: list[ContextChunk],
+        conversation_history: list[ChatMessage],
+        system_instruction: str | None = None,
+    ) -> Iterator[LLMStreamChunk]:
+        """Resposta em partes (RF-58); o consumo vem na ultima, se houver."""
+        ...
+
 
 class AnswerJudge(Protocol):
     """Julga se uma resposta e sustentada pelo contexto recuperado."""
@@ -455,4 +496,49 @@ class AuditLogRepository(Protocol):
 
     def list_events(self, query: AuditQuery) -> list[AuditEvent]:
         """Eventos do mais recente para o mais antigo."""
+        ...
+
+
+class UsageRecordRepository(Protocol):
+    """Perguntas feitas ao chat, com tokens e custo estimado (RF-57)."""
+
+    def append(self, record: UsageRecord) -> UsageRecord: ...
+
+    def summarize_by_user(self, query: UsageQuery) -> list[UsageSummary]: ...
+
+    def summarize_by_conversation(self, query: UsageQuery) -> list[UsageSummary]: ...
+
+
+class UsageLimiter(Protocol):
+    """RN-32: decide se o usuario ainda pode perguntar na janela atual."""
+
+    def check(
+        self,
+        user_id: str,
+        limits: UsageLimits,
+        now: datetime,
+    ) -> UsageLimitDecision: ...
+
+
+class UsageSettingsRepository(Protocol):
+    """Limites definidos na tela; sem valor gravado, vale o do ambiente."""
+
+    def get_limits(self) -> UsageLimits | None: ...
+
+    def save_limits(self, limits: UsageLimits, *, updated_by: str) -> UsageLimits: ...
+
+
+class FeedbackRepository(Protocol):
+    def save(self, feedback: MessageFeedback) -> MessageFeedback: ...
+
+    def get_by_id(self, feedback_id: str) -> MessageFeedback | None: ...
+
+    def get_by_message(
+        self,
+        message_id: str,
+        user_id: str,
+    ) -> MessageFeedback | None: ...
+
+    def list_feedback(self, query: FeedbackQuery) -> list[MessageFeedback]:
+        """Da mais recente para a mais antiga."""
         ...

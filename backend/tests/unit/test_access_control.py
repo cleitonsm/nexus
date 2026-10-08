@@ -727,6 +727,12 @@ class FailingLLM:
     def generate(self, *, prompt, context_chunks, conversation_history) -> str:
         raise RuntimeError("LLM provider is unreachable.")
 
+    def generate_with_usage(self, **kwargs):
+        raise RuntimeError("LLM provider is unreachable.")
+
+    def generate_stream(self, **kwargs):
+        raise RuntimeError("LLM provider is unreachable.")
+
 
 class ChatAccessTestCase(AccessTestCase):
     """Contratos do CT-27 e do CT-28, com o vector store dublado."""

@@ -24,6 +24,15 @@ from .conversations import (
     MessageResponse,
 )
 from .index import IndexStatusResponse, ReindexJobResponse
+from .operations import (
+    FeedbackResponse,
+    ReviewFeedbackRequest,
+    SubmitFeedbackRequest,
+    UsageLimitsRequest,
+    UsageLimitsResponse,
+    UsageReportResponse,
+    UsageSummaryResponse,
+)
 
 __all__ = [
     "AddMessageRequest",
@@ -38,15 +47,22 @@ __all__ = [
     "ConversationHistoryResponse",
     "ConversationResponse",
     "CreateAssistantRequest",
-    "InferAssistantRequest",
-    "InferAssistantResponse",
     "CreateConversationRequest",
     "CurrentUserResponse",
     "DocumentAccessResponse",
+    "FeedbackResponse",
     "GroupsRequest",
     "GroupsResponse",
     "IndexStatusResponse",
+    "InferAssistantRequest",
+    "InferAssistantResponse",
     "MessageResponse",
     "ReindexJobResponse",
+    "ReviewFeedbackRequest",
     "SaveApiKeyRequest",
+    "SubmitFeedbackRequest",
+    "UsageLimitsRequest",
+    "UsageLimitsResponse",
+    "UsageReportResponse",
+    "UsageSummaryResponse",
 ]

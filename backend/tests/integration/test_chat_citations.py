@@ -6,6 +6,7 @@ do Compose. Execute dentro do container do backend.
 
 from __future__ import annotations
 
+import json
 import unittest
 from uuid import uuid4
 
@@ -20,6 +21,7 @@ from src.api.dependencies import (
     get_conversation_repository,
     get_document_repository,
     get_token_counter,
+    get_usage_governance,
 )
 from src.api.routes import conversations_router
 from src.application.services import (
@@ -180,6 +182,8 @@ class ChatCitationsApiTestCase(unittest.TestCase):
         )
         overrides[get_token_counter] = WordTokenCounter
         overrides[get_document_repository] = lambda: KnownDocuments(existing_documents)
+        # Limite e consumo tem testes proprios (test_operations_api.py).
+        overrides[get_usage_governance] = lambda: None
         return TestClient(app)
 
     def test_chat_returns_citations_and_conversation_keeps_them(self) -> None:
@@ -261,6 +265,44 @@ class ChatCitationsApiTestCase(unittest.TestCase):
         self.assertEqual(limited.json()["used_context_chunks"], 2)
         self.assertEqual(above.json()["used_context_chunks"], 5)
 
+    def test_stream_sends_text_in_parts_and_citations_at_the_end(self) -> None:
+        """CT-44 (RF-58): Server-Sent Events com ``delta`` e ``done``."""
+        with self._client([_hit(0.9)]) as client:
+            response = client.post(
+                "/conversations/conv-1/chat/stream",
+                json={"question": "Quanto duram as ferias?"},
+            )
+            detail = client.get("/conversations/conv-1")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.headers["content-type"].startswith("text/event-stream"))
+        self.assertEqual(response.headers["x-accel-buffering"], "no")
+        events = _parse_sse(response.text)
+        kinds = [kind for kind, _ in events]
+        self.assertIn("delta", kinds)
+        self.assertEqual(kinds[-1], "done")
+        done = events[-1][1]
+        streamed = "".join(data["text"] for kind, data in events if kind == "delta")
+        final = next(
+            (data["text"] for kind, data in events if kind == "replace"), streamed
+        )
+        self.assertEqual(done["assistant_message"]["content"], final.strip())
+        self.assertEqual(done["citations"][0]["source_name"], "politica.pdf")
+        _, assistant_message = detail.json()["messages"]
+        self.assertEqual(assistant_message["content"], done["assistant_message"]["content"])
+
+    def test_stream_errors_before_the_first_byte_keep_the_http_status(self) -> None:
+        with self._client([], outdated=True) as client:
+            conflict = client.post(
+                "/conversations/conv-1/chat/stream",
+                json={"question": "Pergunta?"},
+            )
+            missing = client.post(
+                "/conversations/conv-x/chat/stream",
+                json={"question": "Pergunta?"},
+            )
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(missing.status_code, 404)
+
     def test_incompatible_index_is_reported_as_conflict(self) -> None:
         with self._client([], outdated=True) as client:
             response = client.post(
@@ -268,6 +310,16 @@ class ChatCitationsApiTestCase(unittest.TestCase):
                 json={"question": "Pergunta?"},
             )
         self.assertEqual(response.status_code, 409)
+
+
+def _parse_sse(text: str) -> list[tuple[str, dict]]:
+    events = []
+    for block in text.strip().split("\n\n"):
+        fields = dict(
+            line.split(": ", 1) for line in block.splitlines() if ": " in line
+        )
+        events.append((fields["event"], json.loads(fields["data"])))
+    return events
 
 
 def _database_session():

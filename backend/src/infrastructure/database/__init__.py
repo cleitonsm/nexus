@@ -2,15 +2,25 @@ from .base import Base
 from .migrate import run_migrations
 from .models import (
     AssistantGroupModel,
+    AppSettingModel,
     AssistantModel,
     AuditEventModel,
     ConversationModel,
     DocumentGroupModel,
     DocumentModel,
     IngestionJobModel,
+    MessageFeedbackModel,
     MessageModel,
     ReindexJobModel,
     SecretSettingModel,
+    UsageRecordModel,
+)
+from .operations_repositories import (
+    PostgresFeedbackRepository,
+    PostgresUsageLimiter,
+    PostgresUsageRecordRepository,
+    PostgresUsageSettingsRepository,
+    ingestion_job_gauges,
 )
 from .repositories import (
     PostgresAssistantPermissionRepository,
@@ -26,6 +36,7 @@ from .repositories import (
 from .session import SessionLocal, engine, get_db_session
 
 __all__ = [
+    "AppSettingModel",
     "AssistantGroupModel",
     "AssistantModel",
     "AuditEventModel",
@@ -34,20 +45,27 @@ __all__ = [
     "DocumentGroupModel",
     "DocumentModel",
     "IngestionJobModel",
+    "MessageFeedbackModel",
     "MessageModel",
-    "PostgresSecretSettingsRepository",
     "PostgresAssistantPermissionRepository",
     "PostgresAssistantRepository",
     "PostgresAuditLogRepository",
     "PostgresAuditRetentionRepository",
     "PostgresConversationRepository",
     "PostgresDocumentRepository",
+    "PostgresFeedbackRepository",
     "PostgresIngestionJobQueue",
     "PostgresReindexJobRepository",
+    "PostgresSecretSettingsRepository",
+    "PostgresUsageLimiter",
+    "PostgresUsageRecordRepository",
+    "PostgresUsageSettingsRepository",
     "ReindexJobModel",
     "SecretSettingModel",
     "SessionLocal",
+    "UsageRecordModel",
     "engine",
     "get_db_session",
+    "ingestion_job_gauges",
     "run_migrations",
 ]

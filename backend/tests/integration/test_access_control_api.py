@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from access_support import AccessHarness, TokenFactory, bearer, member
 from src.api.dependencies import (
     get_answer_generator,
+    get_usage_governance,
     get_assistant_repository,
     get_audit_log_repository,
     get_context_retriever,
@@ -259,6 +260,7 @@ class ApiAccessTestCase(unittest.TestCase):
         overrides[get_secret_settings_repository] = lambda: self.secrets
         overrides[get_secret_cipher] = Cipher
         overrides[get_audit_log_repository] = lambda: self.access.audit
+        overrides[get_usage_governance] = lambda: None
         # Nenhum teste daqui toca o banco nem carrega o modelo de embedding.
         overrides[get_document_repository] = EmptyDocumentRepository
         overrides[get_reindex_job_repository] = IdleJobRepository

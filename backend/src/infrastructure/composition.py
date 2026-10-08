@@ -7,13 +7,16 @@ indexem e recuperem com exatamente o mesmo pipeline e os mesmos parametros.
 from __future__ import annotations
 
 import os
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
 from src.application.services import (
     DocumentIndexer,
     IngestionSettings,
     RetrievalSettings,
+    UsageSettings,
 )
+from src.domain import LLMPricing, UsageLimits
 from src.infrastructure.auth import (
     KeycloakTokenVerifier,
     http_jwks_fetcher,
@@ -32,6 +35,11 @@ from src.infrastructure.embeddings import (
     Bm25SparseEmbeddingGateway,
     SentenceTransformerEmbeddingGateway,
     SentenceTransformerTokenCounter,
+)
+from src.infrastructure.observability import (
+    MetricsRegistry,
+    OtlpJsonSpanExporter,
+    SpanTracer,
 )
 from src.infrastructure.reranking import CrossEncoderRerankerGateway
 from src.infrastructure.storage import LocalDocumentFileStorage
@@ -52,6 +60,15 @@ DEFAULT_OIDC_AUDIENCE = "nexus-api"
 DEFAULT_CORS_ALLOWED_ORIGINS = "http://localhost:4200"
 DEFAULT_AUDIT_RETENTION_DAYS = 365
 JWKS_PATH = "/protocol/openid-connect/certs"
+DEFAULT_LLM_MODEL = "gpt-4o-mini"
+# SPEC-006 D3 (decisao de 2026-10-08): 20 perguntas por minuto e 500 por dia.
+DEFAULT_RATE_LIMIT_PER_MINUTE = 20
+DEFAULT_RATE_LIMIT_PER_DAY = 500
+# Precos de tabela do gpt-4o-mini, em USD por mil tokens (estimativa).
+DEFAULT_LLM_PRICE_INPUT_PER_1K = "0.00015"
+DEFAULT_LLM_PRICE_OUTPUT_PER_1K = "0.0006"
+DEFAULT_LLM_PRICE_CURRENCY = "USD"
+DEFAULT_OTEL_SERVICE_NAME = "nexus-backend"
 
 
 def embedding_model_name() -> str:
@@ -212,6 +229,64 @@ def ingestion_settings() -> IngestionSettings:
             "INGESTION_JOB_TIMEOUT_SECONDS", defaults.job_timeout_seconds
         ),
     )
+
+
+def llm_model_name() -> str:
+    model = os.getenv("LLM_MODEL", "").strip()
+    if not model or model == "placeholder":
+        return DEFAULT_LLM_MODEL
+    return model
+
+
+def usage_settings() -> UsageSettings:
+    """D3: limites padrao do ambiente; a tela de administracao os substitui."""
+    return UsageSettings(
+        default_limits=UsageLimits(
+            per_minute=_int_env(
+                "RATE_LIMIT_PER_MINUTE", DEFAULT_RATE_LIMIT_PER_MINUTE
+            ),
+            per_day=_int_env("RATE_LIMIT_PER_DAY", DEFAULT_RATE_LIMIT_PER_DAY),
+        ),
+        pricing=LLMPricing(
+            input_per_1k=_decimal_env(
+                "LLM_PRICE_INPUT_PER_1K", DEFAULT_LLM_PRICE_INPUT_PER_1K
+            ),
+            output_per_1k=_decimal_env(
+                "LLM_PRICE_OUTPUT_PER_1K", DEFAULT_LLM_PRICE_OUTPUT_PER_1K
+            ),
+            currency=_text_env("LLM_PRICE_CURRENCY", DEFAULT_LLM_PRICE_CURRENCY),
+        ),
+        model=llm_model_name(),
+    )
+
+
+@lru_cache(maxsize=1)
+def build_metrics() -> MetricsRegistry:
+    """Um registro por processo, exposto em ``/metrics``."""
+    return MetricsRegistry()
+
+
+@lru_cache(maxsize=1)
+def build_tracer() -> SpanTracer:
+    """D1/D2: sem ``OTEL_EXPORTER_OTLP_ENDPOINT``, os trechos so geram metricas."""
+    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip()
+    exporter = (
+        OtlpJsonSpanExporter(
+            endpoint=endpoint,
+            service_name=_text_env("OTEL_SERVICE_NAME", DEFAULT_OTEL_SERVICE_NAME),
+        )
+        if endpoint
+        else None
+    )
+    return SpanTracer(exporter=exporter, metrics=build_metrics())
+
+
+def _decimal_env(name: str, default: str) -> Decimal:
+    raw = os.getenv(name, "").strip() or default
+    try:
+        return Decimal(raw)
+    except InvalidOperation as exc:
+        raise ValueError(f"{name} must be a number.") from exc
 
 
 def _first_text_env(names: tuple[str, ...], default: str) -> str:

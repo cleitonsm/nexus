@@ -2,15 +2,20 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from decimal import Decimal
+
 from sqlalchemy import (
     JSON,
     BigInteger,
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -331,3 +336,87 @@ class AuditEventModel(Base):
     resource_type: Mapped[str] = mapped_column(String(32), nullable=False)
     resource_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     details: Mapped[dict[str, object]] = mapped_column(JSON(), nullable=False)
+
+
+class UsageRecordModel(Base):
+    """Uma pergunta ao chat, com tokens e custo estimado (SPEC-006, RF-57)."""
+
+    __tablename__ = "usage_records"
+    __table_args__ = (
+        Index("ix_usage_records_user_occurred", "user_id", "occurred_at"),
+        Index("ix_usage_records_occurred", "occurred_at"),
+        Index("ix_usage_records_conversation", "conversation_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    user_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    conversation_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("conversations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    assistant_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("assistants.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    model: Mapped[str] = mapped_column(String(128), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer(), nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer(), nullable=False, default=0)
+    estimated_cost: Mapped[Decimal] = mapped_column(
+        Numeric(14, 6), nullable=False, default=Decimal("0")
+    )
+    fallback_used: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
+    failed: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AppSettingModel(Base):
+    """Configuracoes ajustadas na tela (sem segredo; segredos ficam cifrados)."""
+
+    __tablename__ = "app_settings"
+
+    key_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict[str, object]] = mapped_column(JSON(), nullable=False)
+    updated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utc_now
+    )
+
+
+class MessageFeedbackModel(Base):
+    """Avaliacao de resposta (RF-61); uma por usuario e mensagem."""
+
+    __tablename__ = "message_feedback"
+    __table_args__ = (
+        UniqueConstraint(
+            "message_id", "user_id", name="uq_message_feedback_message_user"
+        ),
+        Index("ix_message_feedback_assistant_status", "assistant_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    message_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    conversation_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    assistant_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("assistants.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    rating: Mapped[str] = mapped_column(String(16), nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    question: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    answer: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    cited_documents: Mapped[list[str] | None] = mapped_column(JSON(), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    expected_answer: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    source_documents: Mapped[list[str] | None] = mapped_column(JSON(), nullable=True)
+    out_of_scope: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
+    reviewed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from src.domain import (
     ChatMessage,
     Citation,
     ContextChunk,
+    LLMCompletion,
     LLMGateway,
+    LLMStreamChunk,
     SearchResult,
     TokenCounter,
     resolve_citations,
@@ -98,15 +101,22 @@ class GroundedAnswerGenerator:
         question: str,
         history: list[ChatMessage],
     ) -> str:
+        return self.rewrite(question, history).text
+
+    def rewrite(
+        self,
+        question: str,
+        history: list[ChatMessage],
+    ) -> LLMCompletion:
         """RF-36: sem historico a pergunta segue como foi digitada.
 
         A reescrita e uma melhoria da busca: se o LLM falhar, a pergunta
         original e usada e a falha fica registrada no log.
         """
         if not history:
-            return question
+            return LLMCompletion(text=question)
         try:
-            rewritten = self._llm_gateway.generate(
+            completion = self._llm_gateway.generate_with_usage(
                 prompt=f"{REWRITE_INSTRUCTION}\nPergunta: {question}",
                 context_chunks=[],
                 conversation_history=history,
@@ -116,8 +126,11 @@ class GroundedAnswerGenerator:
                 "chat.rewrite.failed",
                 extra={"error_type": type(exc).__name__},
             )
-            return question
-        return " ".join(rewritten.split()) or question
+            return LLMCompletion(text=question)
+        return LLMCompletion(
+            text=" ".join(completion.text.split()) or question,
+            usage=completion.usage,
+        )
 
     def generate(
         self,
@@ -127,13 +140,49 @@ class GroundedAnswerGenerator:
         history: list[ChatMessage],
         instruction: str | None = None,
     ) -> str:
+        return self.generate_completion(
+            question=question,
+            context_chunks=context_chunks,
+            history=history,
+            instruction=instruction,
+        ).text
+
+    def generate_completion(
+        self,
+        *,
+        question: str,
+        context_chunks: list[ContextChunk],
+        history: list[ChatMessage],
+        instruction: str | None = None,
+    ) -> LLMCompletion:
+        """RN-31: instrucoes no sistema; trechos e pergunta, fora dele."""
         if not context_chunks:
-            return ""
-        return self._llm_gateway.generate(
-            prompt=build_answer_prompt(question, instruction),
+            return LLMCompletion(text="")
+        completion = self._llm_gateway.generate_with_usage(
+            prompt=build_answer_prompt(question),
             context_chunks=context_chunks,
             conversation_history=history,
-        ).strip()
+            system_instruction=build_answer_instruction(instruction),
+        )
+        return LLMCompletion(text=completion.text.strip(), usage=completion.usage)
+
+    def generate_stream(
+        self,
+        *,
+        question: str,
+        context_chunks: list[ContextChunk],
+        history: list[ChatMessage],
+        instruction: str | None = None,
+    ) -> Iterator[LLMStreamChunk]:
+        """RF-58: mesma chamada da geracao completa, entregue em partes."""
+        if not context_chunks:
+            return iter(())
+        return self._llm_gateway.generate_stream(
+            prompt=build_answer_prompt(question),
+            context_chunks=context_chunks,
+            conversation_history=history,
+            system_instruction=build_answer_instruction(instruction),
+        )
 
     def validate(
         self,
@@ -171,6 +220,11 @@ class GroundedAnswerGenerator:
         return self.validate(text, context_chunks)
 
 
-def build_answer_prompt(question: str, instruction: str | None) -> str:
+def build_answer_instruction(instruction: str | None) -> str:
+    """Prompt inicial do assistente e regra de citacao: vao no sistema."""
     base = (instruction or "").strip() or DEFAULT_ANSWER_INSTRUCTION
-    return f"{base}\n{CITATION_INSTRUCTION}\nPergunta: {question}"
+    return f"{base}\n{CITATION_INSTRUCTION}"
+
+
+def build_answer_prompt(question: str) -> str:
+    return f"Pergunta: {question}"

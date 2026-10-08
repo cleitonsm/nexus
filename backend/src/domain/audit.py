@@ -28,6 +28,15 @@ class AuditAction(StrEnum):
     LLM_API_KEY_TESTED = "llm_api_key.tested"
     AUDIT_CONSULTED = "audit.consulted"
     AUDIT_PURGED = "audit.purged"
+    # SPEC-006
+    CHAT_RATE_LIMITED = "chat.rate_limited"
+    PROMPT_INJECTION_SUSPECTED = "chat.prompt_injection_suspected"
+    FEEDBACK_SUBMITTED = "feedback.submitted"
+    FEEDBACK_REVIEWED = "feedback.reviewed"
+    FEEDBACK_CONSULTED = "feedback.consulted"
+    FEEDBACK_EXPORTED = "feedback.exported"
+    USAGE_CONSULTED = "usage.consulted"
+    USAGE_LIMITS_CHANGED = "usage.limits_changed"
 
 
 class AuditResource(StrEnum):
@@ -37,6 +46,8 @@ class AuditResource(StrEnum):
     CONVERSATION = "conversation"
     SETTINGS = "settings"
     AUDIT = "audit"
+    MESSAGE = "message"
+    FEEDBACK = "feedback"
 
 
 def _utc_now() -> datetime:

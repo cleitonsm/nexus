@@ -112,3 +112,17 @@ class ChatTurnResult:
     @property
     def citations(self) -> tuple[CitationDTO, ...]:
         return self.assistant_message.citations
+
+
+@dataclass(frozen=True, slots=True)
+class ChatStreamEvent:
+    """Evento da resposta em streaming (RF-58).
+
+    ``delta``: parte nova do texto. ``replace``: texto final diferente do que
+    foi transmitido (fallback ou marcador invalido removido), que substitui o
+    exibido. ``done``: resultado completo, com as citacoes.
+    """
+
+    kind: str
+    text: str = ""
+    result: ChatTurnResult | None = None

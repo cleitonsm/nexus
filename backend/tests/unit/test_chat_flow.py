@@ -187,8 +187,10 @@ class AnswerWithSourcesTestCase(unittest.TestCase):
         self,
     ) -> None:
         (call,) = self.scenario.llm.calls
-        self.assertIn("Aja como especialista em RH.", call["prompt"])
-        self.assertIn(CITATION_INSTRUCTION, call["prompt"])
+        # SPEC-006 (RN-31): prompt inicial e regra de citacao vao no sistema.
+        self.assertIn("Aja como especialista em RH.", call["system_instruction"])
+        self.assertIn(CITATION_INSTRUCTION, call["system_instruction"])
+        self.assertNotIn("Aja como especialista em RH.", call["prompt"])
         self.assertIn("Quanto duram as ferias?", call["prompt"])
         self.assertEqual(
             [chunk.number for chunk in call["context_chunks"]], [1, 2]

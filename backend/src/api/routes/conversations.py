@@ -1,6 +1,14 @@
 from __future__ import annotations
 
+import contextvars
+import json
+import logging
+from collections.abc import Iterator
+
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
 
 from src.api.dependencies import (
     get_access_control,
@@ -10,7 +18,11 @@ from src.api.dependencies import (
     get_conversation_repository,
     get_current_user,
     get_document_repository,
+    get_metrics,
+    get_session,
     get_token_counter,
+    get_tracer,
+    get_usage_governance,
 )
 from src.api.schemas import (
     AddMessageRequest,
@@ -22,11 +34,12 @@ from src.api.schemas import (
     CreateConversationRequest,
     MessageResponse,
 )
-from src.application.dto import MessageDTO
+from src.application.dto import ChatStreamEvent, ChatTurnResult, MessageDTO
 from src.application.services import (
     AccessControl,
     ContextRetriever,
     GroundedAnswerGenerator,
+    UsageGovernance,
 )
 from src.application.use_cases import (
     AddMessageInput,
@@ -46,12 +59,16 @@ from src.domain import (
     DocumentRepository,
     DomainValidationError,
     IndexOutdatedError,
+    MetricsRecorder,
     TokenCounter,
+    Tracer,
 )
 from src.infrastructure.database import (
     PostgresAssistantRepository,
     PostgresConversationRepository,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/conversations",
@@ -232,7 +249,11 @@ def chat_with_assistant(
     context_retriever: ContextRetriever = Depends(get_context_retriever),
     answer_generator: GroundedAnswerGenerator = Depends(get_answer_generator),
     token_counter: TokenCounter = Depends(get_token_counter),
+    usage_governance: UsageGovernance | None = Depends(get_usage_governance),
+    tracer: Tracer = Depends(get_tracer),
+    metrics: MetricsRecorder = Depends(get_metrics),
 ) -> ChatResponse:
+    """Resposta completa de uma vez; mantida para testes e para a avaliacao."""
     use_case = ChatWithAssistantUseCase(
         assistant_repository=assistant_repository,
         conversation_repository=conversation_repository,
@@ -240,39 +261,156 @@ def chat_with_assistant(
         answer_generator=answer_generator,
         token_counter=token_counter,
         access_control=access_control,
+        usage_governance=usage_governance,
+        tracer=tracer,
+        metrics=metrics,
     )
     try:
-        result = use_case.execute(
-            ChatWithAssistantInput(
-                user=user,
-                conversation_id=conversation_id,
-                question=payload.question,
-                top_k=payload.top_k,
-            )
-        )
-    except ConversationNotFoundError as exc:
-        raise _not_found(exc) from exc
-    except IndexOutdatedError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
-    except DomainValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(exc),
-        ) from exc
+        result = use_case.execute(_chat_input(user, conversation_id, payload))
+    except (ConversationNotFoundError, IndexOutdatedError, ValueError, RuntimeError) as exc:
+        raise _chat_error(exc) from exc
+    return _chat_response(result)
 
+
+@router.post(
+    "/{conversation_id}/chat/stream",
+    response_class=StreamingResponse,
+    responses={200: {"content": {"text/event-stream": {}}}},
+)
+def chat_with_assistant_stream(
+    conversation_id: str,
+    payload: ChatRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    access_control: AccessControl = Depends(get_access_control),
+    assistant_repository: PostgresAssistantRepository = Depends(
+        get_assistant_repository
+    ),
+    conversation_repository: PostgresConversationRepository = Depends(
+        get_conversation_repository
+    ),
+    context_retriever: ContextRetriever = Depends(get_context_retriever),
+    answer_generator: GroundedAnswerGenerator = Depends(get_answer_generator),
+    token_counter: TokenCounter = Depends(get_token_counter),
+    usage_governance: UsageGovernance | None = Depends(get_usage_governance),
+    tracer: Tracer = Depends(get_tracer),
+    metrics: MetricsRecorder = Depends(get_metrics),
+) -> StreamingResponse:
+    """RF-58: Server-Sent Events.
+
+    Antes do primeiro byte, os erros de entrada respondem com o status HTTP
+    de sempre (404, 403, 409, 422, 429). Depois, chegam como evento
+    ``error``. Eventos: ``delta`` (texto novo), ``replace`` (texto final
+    diferente do transmitido, como o fallback), ``done`` (resposta completa
+    com as citacoes, no formato da rota sem streaming) e ``error``.
+    """
+    use_case = ChatWithAssistantUseCase(
+        assistant_repository=assistant_repository,
+        conversation_repository=conversation_repository,
+        context_retriever=context_retriever,
+        answer_generator=answer_generator,
+        token_counter=token_counter,
+        access_control=access_control,
+        usage_governance=usage_governance,
+        tracer=tracer,
+        metrics=metrics,
+    )
+    try:
+        events = use_case.start_stream(_chat_input(user, conversation_id, payload))
+    except (ConversationNotFoundError, IndexOutdatedError, ValueError, RuntimeError) as exc:
+        raise _chat_error(exc) from exc
+    return StreamingResponse(
+        _server_sent_events(events, session),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            # O Nginx entrega cada parte assim que ela chega (CT-55).
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+def _chat_input(
+    user: AuthenticatedUser,
+    conversation_id: str,
+    payload: ChatRequest,
+) -> ChatWithAssistantInput:
+    return ChatWithAssistantInput(
+        user=user,
+        conversation_id=conversation_id,
+        question=payload.question,
+        top_k=payload.top_k,
+    )
+
+
+def _chat_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, ConversationNotFoundError):
+        return _not_found(exc)
+    if isinstance(exc, IndexOutdatedError):
+        return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    if isinstance(exc, ValueError):
+        return HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        )
+    return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+
+def _in_one_context(events: Iterator[ChatStreamEvent]) -> Iterator[ChatStreamEvent]:
+    """Avanca o gerador sempre no mesmo contexto.
+
+    O Starlette consome geradores sincronos numa thread por parte, cada vez
+    com uma copia nova do contexto. Sem isto, o trecho atual do rastreamento
+    (``ContextVar``) se perderia entre as partes e as etapas seguintes do
+    grafo sairiam do rastreamento da pergunta (RF-56).
+    """
+    context = contextvars.copy_context()
+    try:
+        while True:
+            try:
+                event = context.run(next, events)
+            except StopIteration:
+                return
+            yield event
+    finally:
+        close = getattr(events, "close", None)
+        if close is not None:
+            context.run(close)
+
+
+def _server_sent_events(
+    events: Iterator[ChatStreamEvent],
+    session: Session,
+) -> Iterator[str]:
+    try:
+        for event in _in_one_context(events):
+            if event.kind == "done" and event.result is not None:
+                data = jsonable_encoder(_chat_response(event.result))
+            else:
+                data = {"text": event.text}
+            yield _sse(event.kind, data)
+    except Exception as exc:  # noqa: BLE001 - o status HTTP ja foi enviado
+        error = _chat_error(exc) if isinstance(exc, (ValueError, RuntimeError)) else None
+        logger.warning(
+            "chat.stream.failed",
+            extra={"error_type": type(exc).__name__},
+        )
+        yield _sse(
+            "error",
+            {
+                "status": error.status_code if error else 500,
+                "detail": error.detail if error else "internal error",
+            },
+        )
+    finally:
+        session.close()
+
+
+def _sse(event: str, data: object) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def _chat_response(result: ChatTurnResult) -> ChatResponse:
     assistant_message = _message_response(result.assistant_message)
     return ChatResponse(
         conversation_id=result.conversation_id,

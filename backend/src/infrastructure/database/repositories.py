@@ -194,6 +194,10 @@ class PostgresConversationRepository:
         self._session.commit()
         return True
 
+    def get_message(self, message_id: str) -> ChatMessage | None:
+        model = self._session.get(MessageModel, message_id)
+        return _message_to_entity(model) if model is not None else None
+
 
 class PostgresDocumentRepository:
     def __init__(self, session: Session) -> None:

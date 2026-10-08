@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterator
 
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,6 +13,8 @@ from src.application.services import (
     ContextRetriever,
     DocumentIndexer,
     GroundedAnswerGenerator,
+    UsageGovernance,
+    UsageSettings,
 )
 from src.application.use_cases import (
     GetGlobalApiKeyValueUseCase,
@@ -26,14 +28,22 @@ from src.domain import (
     ContextChunk,
     DocumentFileStorage,
     EmbeddingGateway,
+    LLMCompletion,
     LLMGateway,
+    LLMStreamChunk,
+    MetricsRecorder,
     TokenCounter,
     TokenVerifier,
+    Tracer,
 )
 from src.infrastructure.composition import (
     build_document_indexer,
     build_embedding_gateway,
     build_file_storage,
+    build_metrics,
+    build_tracer,
+    llm_model_name,
+    usage_settings,
     build_reranker_gateway,
     build_sparse_embedding_gateway,
     build_token_counter,
@@ -47,17 +57,24 @@ from src.infrastructure.database import (
     PostgresAuditLogRepository,
     PostgresConversationRepository,
     PostgresDocumentRepository,
+    PostgresFeedbackRepository,
     PostgresIngestionJobQueue,
     PostgresReindexJobRepository,
     PostgresSecretSettingsRepository,
+    PostgresUsageLimiter,
+    PostgresUsageRecordRepository,
+    PostgresUsageSettingsRepository,
     SessionLocal,
     get_db_session,
 )
 from src.infrastructure.llm import HttpChatCompletionsLLM
+from src.infrastructure.observability import (
+    TracedLLMGateway,
+    TracedTokenVerifier,
+    TracedVectorStore,
+)
 from src.infrastructure.secrets import FernetSecretCipher
 from src.infrastructure.vector_store import QdrantVectorStoreGateway
-
-DEFAULT_LLM_MODEL = "gpt-4o-mini"
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +83,16 @@ def get_session() -> Generator[Session, None, None]:
     yield from get_db_session()
 
 
+def get_tracer() -> Tracer:
+    return build_tracer()
+
+
+def get_metrics() -> MetricsRecorder:
+    return build_metrics()
+
+
 def get_token_verifier() -> TokenVerifier:
-    return build_token_verifier()
+    return TracedTokenVerifier(build_token_verifier(), build_tracer())
 
 
 def get_current_user(
@@ -216,16 +241,25 @@ def get_context_retriever(
     ),
 ) -> ContextRetriever:
     """Os modelos locais sao carregados uma unica vez por processo."""
+    return build_context_retriever(embedding_gateway, vector_store_gateway)
+
+
+def build_context_retriever(
+    embedding_gateway: EmbeddingGateway,
+    vector_store_gateway: QdrantVectorStoreGateway,
+) -> ContextRetriever:
     return ContextRetriever(
         embedding_gateway=embedding_gateway,
         sparse_embedding_gateway=build_sparse_embedding_gateway(),
-        vector_store_gateway=vector_store_gateway,
+        vector_store_gateway=TracedVectorStore(vector_store_gateway, build_tracer()),
         reranker_gateway=build_reranker_gateway(),
         settings=retrieval_settings(),
     )
 
 
 class UnconfiguredLLMGateway(LLMGateway):
+    MESSAGE = "Global LLM API key is not configured. Set it in /admin/api-key first."
+
     def generate(
         self,
         *,
@@ -233,9 +267,13 @@ class UnconfiguredLLMGateway(LLMGateway):
         context_chunks: list[ContextChunk],
         conversation_history: list[ChatMessage],
     ) -> str:
-        raise ValueError(
-            "Global LLM API key is not configured. Set it in /admin/api-key first."
-        )
+        raise ValueError(self.MESSAGE)
+
+    def generate_with_usage(self, **kwargs: object) -> LLMCompletion:
+        raise ValueError(self.MESSAGE)
+
+    def generate_stream(self, **kwargs: object) -> Iterator[LLMStreamChunk]:
+        raise ValueError(self.MESSAGE)
 
 
 def get_llm_gateway(
@@ -244,6 +282,14 @@ def get_llm_gateway(
     ),
     secret_cipher: FernetSecretCipher = Depends(get_secret_cipher),
 ) -> LLMGateway:
+    return build_llm_gateway(secret_repository, secret_cipher)
+
+
+def build_llm_gateway(
+    secret_repository: PostgresSecretSettingsRepository,
+    secret_cipher: FernetSecretCipher,
+) -> LLMGateway:
+    """A chave e decifrada so em memoria, a cada requisicao (ADR 0005)."""
     api_key = GetGlobalApiKeyValueUseCase(
         secret_repository=secret_repository,
         secret_cipher=secret_cipher,
@@ -262,18 +308,57 @@ def get_llm_gateway(
         return UnconfiguredLLMGateway()
     if not model:
         return UnconfiguredLLMGateway()
-    return HttpChatCompletionsLLM(
-        api_url=api_url,
+    return TracedLLMGateway(
+        HttpChatCompletionsLLM(
+            api_url=api_url,
+            model=model,
+            api_key=api_key,
+        ),
+        build_tracer(),
         model=model,
-        api_key=api_key,
     )
 
 
 def get_configured_llm_model() -> str:
-    model = os.getenv("LLM_MODEL", "").strip()
-    if not model or model == "placeholder":
-        return DEFAULT_LLM_MODEL
-    return model
+    return llm_model_name()
+
+
+def get_usage_settings() -> UsageSettings:
+    return usage_settings()
+
+
+def get_usage_record_repository(
+    session: Session = Depends(get_session),
+) -> PostgresUsageRecordRepository:
+    return PostgresUsageRecordRepository(session=session)
+
+
+def get_usage_settings_repository(
+    session: Session = Depends(get_session),
+) -> PostgresUsageSettingsRepository:
+    return PostgresUsageSettingsRepository(session=session)
+
+
+def get_feedback_repository(
+    session: Session = Depends(get_session),
+) -> PostgresFeedbackRepository:
+    return PostgresFeedbackRepository(session=session)
+
+
+def build_usage_governance(session: Session) -> UsageGovernance:
+    return UsageGovernance(
+        limiter=PostgresUsageLimiter(session=session),
+        record_repository=PostgresUsageRecordRepository(session=session),
+        settings_repository=PostgresUsageSettingsRepository(session=session),
+        settings=usage_settings(),
+        metrics=build_metrics(),
+    )
+
+
+def get_usage_governance(
+    session: Session = Depends(get_session),
+) -> UsageGovernance:
+    return build_usage_governance(session)
 
 
 def get_answer_generator(

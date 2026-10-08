@@ -13,21 +13,34 @@ from src.api.dependencies import (
     get_current_user,
     get_secret_cipher,
     get_secret_settings_repository,
+    get_usage_record_repository,
+    get_usage_settings,
+    get_usage_settings_repository,
 )
 from src.api.schemas import (
     ApiKeyStatusResponse,
     ApiKeyTestResponse,
     AuditEventResponse,
     SaveApiKeyRequest,
+    UsageLimitsRequest,
+    UsageLimitsResponse,
+    UsageReportResponse,
+    UsageSummaryResponse,
 )
-from src.application.services import AccessControl
+from src.application.dto import UsageLimitsDTO, UsageSummaryDTO
+from src.application.services import AccessControl, UsageSettings
 from src.application.use_cases import (
     GetGlobalApiKeyStatusUseCase,
     GetGlobalApiKeyValueUseCase,
     ListAuditEventsInput,
     ListAuditEventsUseCase,
+    GetUsageLimitsUseCase,
+    GetUsageReportInput,
+    GetUsageReportUseCase,
     SaveGlobalApiKeyInput,
     SaveGlobalApiKeyUseCase,
+    UpdateUsageLimitsInput,
+    UpdateUsageLimitsUseCase,
 )
 from src.domain import (
     AuditAction,
@@ -35,6 +48,8 @@ from src.domain import (
     AuditResource,
     AuthenticatedUser,
     DomainValidationError,
+    UsageRecordRepository,
+    UsageSettingsRepository,
 )
 from src.infrastructure.database import PostgresSecretSettingsRepository
 from src.infrastructure.llm import HttpChatCompletionsLLM
@@ -160,6 +175,117 @@ def test_api_key(
         model=model,
         message="Comunicacao com a LLM validada usando a API key armazenada.",
         response_preview=answer[:200],
+    )
+
+
+@router.get("/usage", response_model=UsageReportResponse)
+def get_usage_report(
+    occurred_from: datetime | None = Query(default=None, alias="from"),
+    occurred_to: datetime | None = Query(default=None, alias="to"),
+    limit: int = Query(default=100, ge=1, le=500),
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    record_repository: UsageRecordRepository = Depends(get_usage_record_repository),
+    settings: UsageSettings = Depends(get_usage_settings),
+) -> UsageReportResponse:
+    """RF-57: tokens e custo estimado por usuario e por conversa."""
+    try:
+        report = GetUsageReportUseCase(
+            record_repository=record_repository,
+            access_control=access_control,
+            settings=settings,
+        ).execute(
+            GetUsageReportInput(
+                user=user,
+                occurred_from=occurred_from,
+                occurred_to=occurred_to,
+                limit=limit,
+            )
+        )
+    except DomainValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return UsageReportResponse(
+        occurred_from=report.occurred_from,
+        occurred_to=report.occurred_to,
+        currency=report.currency,
+        model=report.model,
+        by_user=[_usage_summary(item) for item in report.by_user],
+        by_conversation=[_usage_summary(item) for item in report.by_conversation],
+        total_questions=report.total_questions,
+        total_input_tokens=report.total_input_tokens,
+        total_output_tokens=report.total_output_tokens,
+        total_estimated_cost=report.total_estimated_cost,
+    )
+
+
+@router.get("/usage-limits", response_model=UsageLimitsResponse)
+def get_usage_limits(
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    settings_repository: UsageSettingsRepository = Depends(
+        get_usage_settings_repository
+    ),
+    settings: UsageSettings = Depends(get_usage_settings),
+) -> UsageLimitsResponse:
+    result = GetUsageLimitsUseCase(
+        settings_repository=settings_repository,
+        access_control=access_control,
+        settings=settings,
+    ).execute(user)
+    return _limits(result)
+
+
+@router.put("/usage-limits", response_model=UsageLimitsResponse)
+def update_usage_limits(
+    payload: UsageLimitsRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    settings_repository: UsageSettingsRepository = Depends(
+        get_usage_settings_repository
+    ),
+) -> UsageLimitsResponse:
+    """D3: limites por minuto e por dia; 0 desliga a janela."""
+    try:
+        result = UpdateUsageLimitsUseCase(
+            settings_repository=settings_repository,
+            access_control=access_control,
+        ).execute(
+            UpdateUsageLimitsInput(
+                user=user,
+                per_minute=payload.per_minute,
+                per_day=payload.per_day,
+            )
+        )
+    except DomainValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return _limits(result)
+
+
+def _limits(result: UsageLimitsDTO) -> UsageLimitsResponse:
+    return UsageLimitsResponse(
+        per_minute=result.per_minute,
+        per_day=result.per_day,
+        source=result.source,
+    )
+
+
+def _usage_summary(item: UsageSummaryDTO) -> UsageSummaryResponse:
+    return UsageSummaryResponse(
+        key=item.key,
+        questions=item.questions,
+        input_tokens=item.input_tokens,
+        output_tokens=item.output_tokens,
+        estimated_cost=item.estimated_cost,
+        user_id=item.user_id,
+        assistant_id=item.assistant_id,
+        last_used_at=item.last_used_at,
+        user_name=item.user_name,
     )
 
 

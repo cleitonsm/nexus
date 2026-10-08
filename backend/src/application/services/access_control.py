@@ -133,6 +133,32 @@ class AccessControl:
         if not AccessPolicy.can_configure_llm(user):
             self._deny(user, attempted, AuditResource.SETTINGS, None)
 
+    def manageable_assistant_ids(
+        self,
+        user: AuthenticatedUser,
+    ) -> frozenset[str] | None:
+        """Assistentes cuja base o usuario cura; ``None`` significa todos (admin)."""
+        if user.is_admin:
+            return None
+        if not user.is_curator:
+            return frozenset()
+        return frozenset(
+            assistant_id
+            for assistant_id, groups in self._permissions.list_assistant_groups().items()
+            if AccessPolicy.can_manage_documents(user, groups)
+        )
+
+    def require_curation(
+        self,
+        user: AuthenticatedUser,
+        attempted: AuditAction,
+    ) -> frozenset[str] | None:
+        """RN-33: avaliacoes negativas sao do curador (ou do administrador)."""
+        scope = self.manageable_assistant_ids(user)
+        if scope is not None and not user.is_curator:
+            self._deny(user, attempted, AuditResource.FEEDBACK, None)
+        return scope
+
     def require_audit_access(self, user: AuthenticatedUser) -> None:
         if not AccessPolicy.can_view_audit(user):
             self._deny(user, AuditAction.AUDIT_CONSULTED, AuditResource.AUDIT, None)

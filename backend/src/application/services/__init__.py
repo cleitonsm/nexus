@@ -6,6 +6,7 @@ from .grounded_answer import (
     REWRITE_INSTRUCTION,
     GroundedAnswer,
     GroundedAnswerGenerator,
+    build_answer_instruction,
     build_answer_prompt,
     fit_context,
     trim_history,
@@ -22,6 +23,7 @@ from .ingestion import (
 )
 from .index_state import IndexState, is_index_outdated, read_index_state
 from .retrieval import ContextRetriever, RetrievalSettings
+from .usage import UsageGovernance, UsageSettings
 
 __all__ = [
     "CITATION_INSTRUCTION",
@@ -44,6 +46,9 @@ __all__ = [
     "IngestionSettings",
     "JobTimeoutError",
     "RetrievalSettings",
+    "UsageGovernance",
+    "UsageSettings",
+    "build_answer_instruction",
     "build_answer_prompt",
     "fit_context",
     "is_index_outdated",
