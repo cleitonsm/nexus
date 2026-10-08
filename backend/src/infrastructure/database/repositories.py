@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -364,6 +364,8 @@ class PostgresReindexJobRepository:
         model.processed_documents = job.processed_documents
         model.error = job.error
         model.finished_at = job.finished_at
+        model.attempts = job.attempts
+        model.lease_expires_at = job.lease_expires_at
         try:
             self._session.commit()
         except IntegrityError as exc:
@@ -404,6 +406,32 @@ class PostgresReindexJobRepository:
             _reindex_job_to_entity(item)
             for item in self._session.scalars(stmt).all()
         ]
+
+    def claim_next(self, now: datetime, lease: timedelta) -> ReindexJob | None:
+        """PC-D4: reserva com ``FOR UPDATE SKIP LOCKED``, como a fila de ingestao."""
+        stmt = (
+            select(ReindexJobModel)
+            .where(
+                ReindexJobModel.status == ReindexStatus.RUNNING.value,
+                or_(
+                    ReindexJobModel.lease_expires_at.is_(None),
+                    ReindexJobModel.lease_expires_at <= now,
+                ),
+            )
+            .order_by(ReindexJobModel.started_at)
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
+        model = self._session.scalars(stmt).first()
+        if model is None:
+            self._session.rollback()
+            return None
+        job = _reindex_job_to_entity(model).claim(now, lease)
+        model.attempts = job.attempts
+        model.lease_expires_at = job.lease_expires_at
+        self._session.commit()
+        self._session.refresh(model)
+        return _reindex_job_to_entity(model)
 
 
 class PostgresAssistantPermissionRepository:
@@ -760,4 +788,6 @@ def _reindex_job_to_entity(model: ReindexJobModel) -> ReindexJob:
         error=model.error,
         started_at=model.started_at,
         finished_at=model.finished_at,
+        attempts=model.attempts or 0,
+        lease_expires_at=model.lease_expires_at,
     )

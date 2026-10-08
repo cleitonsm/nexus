@@ -1,6 +1,7 @@
 """Ingestao, reindexacao e situacao do indice (SPEC-20261007-002)."""
 
 import logging
+from datetime import datetime, timedelta
 from dataclasses import replace
 import tempfile
 import unittest
@@ -19,13 +20,14 @@ from src.application.services import (
 )
 from src.application.use_cases import (
     DocumentTooLargeError,
-    FailInterruptedReindexesUseCase,
     GetIndexStatusInput,
     GetIndexStatusUseCase,
     IngestDocumentInput,
     IngestDocumentUseCase,
     ProcessNextIngestionJobUseCase,
+    ProcessNextReindexJobUseCase,
     ReindexJobNotFoundError,
+    ReindexSettings,
     RunReindexInput,
     RunReindexUseCase,
     StartReindexInput,
@@ -239,6 +241,17 @@ class InMemoryReindexJobRepository:
 
     def list_running(self) -> list[ReindexJob]:
         return [job for job in self.items.values() if job.is_running]
+
+    def claim_next(self, now: datetime, lease: timedelta) -> ReindexJob | None:
+        claimable = sorted(
+            (job for job in self.items.values() if job.is_claimable(now)),
+            key=lambda job: job.started_at,
+        )
+        if not claimable:
+            return None
+        claimed = claimable[0].claim(now, lease)
+        self.items[claimed.id] = claimed
+        return claimed
 
 
 class Scenario:
@@ -668,45 +681,129 @@ class RunReindexTestCase(IndexingTestCase):
             self.scenario.run_reindex("nao-existe")
 
 
-class FailInterruptedReindexesTestCase(IndexingTestCase):
-    def _execute(self) -> int:
-        return FailInterruptedReindexesUseCase(
-            vector_store_gateway=self.scenario.vector_store,
-            reindex_job_repository=self.scenario.jobs,
-        ).execute()
+class ProcessNextReindexJobTestCase(IndexingTestCase):
+    """PC-D4: o worker reserva e executa as reindexacoes pedidas pela API."""
 
-    def test_running_job_becomes_failed_and_partial_is_discarded(self) -> None:
+    settings = ReindexSettings(max_attempts=2, lease_seconds=60)
+
+    def _worker(self, run=None) -> ProcessNextReindexJobUseCase:
+        scenario = self.scenario
+
+        def run_reindex(job_id: str, lease: timedelta):
+            return RunReindexUseCase(
+                document_repository=scenario.documents,
+                vector_store_gateway=scenario.vector_store,
+                document_indexer=scenario.indexer,
+                file_storage=scenario.storage,
+                reindex_job_repository=scenario.jobs,
+                permission_repository=scenario.access.permissions,
+                lease=lease,
+                clock=scenario.clock,
+            ).execute(RunReindexInput(job_id=job_id))
+
+        return ProcessNextReindexJobUseCase(
+            reindex_job_repository=scenario.jobs,
+            vector_store_gateway=scenario.vector_store,
+            run_reindex=run or run_reindex,
+            settings=self.settings,
+            clock=scenario.clock,
+        )
+
+    def test_without_requested_reindex_there_is_nothing_to_do(self) -> None:
+        self.assertIsNone(self._worker().execute())
+
+    def test_requested_reindex_is_claimed_and_executed(self) -> None:
+        self.scenario.ingest(document_id="doc-1")
+        started = self.scenario.start_reindex()
+        self.assertEqual(started.status, "running")
+
+        result = self._worker().execute()
+
+        self.assertEqual(result.id, started.id)
+        self.assertEqual(result.status, "succeeded")
+        job = self.scenario.jobs.items[started.id]
+        self.assertEqual(job.attempts, 1)
+        self.assertIsNone(job.lease_expires_at)
+        self.assertEqual(
+            self.scenario.vector_store.aliases, {"assistant-a1": "assistant-a1-v2"}
+        )
+        self.assertIsNone(self._worker().execute())
+
+    def test_claimed_job_is_not_claimed_again_before_the_lease_expires(self) -> None:
+        self.scenario.ingest(document_id="doc-1")
+        started = self.scenario.start_reindex()
+        claimed = self.scenario.jobs.claim_next(self.scenario.clock(), self.settings.lease)
+        self.assertEqual(claimed.id, started.id)
+        self.assertIsNone(self._worker().execute())
+
+    def test_interrupted_reindex_is_resumed_from_scratch(self) -> None:
+        self.scenario.ingest(document_id="doc-1")
+        started = self.scenario.start_reindex()
+        # Worker interrompido: reservou, gravou parte da collection e parou.
+        self.scenario.jobs.claim_next(self.scenario.clock(), self.settings.lease)
+        self.scenario.vector_store.collections["assistant-a1-v2"] = {"lixo": object()}
+        self.scenario.clock.advance(seconds=61)
+
+        result = self._worker().execute()
+
+        self.assertEqual(result.status, "succeeded")
+        self.assertEqual(self.scenario.jobs.items[started.id].attempts, 2)
+        self.assertNotIn(
+            "lixo", self.scenario.vector_store.collections["assistant-a1-v2"]
+        )
+
+    def test_progress_renews_the_lease(self) -> None:
+        self.scenario.ingest(document_id="doc-1")
+        self.scenario.ingest(document_id="doc-2")
+        started = self.scenario.start_reindex()
+        leases: list = []
+        jobs = self.scenario.jobs
+        original_save = jobs.save
+
+        def spy(job):
+            leases.append(job.lease_expires_at)
+            return original_save(job)
+
+        jobs.save = spy
+        self._worker().execute()
+        self.assertTrue(any(lease is not None for lease in leases[:-1]))
+        self.assertIsNone(jobs.items[started.id].lease_expires_at)
+
+    def test_attempts_exhausted_fail_the_job_and_discard_the_partial(self) -> None:
         self.scenario.ingest(document_id="doc-1")
         started = self.scenario.start_reindex()
         store = self.scenario.vector_store
+        for _ in range(self.settings.max_attempts):
+            self.scenario.jobs.claim_next(self.scenario.clock(), self.settings.lease)
+            self.scenario.clock.advance(seconds=61)
         store.collections["assistant-a1-v2"] = {}
+        calls: list[str] = []
 
-        self.assertEqual(self._execute(), 1)
+        result = self._worker(run=lambda job_id, lease: calls.append(job_id)).execute()
 
+        self.assertEqual(calls, [])
+        self.assertEqual(result.status, "failed")
+        self.assertIn("interrupted", result.error or "")
         job = self.scenario.jobs.items[started.id]
         self.assertEqual(job.status, ReindexStatus.FAILED)
-        self.assertIn("interrupted", job.error or "")
         self.assertEqual(store.aliases, {"assistant-a1": "assistant-a1-v1"})
         self.assertEqual(list(store.collections), ["assistant-a1-v1"])
         self.assertEqual(self.scenario.start_reindex().status, "running")
 
-    def test_collection_already_in_use_is_preserved(self) -> None:
+    def test_abandoned_job_preserves_the_collection_already_in_use(self) -> None:
         self.scenario.ingest(document_id="doc-1")
-        started = self.scenario.start_reindex()
+        self.scenario.start_reindex()
         store = self.scenario.vector_store
         store.collections["assistant-a1-v2"] = {}
         store.aliases["assistant-a1"] = "assistant-a1-v2"
+        for _ in range(self.settings.max_attempts):
+            self.scenario.jobs.claim_next(self.scenario.clock(), self.settings.lease)
+            self.scenario.clock.advance(seconds=61)
 
-        self._execute()
+        result = self._worker().execute()
 
+        self.assertEqual(result.status, "failed")
         self.assertIn("assistant-a1-v2", store.collections)
-        self.assertEqual(
-            self.scenario.jobs.items[started.id].status,
-            ReindexStatus.FAILED,
-        )
-
-    def test_nothing_happens_without_running_jobs(self) -> None:
-        self.assertEqual(self._execute(), 0)
 
 
 class IndexStatusTestCase(IndexingTestCase):

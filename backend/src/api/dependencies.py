@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Callable, Generator, Iterator
+from collections.abc import Generator, Iterator
 
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
@@ -18,8 +18,6 @@ from src.application.services import (
 )
 from src.application.use_cases import (
     GetGlobalApiKeyValueUseCase,
-    RunReindexInput,
-    RunReindexUseCase,
 )
 from src.domain import (
     AuthenticatedUser,
@@ -68,7 +66,6 @@ from src.infrastructure.database import (
     PostgresUsageLimiter,
     PostgresUsageRecordRepository,
     PostgresUsageSettingsRepository,
-    SessionLocal,
     get_db_session,
 )
 from src.infrastructure.llm import HttpChatCompletionsLLM
@@ -228,25 +225,6 @@ def get_file_storage() -> DocumentFileStorage:
 def get_max_file_bytes() -> int:
     return max_file_bytes()
 
-
-def run_reindex_job(job_id: str) -> None:
-    """Executa a reindexacao em segundo plano, com sessao de banco propria."""
-    with SessionLocal() as session:
-        RunReindexUseCase(
-            document_repository=PostgresDocumentRepository(session=session),
-            vector_store_gateway=get_vector_store_gateway(),
-            document_indexer=build_document_indexer(),
-            file_storage=build_file_storage(),
-            reindex_job_repository=PostgresReindexJobRepository(session=session),
-            permission_repository=PostgresAssistantPermissionRepository(
-                session=session
-            ),
-            index_parameters=build_index_parameters_repository(session),
-        ).execute(RunReindexInput(job_id=job_id))
-
-
-def get_reindex_runner() -> Callable[[str], None]:
-    return run_reindex_job
 
 
 def get_vector_store_gateway() -> QdrantVectorStoreGateway:

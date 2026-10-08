@@ -17,7 +17,6 @@ from src.api.dependencies import (
     get_ingestion_job_queue,
     get_max_file_bytes,
     get_reindex_job_repository,
-    get_reindex_runner,
     get_secret_cipher,
     get_secret_settings_repository,
     get_vector_store_gateway,
@@ -445,8 +444,8 @@ class ApiRoutesTestCase(unittest.TestCase):
         document_repository = InMemoryDocumentRepository()
         vector_store = SpyVectorStoreGateway()
         job_repository = InMemoryReindexJobRepository()
+        self.job_repository = job_repository
         file_storage = InMemoryFileStorage()
-        self.started_jobs: list[str] = []
         overrides = self.app.dependency_overrides
         overrides[get_assistant_repository] = lambda: assistant_repository
         overrides[get_document_repository] = lambda: document_repository
@@ -456,7 +455,6 @@ class ApiRoutesTestCase(unittest.TestCase):
         overrides[get_document_indexer] = _fake_document_indexer
         overrides[get_embedding_gateway] = FakeEmbeddingGateway
         overrides[get_max_file_bytes] = lambda: max_file_bytes
-        overrides[get_reindex_runner] = lambda: self.started_jobs.append
         self.queue = InMemoryJobQueue(document_repository)
         overrides[get_ingestion_job_queue] = lambda: self.queue
         self.worker = ProcessNextIngestionJobUseCase(
@@ -642,7 +640,8 @@ class ApiRoutesTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 409)
 
-    def test_reindex_endpoint_accepts_and_schedules_background_run(self) -> None:
+    def test_reindex_endpoint_only_records_the_request_for_the_worker(self) -> None:
+        """PC-D4: a API registra o pedido; o worker reserva e executa."""
         self._override_indexing()
 
         with TestClient(self.app) as client:
@@ -653,7 +652,10 @@ class ApiRoutesTestCase(unittest.TestCase):
         payload = response.json()
         self.assertEqual(payload["status"], "running")
         self.assertEqual(payload["target_collection"], "assistant-assistant-1-v1")
-        self.assertEqual(self.started_jobs, [payload["id"]])
+        job = self.job_repository.get_by_id(payload["id"])
+        self.assertIsNotNone(job)
+        self.assertEqual(job.attempts, 0)
+        self.assertIsNone(job.lease_expires_at)
         self.assertEqual(conflict.status_code, 409)
 
     def test_reindex_endpoint_reports_unknown_assistant(self) -> None:

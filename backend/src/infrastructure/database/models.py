@@ -292,6 +292,17 @@ class ReindexJobModel(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+    # PC-D4: reservas feitas pelo worker e prazo da reserva atual.
+    attempts: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
 
 class AssistantGroupModel(Base):

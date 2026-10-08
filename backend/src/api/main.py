@@ -25,7 +25,6 @@ from src.api.routes import (
 )
 from src.api.middleware import register_request_context
 from src.application.use_cases import (
-    FailInterruptedReindexesUseCase,
     ReportSparseParameterChangesUseCase,
 )
 from src.infrastructure.composition import (
@@ -37,7 +36,6 @@ from src.infrastructure.composition import (
 )
 from src.infrastructure.database import (
     PostgresAssistantRepository,
-    PostgresReindexJobRepository,
     SessionLocal,
     ingestion_job_gauges,
     run_migrations,
@@ -53,7 +51,7 @@ configure_logging(level=os.getenv("LOG_LEVEL", "INFO"))
 async def lifespan(_: FastAPI):
     # As migracoes sao aplicadas antes de a API aceitar requisicoes (ADR 0011).
     run_migrations()
-    _fail_interrupted_reindexes()
+    # PC-D4: reindexacao interrompida e retomada pelo worker, nao encerrada aqui.
     _report_sparse_parameter_changes()
     yield
 
@@ -110,15 +108,6 @@ def metrics() -> PlainTextResponse:
         build_metrics().render(),
         media_type="text/plain; version=0.0.4; charset=utf-8",
     )
-
-
-def _fail_interrupted_reindexes() -> None:
-    """Reindexacao interrompida por reinicio vira falha; o alias nao muda."""
-    with SessionLocal() as session:
-        FailInterruptedReindexesUseCase(
-            vector_store_gateway=get_vector_store_gateway(),
-            reindex_job_repository=PostgresReindexJobRepository(session=session),
-        ).execute()
 
 
 def _report_sparse_parameter_changes() -> None:

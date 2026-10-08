@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections.abc import Iterator
 from typing import Protocol
 
@@ -113,6 +113,12 @@ class ReindexJobRepository(Protocol):
     def get_running(self, assistant_id: AssistantId) -> ReindexJob | None: ...
 
     def list_running(self) -> list[ReindexJob]: ...
+
+    def claim_next(self, now: datetime, lease: timedelta) -> ReindexJob | None:
+        """PC-D4: reserva o job em curso mais antigo sem prazo valido.
+
+        Concorrencia segura entre workers (``FOR UPDATE SKIP LOCKED``)."""
+        ...
 
 
 class ConversationRepository(Protocol):

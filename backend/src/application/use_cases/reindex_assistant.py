@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from src.application.dto import IndexStatusDTO, ReindexJobDTO
@@ -40,7 +42,14 @@ from src.domain import (
 
 logger = logging.getLogger(__name__)
 
-INTERRUPTED_MESSAGE = "reindex interrupted by an application restart."
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
+
+INTERRUPTED_MESSAGE = (
+    "reindex interrupted repeatedly (worker stopped before finishing); "
+    "start a new reindex."
+)
 SPARSE_PARAMETERS_CHANGED_METRIC = "nexus_index_sparse_parameters_changed_total"
 
 
@@ -138,8 +147,13 @@ class RunReindexUseCase:
         reindex_job_repository: ReindexJobRepository,
         permission_repository: AssistantPermissionRepository,
         index_parameters: IndexParametersRepository | None = None,
+        lease: timedelta | None = None,
+        clock: Callable[[], datetime] = _utc_now,
     ) -> None:
         self._index_parameters = index_parameters
+        # PC-D4: prazo da reserva do worker, renovado a cada documento.
+        self._lease = lease
+        self._clock = clock
         self._permission_repository = permission_repository
         self._document_repository = document_repository
         self._vector_store_gateway = vector_store_gateway
@@ -212,12 +226,13 @@ class RunReindexUseCase:
                     groups.get(document.id.value, frozenset()),
                 )
             )
-            self._reindex_job_repository.save(
-                job.with_progress(
-                    total=job.total_documents,
-                    processed=len(reindexed),
-                )
+            progress = job.with_progress(
+                total=job.total_documents,
+                processed=len(reindexed),
             )
+            if self._lease is not None:
+                progress = progress.renew(self._clock(), self._lease)
+            self._reindex_job_repository.save(progress)
         expected = sum(document.chunk_count for document in reindexed)
         stored = self._vector_store_gateway.count_points(target)
         if stored != expected:
@@ -264,28 +279,85 @@ class RunReindexUseCase:
             self._vector_store_gateway.delete_collection(collection)
 
 
-class FailInterruptedReindexesUseCase:
-    """Na subida da aplicacao, encerra reindexacoes que ficaram em curso."""
+@dataclass(frozen=True, slots=True)
+class ReindexSettings:
+    """PC-D4: tentativas e prazo da reserva (renovado a cada documento).
+
+    Reaproveita os valores da ingestao (D7 da SPEC-005): ``INGESTION_MAX_ATTEMPTS``
+    e ``INGESTION_JOB_TIMEOUT_SECONDS``.
+    """
+
+    max_attempts: int = 3
+    lease_seconds: int = 600
+
+    def __post_init__(self) -> None:
+        if self.max_attempts < 1:
+            raise ValueError("max_attempts must be at least 1.")
+        if self.lease_seconds <= 0:
+            raise ValueError("lease_seconds must be positive.")
+
+    @property
+    def lease(self) -> timedelta:
+        return timedelta(seconds=self.lease_seconds)
+
+
+class ProcessNextReindexJobUseCase:
+    """PC-D4: o worker reserva uma reindexacao e a executa.
+
+    A API so registra o pedido (``StartReindexUseCase``). Um job cujo prazo
+    venceu (worker interrompido) e reservado de novo e recomeca do zero: a
+    collection parcial e descartada por ``RunReindexUseCase``. Esgotadas as
+    tentativas, o job falha, a collection parcial sai e o alias nao muda.
+    """
 
     def __init__(
         self,
         *,
-        vector_store_gateway: VectorStoreGateway,
         reindex_job_repository: ReindexJobRepository,
+        vector_store_gateway: VectorStoreGateway,
+        run_reindex: Callable[[str, timedelta], ReindexJobDTO],
+        settings: ReindexSettings | None = None,
+        clock: Callable[[], datetime] = _utc_now,
     ) -> None:
-        self._vector_store_gateway = vector_store_gateway
-        self._reindex_job_repository = reindex_job_repository
+        self._jobs = reindex_job_repository
+        self._vector_store = vector_store_gateway
+        self._run_reindex = run_reindex
+        self._settings = settings or ReindexSettings()
+        self._clock = clock
 
-    def execute(self) -> int:
-        interrupted = self._reindex_job_repository.list_running()
-        for job in interrupted:
-            target = CollectionName(job.target_collection)
-            alias = CollectionName.from_assistant_id(job.assistant_id)
-            in_use = self._vector_store_gateway.resolve_alias(alias) == target
-            if not in_use and self._vector_store_gateway.collection_exists(target):
-                self._vector_store_gateway.delete_collection(target)
-            self._reindex_job_repository.save(job.fail(INTERRUPTED_MESSAGE))
-        return len(interrupted)
+    def execute(self) -> ReindexJobDTO | None:
+        """Processa um job; ``None`` quando nao ha reindexacao a fazer."""
+        job = self._jobs.claim_next(self._clock(), self._settings.lease)
+        if job is None:
+            return None
+        if job.attempts > self._settings.max_attempts:
+            return ReindexJobDTO.from_entity(self._abandon(job))
+        if job.attempts > 1:
+            logger.warning(
+                "reindex.resumed_after_interruption",
+                extra={
+                    "assistant_id": job.assistant_id.value,
+                    "job_id": job.id,
+                    "attempt": job.attempts,
+                },
+            )
+        return self._run_reindex(job.id, self._settings.lease)
+
+    def _abandon(self, job: ReindexJob) -> ReindexJob:
+        target = CollectionName(job.target_collection)
+        alias = CollectionName.from_assistant_id(job.assistant_id)
+        in_use = self._vector_store.resolve_alias(alias) == target
+        if not in_use and self._vector_store.collection_exists(target):
+            self._vector_store.delete_collection(target)
+        logger.error(
+            "reindex.abandoned",
+            extra={
+                "assistant_id": job.assistant_id.value,
+                "job_id": job.id,
+                "attempts": job.attempts - 1,
+            },
+        )
+        return self._jobs.save(job.fail(INTERRUPTED_MESSAGE))
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import asdict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.api.dependencies import (
     get_access_control,
@@ -13,7 +12,6 @@ from src.api.dependencies import (
     get_embedding_gateway,
     get_index_parameters_repository,
     get_reindex_job_repository,
-    get_reindex_runner,
     get_sparse_encoding_parameters,
     get_vector_store_gateway,
 )
@@ -78,7 +76,6 @@ def _job_response(job: ReindexJobDTO) -> ReindexJobResponse:
 )
 def start_reindex(
     assistant_id: str,
-    background_tasks: BackgroundTasks,
     user: AuthenticatedUser = Depends(get_current_user),
     access_control: AccessControl = Depends(get_access_control),
     assistant_repository: AssistantRepository = Depends(get_assistant_repository),
@@ -87,8 +84,8 @@ def start_reindex(
     reindex_job_repository: ReindexJobRepository = Depends(
         get_reindex_job_repository
     ),
-    reindex_runner: Callable[[str], None] = Depends(get_reindex_runner),
 ) -> ReindexJobResponse:
+    """PC-D4: so registra o pedido; o worker executa a reindexacao."""
     assistant_ref = _existing_assistant_id(assistant_id, assistant_repository)
     use_case = StartReindexUseCase(
         document_repository=document_repository,
@@ -105,7 +102,6 @@ def start_reindex(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
-    background_tasks.add_task(reindex_runner, job.id)
     return _job_response(job)
 
 

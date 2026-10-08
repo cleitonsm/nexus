@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 from .citations import Citation
@@ -256,7 +256,12 @@ class ReindexStatus(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class ReindexJob:
-    """Andamento de uma reindexacao; ha no maximo uma em curso por assistente."""
+    """Andamento de uma reindexacao; ha no maximo uma em curso por assistente.
+
+    PC-D4: o worker reserva o job (``claim``) por um prazo renovado a cada
+    documento (``renew``). Prazo vencido com o job ainda em curso indica worker
+    interrompido: o job volta a poder ser reservado, ate o limite de tentativas.
+    """
 
     id: str
     assistant_id: AssistantId
@@ -267,10 +272,14 @@ class ReindexJob:
     error: str | None = None
     started_at: datetime = field(default_factory=_utc_now)
     finished_at: datetime | None = None
+    attempts: int = 0
+    lease_expires_at: datetime | None = None
 
     def __post_init__(self) -> None:
         if not self.id.strip():
             raise DomainValidationError("reindex job id must not be empty.")
+        if self.attempts < 0:
+            raise DomainValidationError("reindex job attempts must not be negative.")
         if not self.target_collection.strip():
             raise DomainValidationError(
                 "reindex job target_collection must not be empty."
@@ -284,6 +293,20 @@ class ReindexJob:
     def is_running(self) -> bool:
         return self.status is ReindexStatus.RUNNING
 
+    def is_claimable(self, now: datetime) -> bool:
+        """Em curso e sem worker com prazo valido."""
+        return self.is_running and (
+            self.lease_expires_at is None or self.lease_expires_at <= now
+        )
+
+    def claim(self, now: datetime, lease: timedelta) -> "ReindexJob":
+        if not self.is_claimable(now):
+            raise DomainValidationError("reindex job is not available to claim.")
+        return replace(self, attempts=self.attempts + 1, lease_expires_at=now + lease)
+
+    def renew(self, now: datetime, lease: timedelta) -> "ReindexJob":
+        return replace(self, lease_expires_at=now + lease)
+
     def with_progress(self, *, total: int, processed: int) -> "ReindexJob":
         return replace(self, total_documents=total, processed_documents=processed)
 
@@ -293,6 +316,7 @@ class ReindexJob:
             status=ReindexStatus.SUCCEEDED,
             error=None,
             finished_at=_utc_now(),
+            lease_expires_at=None,
         )
 
     def fail(self, error: str) -> "ReindexJob":
@@ -301,6 +325,7 @@ class ReindexJob:
             status=ReindexStatus.FAILED,
             error=error.strip() or "unknown error",
             finished_at=_utc_now(),
+            lease_expires_at=None,
         )
 
 

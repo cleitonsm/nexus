@@ -16,6 +16,7 @@ from src.application.services import (
     RetrievalSettings,
     UsageSettings,
 )
+from src.application.use_cases.reindex_assistant import ReindexSettings
 from src.domain import LLMPricing, SparseEncodingParameters, UsageLimits
 from src.infrastructure.auth import (
     KeycloakTokenVerifier,
@@ -246,6 +247,15 @@ def ingestion_settings() -> IngestionSettings:
         job_timeout_seconds=_int_env(
             "INGESTION_JOB_TIMEOUT_SECONDS", defaults.job_timeout_seconds
         ),
+    )
+
+
+def reindex_settings() -> ReindexSettings:
+    """PC-D4: mesmas tentativas e prazo da ingestao (D7), por documento."""
+    ingestion = ingestion_settings()
+    return ReindexSettings(
+        max_attempts=ingestion.max_attempts,
+        lease_seconds=ingestion.job_timeout_seconds,
     )
 
 

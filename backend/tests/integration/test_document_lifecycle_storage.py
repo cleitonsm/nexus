@@ -318,5 +318,61 @@ class VectorLifecycleTestCase(unittest.TestCase):
         self.gateway.delete_by_document(missing, DocumentId("doc"))
 
 
+
+class ReindexClaimStorageTestCase(unittest.TestCase):
+    """PC-D4: o worker reserva a reindexacao sem disputa e respeita o prazo."""
+
+    def setUp(self) -> None:
+        session = _database_session()
+        if session is None:
+            self.skipTest("PostgreSQL indisponivel")
+        from src.infrastructure.database import (
+            PostgresAssistantRepository,
+            PostgresReindexJobRepository,
+            SessionLocal,
+        )
+
+        self.addCleanup(session.close)
+        other_session = SessionLocal()
+        self.addCleanup(other_session.close)
+        assistants = PostgresAssistantRepository(session=session)
+        self.jobs = PostgresReindexJobRepository(session=session)
+        self.other_jobs = PostgresReindexJobRepository(session=other_session)
+        self.assistant_id = AssistantId(f"teste-reindex-{uuid4().hex[:12]}")
+        assistants.save(Assistant(id=self.assistant_id, name=AssistantName("Teste")))
+        self.addCleanup(assistants.delete, self.assistant_id)
+        # Mais antigo que qualquer job de outro teste: e o primeiro a ser reservado.
+        self.job = self.jobs.save(
+            ReindexJob(
+                id=str(uuid4()),
+                assistant_id=self.assistant_id,
+                target_collection=f"assistant-{self.assistant_id.value}-v2",
+                started_at=datetime(1990, 1, 1, tzinfo=UTC),
+            )
+        )
+        self.now = datetime.now(UTC)
+        self.lease = timedelta(minutes=10)
+
+    def test_claim_sets_attempt_and_lease_and_hides_the_job(self) -> None:
+        claimed = self.jobs.claim_next(self.now, self.lease)
+        self.assertEqual(claimed.id, self.job.id)
+        self.assertEqual(claimed.attempts, 1)
+        self.assertEqual(claimed.lease_expires_at, self.now + self.lease)
+        again = self.other_jobs.claim_next(self.now, self.lease)
+        self.assertTrue(again is None or again.id != self.job.id)
+
+    def test_expired_lease_makes_the_job_claimable_again(self) -> None:
+        self.jobs.claim_next(self.now, self.lease)
+        later = self.now + self.lease + timedelta(seconds=1)
+        reclaimed = self.other_jobs.claim_next(later, self.lease)
+        self.assertEqual(reclaimed.id, self.job.id)
+        self.assertEqual(reclaimed.attempts, 2)
+
+    def test_finished_job_is_never_claimed(self) -> None:
+        self.jobs.save(self.job.succeed())
+        claimed = self.jobs.claim_next(self.now, self.lease)
+        self.assertTrue(claimed is None or claimed.id != self.job.id)
+
+
 if __name__ == "__main__":
     unittest.main()
