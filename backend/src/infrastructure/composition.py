@@ -19,6 +19,7 @@ from src.application.services import (
 from src.application.use_cases.reindex_assistant import ReindexSettings
 from src.domain import LLMPricing, SparseEncodingParameters, UsageLimits
 from src.infrastructure.auth import (
+    KeycloakGroupDirectory,
     KeycloakTokenVerifier,
     http_jwks_fetcher,
     issuer_url,
@@ -58,6 +59,7 @@ DEFAULT_RERANKER_MODEL = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
 DEFAULT_KEYCLOAK_URL = "http://localhost:8080"
 DEFAULT_KEYCLOAK_REALM = "nexus"
 DEFAULT_OIDC_AUDIENCE = "nexus-api"
+DEFAULT_BACKEND_CLIENT_ID = "nexus-backend"
 DEFAULT_CORS_ALLOWED_ORIGINS = "http://localhost:4200"
 DEFAULT_AUDIT_RETENTION_DAYS = 365
 JWKS_PATH = "/protocol/openid-connect/certs"
@@ -201,6 +203,18 @@ def build_token_verifier() -> KeycloakTokenVerifier:
         issuer=issuer_url(public_url, realm),
         audience=_text_env("OIDC_AUDIENCE", DEFAULT_OIDC_AUDIENCE),
         jwks_fetcher=http_jwks_fetcher(issuer_url(internal_url, realm) + JWKS_PATH),
+    )
+
+
+@lru_cache(maxsize=1)
+def build_group_directory() -> KeycloakGroupDirectory:
+    """PC-D6: cliente de servico so de leitura; sem segredo, fica desligado."""
+    public_url = _text_env("KEYCLOAK_URL", DEFAULT_KEYCLOAK_URL)
+    return KeycloakGroupDirectory(
+        base_url=_text_env("KEYCLOAK_INTERNAL_URL", public_url),
+        realm=_text_env("KEYCLOAK_REALM", DEFAULT_KEYCLOAK_REALM),
+        client_id=_text_env("KEYCLOAK_BACKEND_CLIENT_ID", DEFAULT_BACKEND_CLIENT_ID),
+        client_secret=os.getenv("KEYCLOAK_BACKEND_CLIENT_SECRET", "").strip(),
     )
 
 

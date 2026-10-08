@@ -34,6 +34,7 @@ from .entities import (
 )
 from .errors import (
     AccessDeniedError,
+    GroupDirectoryUnavailableError,
     InvalidFeedbackStateError,
     UsageLimitExceededError,
     AuthenticationError,
@@ -86,6 +87,7 @@ from .interfaces import (
     SparseEmbeddingGateway,
     SparseEncodingParameters,
     SparseVector,
+    GroupDirectory,
     TokenCounter,
     TokenVerifier,
     VectorChunk,
@@ -129,6 +131,8 @@ __all__ = [
     "DAY",
     "MINUTE",
     "AccessDeniedError",
+    "GroupDirectory",
+    "GroupDirectoryUnavailableError",
     "AccessPolicy",
     "AnswerJudge",
     "Assistant",

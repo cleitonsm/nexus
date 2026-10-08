@@ -506,6 +506,15 @@ class AnswerJudge(Protocol):
     ) -> bool: ...
 
 
+class GroupDirectory(Protocol):
+    """Grupos existentes no provedor de identidade (PC-D6, ADR 0008)."""
+
+    def list_groups(self) -> list[str]:
+        """Nomes dos grupos, como chegam no token; levanta
+        ``GroupDirectoryUnavailableError`` se o provedor nao responder."""
+        ...
+
+
 class TokenVerifier(Protocol):
     """Valida o token de acesso e devolve quem o apresentou (RNF-22)."""
 

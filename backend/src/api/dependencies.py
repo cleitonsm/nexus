@@ -26,6 +26,7 @@ from src.domain import (
     ContextChunk,
     DocumentFileStorage,
     EmbeddingGateway,
+    GroupDirectory,
     LLMCompletion,
     LLMGateway,
     LLMStreamChunk,
@@ -39,6 +40,7 @@ from src.infrastructure.composition import (
     build_document_indexer,
     build_embedding_gateway,
     build_file_storage,
+    build_group_directory,
     build_metrics,
     build_tracer,
     llm_model_name,
@@ -197,6 +199,10 @@ def get_index_parameters_repository(
     session: Session = Depends(get_session),
 ) -> PostgresIndexParametersRepository:
     return build_index_parameters_repository(session)
+
+
+def get_group_directory() -> GroupDirectory:
+    return build_group_directory()
 
 
 def get_sparse_encoding_parameters() -> SparseEncodingParameters:

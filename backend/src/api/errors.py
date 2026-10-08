@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from src.domain import (
     AccessDeniedError,
+    GroupDirectoryUnavailableError,
     InvalidFeedbackStateError,
     UsageLimitExceededError,
 )
@@ -20,6 +21,15 @@ def register_error_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
             content={"detail": str(exc)},
+        )
+
+    @app.exception_handler(GroupDirectoryUnavailableError)
+    async def groups_unavailable(
+        _: Request, exc: GroupDirectoryUnavailableError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"detail": "group directory unavailable"},
         )
 
     @app.exception_handler(UsageLimitExceededError)

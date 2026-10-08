@@ -44,6 +44,10 @@ class IngestionInProgressError(Exception):
     """Ha documentos do assistente sendo processados pelo worker."""
 
 
+class GroupDirectoryUnavailableError(Exception):
+    """A lista de grupos do provedor de identidade nao pode ser lida (PC-D6)."""
+
+
 class InvalidFeedbackStateError(Exception):
     """A avaliacao ja foi revisada ou nao admite a operacao (RN-33)."""
 

@@ -110,6 +110,7 @@ from .manage_archived_conversations import (
     GetArchivedConversationUseCase,
     ListArchivedConversationsUseCase,
 )
+from .list_groups import ListAvailableGroupsUseCase
 from .reindex_assistant import (
     GetIndexStatusInput,
     GetIndexStatusUseCase,
@@ -124,6 +125,7 @@ from .reindex_assistant import (
 )
 
 __all__ = [
+    "ListAvailableGroupsUseCase",
     "ArchivedConversationInput",
     "DeleteArchivedConversationUseCase",
     "GetArchivedConversationUseCase",

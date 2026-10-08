@@ -159,6 +159,12 @@ class AccessControl:
             self._deny(user, attempted, AuditResource.FEEDBACK, None)
         return scope
 
+    def require_group_listing(self, user: AuthenticatedUser) -> None:
+        """PC-D6: quem vincula grupos (administrador) ou restringe documentos
+        (curador) consulta a lista de grupos do Keycloak."""
+        if not (user.is_admin or user.is_curator):
+            self._deny(user, "groups.listed", AuditResource.SETTINGS, None)
+
     def require_audit_access(self, user: AuthenticatedUser) -> None:
         if not AccessPolicy.can_view_audit(user):
             self._deny(user, AuditAction.AUDIT_CONSULTED, AuditResource.AUDIT, None)
