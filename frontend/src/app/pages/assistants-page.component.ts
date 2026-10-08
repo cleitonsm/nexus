@@ -13,6 +13,7 @@ import {
   statusLabel
 } from "../shared/documents/document-lifecycle";
 import { canStartReindex, indexNotices } from "../shared/documents/index-status";
+import { GroupPickerComponent } from "../shared/groups/group-picker.component";
 import { DocumentAccess, DocumentStatus } from "../shared/models/nexus.models";
 import { selectMenu } from "../store/auth.selectors";
 import { nexusActions } from "../store/nexus.actions";
@@ -21,6 +22,7 @@ import {
   selectActiveDocumentAccess,
   selectActiveIndexStatus,
   selectAssistants,
+  selectAvailableGroups,
   selectError,
   selectLoadingState
 } from "../store/nexus.selectors";
@@ -35,7 +37,7 @@ import {
 @Component({
   selector: "app-assistants-page",
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, GroupPickerComponent],
   templateUrl: "./assistants-page.component.html",
   host: { class: "flex-1 min-h-0 overflow-y-auto p-4 lg:p-6" }
 })
@@ -50,6 +52,8 @@ export class AssistantsPageComponent {
   protected readonly loading = this.store.selectSignal(selectLoadingState);
   protected readonly error = this.store.selectSignal(selectError);
   protected readonly menu = this.store.selectSignal(selectMenu);
+  /** Grupos do Keycloak para escolher (PC-D6); ``null``: campo de texto. */
+  protected readonly availableGroups = this.store.selectSignal(selectAvailableGroups);
   /** Estado do indice de busca (RF-31) e avisos, inclusive o do BM25 (PC-D2). */
   protected readonly indexStatus = this.store.selectSignal(selectActiveIndexStatus);
   protected readonly indexNotices = computed(() => indexNotices(this.indexStatus()));
@@ -75,6 +79,7 @@ export class AssistantsPageComponent {
   protected readonly canReprocess = canReprocess;
 
   constructor() {
+    this.store.dispatch(nexusActions.loadAvailableGroups());
     effect(() => {
       const assistantId = this.activeAssistantId();
       if (assistantId) {
@@ -152,9 +157,8 @@ export class AssistantsPageComponent {
     return this.drafts()[id] ?? saved.join(", ");
   }
 
-  protected onDraftInput(id: string, event: Event): void {
-    const target = event.target as HTMLInputElement | null;
-    this.drafts.update((drafts) => ({ ...drafts, [id]: target?.value ?? "" }));
+  protected onDraftChange(id: string, value: string): void {
+    this.drafts.update((drafts) => ({ ...drafts, [id]: value }));
   }
 
   protected saveAssistantGroups(): void {
@@ -193,9 +197,8 @@ export class AssistantsPageComponent {
     }
   }
 
-  protected onUploadGroupsInput(event: Event): void {
-    const target = event.target as HTMLInputElement | null;
-    this.uploadGroups.set(target?.value ?? "");
+  protected onUploadGroupsChange(value: string): void {
+    this.uploadGroups.set(value);
   }
 
   protected startReindex(): void {

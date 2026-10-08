@@ -168,6 +168,10 @@ export const nexusActions = createActionGroup({
     "Start Reindex": props<{ assistantId: string }>(),
     "Start Reindex Success": props<{ job: ReindexJob }>(),
     "Start Reindex Failure": props<{ error: string }>(),
+    "Load Available Groups": emptyProps(),
+    "Load Available Groups Success": props<{ groups: string[] }>(),
+    /** Sem a lista, a tela usa o campo de texto; nao e mostrado como erro. */
+    "Load Available Groups Failure": emptyProps(),
     "Load Archived Conversations": emptyProps(),
     "Load Archived Conversations Success": props<{ conversations: Conversation[] }>(),
     "Load Archived Conversations Failure": props<{ error: string }>(),

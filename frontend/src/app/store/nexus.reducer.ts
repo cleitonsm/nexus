@@ -32,6 +32,8 @@ export interface NexusState {
   documentAccessByAssistant: Record<string, DocumentAccess[]>;
   /** Estado do indice de busca por assistente (RF-31, PC-D2). */
   indexStatusByAssistant: Record<string, IndexStatus>;
+  /** Grupos do Keycloak (PC-D6); ``null`` quando a lista nao esta disponivel. */
+  availableGroups: string[] | null;
   /** Conversas anteriores a autenticacao e a aberta para leitura (PC-D5). */
   archivedConversations: Conversation[];
   archivedConversationDetail: ConversationDetail | null;
@@ -97,6 +99,7 @@ export const initialNexusState: NexusState = {
   documents: [],
   documentAccessByAssistant: {},
   indexStatusByAssistant: {},
+  availableGroups: null,
   archivedConversations: [],
   archivedConversationDetail: null,
   auditEvents: [],
@@ -786,6 +789,14 @@ export const nexusReducer = createReducer(
     error
   })),
 
+  on(nexusActions.loadAvailableGroupsSuccess, (state, { groups }) => ({
+    ...state,
+    availableGroups: groups
+  })),
+  on(nexusActions.loadAvailableGroupsFailure, (state) => ({
+    ...state,
+    availableGroups: null
+  })),
   on(nexusActions.loadArchivedConversations, (state) => ({
     ...state,
     loading: { ...state.loading, archivedConversations: true },

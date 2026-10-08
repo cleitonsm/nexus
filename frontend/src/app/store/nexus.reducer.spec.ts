@@ -22,6 +22,7 @@ import {
   selectActiveIndexStatus,
   selectArchivedConversationDetail,
   selectArchivedConversations,
+  selectAvailableGroups,
   selectAuditEvents,
   selectCurrentChatStream,
   selectCurrentCitationsByMessage,
@@ -781,5 +782,19 @@ describe("archived conversations (PC-D5)", () => {
     );
     expect(refused.loading.archivedAction).toBe(false);
     expect(refused.error).toBe("forbidden");
+  });
+});
+
+describe("available groups (PC-D6)", () => {
+  it("keeps the Keycloak groups and falls back to free text when unavailable", () => {
+    expect(selectAvailableGroups.projector(initialNexusState)).toBeNull();
+    const loaded = nexusReducer(
+      initialNexusState,
+      nexusActions.loadAvailableGroupsSuccess({ groups: ["financeiro", "rh"] })
+    );
+    expect(selectAvailableGroups.projector(loaded)).toEqual(["financeiro", "rh"]);
+    const failed = nexusReducer(loaded, nexusActions.loadAvailableGroupsFailure());
+    expect(failed.availableGroups).toBeNull();
+    expect(failed.error).toBeNull();
   });
 });

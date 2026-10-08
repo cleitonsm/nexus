@@ -627,6 +627,20 @@ export const reloadDocumentsAfterReindexEffect = createEffect(
   { functional: true }
 );
 
+export const loadAvailableGroupsEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadAvailableGroups),
+      switchMap(() =>
+        api.listGroups().pipe(
+          map((groups) => nexusActions.loadAvailableGroupsSuccess({ groups })),
+          catchError(() => of(nexusActions.loadAvailableGroupsFailure()))
+        )
+      )
+    ),
+  { functional: true }
+);
+
 export const loadArchivedConversationsEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
     actions$.pipe(
@@ -781,6 +795,7 @@ export const nexusEffects = {
   startReindexEffect,
   pollIndexStatusEffect,
   reloadDocumentsAfterReindexEffect,
+  loadAvailableGroupsEffect,
   loadArchivedConversationsEffect,
   openArchivedConversationEffect,
   deleteArchivedConversationEffect,

@@ -23,7 +23,7 @@
     >
       <h2 class="text-lg font-semibold">Permissões de {{ assistant.name }}</h2>
       <p class="mt-1 text-sm text-slate-400">
-        Grupos do Keycloak que podem usar este assistente, separados por vírgula.
+        Grupos do Keycloak que podem usar este assistente.
       </p>
       <p
         *ngIf="assistantGroups().length === 0"
@@ -32,13 +32,14 @@
         Sem grupo vinculado: o assistente é visível apenas a administradores.
       </p>
       <div class="mt-4 flex flex-col gap-2 sm:flex-row">
-        <input
-          type="text"
-          aria-label="Grupos do assistente"
-          class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+        <app-group-picker
+          class="w-full"
+          label="Grupos do assistente"
           placeholder="Ex: rh, financeiro"
+          emptyHint="Nenhum grupo marcado: o assistente fica visível apenas a administradores."
+          [available]="availableGroups()"
           [value]="draft(assistant.id, assistantGroups())"
-          (input)="onDraftInput(assistant.id, $event)"
+          (valueChange)="onDraftChange(assistant.id, $event)"
         />
         <button
           type="button"
@@ -62,13 +63,14 @@
         </div>
       </div>
       <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <input
-          type="text"
-          aria-label="Grupos dos novos arquivos"
-          class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm outline-none focus:border-indigo-400"
+        <app-group-picker
+          class="w-full"
+          label="Grupos dos novos arquivos"
           placeholder="Restringir os novos arquivos a grupos (opcional). Ex: diretoria"
+          emptyHint="Sem restrição: os novos arquivos seguem o acesso do assistente."
+          [available]="availableGroups()"
           [value]="uploadGroups()"
-          (input)="onUploadGroupsInput($event)"
+          (valueChange)="onUploadGroupsChange($event)"
         />
         <label
           class="shrink-0 cursor-pointer rounded-full border border-slate-700 px-4 py-2 text-center text-sm text-slate-200 hover:bg-nexus-hover"
@@ -167,13 +169,14 @@
           </p>
 
           <div class="mt-3 flex flex-col gap-2 sm:flex-row">
-            <input
-              type="text"
-              [attr.aria-label]="'Grupos com acesso a ' + document.source_name"
-              class="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm outline-none focus:border-indigo-400"
+            <app-group-picker
+              class="w-full"
+              [label]="'Grupos com acesso a ' + document.source_name"
               placeholder="Sem restrição. Ex: diretoria"
+              emptyHint="Sem restrição: segue o acesso do assistente."
+              [available]="availableGroups()"
               [value]="draft(document.id, document.groups)"
-              (input)="onDraftInput(document.id, $event)"
+              (valueChange)="onDraftChange(document.id, $event)"
             />
             <button
               type="button"

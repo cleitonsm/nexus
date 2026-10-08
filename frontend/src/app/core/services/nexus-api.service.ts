@@ -70,6 +70,11 @@ export class NexusApiService {
     );
   }
 
+  /** PC-D6: grupos do Keycloak (administrador e curador); 503 sem a lista. */
+  listGroups(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.baseUrl}/groups`);
+  }
+
   /** PC-D5: conversas anteriores a autenticacao (so administrador). */
   listArchivedConversations(): Observable<Conversation[]> {
     return this.http.get<Conversation[]>(`${this.baseUrl}/admin/archived-conversations`);

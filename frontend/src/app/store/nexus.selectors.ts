@@ -93,6 +93,11 @@ export const selectActiveIndexStatus = createSelector(selectNexusState, (state) 
   state.activeAssistantId ? state.indexStatusByAssistant[state.activeAssistantId] ?? null : null
 );
 
+export const selectAvailableGroups = createSelector(
+  selectNexusState,
+  (state) => state.availableGroups
+);
+
 export const selectArchivedConversations = createSelector(
   selectNexusState,
   (state) => state.archivedConversations
