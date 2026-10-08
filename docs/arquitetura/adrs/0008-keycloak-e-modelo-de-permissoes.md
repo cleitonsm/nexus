@@ -2,7 +2,8 @@
 
 ## Status
 
-Proposta. Complementa a [ADR 0003](0003-qdrant-por-assistente.md) e encerra a limitação
+Aceita em 2026-10-07, com a aprovação da SPEC-004. Implementada; ainda não executada no ambiente
+Docker. Complementa a [ADR 0003](0003-qdrant-por-assistente.md) e encerra a limitação
 registrada na [ADR 0005](0005-api-key-global-criptografada.md).
 
 ## Contexto

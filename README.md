@@ -114,10 +114,17 @@ cp .env.example .env
 docker compose up -d --build
 
 # 3. Acesse
-# Frontend:        http://localhost:4200
+# Frontend:        http://localhost:4200  (leva ao login do Keycloak)
+# Keycloak:        http://localhost:8080
 # Backend (docs):  http://localhost:8000/docs
 # Backend (health): http://localhost:8000/health
 ```
+
+O acesso exige login. O realm de desenvolvimento traz usuários fictícios, todos com a senha
+`nexus-dev`: `admin.nexus` (administrador), `curadora.rh` (curadora), `usuario.rh`,
+`usuario.financeiro` e `diretora`. Papéis, grupos e o console do Keycloak estão em
+[`infra/keycloak/README.md`](infra/keycloak/README.md). Assistentes criados antes da autenticação
+só aparecem para o administrador até serem vinculados a um grupo.
 
 Para o guia de validação ponta a ponta (assistente → documento → chat → histórico), consulte [`docs/infraestrutura/docker-local.md`](docs/infraestrutura/docker-local.md).
 
@@ -199,8 +206,8 @@ Cada fase tem uma especificação que precisa ser aprovada antes de qualquer có
 |---|---|---|---|
 | 1 | Avaliação e linha de base | [SPEC-001](docs/especificacao/specs/SPEC-001-avaliacao-e-linha-de-base.md) | Implementada, em validação |
 | 2 | Recuperação semântica | [SPEC-002](docs/especificacao/specs/SPEC-002-recuperacao-semantica.md) | Código entregue; validação no Docker pendente |
-| 3 | Busca híbrida, reranking e citações | [SPEC-003](docs/especificacao/specs/SPEC-003-busca-hibrida-reranking-citacoes.md) | Especificada |
-| 4 | Autenticação e controle de acesso | [SPEC-004](docs/especificacao/specs/SPEC-004-autenticacao-e-controle-de-acesso.md) | Especificada |
+| 3 | Busca híbrida, reranking e citações | [SPEC-003](docs/especificacao/specs/SPEC-003-busca-hibrida-reranking-citacoes.md) | Código entregue; validação no Docker pendente |
+| 4 | Autenticação e controle de acesso | [SPEC-004](docs/especificacao/specs/SPEC-004-autenticacao-e-controle-de-acesso.md) | Código entregue; validação no Docker pendente |
 | 5 | Ingestão e ciclo de vida de documentos | [SPEC-005](docs/especificacao/specs/SPEC-005-ingestao-e-ciclo-de-vida.md) | Especificada |
 | 6 | Operação e governança | [SPEC-006](docs/especificacao/specs/SPEC-006-operacao-e-governanca.md) | Especificada |
 

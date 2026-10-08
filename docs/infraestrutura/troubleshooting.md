@@ -56,6 +56,12 @@ Verifique se o emissor e a audiência do token coincidem com `KEYCLOAK_URL`, `KE
 `OIDC_AUDIENCE`. O endereço do Keycloak visto pelo navegador e o visto pelo backend dentro da rede
 do Compose precisam resultar no mesmo emissor.
 
+Na Fase 4, o frontend não entra em laço: quando a API recusa o token recém-emitido, ele mostra
+a tela "Não foi possível entrar no Nexus". O motivo exato fica no log do backend, no evento
+`auth.token.rejected` (`unexpected token issuer`, `unexpected token audience`,
+`identity provider keys are unavailable`, `token without subject`...). O emissor esperado é
+`KEYCLOAK_URL/realms/KEYCLOAK_REALM`; as chaves são buscadas em `KEYCLOAK_INTERNAL_URL`.
+
 ### Assistentes ou Conversas "Sumiram" após Ativar a Autenticação
 
 Assistentes sem grupo vinculado são visíveis apenas a administradores, e conversas anteriores à

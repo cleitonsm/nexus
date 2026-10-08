@@ -155,10 +155,17 @@ Atualizado em 2026-10-07.
 | CT-20 | Implementado, ainda não executado (exige FastAPI e PostgreSQL) | `backend/tests/integration/test_chat_citations.py` |
 | CT-21 | Implementado, ainda não executado (o Vitest não pôde ser instalado onde o código foi escrito) | `frontend/src/app/store/nexus.reducer.spec.ts` |
 | CT-22 | Depende da avaliação do piloto no ambiente Docker | `backend/tests/evaluation/` |
-| CT-23 a CT-48 | Não implementados; pertencem às Fases 4 a 6 | — |
+| CT-23, CT-24, CT-25 | Implementados e executados com sucesso | `backend/tests/unit/test_token_verifier.py`, `backend/tests/unit/test_access_control.py` |
+| CT-26, CT-27, CT-29, CT-30 | Implementados, ainda não executados (exigem FastAPI); os contratos equivalentes, com dublês, rodam em `test_access_control.py` | `backend/tests/integration/test_access_control_api.py` |
+| CT-28, CT-31 | Implementados, ainda não executados (exigem o Qdrant e o PostgreSQL) | `backend/tests/integration/test_access_control_storage.py` |
+| CT-32 | Implementado; a lógica foi executada com um substituto local do Vitest, e a execução com o Vitest real está pendente | `frontend/src/app/core/auth/access.spec.ts` |
+| CT-33 a CT-48 | Não implementados; pertencem às Fases 5 e 6 | — |
 
-A suíte unitária soma 265 testes; a Fase 3 acrescentou 75 e substituiu os três testes de chat do
-MVP pelos de `test_chat_flow.py`. Ela foi executada fora do Docker, com
+Os testes de integração da Fase 4 não sobem o Keycloak: usam o verificador de token real com
+tokens assinados por uma chave gerada no próprio teste.
+
+A suíte unitária soma 372 testes; a Fase 4 acrescentou 107 e adaptou os anteriores para receber o
+usuário autenticado. Ela foi executada fora do Docker, com
 o LangGraph substituído por um dublê local; a execução dentro do container ainda está pendente.
 
 O projeto utiliza `unittest`, sem dependência adicional de framework de testes.

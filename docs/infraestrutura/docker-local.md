@@ -141,7 +141,7 @@ Esta seção descreve como o ambiente local ficará após as próximas fases. **
 | Serviço | Fase | Observação |
 |---------|------|------------|
 | `backend` | 2 | Imagem passa a incluir os modelos locais; usa o volume `backend_cache` |
-| `keycloak` | 4 | Importa o realm `nexus` na subida; banco próprio no `postgres` |
+| `keycloak` | 4 (já no `compose.yaml`) | Importa o realm `nexus` na subida; banco próprio no `postgres`, criado por `keycloak-db-init` |
 | `worker` | 5 | Mesma imagem do `backend`, outro comando de entrada |
 | observabilidade | 6 | Perfil opcional do Compose |
 

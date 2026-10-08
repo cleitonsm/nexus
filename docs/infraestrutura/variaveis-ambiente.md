@@ -31,7 +31,7 @@
 
 ## Evolução RAG Enterprise
 
-As variáveis das Fases 1, 2 e 3 já estão no `.env.example`. As demais são previstas nas
+As variáveis das Fases 1, 2, 3 e 4 já estão no `.env.example`. As demais são previstas nas
 especificações, **ainda não estão no `.env.example`** e terão seus valores padrão definidos na
 implementação de cada fase.
 
@@ -71,15 +71,22 @@ Os valores são pontos de partida, a calibrar com o conjunto de referência (CT-
 indexadas antes da Fase 3 não têm o vetor esparso: até `POST /assistants/{id}/reindex`, o upload
 é recusado (409) e o chat do assistente funciona apenas com a busca densa.
 
-### Autenticação (Fase 4)
+### Autenticação (Fase 4, já no `.env.example`)
 
-- `KEYCLOAK_URL`: endereço do Keycloak.
+- `KEYCLOAK_URL`: endereço do Keycloak visto pelo navegador (`http://localhost:8080`). É o
+  emissor conferido em cada token e o endereço que o frontend usa no login.
+- `KEYCLOAK_INTERNAL_URL`: endereço pelo qual a API busca as chaves públicas, dentro da rede do
+  Compose (`http://keycloak:8080`). Vazio, vale `KEYCLOAK_URL`.
+- `KEYCLOAK_PORT`: porta publicada do Keycloak; se mudar, `KEYCLOAK_URL` muda junto.
 - `KEYCLOAK_REALM`: realm utilizado (`nexus`).
-- `OIDC_AUDIENCE`: audiência esperada no token de acesso.
-- `OIDC_FRONTEND_CLIENT_ID`: cliente público usado pelo frontend.
-- `KEYCLOAK_ADMIN` e `KEYCLOAK_ADMIN_PASSWORD`: credenciais administrativas do Keycloak (segredo).
-- `CORS_ALLOWED_ORIGINS`: origens autorizadas a chamar a API.
-- `AUDIT_RETENTION_DAYS`: retenção da trilha de auditoria.
+- `OIDC_AUDIENCE`: audiência esperada no token de acesso (`nexus-api`).
+- `OIDC_FRONTEND_CLIENT_ID`: cliente público usado pelo frontend (`nexus-frontend`).
+- `KEYCLOAK_ADMIN` e `KEYCLOAK_ADMIN_PASSWORD`: credenciais administrativas do Keycloak (segredo;
+  os valores do `.env.example` servem apenas ao ambiente local).
+- `CORS_ALLOWED_ORIGINS`: origens autorizadas a chamar a API, separadas por vírgula; `*` é ignorado.
+- `APP_ENV`: com `local`, a API publica a documentação interativa (`/docs`), que não exige token.
+- `AUDIT_RETENTION_DAYS`: retenção da trilha de auditoria em dias (padrão `365`). Só tem efeito
+  quando o operador executa `python -m src.cli.purge_audit`; a API nunca apaga eventos.
 
 ### Ingestão (Fase 5)
 

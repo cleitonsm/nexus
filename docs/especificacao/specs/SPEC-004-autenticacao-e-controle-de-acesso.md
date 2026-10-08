@@ -1,8 +1,8 @@
 # Spec: Autenticação e Controle de Acesso
 
 **ID**: SPEC-20261007-004
-**Status**: Rascunho
-**Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa, pendente de revisão)
+**Status**: Aprovada em 2026-10-07 por Cleiton Medeiros — código entregue, aguardando validação no ambiente Docker (ver [plano](SPEC-004-plano-de-implementacao.md))
+**Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa)
 **Data**: 2026-10-07
 **Fase**: 4 de 6 — etapa 12 do [plano incremental](../../plano-incremental.md)
 **Depende de**: SPEC-20261007-003
@@ -218,7 +218,26 @@ exibidas a usuários comuns.
 - Migração dos dados existentes pode ocultar assistentes e conversas até a configuração de grupos (risco R20).
 - O Keycloak aumenta o uso de memória do ambiente local (risco R17).
 
+## Decisões Tomadas
+
+Registradas por Cleiton Medeiros em 2026-10-07.
+
+| Decisão | Escolha |
+|---------|---------|
+| Restrição por documento nesta fase | Entregue junto (RF-43) |
+| Conversas anteriores à autenticação | Arquivadas: permanecem no banco sem dono e não são exibidas a ninguém |
+| Acesso de administradores ao conteúdo de conversas | Mantido privado (RN-24) |
+| Origem dos usuários | Usuários locais no realm de exemplo |
+| Versão do Keycloak (2026-10-08) | `26.0` |
+| Retenção da auditoria (2026-10-08) | Comando de manutenção `python -m src.cli.purge_audit`, com `AUDIT_RETENTION_DAYS` (padrão 365); a API nunca apaga eventos |
+| Restrição de documento no envio (2026-10-08) | Campo opcional de grupos no upload |
+
+Os comportamentos definidos na implementação e a revisão do autor estão no
+[plano de implementação](SPEC-004-plano-de-implementacao.md).
+
 ## Decisões Pendentes
+
+As decisões abaixo foram tomadas (tabela acima); permanecem aqui como histórico das opções.
 
 | Decisão | Opções | Impacto |
 |---------|--------|---------|

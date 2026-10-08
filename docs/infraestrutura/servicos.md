@@ -37,8 +37,10 @@ Os serviços abaixo fazem parte da evolução especificada e **ainda não existe
 
 ### Keycloak
 
-Provedor de identidade. Autentica os usuários e informa papéis e grupos nos tokens. Usa um banco
-próprio dentro do PostgreSQL existente e importa o realm de desenvolvimento na subida (ADR 0008).
+**Já existe no `compose.yaml` desde a Fase 4** (serviços `keycloak` e `keycloak-db-init`, porta
+`8080`). Provedor de identidade. Autentica os usuários e informa papéis e grupos nos tokens. Usa
+um banco próprio dentro do PostgreSQL existente e importa o realm de desenvolvimento na subida
+(ADR 0008). Usuários de exemplo e console em `infra/keycloak/README.md`.
 
 ### Worker de Ingestão
 

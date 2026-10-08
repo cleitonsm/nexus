@@ -159,7 +159,7 @@ flowchart LR
 | 1 | Avaliação de qualidade, logs estruturados e identificador de requisição | Implementada, em validação no Docker |
 | 2 | Embeddings semânticos locais, chunking estrutural, reindexação | Especificada |
 | 3 | Busca híbrida, reranking, citações | Especificada |
-| 4 | Keycloak, permissões, auditoria | Especificada |
+| 4 | Keycloak, permissões, auditoria | Código entregue; validação no Docker pendente |
 | 5 | Worker, fila, ciclo de vida de documentos, OCR | Especificada |
 | 6 | Rastreamento, métricas, custo, streaming, backup | Especificada |
 
