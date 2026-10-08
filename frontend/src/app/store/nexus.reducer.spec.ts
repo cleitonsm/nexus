@@ -6,7 +6,8 @@ import {
   ChatMessage,
   Citation,
   Conversation,
-  DocumentAccess
+  DocumentAccess,
+  MessageFeedback
 } from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
 import {
@@ -18,6 +19,7 @@ import {
   selectActiveAssistantConversations,
   selectActiveDocumentAccess,
   selectAuditEvents,
+  selectCurrentChatStream,
   selectCurrentCitationsByMessage,
   selectCurrentMessages
 } from "./nexus.selectors";
@@ -497,5 +499,142 @@ describe("document lifecycle (SPEC-005)", () => {
     );
     expect(state.loading.documentAction).toBe(false);
     expect(state.error).toBe("a reindex is in progress for this assistant.");
+  });
+});
+
+describe("chat streaming and feedback (SPEC-006)", () => {
+  const withConversation = (): NexusState => ({
+    ...initialNexusState,
+    currentConversationId: "conv-1"
+  });
+
+  it("shows the question at once and accumulates the streamed text (RF-58)", () => {
+    let state = nexusReducer(
+      withConversation(),
+      nexusActions.sendChatQuestion({
+        assistantId: "assistant-1",
+        conversationId: "conv-1",
+        question: "Quanto duram as ferias?",
+        topK: 4
+      })
+    );
+    state = nexusReducer(
+      state,
+      nexusActions.chatStreamStarted({ conversationId: "conv-1", question: "Quanto duram as ferias?" })
+    );
+    state = nexusReducer(state, nexusActions.chatStreamDelta({ text: "Trinta " }));
+    state = nexusReducer(state, nexusActions.chatStreamDelta({ text: "dias [1]." }));
+    expect(state.chatStream).toEqual({
+      conversationId: "conv-1",
+      question: "Quanto duram as ferias?",
+      text: "Trinta dias [1]."
+    });
+    expect(state.loading.sendChat).toBe(true);
+  });
+
+  it("replaces the streamed text with the fallback", () => {
+    let state = nexusReducer(
+      withConversation(),
+      nexusActions.chatStreamStarted({ conversationId: "conv-1", question: "Pergunta" })
+    );
+    state = nexusReducer(state, nexusActions.chatStreamDelta({ text: "Texto sem fonte" }));
+    state = nexusReducer(state, nexusActions.chatStreamReplace({ text: "Nao encontrei contexto" }));
+    expect(state.chatStream?.text).toBe("Nao encontrei contexto");
+  });
+
+  it("swaps the streaming bubble for the stored messages when done", () => {
+    let state = nexusReducer(
+      withConversation(),
+      nexusActions.chatStreamStarted({ conversationId: "conv-1", question: "Pergunta" })
+    );
+    state = nexusReducer(
+      state,
+      nexusActions.sendChatQuestionSuccess({
+        conversationId: "conv-1",
+        userMessage: chatMessage("m-1", "user"),
+        assistantMessage: chatMessage("m-2", "assistant")
+      })
+    );
+    expect(state.chatStream).toBeNull();
+    expect(state.messagesByConversation["conv-1"]).toHaveLength(2);
+  });
+
+  it("clears the streaming bubble and keeps the error on failure (RN-32)", () => {
+    let state = nexusReducer(
+      withConversation(),
+      nexusActions.chatStreamStarted({ conversationId: "conv-1", question: "Pergunta" })
+    );
+    state = nexusReducer(
+      state,
+      nexusActions.sendChatQuestionFailure({ error: "Você atingiu o limite de 20 perguntas por minuto." })
+    );
+    expect(state.chatStream).toBeNull();
+    expect(state.error).toContain("limite");
+  });
+
+  it("selects the stream only for the current or a new conversation", () => {
+    const state = nexusReducer(
+      withConversation(),
+      nexusActions.chatStreamStarted({ conversationId: "conv-2", question: "Outra" })
+    );
+    expect(selectCurrentChatStream.projector(state)).toBeNull();
+    const fresh = nexusReducer(
+      withConversation(),
+      nexusActions.chatStreamStarted({ conversationId: null, question: "Nova" })
+    );
+    expect(selectCurrentChatStream.projector(fresh)?.question).toBe("Nova");
+  });
+
+  it("tracks the rating of each answer and its failure (RF-61)", () => {
+    let state = nexusReducer(
+      initialNexusState,
+      nexusActions.submitFeedback({ messageId: "m-2", rating: "nao_util", comment: "faltou" })
+    );
+    expect(state.feedbackByMessage["m-2"]).toEqual({ rating: "nao_util", sending: true, error: null });
+    state = nexusReducer(
+      state,
+      nexusActions.submitFeedbackFailure({ messageId: "m-2", error: "message not found" })
+    );
+    expect(state.feedbackByMessage["m-2"]).toEqual({
+      rating: "nao_util",
+      sending: false,
+      error: "message not found"
+    });
+  });
+
+  it("removes a reviewed item from the curator queue", () => {
+    const pending: MessageFeedback = {
+      id: "f-1",
+      message_id: "m-2",
+      conversation_id: "conv-1",
+      assistant_id: "assistant-1",
+      rating: "nao_util",
+      comment: null,
+      status: "pendente",
+      created_at: "2026-10-08T12:00:00Z",
+      updated_at: "2026-10-08T12:00:00Z"
+    };
+    let state = nexusReducer(
+      initialNexusState,
+      nexusActions.loadCuratorFeedbackSuccess({ items: [pending] })
+    );
+    state = nexusReducer(
+      state,
+      nexusActions.reviewFeedbackSuccess({ feedback: { ...pending, status: "validado" } })
+    );
+    expect(state.curatorFeedback).toEqual([]);
+    expect(state.notice).toContain("validada");
+  });
+
+  it("keeps the saved usage limits and confirms the change", () => {
+    const state = nexusReducer(
+      initialNexusState,
+      nexusActions.saveUsageLimitsSuccess({
+        limits: { per_minute: 5, per_day: 100, source: "configurado" }
+      })
+    );
+    expect(state.usageLimits?.per_minute).toBe(5);
+    expect(state.notice).toContain("próxima pergunta");
+    expect(nexusReducer(state, nexusActions.clearError()).notice).toBeNull();
   });
 });

@@ -38,7 +38,9 @@ describe("authReducer", () => {
       manageAssistants: false,
       manageDocuments: true,
       configureLlm: false,
-      viewAudit: false
+      viewAudit: false,
+      viewUsage: false,
+      reviewFeedback: true
     });
     expect(selectMenu(root(initialAuthState)).manageDocuments).toBe(false);
   });

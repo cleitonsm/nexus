@@ -42,15 +42,22 @@ export interface MenuVisibility {
   configureLlm: boolean;
   /** Trilha de auditoria. */
   viewAudit: boolean;
+  /** Consumo, custo estimado e limites de uso (SPEC-006, RF-57, D3). */
+  viewUsage: boolean;
+  /** Avaliacoes negativas das respostas (SPEC-006, RN-33). */
+  reviewFeedback: boolean;
 }
 
 export function menuFor(user: SessionUser | null): MenuVisibility {
   const admin = hasAnyRole(user, [Roles.admin]);
+  const curator = hasAnyRole(user, [Roles.curator]);
   return {
     manageAssistants: admin,
-    manageDocuments: admin || hasAnyRole(user, [Roles.curator]),
+    manageDocuments: admin || curator,
     configureLlm: admin,
-    viewAudit: admin
+    viewAudit: admin,
+    viewUsage: admin,
+    reviewFeedback: admin || curator
   };
 }
 

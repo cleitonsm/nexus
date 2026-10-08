@@ -90,3 +90,31 @@ export const selectActiveDocumentAccess = createSelector(selectNexusState, (stat
 });
 
 export const selectAuditEvents = createSelector(selectNexusState, (state) => state.auditEvents);
+
+/** Resposta em streaming da conversa atual (ou de uma conversa nova). */
+export const selectCurrentChatStream = createSelector(selectNexusState, (state) => {
+  const stream = state.chatStream;
+  if (!stream) {
+    return null;
+  }
+  if (stream.conversationId && stream.conversationId !== state.currentConversationId) {
+    return null;
+  }
+  return stream;
+});
+
+export const selectFeedbackByMessage = createSelector(
+  selectNexusState,
+  (state) => state.feedbackByMessage
+);
+
+export const selectCuratorFeedback = createSelector(
+  selectNexusState,
+  (state) => state.curatorFeedback
+);
+
+export const selectUsageReport = createSelector(selectNexusState, (state) => state.usageReport);
+
+export const selectUsageLimits = createSelector(selectNexusState, (state) => state.usageLimits);
+
+export const selectNotice = createSelector(selectNexusState, (state) => state.notice);

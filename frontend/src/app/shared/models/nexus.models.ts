@@ -107,3 +107,84 @@ export interface ApiKeyTestResult {
   message: string;
   response_preview: string;
 }
+
+/** Evento da resposta em streaming (RF-58, SPEC-006). */
+export type ChatStreamEvent =
+  | { kind: "delta"; text: string }
+  | { kind: "replace"; text: string }
+  | { kind: "done"; response: ChatResponse }
+  | { kind: "error"; status: number; detail: string };
+
+/** Resposta em andamento no chat: pergunta ja exibida e texto parcial. */
+export interface ChatStreamState {
+  conversationId: string | null;
+  question: string;
+  text: string;
+}
+
+/** Avaliacao de uma resposta (RF-61, D8): util ou nao util. */
+export type FeedbackRating = "util" | "nao_util";
+export type FeedbackStatus = "nao_aplicavel" | "pendente" | "validado" | "descartado";
+
+export interface MessageFeedback {
+  id: string;
+  message_id: string;
+  conversation_id: string;
+  assistant_id: string;
+  rating: FeedbackRating;
+  comment: string | null;
+  status: FeedbackStatus;
+  created_at: string;
+  updated_at: string;
+  /** So na visao do curador (RN-33). */
+  question?: string | null;
+  answer?: string | null;
+  cited_documents?: string[];
+  expected_answer?: string | null;
+  source_documents?: string[];
+  out_of_scope?: boolean;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+}
+
+export interface FeedbackReview {
+  decision: "validado" | "descartado";
+  expected_answer?: string | null;
+  source_documents?: string[];
+  out_of_scope?: boolean;
+}
+
+/** Consumo por usuario ou por conversa (RF-57); custo e estimativa. */
+export interface UsageSummary {
+  key: string;
+  questions: number;
+  input_tokens: number;
+  output_tokens: number;
+  estimated_cost: number;
+  user_id: string | null;
+  user_name: string | null;
+  assistant_id: string | null;
+  last_used_at: string | null;
+}
+
+export interface UsageReport {
+  occurred_from: string;
+  occurred_to: string;
+  currency: string;
+  model: string;
+  estimated: boolean;
+  by_user: UsageSummary[];
+  by_conversation: UsageSummary[];
+  total_questions: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_estimated_cost: number;
+}
+
+/** Limite de perguntas por usuario (D3); 0 desliga a janela. */
+export interface UsageLimits {
+  per_minute: number;
+  per_day: number;
+  /** "padrao" vem do ambiente; "configurado", da tela. */
+  source?: "padrao" | "configurado";
+}

@@ -89,16 +89,20 @@ describe("menuFor", () => {
       manageAssistants: true,
       manageDocuments: true,
       configureLlm: true,
-      viewAudit: true
+      viewAudit: true,
+      viewUsage: true,
+      reviewFeedback: true
     });
   });
 
-  it("shows only document management to the curator", () => {
+  it("shows document management and feedback review to the curator", () => {
     expect(menuFor(user(Roles.curator))).toEqual({
       manageAssistants: false,
       manageDocuments: true,
       configureLlm: false,
-      viewAudit: false
+      viewAudit: false,
+      viewUsage: false,
+      reviewFeedback: true
     });
   });
 
@@ -107,7 +111,9 @@ describe("menuFor", () => {
       manageAssistants: false,
       manageDocuments: false,
       configureLlm: false,
-      viewAudit: false
+      viewAudit: false,
+      viewUsage: false,
+      reviewFeedback: false
     };
     expect(menuFor(user(Roles.user))).toEqual(hidden);
     expect(menuFor(user())).toEqual(hidden);

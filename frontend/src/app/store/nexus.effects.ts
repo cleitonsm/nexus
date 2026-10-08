@@ -1,8 +1,9 @@
 import { inject } from "@angular/core";
 import { Actions, createEffect, ofType } from "@ngrx/effects";
-import { Store } from "@ngrx/store";
+import { Action, Store } from "@ngrx/store";
 import {
   catchError,
+  concat,
   filter,
   map,
   mergeMap,
@@ -19,6 +20,8 @@ import {
   describeApiError,
   hasDocumentsInProgress
 } from "../shared/documents/document-lifecycle";
+import { describeChatError } from "../shared/chat/chat-stream";
+import { ChatStreamEvent } from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
 import { selectActiveAssistantId } from "./nexus.selectors";
 
@@ -234,39 +237,175 @@ export const sendChatQuestionEffect = createEffect(
     actions$.pipe(
       ofType(nexusActions.sendChatQuestion),
       switchMap(({ assistantId, conversationId, question, topK }) => {
-        const sendWithConversation = (targetConversationId: string) =>
-          api.sendChatMessage(targetConversationId, { question, top_k: topK }).pipe(
-            map((response) =>
-              nexusActions.sendChatQuestionSuccess({
-                conversationId: response.conversation_id,
-                userMessage: response.user_message,
-                assistantMessage: response.assistant_message
-              })
-            )
-          );
-        if (conversationId) {
-          return sendWithConversation(conversationId).pipe(
-            catchError((error) =>
-              of(nexusActions.sendChatQuestionFailure({ error: resolveError(error) }))
-            )
-          );
-        }
-        return api.createConversation({ assistant_id: assistantId }).pipe(
-          mergeMap((conversation) =>
-            sendWithConversation(conversation.id).pipe(
-              mergeMap((sendSuccessAction) =>
-                of(
-                  nexusActions.createConversationSuccess({ assistantId, conversation }),
-                  sendSuccessAction
-                )
+        // RF-58: a pergunta aparece ja; a resposta chega em partes.
+        const started = of(nexusActions.chatStreamStarted({ conversationId, question }));
+        const stream = (targetConversationId: string, onDone: Action[] = []) =>
+          api
+            .streamChatMessage(targetConversationId, { question, top_k: topK })
+            .pipe(mergeMap((event) => chatStreamActions(event, onDone)));
+        const answer = conversationId
+          ? stream(conversationId)
+          : api.createConversation({ assistant_id: assistantId }).pipe(
+              // A conversa nova so vira a atual com a resposta pronta, para
+              // que a recarga das mensagens nao duplique a pergunta exibida.
+              mergeMap((conversation) =>
+                stream(conversation.id, [
+                  nexusActions.createConversationSuccess({ assistantId, conversation })
+                ])
               )
-            )
-          ),
+            );
+        return concat(started, answer).pipe(
           catchError((error) =>
-            of(nexusActions.sendChatQuestionFailure({ error: resolveError(error) }))
+            of(nexusActions.sendChatQuestionFailure({ error: describeChatError(error) }))
           )
         );
       })
+    ),
+  { functional: true }
+);
+
+/** Acoes de cada evento do streaming; ``onDone`` vai antes do resultado. */
+export function chatStreamActions(event: ChatStreamEvent, onDone: Action[] = []): Action[] {
+  switch (event.kind) {
+    case "delta":
+      return [nexusActions.chatStreamDelta({ text: event.text })];
+    case "replace":
+      return [nexusActions.chatStreamReplace({ text: event.text })];
+    case "done":
+      return [
+        ...onDone,
+        nexusActions.sendChatQuestionSuccess({
+          conversationId: event.response.conversation_id,
+          userMessage: event.response.user_message,
+          assistantMessage: event.response.assistant_message
+        })
+      ];
+    case "error":
+      return [nexusActions.sendChatQuestionFailure({ error: event.detail })];
+  }
+}
+
+export const submitFeedbackEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.submitFeedback),
+      mergeMap(({ messageId, rating, comment }) =>
+        api.submitFeedback(messageId, rating, comment).pipe(
+          map((feedback) => nexusActions.submitFeedbackSuccess({ feedback })),
+          catchError((error) =>
+            of(nexusActions.submitFeedbackFailure({ messageId, error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const loadCuratorFeedbackEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadCuratorFeedback),
+      switchMap(({ status, assistantId }) =>
+        api.listFeedback(status, assistantId).pipe(
+          map((items) => nexusActions.loadCuratorFeedbackSuccess({ items })),
+          catchError((error) =>
+            of(nexusActions.loadCuratorFeedbackFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const reviewFeedbackEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.reviewFeedback),
+      mergeMap(({ feedbackId, review }) =>
+        api.reviewFeedback(feedbackId, review).pipe(
+          map((feedback) => nexusActions.reviewFeedbackSuccess({ feedback })),
+          catchError((error) =>
+            of(nexusActions.reviewFeedbackFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+/** Baixa o JSONL dos itens validados; o arquivo vai para o conjunto de referencia. */
+export const exportFeedbackEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.exportFeedback),
+      switchMap(({ assistantId }) =>
+        api.exportFeedback(assistantId).pipe(
+          map((blob) => {
+            saveBlob(blob, `feedback-${assistantId}.jsonl`);
+            return nexusActions.exportFeedbackSuccess();
+          }),
+          catchError((error) =>
+            of(nexusActions.exportFeedbackFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export const loadUsageReportEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadUsageReport),
+      switchMap(({ from, to }) =>
+        api.getUsageReport(from, to).pipe(
+          map((report) => nexusActions.loadUsageReportSuccess({ report })),
+          catchError((error) =>
+            of(nexusActions.loadUsageReportFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const loadUsageLimitsEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadUsageLimits),
+      switchMap(() =>
+        api.getUsageLimits().pipe(
+          map((limits) => nexusActions.loadUsageLimitsSuccess({ limits })),
+          catchError((error) =>
+            of(nexusActions.loadUsageLimitsFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const saveUsageLimitsEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.saveUsageLimits),
+      switchMap(({ limits }) =>
+        api.saveUsageLimits(limits).pipe(
+          map((saved) => nexusActions.saveUsageLimitsSuccess({ limits: saved })),
+          catchError((error) =>
+            of(nexusActions.saveUsageLimitsFailure({ error: resolveError(error) }))
+          )
+        )
+      )
     ),
   { functional: true }
 );
@@ -507,5 +646,12 @@ export const nexusEffects = {
   replaceDocumentEffect,
   reprocessDocumentEffect,
   setDocumentGroupsEffect,
-  loadAuditEventsEffect
+  loadAuditEventsEffect,
+  submitFeedbackEffect,
+  loadCuratorFeedbackEffect,
+  reviewFeedbackEffect,
+  exportFeedbackEffect,
+  loadUsageReportEffect,
+  loadUsageLimitsEffect,
+  saveUsageLimitsEffect
 };

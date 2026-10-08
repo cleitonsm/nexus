@@ -1,0 +1,189 @@
+<section class="mx-auto max-w-6xl space-y-4">
+  <div
+    *ngIf="error()"
+    class="rounded-md border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
+  >
+    <div class="flex items-center justify-between gap-2">
+      <span>{{ error() }}</span>
+      <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
+    </div>
+  </div>
+  <div
+    *ngIf="notice()"
+    class="rounded-md border border-emerald-400/40 bg-emerald-500/10 p-3 text-sm text-emerald-200"
+    role="status"
+  >
+    <div class="flex items-center justify-between gap-2">
+      <span>{{ notice() }}</span>
+      <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
+    </div>
+  </div>
+
+  <article class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
+    <h2 class="text-lg font-semibold">Limite de perguntas</h2>
+    <p class="mt-1 text-sm text-slate-400">
+      Quantas perguntas cada usuário pode fazer. Ao atingir o limite, a pergunta é recusada até a
+      janela seguinte. Use 0 para desligar uma janela.
+      <span *ngIf="limits() as current" class="ml-1 text-xs text-slate-500">
+        ({{ current.source === "configurado" ? "definido nesta tela" : "padrão do ambiente" }})
+      </span>
+    </p>
+    <form
+      class="mt-4 flex flex-wrap items-end gap-3"
+      [formGroup]="limitsForm"
+      (ngSubmit)="saveLimits()"
+    >
+      <label class="block text-xs text-slate-300">
+        Por minuto
+        <input
+          type="number"
+          min="0"
+          step="1"
+          formControlName="perMinute"
+          class="mt-1 w-36 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+        />
+      </label>
+      <label class="block text-xs text-slate-300">
+        Por dia
+        <input
+          type="number"
+          min="0"
+          step="1"
+          formControlName="perDay"
+          class="mt-1 w-36 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+        />
+      </label>
+      <button
+        type="submit"
+        [disabled]="loading().saveUsageLimits || limitsForm.invalid"
+        class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+      >
+        {{ loading().saveUsageLimits ? "Gravando..." : "Gravar limites" }}
+      </button>
+      <p *ngIf="limitsForm.invalid && limitsForm.touched" class="w-full text-xs text-rose-300">
+        Informe números inteiros entre 0 e 1.000.000.
+      </p>
+    </form>
+  </article>
+
+  <article class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-semibold">Consumo do LLM</h2>
+        <p class="mt-1 text-sm text-slate-400">
+          Tokens e custo por usuário e por conversa. O custo é uma estimativa pela tabela de preços
+          configurada, não uma fatura.
+        </p>
+      </div>
+      <div class="flex gap-1" role="group" aria-label="Período">
+        <button
+          *ngFor="let days of periods"
+          type="button"
+          (click)="loadReport(days)"
+          [disabled]="loading().usageReport"
+          class="rounded-full border px-3 py-1 text-xs transition-colors"
+          [ngClass]="days === periodDays
+            ? 'border-indigo-400 bg-indigo-500/20 text-slate-100'
+            : 'border-slate-700 text-slate-400 hover:text-slate-200'"
+        >
+          {{ days === 1 ? "24 h" : days + " dias" }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="report() as data" class="mt-4 grid gap-3 sm:grid-cols-4">
+      <div class="rounded-2xl border border-slate-800 bg-slate-950 p-3">
+        <p class="text-xs text-slate-400">Perguntas</p>
+        <p class="mt-1 text-xl font-semibold">{{ tokens(data.total_questions) }}</p>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-950 p-3">
+        <p class="text-xs text-slate-400">Tokens de entrada</p>
+        <p class="mt-1 text-xl font-semibold">{{ tokens(data.total_input_tokens) }}</p>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-950 p-3">
+        <p class="text-xs text-slate-400">Tokens de saída</p>
+        <p class="mt-1 text-xl font-semibold">{{ tokens(data.total_output_tokens) }}</p>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-950 p-3">
+        <p class="text-xs text-slate-400">Custo estimado ({{ data.model }})</p>
+        <p class="mt-1 text-xl font-semibold">
+          {{ cost(data.total_estimated_cost, data.currency) }}
+        </p>
+      </div>
+    </div>
+    <p *ngIf="loading().usageReport" class="mt-4 text-xs text-slate-500">Consultando...</p>
+  </article>
+
+  <article
+    *ngIf="report() as data"
+    class="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900/70 p-4"
+  >
+    <h3 class="text-sm font-semibold">Por usuário</h3>
+    <table class="mt-2 w-full min-w-[640px] text-left text-sm">
+      <thead class="text-xs uppercase tracking-wider text-slate-400">
+        <tr>
+          <th class="px-2 py-2 font-medium">Usuário</th>
+          <th class="px-2 py-2 text-right font-medium">Perguntas</th>
+          <th class="px-2 py-2 text-right font-medium">Entrada</th>
+          <th class="px-2 py-2 text-right font-medium">Saída</th>
+          <th class="px-2 py-2 text-right font-medium">Custo estimado</th>
+          <th class="px-2 py-2 font-medium">Última pergunta</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of data.by_user" class="border-t border-slate-800">
+          <td class="px-2 py-2" [title]="item.user_id ?? ''">{{ userLabel(item) }}</td>
+          <td class="px-2 py-2 text-right">{{ tokens(item.questions) }}</td>
+          <td class="px-2 py-2 text-right">{{ tokens(item.input_tokens) }}</td>
+          <td class="px-2 py-2 text-right">{{ tokens(item.output_tokens) }}</td>
+          <td class="px-2 py-2 text-right">{{ cost(item.estimated_cost, data.currency) }}</td>
+          <td class="whitespace-nowrap px-2 py-2 text-slate-300">
+            {{ item.last_used_at | date: "dd/MM/yyyy HH:mm" }}
+          </td>
+        </tr>
+        <tr *ngIf="data.by_user.length === 0">
+          <td colspan="6" class="px-2 py-6 text-center text-xs text-slate-500">
+            Nenhuma pergunta no período.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </article>
+
+  <article
+    *ngIf="report() as data"
+    class="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900/70 p-4"
+  >
+    <h3 class="text-sm font-semibold">Por conversa</h3>
+    <p class="mt-1 text-xs text-slate-500">
+      O conteúdo das conversas continua privado; aqui aparecem só os identificadores e o consumo.
+    </p>
+    <table class="mt-2 w-full min-w-[720px] text-left text-sm">
+      <thead class="text-xs uppercase tracking-wider text-slate-400">
+        <tr>
+          <th class="px-2 py-2 font-medium">Conversa</th>
+          <th class="px-2 py-2 font-medium">Usuário</th>
+          <th class="px-2 py-2 font-medium">Assistente</th>
+          <th class="px-2 py-2 text-right font-medium">Perguntas</th>
+          <th class="px-2 py-2 text-right font-medium">Tokens</th>
+          <th class="px-2 py-2 text-right font-medium">Custo estimado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of data.by_conversation" class="border-t border-slate-800">
+          <td class="px-2 py-2 font-mono text-xs text-slate-300">{{ item.key }}</td>
+          <td class="px-2 py-2">{{ userLabel(item) }}</td>
+          <td class="px-2 py-2">{{ assistantName(item.assistant_id) }}</td>
+          <td class="px-2 py-2 text-right">{{ tokens(item.questions) }}</td>
+          <td class="px-2 py-2 text-right">{{ tokens(item.input_tokens + item.output_tokens) }}</td>
+          <td class="px-2 py-2 text-right">{{ cost(item.estimated_cost, data.currency) }}</td>
+        </tr>
+        <tr *ngIf="data.by_conversation.length === 0">
+          <td colspan="6" class="px-2 py-6 text-center text-xs text-slate-500">
+            Nenhuma conversa no período.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </article>
+</section>

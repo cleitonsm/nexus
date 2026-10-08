@@ -142,12 +142,130 @@
               <p class="mt-3 text-sm text-nexus-text leading-relaxed whitespace-pre-wrap break-words">{{ citation.excerpt }}</p>
             </div>
           </div>
+
+          <!-- Avaliacao da resposta (RF-61) -->
+          <div *ngIf="message.role === 'assistant'" class="mt-3 text-left">
+            <div class="flex items-center gap-1 text-nexus-dim">
+              <button
+                type="button"
+                (click)="markUseful(message)"
+                [attr.aria-pressed]="feedbackOf(message) === 'util'"
+                class="rounded-full p-1.5 transition-colors hover:bg-nexus-hover hover:text-nexus-text"
+                [class.text-emerald-300]="feedbackOf(message) === 'util'"
+                title="Resposta útil"
+                aria-label="Resposta útil"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3z" />
+                  <path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                (click)="openNegativeFeedback(message)"
+                [attr.aria-pressed]="feedbackOf(message) === 'nao_util'"
+                class="rounded-full p-1.5 transition-colors hover:bg-nexus-hover hover:text-nexus-text"
+                [class.text-rose-300]="feedbackOf(message) === 'nao_util'"
+                title="Resposta não útil"
+                aria-label="Resposta não útil"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3z" />
+                  <path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17" />
+                </svg>
+              </button>
+              <span *ngIf="feedbackOf(message) && !feedbackError(message)" class="text-[11px]">
+                Obrigado pela avaliação.
+              </span>
+              <span *ngIf="feedbackError(message) as feedbackFailure" class="text-[11px] text-rose-300">
+                {{ feedbackFailure }}
+              </span>
+            </div>
+            <div
+              *ngIf="feedbackDraft()?.messageId === message.id"
+              class="mt-2 rounded-xl border border-nexus-active bg-nexus-sidebar p-3"
+            >
+              <label class="block text-xs text-nexus-dim" [for]="'feedback-comment-' + message.id">
+                O que faltou ou estava errado? (opcional)
+              </label>
+              <textarea
+                [id]="'feedback-comment-' + message.id"
+                rows="2"
+                [attr.maxlength]="feedbackCommentMax"
+                [value]="feedbackDraft()?.comment ?? ''"
+                (input)="updateFeedbackComment($event)"
+                class="mt-1 w-full resize-none rounded-lg border border-nexus-hover bg-nexus-bg px-3 py-2 text-sm text-nexus-text outline-none focus:border-nexus-active"
+              ></textarea>
+              <p class="mt-1 text-[11px] text-nexus-dim">
+                A pergunta, esta resposta e o comentário serão enviados ao curador do assistente para
+                melhorar as respostas.
+              </p>
+              <div class="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  (click)="cancelNegativeFeedback()"
+                  class="rounded-full px-3 py-1 text-xs text-nexus-dim hover:text-nexus-text"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  (click)="sendNegativeFeedback()"
+                  class="rounded-full bg-nexus-accent px-4 py-1 text-xs font-medium text-white"
+                >
+                  Enviar avaliação
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Loading State -->
-    <div *ngIf="loading().sendChat" class="flex items-start gap-4">
+    <!-- Resposta em streaming (RF-58): a pergunta ja aparece e o texto chega em partes -->
+    <ng-container *ngIf="chatStream() as stream">
+      <div class="flex items-start gap-4 flex-row-reverse">
+        <div class="h-8 w-8 rounded-full flex-shrink-0 flex items-center justify-center bg-indigo-600">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0 text-right">
+          <p class="text-xs font-medium text-nexus-dim mb-1 uppercase tracking-wider">Você</p>
+          <p class="whitespace-pre-wrap text-nexus-text leading-relaxed">{{ stream.question }}</p>
+        </div>
+      </div>
+      <div *ngIf="stream.text" class="flex items-start gap-4" aria-live="polite">
+        <div class="h-8 w-8 rounded-full flex-shrink-0 flex items-center justify-center bg-nexus-accent animate-pulse">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-medium text-nexus-dim mb-1 uppercase tracking-wider">Nexus</p>
+          <div
+            class="prose prose-invert prose-nexus max-w-none text-left text-nexus-text leading-relaxed"
+            [innerHTML]="stream.text | markdown"
+          ></div>
+          <p class="mt-2 text-[11px] text-nexus-dim">As fontes aparecem ao final da resposta.</p>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Erro da pergunta, inclusive o limite de uso (RN-32) -->
+    <div
+      *ngIf="error() && !loading().sendChat"
+      class="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100"
+      role="alert"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <span>{{ error() }}</span>
+        <button type="button" class="text-xs underline flex-shrink-0" (click)="clearError()">fechar</button>
+      </div>
+    </div>
+
+    <!-- Loading State: ate a primeira parte da resposta -->
+    <div *ngIf="loading().sendChat && !chatStream()?.text" class="flex items-start gap-4">
       <div class="h-8 w-8 rounded-full bg-nexus-accent flex items-center justify-center animate-pulse">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />

@@ -8,7 +8,12 @@ import {
   AuditFilters,
   ChatMessage,
   Conversation,
-  DocumentAccess
+  DocumentAccess,
+  FeedbackRating,
+  FeedbackReview,
+  MessageFeedback,
+  UsageLimits,
+  UsageReport
 } from "../shared/models/nexus.models";
 
 export const nexusActions = createActionGroup({
@@ -87,6 +92,38 @@ export const nexusActions = createActionGroup({
       assistantMessage: ChatMessage;
     }>(),
     "Send Chat Question Failure": props<{ error: string }>(),
+    /** RF-58: a pergunta aparece na hora e a resposta, em partes. */
+    "Chat Stream Started": props<{ conversationId: string | null; question: string }>(),
+    "Chat Stream Delta": props<{ text: string }>(),
+    /** Texto final diferente do transmitido (fallback): substitui o exibido. */
+    "Chat Stream Replace": props<{ text: string }>(),
+
+    "Submit Feedback": props<{
+      messageId: string;
+      rating: FeedbackRating;
+      comment: string | null;
+    }>(),
+    "Submit Feedback Success": props<{ feedback: MessageFeedback }>(),
+    "Submit Feedback Failure": props<{ messageId: string; error: string }>(),
+    "Load Curator Feedback": props<{ status: string; assistantId: string | null }>(),
+    "Load Curator Feedback Success": props<{ items: MessageFeedback[] }>(),
+    "Load Curator Feedback Failure": props<{ error: string }>(),
+    "Review Feedback": props<{ feedbackId: string; review: FeedbackReview }>(),
+    "Review Feedback Success": props<{ feedback: MessageFeedback }>(),
+    "Review Feedback Failure": props<{ error: string }>(),
+    "Export Feedback": props<{ assistantId: string }>(),
+    "Export Feedback Success": emptyProps(),
+    "Export Feedback Failure": props<{ error: string }>(),
+
+    "Load Usage Report": props<{ from: string | null; to: string | null }>(),
+    "Load Usage Report Success": props<{ report: UsageReport }>(),
+    "Load Usage Report Failure": props<{ error: string }>(),
+    "Load Usage Limits": emptyProps(),
+    "Load Usage Limits Success": props<{ limits: UsageLimits }>(),
+    "Load Usage Limits Failure": props<{ error: string }>(),
+    "Save Usage Limits": props<{ limits: UsageLimits }>(),
+    "Save Usage Limits Success": props<{ limits: UsageLimits }>(),
+    "Save Usage Limits Failure": props<{ error: string }>(),
 
     "Load Api Key Status": emptyProps(),
     "Load Api Key Status Success": props<{ status: ApiKeyStatus }>(),

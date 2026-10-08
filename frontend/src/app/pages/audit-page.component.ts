@@ -25,7 +25,15 @@ const ACTION_LABELS: Record<string, string> = {
   "llm_api_key.changed": "Chave do LLM alterada",
   "llm_api_key.tested": "Chave do LLM testada",
   "audit.consulted": "Auditoria consultada",
-  "audit.purged": "Limpeza por retenção"
+  "audit.purged": "Limpeza por retenção",
+  "chat.rate_limited": "Pergunta bloqueada pelo limite de uso",
+  "chat.prompt_injection_suspected": "Suspeita de injeção de prompt em documento",
+  "feedback.submitted": "Resposta avaliada",
+  "feedback.reviewed": "Avaliação revisada pelo curador",
+  "feedback.consulted": "Avaliações consultadas",
+  "feedback.exported": "Avaliações exportadas",
+  "usage.consulted": "Consumo consultado",
+  "usage.limits_changed": "Limites de uso alterados"
 };
 
 /** Consulta da trilha de auditoria (UC-13). A trilha so e lida. */

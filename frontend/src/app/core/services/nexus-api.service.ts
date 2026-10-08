@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
-import { HttpClient, HttpParams } from "@angular/common/http";
-import { Observable } from "rxjs";
+import { HttpClient, HttpEventType, HttpParams } from "@angular/common/http";
+import { Observable, filter, mergeMap } from "rxjs";
 
 import {
   ApiKeyTestResult,
@@ -9,10 +9,17 @@ import {
   AuditEvent,
   AuditFilters,
   ChatResponse,
+  ChatStreamEvent,
   Conversation,
   ConversationDetail,
-  DocumentAccess
+  DocumentAccess,
+  FeedbackRating,
+  FeedbackReview,
+  MessageFeedback,
+  UsageLimits,
+  UsageReport
 } from "../../shared/models/nexus.models";
+import { ServerSentEventsReader } from "../../shared/chat/chat-stream";
 import { SessionUser } from "../auth/auth.models";
 
 interface CreateAssistantPayload {
@@ -166,6 +173,94 @@ export class NexusApiService {
       `${this.baseUrl}/conversations/${conversationId}/chat`,
       payload
     );
+  }
+
+  /**
+   * RF-58: Server-Sent Events lidos pelo progresso do HttpClient, para que o
+   * interceptor de autenticacao continue valendo. Cada leitura entrega so os
+   * eventos completos ainda nao vistos.
+   */
+  streamChatMessage(conversationId: string, payload: ChatPayload): Observable<ChatStreamEvent> {
+    const reader = new ServerSentEventsReader();
+    return this.http
+      .post(`${this.baseUrl}/conversations/${conversationId}/chat/stream`, payload, {
+        observe: "events",
+        reportProgress: true,
+        responseType: "text",
+        headers: { Accept: "text/event-stream" }
+      })
+      .pipe(
+        filter(
+          (event) =>
+            event.type === HttpEventType.DownloadProgress ||
+            event.type === HttpEventType.Response
+        ),
+        mergeMap((event) => {
+          const text =
+            event.type === HttpEventType.Response
+              ? event.body ?? ""
+              : (event as { partialText?: string }).partialText ?? "";
+          return reader.read(text);
+        })
+      );
+  }
+
+  /** RF-61: so quem fez a pergunta avalia; a ultima avaliacao vale. */
+  submitFeedback(
+    messageId: string,
+    rating: FeedbackRating,
+    comment: string | null
+  ): Observable<MessageFeedback> {
+    return this.http.post<MessageFeedback>(`${this.baseUrl}/messages/${messageId}/feedback`, {
+      rating,
+      comment
+    });
+  }
+
+  /** RN-33: avaliacoes negativas para o curador. */
+  listFeedback(status: string, assistantId: string | null): Observable<MessageFeedback[]> {
+    let params = new HttpParams().set("status", status);
+    if (assistantId) {
+      params = params.set("assistant_id", assistantId);
+    }
+    return this.http.get<MessageFeedback[]>(`${this.baseUrl}/feedback`, { params });
+  }
+
+  reviewFeedback(feedbackId: string, review: FeedbackReview): Observable<MessageFeedback> {
+    return this.http.post<MessageFeedback>(
+      `${this.baseUrl}/feedback/${feedbackId}/review`,
+      review
+    );
+  }
+
+  /** Itens validados no formato JSONL do conjunto de referencia (SPEC-001). */
+  exportFeedback(assistantId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/feedback/export`, {
+      params: new HttpParams().set("assistant_id", assistantId),
+      responseType: "blob"
+    });
+  }
+
+  getUsageReport(from: string | null, to: string | null): Observable<UsageReport> {
+    let params = new HttpParams();
+    if (from) {
+      params = params.set("from", from);
+    }
+    if (to) {
+      params = params.set("to", to);
+    }
+    return this.http.get<UsageReport>(`${this.baseUrl}/admin/usage`, { params });
+  }
+
+  getUsageLimits(): Observable<UsageLimits> {
+    return this.http.get<UsageLimits>(`${this.baseUrl}/admin/usage-limits`);
+  }
+
+  saveUsageLimits(limits: UsageLimits): Observable<UsageLimits> {
+    return this.http.put<UsageLimits>(`${this.baseUrl}/admin/usage-limits`, {
+      per_minute: limits.per_minute,
+      per_day: limits.per_day
+    });
   }
 
   getApiKeyStatus(): Observable<ApiKeyStatus> {

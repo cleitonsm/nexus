@@ -3,7 +3,7 @@ import { AfterViewChecked, Component, ElementRef, ViewChild, computed, effect, i
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { Store } from "@ngrx/store";
 
-import { Citation } from "../shared/models/nexus.models";
+import { ChatMessage, Citation, FeedbackRating } from "../shared/models/nexus.models";
 import { MarkdownPipe } from "../shared/pipes/markdown.pipe";
 import { selectMenu } from "../store/auth.selectors";
 import { nexusActions } from "../store/nexus.actions";
@@ -11,11 +11,17 @@ import {
   selectActiveAssistantId,
   selectAssistants,
   selectCurrentCitationsByMessage,
+  selectCurrentChatStream,
   selectCurrentConversationId,
   selectCurrentMessages,
+  selectError,
+  selectFeedbackByMessage,
   selectInferAssistantError,
   selectLoadingState
 } from "../store/nexus.selectors";
+
+/** Comentario opcional da avaliacao (RF-61); o mesmo limite da API. */
+export const FEEDBACK_COMMENT_MAX = 1000;
 
 @Component({
   selector: "app-chat-page",
@@ -48,7 +54,17 @@ export class ChatPageComponent implements AfterViewChecked {
   protected readonly hasAssistants = computed(() => this.assistants().length > 0);
   protected readonly topAssistants = computed(() => this.assistants().slice(0, 3));
 
-  protected readonly hasInteracted = computed(() => this.messages().length > 0 || this.loading().sendChat);
+  /** Resposta em streaming (RF-58): pergunta exibida e texto parcial. */
+  protected readonly chatStream = this.store.selectSignal(selectCurrentChatStream);
+  protected readonly feedbackByMessage = this.store.selectSignal(selectFeedbackByMessage);
+  protected readonly error = this.store.selectSignal(selectError);
+  /** Avaliacao "nao util" sendo escrita: comentario antes do envio. */
+  protected readonly feedbackDraft = signal<{ messageId: string; comment: string } | null>(null);
+  protected readonly feedbackCommentMax = FEEDBACK_COMMENT_MAX;
+
+  protected readonly hasInteracted = computed(
+    () => this.messages().length > 0 || this.loading().sendChat || this.chatStream() !== null
+  );
 
   protected readonly activeAssistant = computed(() =>
     this.assistants().find((assistant) => assistant.id === this.activeAssistantId()) ?? null
@@ -77,6 +93,7 @@ export class ChatPageComponent implements AfterViewChecked {
     effect(() => {
       this.messages();
       this.loading().sendChat;
+      this.chatStream();
       this.pendingScroll = true;
     });
   }
@@ -174,6 +191,56 @@ export class ChatPageComponent implements AfterViewChecked {
     return (
       this.citationsByMessage()[messageId]?.find((item) => item.number === current.number) ?? null
     );
+  }
+
+  protected feedbackOf(message: ChatMessage): FeedbackRating | null {
+    return this.feedbackByMessage()[message.id]?.rating ?? null;
+  }
+
+  protected feedbackError(message: ChatMessage): string | null {
+    return this.feedbackByMessage()[message.id]?.error ?? null;
+  }
+
+  protected markUseful(message: ChatMessage): void {
+    this.feedbackDraft.set(null);
+    this.sendFeedback(message.id, "util", null);
+  }
+
+  /** "Nao util" abre o comentario; o envio avisa que o curador vera a conversa. */
+  protected openNegativeFeedback(message: ChatMessage): void {
+    this.feedbackDraft.set({ messageId: message.id, comment: "" });
+  }
+
+  protected updateFeedbackComment(event: Event): void {
+    const draft = this.feedbackDraft();
+    if (draft) {
+      const comment = (event.target as HTMLTextAreaElement).value.slice(0, FEEDBACK_COMMENT_MAX);
+      this.feedbackDraft.set({ ...draft, comment });
+    }
+  }
+
+  protected sendNegativeFeedback(): void {
+    const draft = this.feedbackDraft();
+    if (!draft) {
+      return;
+    }
+    this.sendFeedback(draft.messageId, "nao_util", draft.comment.trim() || null);
+    this.feedbackDraft.set(null);
+  }
+
+  protected cancelNegativeFeedback(): void {
+    this.feedbackDraft.set(null);
+  }
+
+  private sendFeedback(messageId: string, rating: FeedbackRating, comment: string | null): void {
+    if (this.feedbackByMessage()[messageId]?.sending) {
+      return;
+    }
+    this.store.dispatch(nexusActions.submitFeedback({ messageId, rating, comment }));
+  }
+
+  protected clearError(): void {
+    this.store.dispatch(nexusActions.clearError());
   }
 
   protected openCreateAssistantModal(): void {

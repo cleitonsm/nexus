@@ -6,8 +6,13 @@ import {
   Assistant,
   AuditEvent,
   ChatMessage,
+  ChatStreamState,
   Conversation,
-  DocumentAccess
+  DocumentAccess,
+  FeedbackRating,
+  MessageFeedback,
+  UsageLimits,
+  UsageReport
 } from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
 
@@ -28,6 +33,16 @@ export interface NexusState {
   inferAssistantError: string | null;
   apiKeyStatus: ApiKeyStatus | null;
   apiKeyTestResult: ApiKeyTestResult | null;
+  /** Resposta em streaming em andamento (RF-58). */
+  chatStream: ChatStreamState | null;
+  /** Avaliacao enviada nesta sessao, por mensagem (RF-61). */
+  feedbackByMessage: Record<string, MessageFeedbackState>;
+  /** Avaliacoes negativas para o curador (RN-33). */
+  curatorFeedback: MessageFeedback[];
+  usageReport: UsageReport | null;
+  usageLimits: UsageLimits | null;
+  /** Aviso de sucesso das telas administrativas (ex.: limites gravados). */
+  notice: string | null;
   loading: {
     assistants: boolean;
     createAssistant: boolean;
@@ -45,7 +60,19 @@ export interface NexusState {
     documentAction: boolean;
     documentGroups: boolean;
     auditEvents: boolean;
+    curatorFeedback: boolean;
+    reviewFeedback: boolean;
+    exportFeedback: boolean;
+    usageReport: boolean;
+    usageLimits: boolean;
+    saveUsageLimits: boolean;
   };
+  error: string | null;
+}
+
+export interface MessageFeedbackState {
+  rating: FeedbackRating;
+  sending: boolean;
   error: string | null;
 }
 
@@ -63,6 +90,12 @@ export const initialNexusState: NexusState = {
   inferAssistantError: null,
   apiKeyStatus: null,
   apiKeyTestResult: null,
+  chatStream: null,
+  feedbackByMessage: {},
+  curatorFeedback: [],
+  usageReport: null,
+  usageLimits: null,
+  notice: null,
   loading: {
     assistants: false,
     createAssistant: false,
@@ -79,14 +112,20 @@ export const initialNexusState: NexusState = {
     documentAccess: false,
     documentAction: false,
     documentGroups: false,
-    auditEvents: false
+    auditEvents: false,
+    curatorFeedback: false,
+    reviewFeedback: false,
+    exportFeedback: false,
+    usageReport: false,
+    usageLimits: false,
+    saveUsageLimits: false
   },
   error: null
 };
 
 export const nexusReducer = createReducer(
   initialNexusState,
-  on(nexusActions.clearError, (state) => ({ ...state, error: null })),
+  on(nexusActions.clearError, (state) => ({ ...state, error: null, notice: null })),
   on(nexusActions.openCreateAssistantModal, (state) => ({
     ...state,
     createAssistantModalOpen: true
@@ -382,13 +421,153 @@ export const nexusReducer = createReducer(
           ...state.messagesByConversation,
           [conversationId]: [...existingMessages, userMessage, assistantMessage]
         },
+        chatStream: null,
         loading: { ...state.loading, sendChat: false }
       };
     }
   ),
   on(nexusActions.sendChatQuestionFailure, (state, { error }) => ({
     ...state,
+    chatStream: null,
     loading: { ...state.loading, sendChat: false },
+    error
+  })),
+  on(nexusActions.chatStreamStarted, (state, { conversationId, question }) => ({
+    ...state,
+    chatStream: { conversationId, question, text: "" }
+  })),
+  on(nexusActions.chatStreamDelta, (state, { text }) =>
+    state.chatStream
+      ? { ...state, chatStream: { ...state.chatStream, text: state.chatStream.text + text } }
+      : state
+  ),
+  on(nexusActions.chatStreamReplace, (state, { text }) =>
+    state.chatStream ? { ...state, chatStream: { ...state.chatStream, text } } : state
+  ),
+
+  on(nexusActions.submitFeedback, (state, { messageId, rating }) => ({
+    ...state,
+    feedbackByMessage: {
+      ...state.feedbackByMessage,
+      [messageId]: { rating, sending: true, error: null }
+    }
+  })),
+  on(nexusActions.submitFeedbackSuccess, (state, { feedback }) => ({
+    ...state,
+    feedbackByMessage: {
+      ...state.feedbackByMessage,
+      [feedback.message_id]: { rating: feedback.rating, sending: false, error: null }
+    }
+  })),
+  on(nexusActions.submitFeedbackFailure, (state, { messageId, error }) => {
+    const current = state.feedbackByMessage[messageId];
+    if (!current) {
+      return state;
+    }
+    return {
+      ...state,
+      feedbackByMessage: {
+        ...state.feedbackByMessage,
+        [messageId]: { ...current, sending: false, error }
+      }
+    };
+  }),
+
+  on(nexusActions.loadCuratorFeedback, (state) => ({
+    ...state,
+    loading: { ...state.loading, curatorFeedback: true },
+    error: null
+  })),
+  on(nexusActions.loadCuratorFeedbackSuccess, (state, { items }) => ({
+    ...state,
+    curatorFeedback: items,
+    loading: { ...state.loading, curatorFeedback: false }
+  })),
+  on(nexusActions.loadCuratorFeedbackFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, curatorFeedback: false },
+    error
+  })),
+  on(nexusActions.reviewFeedback, (state) => ({
+    ...state,
+    loading: { ...state.loading, reviewFeedback: true },
+    error: null,
+    notice: null
+  })),
+  on(nexusActions.reviewFeedbackSuccess, (state, { feedback }) => ({
+    ...state,
+    // Revisada, sai da fila de pendentes.
+    curatorFeedback: state.curatorFeedback.filter((item) => item.id !== feedback.id),
+    loading: { ...state.loading, reviewFeedback: false },
+    notice:
+      feedback.status === "validado"
+        ? "Avaliação validada: entra no conjunto de referência na próxima exportação."
+        : "Avaliação descartada."
+  })),
+  on(nexusActions.reviewFeedbackFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, reviewFeedback: false },
+    error
+  })),
+  on(nexusActions.exportFeedback, (state) => ({
+    ...state,
+    loading: { ...state.loading, exportFeedback: true },
+    error: null
+  })),
+  on(nexusActions.exportFeedbackSuccess, (state) => ({
+    ...state,
+    loading: { ...state.loading, exportFeedback: false }
+  })),
+  on(nexusActions.exportFeedbackFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, exportFeedback: false },
+    error
+  })),
+
+  on(nexusActions.loadUsageReport, (state) => ({
+    ...state,
+    loading: { ...state.loading, usageReport: true },
+    error: null
+  })),
+  on(nexusActions.loadUsageReportSuccess, (state, { report }) => ({
+    ...state,
+    usageReport: report,
+    loading: { ...state.loading, usageReport: false }
+  })),
+  on(nexusActions.loadUsageReportFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, usageReport: false },
+    error
+  })),
+  on(nexusActions.loadUsageLimits, (state) => ({
+    ...state,
+    loading: { ...state.loading, usageLimits: true }
+  })),
+  on(nexusActions.loadUsageLimitsSuccess, (state, { limits }) => ({
+    ...state,
+    usageLimits: limits,
+    loading: { ...state.loading, usageLimits: false }
+  })),
+  on(nexusActions.loadUsageLimitsFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, usageLimits: false },
+    error
+  })),
+  on(nexusActions.saveUsageLimits, (state) => ({
+    ...state,
+    loading: { ...state.loading, saveUsageLimits: true },
+    error: null,
+    notice: null
+  })),
+  on(nexusActions.saveUsageLimitsSuccess, (state, { limits }) => ({
+    ...state,
+    usageLimits: limits,
+    loading: { ...state.loading, saveUsageLimits: false },
+    notice: "Limites gravados; valem a partir da próxima pergunta."
+  })),
+  on(nexusActions.saveUsageLimitsFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, saveUsageLimits: false },
     error
   })),
 

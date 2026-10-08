@@ -177,6 +177,33 @@
           </svg>
           <span *ngIf="sidebarContentVisible()">Auditoria</span>
         </a>
+        <a
+          *ngIf="menu().reviewFeedback"
+          routerLink="/feedback"
+          routerLinkActive="bg-nexus-active"
+          (click)="closeMobileSidebar()"
+          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+          title="Avaliações das respostas"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3z" />
+            <path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17" />
+          </svg>
+          <span *ngIf="sidebarContentVisible()">Avaliações</span>
+        </a>
+        <a
+          *ngIf="menu().viewUsage"
+          routerLink="/admin/usage"
+          routerLinkActive="bg-nexus-active"
+          (click)="closeMobileSidebar()"
+          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+          title="Consumo e limites"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 20V10M12 20V4M6 20v-6" />
+          </svg>
+          <span *ngIf="sidebarContentVisible()">Consumo e limites</span>
+        </a>
         <button
           *ngIf="menu().configureLlm"
           (click)="openAdminModal()"
