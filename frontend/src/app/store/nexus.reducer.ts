@@ -8,6 +8,7 @@ import {
   ChatMessage,
   ChatStreamState,
   Conversation,
+  ConversationDetail,
   DocumentAccess,
   FeedbackRating,
   IndexStatus,
@@ -31,6 +32,9 @@ export interface NexusState {
   documentAccessByAssistant: Record<string, DocumentAccess[]>;
   /** Estado do indice de busca por assistente (RF-31, PC-D2). */
   indexStatusByAssistant: Record<string, IndexStatus>;
+  /** Conversas anteriores a autenticacao e a aberta para leitura (PC-D5). */
+  archivedConversations: Conversation[];
+  archivedConversationDetail: ConversationDetail | null;
   auditEvents: AuditEvent[];
   createAssistantModalOpen: boolean;
   inferAssistantError: string | null;
@@ -71,6 +75,8 @@ export interface NexusState {
     saveUsageLimits: boolean;
     indexStatus: boolean;
     startReindex: boolean;
+    archivedConversations: boolean;
+    archivedAction: boolean;
   };
   error: string | null;
 }
@@ -91,6 +97,8 @@ export const initialNexusState: NexusState = {
   documents: [],
   documentAccessByAssistant: {},
   indexStatusByAssistant: {},
+  archivedConversations: [],
+  archivedConversationDetail: null,
   auditEvents: [],
   createAssistantModalOpen: false,
   inferAssistantError: null,
@@ -126,7 +134,9 @@ export const initialNexusState: NexusState = {
     usageLimits: false,
     saveUsageLimits: false,
     indexStatus: false,
-    startReindex: false
+    startReindex: false,
+    archivedConversations: false,
+    archivedAction: false
   },
   error: null
 };
@@ -775,6 +785,56 @@ export const nexusReducer = createReducer(
     loading: { ...state.loading, startReindex: false },
     error
   })),
+
+  on(nexusActions.loadArchivedConversations, (state) => ({
+    ...state,
+    loading: { ...state.loading, archivedConversations: true },
+    error: null
+  })),
+  on(nexusActions.loadArchivedConversationsSuccess, (state, { conversations }) => ({
+    ...state,
+    archivedConversations: conversations,
+    loading: { ...state.loading, archivedConversations: false }
+  })),
+  on(nexusActions.loadArchivedConversationsFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, archivedConversations: false },
+    error
+  })),
+  on(nexusActions.openArchivedConversation, nexusActions.deleteArchivedConversation, (state) => ({
+    ...state,
+    loading: { ...state.loading, archivedAction: true },
+    error: null
+  })),
+  on(nexusActions.openArchivedConversationSuccess, (state, { conversation }) => ({
+    ...state,
+    archivedConversationDetail: conversation,
+    loading: { ...state.loading, archivedAction: false }
+  })),
+  on(nexusActions.closeArchivedConversation, (state) => ({
+    ...state,
+    archivedConversationDetail: null
+  })),
+  on(nexusActions.deleteArchivedConversationSuccess, (state, { conversationId }) => ({
+    ...state,
+    archivedConversations: state.archivedConversations.filter(
+      (item) => item.id !== conversationId
+    ),
+    archivedConversationDetail:
+      state.archivedConversationDetail?.id === conversationId
+        ? null
+        : state.archivedConversationDetail,
+    loading: { ...state.loading, archivedAction: false }
+  })),
+  on(
+    nexusActions.openArchivedConversationFailure,
+    nexusActions.deleteArchivedConversationFailure,
+    (state, { error }) => ({
+      ...state,
+      loading: { ...state.loading, archivedAction: false },
+      error
+    })
+  ),
 
   on(nexusActions.loadAuditEvents, (state) => ({
     ...state,

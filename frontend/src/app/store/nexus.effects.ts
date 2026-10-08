@@ -627,6 +627,56 @@ export const reloadDocumentsAfterReindexEffect = createEffect(
   { functional: true }
 );
 
+export const loadArchivedConversationsEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadArchivedConversations),
+      switchMap(() =>
+        api.listArchivedConversations().pipe(
+          map((conversations) =>
+            nexusActions.loadArchivedConversationsSuccess({ conversations })
+          ),
+          catchError((error) =>
+            of(nexusActions.loadArchivedConversationsFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const openArchivedConversationEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.openArchivedConversation),
+      switchMap(({ conversationId }) =>
+        api.getArchivedConversation(conversationId).pipe(
+          map((conversation) => nexusActions.openArchivedConversationSuccess({ conversation })),
+          catchError((error) =>
+            of(nexusActions.openArchivedConversationFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const deleteArchivedConversationEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.deleteArchivedConversation),
+      mergeMap(({ conversationId }) =>
+        api.deleteArchivedConversation(conversationId).pipe(
+          map(() => nexusActions.deleteArchivedConversationSuccess({ conversationId })),
+          catchError((error) =>
+            of(nexusActions.deleteArchivedConversationFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
 export const deleteDocumentEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
     actions$.pipe(
@@ -731,6 +781,9 @@ export const nexusEffects = {
   startReindexEffect,
   pollIndexStatusEffect,
   reloadDocumentsAfterReindexEffect,
+  loadArchivedConversationsEffect,
+  openArchivedConversationEffect,
+  deleteArchivedConversationEffect,
   deleteDocumentEffect,
   replaceDocumentEffect,
   reprocessDocumentEffect,

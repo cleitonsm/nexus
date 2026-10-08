@@ -93,6 +93,16 @@ export const selectActiveIndexStatus = createSelector(selectNexusState, (state) 
   state.activeAssistantId ? state.indexStatusByAssistant[state.activeAssistantId] ?? null : null
 );
 
+export const selectArchivedConversations = createSelector(
+  selectNexusState,
+  (state) => state.archivedConversations
+);
+
+export const selectArchivedConversationDetail = createSelector(
+  selectNexusState,
+  (state) => state.archivedConversationDetail
+);
+
 export const selectAuditEvents = createSelector(selectNexusState, (state) => state.auditEvents);
 
 /** Resposta em streaming da conversa atual (ou de uma conversa nova). */

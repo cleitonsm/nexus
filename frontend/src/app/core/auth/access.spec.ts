@@ -91,7 +91,8 @@ describe("menuFor", () => {
       configureLlm: true,
       viewAudit: true,
       viewUsage: true,
-      reviewFeedback: true
+      reviewFeedback: true,
+      viewArchived: true
     });
   });
 
@@ -102,7 +103,8 @@ describe("menuFor", () => {
       configureLlm: false,
       viewAudit: false,
       viewUsage: false,
-      reviewFeedback: true
+      reviewFeedback: true,
+      viewArchived: false
     });
   });
 
@@ -113,7 +115,8 @@ describe("menuFor", () => {
       configureLlm: false,
       viewAudit: false,
       viewUsage: false,
-      reviewFeedback: false
+      reviewFeedback: false,
+      viewArchived: false
     };
     expect(menuFor(user(Roles.user))).toEqual(hidden);
     expect(menuFor(user())).toEqual(hidden);

@@ -33,7 +33,10 @@ const ACTION_LABELS: Record<string, string> = {
   "feedback.consulted": "Avaliações consultadas",
   "feedback.exported": "Avaliações exportadas",
   "usage.consulted": "Consumo consultado",
-  "usage.limits_changed": "Limites de uso alterados"
+  "usage.limits_changed": "Limites de uso alterados",
+  "archived_conversation.consulted": "Conversas arquivadas consultadas",
+  "archived_conversation.viewed": "Conversa arquivada lida",
+  "archived_conversation.deleted": "Conversa arquivada excluída"
 };
 
 /** Consulta da trilha de auditoria (UC-13). A trilha so e lida. */

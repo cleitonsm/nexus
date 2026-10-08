@@ -20,6 +20,8 @@ import {
   selectActiveAssistantConversations,
   selectActiveDocumentAccess,
   selectActiveIndexStatus,
+  selectArchivedConversationDetail,
+  selectArchivedConversations,
   selectAuditEvents,
   selectCurrentChatStream,
   selectCurrentCitationsByMessage,
@@ -712,5 +714,72 @@ describe("index status (RF-31, PC-D2)", () => {
     );
     expect(refused.loading.startReindex).toBe(false);
     expect(refused.error).toBe("a reindex is already running.");
+  });
+});
+
+describe("archived conversations (PC-D5)", () => {
+  const archived = (id: string): Conversation => ({
+    id,
+    assistant_id: "assistant-1",
+    name: `Conversa ${id}`,
+    created_at: "2026-01-10T10:00:00Z",
+    updated_at: "2026-01-10T10:00:00Z",
+    message_count: 2
+  });
+
+  it("loads the list and opens one conversation for reading", () => {
+    const loading = nexusReducer(initialNexusState, nexusActions.loadArchivedConversations());
+    expect(loading.loading.archivedConversations).toBe(true);
+    const loaded = nexusReducer(
+      loading,
+      nexusActions.loadArchivedConversationsSuccess({
+        conversations: [archived("c1"), archived("c2")]
+      })
+    );
+    expect(selectArchivedConversations.projector(loaded).map((item) => item.id)).toEqual([
+      "c1",
+      "c2"
+    ]);
+    const opened = nexusReducer(
+      nexusReducer(loaded, nexusActions.openArchivedConversation({ conversationId: "c1" })),
+      nexusActions.openArchivedConversationSuccess({
+        conversation: {
+          id: "c1",
+          assistant_id: "assistant-1",
+          created_at: "2026-01-10T10:00:00Z",
+          updated_at: "2026-01-10T10:00:00Z",
+          messages: []
+        }
+      })
+    );
+    expect(opened.loading.archivedAction).toBe(false);
+    expect(selectArchivedConversationDetail.projector(opened)?.id).toBe("c1");
+    expect(nexusReducer(opened, nexusActions.closeArchivedConversation()).archivedConversationDetail).toBeNull();
+  });
+
+  it("removes a deleted conversation and closes it if it was open", () => {
+    const state: NexusState = {
+      ...initialNexusState,
+      archivedConversations: [archived("c1"), archived("c2")],
+      archivedConversationDetail: {
+        id: "c1",
+        assistant_id: "assistant-1",
+        created_at: "2026-01-10T10:00:00Z",
+        updated_at: "2026-01-10T10:00:00Z",
+        messages: []
+      }
+    };
+    const deleted = nexusReducer(
+      state,
+      nexusActions.deleteArchivedConversationSuccess({ conversationId: "c1" })
+    );
+    expect(deleted.archivedConversations.map((item) => item.id)).toEqual(["c2"]);
+    expect(deleted.archivedConversationDetail).toBeNull();
+    const refused = nexusReducer(
+      { ...state, loading: { ...state.loading, archivedAction: true } },
+      nexusActions.deleteArchivedConversationFailure({ error: "forbidden" })
+    );
+    expect(refused.loading.archivedAction).toBe(false);
+    expect(refused.error).toBe("forbidden");
   });
 });

@@ -1,0 +1,106 @@
+<section class="mx-auto max-w-4xl space-y-4">
+  <header>
+    <h1 class="text-xl font-semibold">Conversas arquivadas</h1>
+    <p class="mt-1 text-sm text-slate-400">
+      Conversas feitas antes da autenticação. Não têm dono e não aparecem para nenhum usuário; só
+      administradores podem lê-las ou excluí-las. Cada leitura e exclusão fica registrada na
+      auditoria.
+    </p>
+  </header>
+
+  <div
+    *ngIf="error()"
+    class="rounded-md border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
+  >
+    <div class="flex items-center justify-between gap-2">
+      <span>{{ error() }}</span>
+      <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
+    </div>
+  </div>
+
+  <p *ngIf="loading().archivedConversations" class="text-sm text-slate-400">Carregando...</p>
+
+  <p
+    *ngIf="!loading().archivedConversations && conversations().length === 0"
+    class="rounded-3xl border border-dashed border-slate-700 p-6 text-sm text-slate-400"
+  >
+    Não há conversas arquivadas.
+  </p>
+
+  <ul class="space-y-3 text-sm">
+    <li
+      *ngFor="let conversation of conversations()"
+      class="rounded-2xl border border-slate-700 px-4 py-3"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="min-w-0">
+          <p class="font-medium break-words">{{ title(conversation) }}</p>
+          <p class="text-xs text-slate-400">
+            {{ assistantName(conversation.assistant_id) }} ·
+            {{ conversation.message_count }} mensagens ·
+            última atividade em {{ conversation.updated_at | date: "dd/MM/yyyy HH:mm" }}
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            (click)="open(conversation)"
+            [disabled]="loading().archivedAction"
+            class="rounded-full border border-slate-700 px-3 py-1 text-xs hover:bg-nexus-hover disabled:opacity-50"
+          >
+            Ler
+          </button>
+          <ng-container *ngIf="confirmingDelete() !== conversation.id; else confirm">
+            <button
+              type="button"
+              (click)="askDelete(conversation)"
+              [disabled]="loading().archivedAction"
+              class="rounded-full border border-rose-400/50 px-3 py-1 text-xs text-rose-200 hover:bg-rose-500/10 disabled:opacity-50"
+            >
+              Excluir
+            </button>
+          </ng-container>
+          <ng-template #confirm>
+            <span class="text-xs text-rose-200">Excluir definitivamente?</span>
+            <button
+              type="button"
+              (click)="confirmDelete(conversation)"
+              class="rounded-full bg-rose-500 px-3 py-1 text-xs text-white"
+            >
+              Confirmar
+            </button>
+            <button type="button" (click)="cancelDelete()" class="text-xs underline">
+              Cancelar
+            </button>
+          </ng-template>
+        </div>
+      </div>
+    </li>
+  </ul>
+
+  <article
+    *ngIf="detail() as conversation"
+    class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4"
+    aria-label="Conversa arquivada"
+  >
+    <div class="flex items-center justify-between gap-2">
+      <h2 class="text-lg font-semibold">
+        {{ assistantName(conversation.assistant_id) }} ·
+        {{ conversation.created_at | date: "dd/MM/yyyy HH:mm" }}
+      </h2>
+      <button type="button" (click)="close()" class="text-xs underline">fechar</button>
+    </div>
+    <ol class="mt-4 space-y-3 text-sm">
+      <li
+        *ngFor="let message of conversation.messages"
+        class="rounded-2xl px-4 py-3"
+        [ngClass]="message.role === 'user' ? 'bg-slate-800/60' : 'border border-slate-700'"
+      >
+        <p class="text-xs text-slate-400">
+          {{ roleLabel(message.role) }} · {{ message.created_at | date: "dd/MM/yyyy HH:mm" }}
+        </p>
+        <p class="mt-1 whitespace-pre-wrap break-words">{{ message.content }}</p>
+      </li>
+    </ol>
+  </article>
+</section>

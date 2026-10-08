@@ -178,6 +178,21 @@
           <span *ngIf="sidebarContentVisible()">Auditoria</span>
         </a>
         <a
+          *ngIf="menu().viewArchived"
+          routerLink="/admin/archived"
+          routerLinkActive="bg-nexus-active"
+          (click)="closeMobileSidebar()"
+          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+          title="Conversas arquivadas"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 8v13H3V8" />
+            <path d="M1 3h22v5H1z" />
+            <path d="M10 12h4" />
+          </svg>
+          <span *ngIf="sidebarContentVisible()">Conversas arquivadas</span>
+        </a>
+        <a
           *ngIf="menu().reviewFeedback"
           routerLink="/feedback"
           routerLinkActive="bg-nexus-active"

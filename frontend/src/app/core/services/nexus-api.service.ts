@@ -70,6 +70,23 @@ export class NexusApiService {
     );
   }
 
+  /** PC-D5: conversas anteriores a autenticacao (so administrador). */
+  listArchivedConversations(): Observable<Conversation[]> {
+    return this.http.get<Conversation[]>(`${this.baseUrl}/admin/archived-conversations`);
+  }
+
+  getArchivedConversation(conversationId: string): Observable<ConversationDetail> {
+    return this.http.get<ConversationDetail>(
+      `${this.baseUrl}/admin/archived-conversations/${conversationId}`
+    );
+  }
+
+  deleteArchivedConversation(conversationId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.baseUrl}/admin/archived-conversations/${conversationId}`
+    );
+  }
+
   getIndexStatus(assistantId: string): Observable<IndexStatus> {
     return this.http.get<IndexStatus>(`${this.baseUrl}/assistants/${assistantId}/index-status`);
   }

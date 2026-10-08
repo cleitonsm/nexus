@@ -46,6 +46,8 @@ export interface MenuVisibility {
   viewUsage: boolean;
   /** Avaliacoes negativas das respostas (SPEC-006, RN-33). */
   reviewFeedback: boolean;
+  /** Conversas anteriores a autenticacao (decisao PC-D5). */
+  viewArchived: boolean;
 }
 
 export function menuFor(user: SessionUser | null): MenuVisibility {
@@ -57,7 +59,8 @@ export function menuFor(user: SessionUser | null): MenuVisibility {
     configureLlm: admin,
     viewAudit: admin,
     viewUsage: admin,
-    reviewFeedback: admin || curator
+    reviewFeedback: admin || curator,
+    viewArchived: admin
   };
 }
 
