@@ -102,6 +102,20 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "nexus-backend",
+      "name": "Nexus (backend)",
+      "description": "Cliente de servico do backend: so le a lista de grupos do realm (PC-D6).",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${NEXUS_BACKEND_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
     }
   ],
   "users": [
@@ -208,6 +222,16 @@
         "/rh",
         "/diretoria"
       ]
+    },
+    {
+      "username": "service-account-nexus-backend",
+      "enabled": true,
+      "serviceAccountClientId": "nexus-backend",
+      "clientRoles": {
+        "realm-management": [
+          "query-groups"
+        ]
+      }
     }
   ]
 }

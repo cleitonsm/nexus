@@ -75,6 +75,8 @@ jobs:
           python3 -c "import json; json.load(open('infra/keycloak/nexus-realm.json'))"
           if grep -n 'localhost:4200' infra/keycloak/nexus-realm.json; then exit 1; fi
           grep -q 'NEXUS_FRONTEND_URL' compose.yaml
+          grep -q 'NEXUS_BACKEND_CLIENT_SECRET' infra/keycloak/nexus-realm.json
+          grep -q 'NEXUS_BACKEND_CLIENT_SECRET' compose.yaml
       - name: Compose valido, com os perfis opcionais
         run: |
           docker compose config -q

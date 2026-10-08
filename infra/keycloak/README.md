@@ -10,6 +10,7 @@ arquivo fora do ambiente local. Segredos de ambientes reais ficam fora do reposi
 |------|-------|
 | Realm | `nexus` |
 | Cliente do frontend | `nexus-frontend`, público, Authorization Code com PKCE (S256) |
+| Cliente de serviço do backend | `nexus-backend`, confidencial, só *client credentials*; a conta de serviço tem apenas o papel `query-groups` do `realm-management`, para listar os grupos na tela (PC-D6). Segredo `${NEXUS_BACKEND_CLIENT_SECRET}`, vindo de `KEYCLOAK_BACKEND_CLIENT_SECRET` |
 | Audiência da API | `nexus-api`, incluída no token de acesso pelo mapeador `audiencia-nexus-api` |
 | Papéis de realm | `nexus-admin`, `nexus-curador`, `nexus-usuario` |
 | Grupos | `rh`, `financeiro`, `diretoria`, publicados na claim `groups` (sem o caminho) |
@@ -47,3 +48,9 @@ Keycloak resolve pelo ambiente na importação (decisão PC-D1 do
    valor em `CORS_ALLOWED_ORIGINS`;
 2. se o realm já foi importado, recrie o banco `keycloak` como descrito acima, ou ajuste o
    cliente pelo console, porque a importação não sobrescreve um realm existente.
+
+O mesmo vale para o cliente `nexus-backend` (PC-D6): num realm importado antes de 2026-10-08 ele
+não existe, e a tela de assistentes usa o campo de texto para os grupos. Para ativá-lo sem
+recriar o banco, crie no console um cliente confidencial `nexus-backend` só com *Service accounts
+roles*, dê à conta de serviço o papel `query-groups` do cliente `realm-management` e use o segredo
+gerado em `KEYCLOAK_BACKEND_CLIENT_SECRET`. Fora do ambiente local, troque o segredo padrão.
