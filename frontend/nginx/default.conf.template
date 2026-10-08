@@ -1,0 +1,40 @@
+# Processado pelo envsubst na subida do container: so as variaveis de ambiente
+# definidas (KEYCLOAK_URL, KEYCLOAK_REALM, OIDC_FRONTEND_CLIENT_ID) sao
+# substituidas; as variaveis do proprio Nginx ($host, $uri...) ficam como estao.
+server {
+    listen 80;
+    server_name _;
+    client_max_body_size 25m;
+
+    # A documentacao interativa da API nao exige token: fica fora do proxy.
+    location ~ ^/api/(docs|redoc|openapi\.json) {
+        return 404;
+    }
+
+    location /api/ {
+        proxy_pass http://backend:8000/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Enderecos publicos do login; nenhum segredo (o cliente OIDC e publico).
+    location = /config.json {
+        default_type application/json;
+        add_header Cache-Control "no-store";
+        return 200 '{"keycloakUrl":"${KEYCLOAK_URL}","realm":"${KEYCLOAK_REALM}","clientId":"${OIDC_FRONTEND_CLIENT_ID}"}';
+    }
+
+    location = /health {
+        add_header Content-Type text/plain;
+        return 200 'ok';
+    }
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+}

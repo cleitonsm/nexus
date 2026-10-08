@@ -4,8 +4,11 @@ import {
   ApiKeyTestResult,
   ApiKeyStatus,
   Assistant,
+  AuditEvent,
+  AuditFilters,
   ChatMessage,
   Conversation,
+  DocumentAccess,
   IngestedDocument
 } from "../shared/models/nexus.models";
 
@@ -59,6 +62,8 @@ export const nexusActions = createActionGroup({
       assistantId: string;
       file: File;
       metadata: Record<string, string>;
+      /** Grupos a que o documento ja nasce restrito; vazio segue o assistente. */
+      groups?: string[];
     }>(),
     "Upload Document Success": props<{ document: IngestedDocument }>(),
     "Upload Document Failure": props<{ error: string }>(),
@@ -92,6 +97,22 @@ export const nexusActions = createActionGroup({
     "Save Api Key Failure": props<{ error: string }>(),
     "Test Api Key": emptyProps(),
     "Test Api Key Success": props<{ result: ApiKeyTestResult }>(),
-    "Test Api Key Failure": props<{ error: string }>()
+    "Test Api Key Failure": props<{ error: string }>(),
+
+    "Set Assistant Groups": props<{ assistantId: string; groups: string[] }>(),
+    "Set Assistant Groups Success": props<{ assistantId: string; groups: string[] }>(),
+    "Set Assistant Groups Failure": props<{ error: string }>(),
+    "Load Document Access": props<{ assistantId: string }>(),
+    "Load Document Access Success": props<{
+      assistantId: string;
+      documents: DocumentAccess[];
+    }>(),
+    "Load Document Access Failure": props<{ error: string }>(),
+    "Set Document Groups": props<{ documentId: string; groups: string[] }>(),
+    "Set Document Groups Success": props<{ document: DocumentAccess }>(),
+    "Set Document Groups Failure": props<{ error: string }>(),
+    "Load Audit Events": props<{ filters: AuditFilters }>(),
+    "Load Audit Events Success": props<{ events: AuditEvent[] }>(),
+    "Load Audit Events Failure": props<{ error: string }>()
   }
 });

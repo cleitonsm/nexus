@@ -4,6 +4,37 @@ export interface Assistant {
   description: string | null;
   initial_prompt: string | null;
   created_at: string;
+  /** Grupos vinculados (RF-42); vazio para quem nao gerencia o assistente. */
+  groups?: string[];
+}
+
+/** Documento de um assistente e os grupos a que esta restrito (RF-43). */
+export interface DocumentAccess {
+  id: string;
+  assistant_id: string;
+  source_name: string;
+  created_at: string;
+  chunk_count: number;
+  groups: string[];
+}
+
+export interface AuditEvent {
+  id: string;
+  occurred_at: string;
+  user_id: string;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  details: Record<string, unknown>;
+}
+
+/** Filtros da consulta de auditoria (UC-13); texto vazio nao filtra. */
+export interface AuditFilters {
+  userId: string;
+  action: string;
+  assistantId: string;
+  from: string;
+  to: string;
 }
 
 export interface IngestedDocument {
@@ -15,6 +46,7 @@ export interface IngestedDocument {
   collection_name: string;
   chunk_count: number;
   embedding_dimension: number;
+  groups?: string[];
 }
 
 export interface Conversation {

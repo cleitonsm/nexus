@@ -1,1 +1,17 @@
-<router-outlet />
+@if (status() === "error") {
+  <main class="flex min-h-screen items-center justify-center bg-nexus-bg p-6 text-nexus-text">
+    <article class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6">
+      <h1 class="text-lg font-semibold">Não foi possível entrar no Nexus</h1>
+      <p class="mt-2 text-sm text-slate-300">{{ error() }}</p>
+      <button
+        type="button"
+        (click)="retryLogin()"
+        class="mt-5 rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white"
+      >
+        Tentar novamente
+      </button>
+    </article>
+  </main>
+} @else {
+  <router-outlet />
+}

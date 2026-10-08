@@ -4,8 +4,10 @@ import {
   ApiKeyTestResult,
   ApiKeyStatus,
   Assistant,
+  AuditEvent,
   ChatMessage,
   Conversation,
+  DocumentAccess,
   IngestedDocument
 } from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
@@ -20,6 +22,9 @@ export interface NexusState {
   currentConversationId: string | null;
   messagesByConversation: Record<string, ChatMessage[]>;
   documents: IngestedDocument[];
+  /** Documentos de cada assistente com a restricao por grupo (RF-43). */
+  documentAccessByAssistant: Record<string, DocumentAccess[]>;
+  auditEvents: AuditEvent[];
   createAssistantModalOpen: boolean;
   inferAssistantError: string | null;
   apiKeyStatus: ApiKeyStatus | null;
@@ -36,6 +41,10 @@ export interface NexusState {
     apiKeyStatus: boolean;
     saveApiKey: boolean;
     testApiKey: boolean;
+    assistantGroups: boolean;
+    documentAccess: boolean;
+    documentGroups: boolean;
+    auditEvents: boolean;
   };
   error: string | null;
 }
@@ -48,6 +57,8 @@ export const initialNexusState: NexusState = {
   currentConversationId: null,
   messagesByConversation: {},
   documents: [],
+  documentAccessByAssistant: {},
+  auditEvents: [],
   createAssistantModalOpen: false,
   inferAssistantError: null,
   apiKeyStatus: null,
@@ -63,7 +74,11 @@ export const initialNexusState: NexusState = {
     inferAssistant: false,
     apiKeyStatus: false,
     saveApiKey: false,
-    testApiKey: false
+    testApiKey: false,
+    assistantGroups: false,
+    documentAccess: false,
+    documentGroups: false,
+    auditEvents: false
   },
   error: null
 };
@@ -422,6 +437,80 @@ export const nexusReducer = createReducer(
   on(nexusActions.testApiKeyFailure, (state, { error }) => ({
     ...state,
     loading: { ...state.loading, testApiKey: false },
+    error
+  })),
+
+  on(nexusActions.setAssistantGroups, (state) => ({
+    ...state,
+    loading: { ...state.loading, assistantGroups: true },
+    error: null
+  })),
+  on(nexusActions.setAssistantGroupsSuccess, (state, { assistantId, groups }) => ({
+    ...state,
+    assistants: state.assistants.map((assistant) =>
+      assistant.id === assistantId ? { ...assistant, groups } : assistant
+    ),
+    loading: { ...state.loading, assistantGroups: false }
+  })),
+  on(nexusActions.setAssistantGroupsFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, assistantGroups: false },
+    error
+  })),
+
+  on(nexusActions.loadDocumentAccess, (state) => ({
+    ...state,
+    loading: { ...state.loading, documentAccess: true },
+    error: null
+  })),
+  on(nexusActions.loadDocumentAccessSuccess, (state, { assistantId, documents }) => ({
+    ...state,
+    documentAccessByAssistant: {
+      ...state.documentAccessByAssistant,
+      [assistantId]: documents
+    },
+    loading: { ...state.loading, documentAccess: false }
+  })),
+  on(nexusActions.loadDocumentAccessFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, documentAccess: false },
+    error
+  })),
+
+  on(nexusActions.setDocumentGroups, (state) => ({
+    ...state,
+    loading: { ...state.loading, documentGroups: true },
+    error: null
+  })),
+  on(nexusActions.setDocumentGroupsSuccess, (state, { document }) => ({
+    ...state,
+    documentAccessByAssistant: {
+      ...state.documentAccessByAssistant,
+      [document.assistant_id]: (
+        state.documentAccessByAssistant[document.assistant_id] ?? []
+      ).map((item) => (item.id === document.id ? document : item))
+    },
+    loading: { ...state.loading, documentGroups: false }
+  })),
+  on(nexusActions.setDocumentGroupsFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, documentGroups: false },
+    error
+  })),
+
+  on(nexusActions.loadAuditEvents, (state) => ({
+    ...state,
+    loading: { ...state.loading, auditEvents: true },
+    error: null
+  })),
+  on(nexusActions.loadAuditEventsSuccess, (state, { events }) => ({
+    ...state,
+    auditEvents: events,
+    loading: { ...state.loading, auditEvents: false }
+  })),
+  on(nexusActions.loadAuditEventsFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, auditEvents: false },
     error
   }))
 );

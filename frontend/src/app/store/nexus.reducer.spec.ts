@@ -5,7 +5,8 @@ import {
   Assistant,
   ChatMessage,
   Citation,
-  Conversation
+  Conversation,
+  DocumentAccess
 } from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
 import {
@@ -15,6 +16,8 @@ import {
 } from "./nexus.reducer";
 import {
   selectActiveAssistantConversations,
+  selectActiveDocumentAccess,
+  selectAuditEvents,
   selectCurrentCitationsByMessage,
   selectCurrentMessages
 } from "./nexus.selectors";
@@ -292,5 +295,108 @@ describe("citations", () => {
     };
 
     expect(selectCurrentCitationsByMessage(state)).toEqual({});
+  });
+});
+
+describe("access management (SPEC-004)", () => {
+  const documentAccess = (id: string, groups: string[] = []): DocumentAccess => ({
+    id,
+    assistant_id: "assistant-1",
+    source_name: `${id}.md`,
+    created_at: "2026-10-07T10:00:00Z",
+    chunk_count: 3,
+    groups
+  });
+
+  it("stores the groups returned for an assistant", () => {
+    const state = nexusReducer(
+      {
+        ...initialNexusState,
+        assistants: [assistant("assistant-1"), assistant("assistant-2")],
+        loading: { ...initialNexusState.loading, assistantGroups: true }
+      },
+      nexusActions.setAssistantGroupsSuccess({
+        assistantId: "assistant-1",
+        groups: ["financeiro", "rh"]
+      })
+    );
+
+    expect(state.assistants[0]?.groups).toEqual(["financeiro", "rh"]);
+    expect(state.assistants[1]?.groups).toBeUndefined();
+    expect(state.loading.assistantGroups).toBe(false);
+  });
+
+  it("keeps the documents of each assistant and exposes the active one", () => {
+    const loaded = nexusReducer(
+      { ...initialNexusState, activeAssistantId: "assistant-1" },
+      nexusActions.loadDocumentAccessSuccess({
+        assistantId: "assistant-1",
+        documents: [documentAccess("doc-1"), documentAccess("doc-2", ["diretoria"])]
+      })
+    );
+
+    expect(selectActiveDocumentAccess({ nexus: loaded }).map((item) => item.id)).toEqual([
+      "doc-1",
+      "doc-2"
+    ]);
+    expect(
+      selectActiveDocumentAccess({ nexus: { ...loaded, activeAssistantId: "assistant-2" } })
+    ).toEqual([]);
+    expect(selectActiveDocumentAccess({ nexus: { ...loaded, activeAssistantId: null } })).toEqual(
+      []
+    );
+  });
+
+  it("replaces only the document whose restriction changed", () => {
+    const loaded = nexusReducer(
+      initialNexusState,
+      nexusActions.loadDocumentAccessSuccess({
+        assistantId: "assistant-1",
+        documents: [documentAccess("doc-1"), documentAccess("doc-2")]
+      })
+    );
+    const restricted = nexusReducer(
+      { ...loaded, loading: { ...loaded.loading, documentGroups: true } },
+      nexusActions.setDocumentGroupsSuccess({ document: documentAccess("doc-2", ["diretoria"]) })
+    );
+
+    expect(restricted.documentAccessByAssistant["assistant-1"]).toEqual([
+      documentAccess("doc-1"),
+      documentAccess("doc-2", ["diretoria"])
+    ]);
+    expect(restricted.loading.documentGroups).toBe(false);
+  });
+
+  it("surfaces a refused change as an error and stops loading", () => {
+    const state = nexusReducer(
+      { ...initialNexusState, loading: { ...initialNexusState.loading, documentGroups: true } },
+      nexusActions.setDocumentGroupsFailure({ error: "Você não tem permissão para esta operação." })
+    );
+
+    expect(state.error).toBe("Você não tem permissão para esta operação.");
+    expect(state.loading.documentGroups).toBe(false);
+  });
+
+  it("replaces the audit events on each consultation", () => {
+    const event = {
+      id: "e1",
+      occurred_at: "2026-10-07T12:00:00Z",
+      user_id: "ana",
+      action: "chat.question",
+      resource_type: "assistant",
+      resource_id: "assistant-1",
+      details: { retrieved_documents: [{ source_name: "politica.md" }] }
+    };
+    const loading = nexusReducer(
+      initialNexusState,
+      nexusActions.loadAuditEvents({
+        filters: { userId: "", action: "", assistantId: "", from: "", to: "" }
+      })
+    );
+    const loaded = nexusReducer(loading, nexusActions.loadAuditEventsSuccess({ events: [event] }));
+
+    expect(loading.loading.auditEvents).toBe(true);
+    expect(selectAuditEvents({ nexus: loaded })).toEqual([event]);
+    expect(loaded.loading.auditEvents).toBe(false);
   });
 });

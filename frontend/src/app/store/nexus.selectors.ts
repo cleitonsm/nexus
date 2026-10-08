@@ -80,3 +80,13 @@ export const selectLoadingState = createSelector(
   selectNexusState,
   (state) => state.loading
 );
+
+/** Documentos do assistente ativo com a restricao por grupo (RF-43). */
+export const selectActiveDocumentAccess = createSelector(selectNexusState, (state) => {
+  if (!state.activeAssistantId) {
+    return [];
+  }
+  return state.documentAccessByAssistant[state.activeAssistantId] ?? [];
+});
+
+export const selectAuditEvents = createSelector(selectNexusState, (state) => state.auditEvents);

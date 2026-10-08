@@ -20,6 +20,7 @@
           <p class="text-xs text-nexus-dim">RAG sobre os seus documentos</p>
         </div>
         <button
+          *ngIf="menu().manageAssistants; else noAssistantAccess"
           type="button"
           (click)="openCreateAssistantModal()"
           class="p-4 rounded-2xl bg-nexus-accent/20 hover:bg-nexus-accent/30 transition-colors text-left border border-nexus-accent/40 hover:border-nexus-accent"
@@ -27,6 +28,14 @@
           <p class="text-sm font-medium mb-2">+ Criar meu primeiro assistente</p>
           <p class="text-xs text-nexus-dim">Comece com um assistente para centralizar seu contexto</p>
         </button>
+        <ng-template #noAssistantAccess>
+          <div class="p-4 rounded-2xl bg-nexus-sidebar text-left border border-nexus-hover">
+            <p class="text-sm font-medium mb-2">Nenhum assistente disponível</p>
+            <p class="text-xs text-nexus-dim">
+              Seus grupos ainda não têm acesso a um assistente. Peça a um administrador.
+            </p>
+          </div>
+        </ng-template>
       </div>
       <ng-template #assistantsCards>
         <div class="flex flex-wrap justify-center gap-4 w-full mb-12">
@@ -237,6 +246,7 @@
 
       <div class="mt-5 flex justify-end gap-2">
         <button
+          *ngIf="menu().manageAssistants"
           type="button"
           (click)="openCreateAssistantModal()"
           class="rounded-full border border-nexus-active px-4 py-2 text-sm text-nexus-dim hover:text-nexus-text hover:bg-nexus-hover transition-colors"

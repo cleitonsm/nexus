@@ -1,9 +1,11 @@
 import { CommonModule } from "@angular/common";
 import { Component, computed, inject, signal } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
-import { RouterOutlet } from "@angular/router";
+import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
 import { Store } from "@ngrx/store";
 
+import { authActions } from "../store/auth.actions";
+import { selectMenu, selectSessionUser } from "../store/auth.selectors";
 import { nexusActions } from "../store/nexus.actions";
 import {
   selectActiveAssistantConversations,
@@ -20,7 +22,7 @@ import {
 @Component({
   selector: "app-shell",
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterOutlet],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: "./shell.component.html"
 })
 export class ShellComponent {
@@ -38,6 +40,9 @@ export class ShellComponent {
   protected readonly createAssistantModalOpen = this.store.selectSignal(
     selectCreateAssistantModalOpen
   );
+  /** Usuario da sessao e o que o papel dele pode ver (RF-46). */
+  protected readonly user = this.store.selectSignal(selectSessionUser);
+  protected readonly menu = this.store.selectSignal(selectMenu);
 
   protected readonly sidebarCollapsed = signal(false);
   protected readonly mobileSidebarOpen = signal(false);
@@ -67,8 +72,13 @@ export class ShellComponent {
   private selectedAssistantFiles: File[] = [];
 
   constructor() {
+    // A situacao da chave do LLM e pedida pelo efeito da sessao, so para
+    // administradores.
     this.store.dispatch(nexusActions.loadAssistants());
-    this.store.dispatch(nexusActions.loadApiKeyStatus());
+  }
+
+  protected logout(): void {
+    this.store.dispatch(authActions.logout());
   }
 
   protected toggleAssistants(): void {
@@ -92,6 +102,9 @@ export class ShellComponent {
   }
 
   protected openCreateAssistantModal(): void {
+    if (!this.menu().manageAssistants) {
+      return;
+    }
     this.store.dispatch(nexusActions.openCreateAssistantModal());
   }
 
@@ -107,6 +120,9 @@ export class ShellComponent {
   }
 
   protected openAdminModal(): void {
+    if (!this.menu().configureLlm) {
+      return;
+    }
     this.adminModalOpen.set(true);
   }
 

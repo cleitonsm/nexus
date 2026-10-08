@@ -165,8 +165,8 @@ export const uploadDocumentEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
     actions$.pipe(
       ofType(nexusActions.uploadDocument),
-      switchMap(({ assistantId, file, metadata }) =>
-        api.uploadDocument(assistantId, file, metadata).pipe(
+      switchMap(({ assistantId, file, metadata, groups }) =>
+        api.uploadDocument(assistantId, file, metadata, groups ?? []).pipe(
           map((document) => nexusActions.uploadDocumentSuccess({ document })),
           catchError((error) =>
             of(nexusActions.uploadDocumentFailure({ error: resolveError(error) }))
@@ -332,6 +332,86 @@ export const testApiKeyEffect = createEffect(
   { functional: true }
 );
 
+export const setAssistantGroupsEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.setAssistantGroups),
+      switchMap(({ assistantId, groups }) =>
+        api.setAssistantGroups(assistantId, groups).pipe(
+          map((result) =>
+            nexusActions.setAssistantGroupsSuccess({ assistantId, groups: result.groups })
+          ),
+          catchError((error) =>
+            of(nexusActions.setAssistantGroupsFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const loadDocumentAccessEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadDocumentAccess),
+      switchMap(({ assistantId }) =>
+        api.listDocuments(assistantId).pipe(
+          map((documents) =>
+            nexusActions.loadDocumentAccessSuccess({ assistantId, documents })
+          ),
+          catchError((error) =>
+            of(nexusActions.loadDocumentAccessFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+/** Depois de um envio, a lista de documentos do assistente e lida de novo. */
+export const refreshDocumentAccessEffect = createEffect(
+  (actions$ = inject(Actions)) =>
+    actions$.pipe(
+      ofType(nexusActions.uploadDocumentSuccess),
+      map(({ document }) =>
+        nexusActions.loadDocumentAccess({ assistantId: document.assistant_id })
+      )
+    ),
+  { functional: true }
+);
+
+export const setDocumentGroupsEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.setDocumentGroups),
+      mergeMap(({ documentId, groups }) =>
+        api.setDocumentGroups(documentId, groups).pipe(
+          map((document) => nexusActions.setDocumentGroupsSuccess({ document })),
+          catchError((error) =>
+            of(nexusActions.setDocumentGroupsFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const loadAuditEventsEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadAuditEvents),
+      switchMap(({ filters }) =>
+        api.listAuditEvents(filters).pipe(
+          map((events) => nexusActions.loadAuditEventsSuccess({ events })),
+          catchError((error) =>
+            of(nexusActions.loadAuditEventsFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
 export const nexusEffects = {
   loadAssistantsEffect,
   createAssistantEffect,
@@ -347,5 +427,10 @@ export const nexusEffects = {
   sendChatQuestionEffect,
   loadApiKeyStatusEffect,
   saveApiKeyEffect,
-  testApiKeyEffect
+  testApiKeyEffect,
+  setAssistantGroupsEffect,
+  loadDocumentAccessEffect,
+  refreshDocumentAccessEffect,
+  setDocumentGroupsEffect,
+  loadAuditEventsEffect
 };

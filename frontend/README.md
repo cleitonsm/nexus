@@ -15,15 +15,25 @@ Frontend Angular com Tailwind e NgRx para o MVP:
 
 No ambiente Docker, o Nginx faz proxy de `/api/*` para o serviço `backend`.
 
+## Autenticação (Fase 4)
+
+- Login pelo Keycloak com Authorization Code e PKCE, sem biblioteca: `src/app/core/auth`.
+- Os tokens ficam apenas em memória e são renovados antes de expirar. Recarregar a página passa
+  de novo pelo Keycloak, que reconhece a sessão aberta.
+- O interceptor anexa o token às chamadas de `/api/`; 401 volta ao login e 403 vira mensagem.
+- Guards por papel nas rotas e menu conforme o papel (estado NgRx `auth`).
+- Telas: "Documentos e permissões" (`/assistants`), "Auditoria" (`/admin/audit`).
+- Os endereços do login vêm de `/config.json`: no Docker, o Nginx o gera a partir de
+  `KEYCLOAK_URL`, `KEYCLOAK_REALM` e `OIDC_FRONTEND_CLIENT_ID`; com `npm start`, vale
+  `public/config.json`.
+- O frontend esconde o que o papel não pode usar, mas quem autoriza é a API.
+
 ## Evolução RAG Enterprise (Planejado)
 
 Funcionalidades especificadas em `docs/especificacao/specs/` e ainda não implementadas:
 
-- login, logout e renovação de sessão pelo Keycloak (OIDC com PKCE);
-- rotas e menus condicionados ao papel (administrador, curador, usuário);
-- fontes exibidas em cada resposta, com o trecho citado;
 - resposta em streaming e avaliação da resposta (útil / não útil);
-- gestão de documentos com estado de ingestão, exclusão, substituição e restrição por grupo;
-- telas administrativas de permissões, auditoria e consumo.
+- gestão de documentos com estado de ingestão, exclusão e substituição;
+- tela administrativa de consumo.
 
 A organização do estado e dos serviços está em `docs/arquitetura/frontend-angular-ngrx.md`.

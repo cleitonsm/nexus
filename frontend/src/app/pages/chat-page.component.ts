@@ -5,6 +5,7 @@ import { Store } from "@ngrx/store";
 
 import { Citation } from "../shared/models/nexus.models";
 import { MarkdownPipe } from "../shared/pipes/markdown.pipe";
+import { selectMenu } from "../store/auth.selectors";
 import { nexusActions } from "../store/nexus.actions";
 import {
   selectActiveAssistantId,
@@ -40,6 +41,8 @@ export class ChatPageComponent implements AfterViewChecked {
   /** Fonte aberta no painel: um clique abre, outro clique na mesma fecha. */
   protected readonly openCitation = signal<{ messageId: string; number: number } | null>(null);
   protected readonly loading = this.store.selectSignal(selectLoadingState);
+  /** So o administrador cria assistentes (RN-21). */
+  protected readonly menu = this.store.selectSignal(selectMenu);
   protected readonly isInferring = computed(() => this.loading().inferAssistant);
   protected readonly inferAssistantError = this.store.selectSignal(selectInferAssistantError);
   protected readonly hasAssistants = computed(() => this.assistants().length > 0);
@@ -209,6 +212,9 @@ export class ChatPageComponent implements AfterViewChecked {
   }
 
   protected openCreateAssistantModal(): void {
+    if (!this.menu().manageAssistants) {
+      return;
+    }
     this.store.dispatch(nexusActions.openCreateAssistantModal());
   }
 
