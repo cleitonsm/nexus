@@ -34,6 +34,28 @@ services:
       keycloak:
         condition: service_started
 
+  # Ingestao em segundo plano (SPEC-005, ADR 0009): mesma imagem do backend,
+  # outro comando. Sobe depois do backend, que aplica as migracoes.
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    command: ["python", "-m", "src.cli.worker"]
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    volumes:
+      - backend_cache:/app/cache
+      - documents_data:/app/data/documents
+    # Tempo para concluir o job em andamento ao receber SIGTERM.
+    stop_grace_period: 90s
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
   frontend:
     build:
       context: .
