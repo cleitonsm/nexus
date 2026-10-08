@@ -60,6 +60,22 @@ Volume que guarda os arquivos enviados, para reprocessamento e reindexação.
 Modelos executados dentro do backend e do worker, em CPU, com cache em volume. Substituem o
 embedding por hash, ainda em uso (ADR 0006 e ADR 0007).
 
-### Observabilidade (perfil opcional)
+### Observabilidade (perfil `observabilidade`, SPEC-006 D1)
 
-Coletor e visualização de rastreamentos e métricas, ativados apenas quando necessário (ADR 0010).
+`docker compose --profile observabilidade up -d` sobe:
+
+- **Jaeger** (`jaegertracing/all-in-one:1.62.0`): recebe os rastreamentos por OTLP/HTTP na porta
+  interna 4318 e os mostra em `http://localhost:16686`. Guarda em memória (até 20 mil
+  rastreamentos).
+- **Prometheus** (`prom/prometheus:v2.55.1`): lê `http://backend:8000/metrics` a cada 15 s, com
+  retenção de 7 dias. `http://localhost:9090`.
+- **Grafana** (`grafana/grafana:11.3.0`): painel "Nexus — Operação" já provisionado, com
+  Prometheus e Jaeger como fontes. `http://localhost:3000`.
+
+Detalhes em [observabilidade.md](observabilidade.md).
+
+### Backup (perfil `backup`, SPEC-006 D5)
+
+Serviço `backup` (imagem `postgres:16-alpine` com `curl` e `jq`) que executa
+`scripts/backup.sh` ao subir e a cada 24 h, gravando em `BACKUP_PATH`. Procedimento de
+restauração em [backup-e-restauracao.md](backup-e-restauracao.md).

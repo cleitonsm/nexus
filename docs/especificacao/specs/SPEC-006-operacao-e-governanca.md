@@ -1,7 +1,7 @@
 # Spec: Operação e Governança
 
 **ID**: SPEC-20261007-006
-**Status**: Aprovada em 2026-10-08
+**Status**: Aprovada em 2026-10-08; código entregue em 2026-10-08, validação no Docker pendente ([plano de implementação](SPEC-006-plano-de-implementacao.md))
 **Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa, pendente de revisão)
 **Data**: 2026-10-07
 **Fase**: 6 de 6 — etapa 14 do [plano incremental](../../plano-incremental.md)
@@ -203,3 +203,12 @@ Tomadas pelo autor em 2026-10-08, junto com a aprovação desta spec.
 | D3 | Limite de uso padrão | Por minuto e por dia, ambos configuráveis por variável de ambiente | Contém rajadas e custo diário; os valores padrão ainda serão definidos pelo autor |
 | D4 | Plataforma de integração contínua | Mista: GitHub Actions para testes unitários e verificações estáticas; avaliação com LLM por script local | Nenhuma API key como segredo no GitHub; RF-62 atendido pelo script local com o mesmo critério da SPEC-001 |
 | D5 | Frequência e destino do backup | Diário, em volume local, com retenção configurável e script de restauração (PostgreSQL, snapshot do Qdrant e arquivos originais) | Atende o RNF-28 (24 h); destino externo fica como evolução |
+
+### Valores definidos na implementação (2026-10-08)
+
+| # | Decisão | Escolha |
+|---|---------|---------|
+| D6 | Valores padrão do limite (D3) | 20 perguntas por minuto e 500 por dia, por usuário, em janelas deslizantes; ajustáveis pelo administrador na tela de consumo (o valor gravado prevalece sobre o ambiente); 0 desliga a janela. Variáveis `RATE_LIMIT_PER_MINUTE` e `RATE_LIMIT_PER_DAY` no lugar de `RATE_LIMIT_QUESTIONS`/`RATE_LIMIT_WINDOW_SECONDS` |
+| D7 | Moeda e preços | USD, tabela do `gpt-4o-mini` (0,00015 por mil tokens de entrada e 0,0006 de saída), exibido como estimativa |
+| D8 | Formato da avaliação | Útil / não útil, comentário opcional de até 1000 caracteres; uma por usuário e mensagem, a última substitui; o curador vê só as "não útil" |
+| D9 | Retenção e agendamento do backup | 7 dias; serviço `backup` no Compose (perfil `backup`), uma execução a cada 24 h |

@@ -99,12 +99,23 @@ indexadas antes da Fase 3 não têm o vetor esparso: até `POST /assistants/{id}
 - `LOG_LEVEL`: nível dos logs estruturados em JSON (padrão `INFO`).
 - `EVAL_REGRESSION_TOLERANCE`: queda máxima aceita em uma métrica entre duas avaliações (padrão `0.02`).
 
-### Operação (Fase 6)
+### Operação (Fase 6, no `.env.example`)
 
-- `OTEL_EXPORTER_OTLP_ENDPOINT` e `OTEL_SERVICE_NAME`: exportação de rastreamentos.
-- `RATE_LIMIT_QUESTIONS` e `RATE_LIMIT_WINDOW_SECONDS`: limite de uso por usuário.
-- `LLM_PRICE_INPUT_PER_1K` e `LLM_PRICE_OUTPUT_PER_1K`: preços para a estimativa de custo.
-- `BACKUP_PATH`: destino dos backups.
+- `RATE_LIMIT_PER_MINUTE` (padrão `20`) e `RATE_LIMIT_PER_DAY` (padrão `500`): perguntas por
+  usuário em janelas deslizantes de 60 s e de 24 h (SPEC-006 D3/D6). São os valores padrão: o
+  administrador os substitui na tela **Consumo e limites**, e o valor gravado lá prevalece.
+  `0` desliga a janela. Substituem `RATE_LIMIT_QUESTIONS`/`RATE_LIMIT_WINDOW_SECONDS` da spec,
+  porque a decisão D3 pede duas janelas.
+- `LLM_PRICE_INPUT_PER_1K` (`0.00015`), `LLM_PRICE_OUTPUT_PER_1K` (`0.0006`) e
+  `LLM_PRICE_CURRENCY` (`USD`): tabela do `gpt-4o-mini` para a estimativa de custo (D7). Ajuste ao
+  trocar de modelo; o custo exibido é estimativa, não fatura.
+- `OTEL_EXPORTER_OTLP_ENDPOINT` (vazio por padrão) e `OTEL_SERVICE_NAME` (`nexus-backend`):
+  exportação de rastreamentos por OTLP/HTTP JSON. Com o perfil `observabilidade`, use
+  `http://jaeger:4318`. Vazio, os trechos só alimentam as métricas de `/metrics`.
+- `JAEGER_UI_PORT` (`16686`), `PROMETHEUS_PORT` (`9090`), `GRAFANA_PORT` (`3000`),
+  `GRAFANA_ADMIN_USER`/`GRAFANA_ADMIN_PASSWORD` (`admin`/`admin`, só desenvolvimento).
+- `BACKUP_PATH` (`./backups`), `BACKUP_RETENTION_DAYS` (`7`) e `BACKUP_INTERVAL_SECONDS`
+  (`86400`): pasta dos backups no computador, retenção e intervalo do serviço `backup` (D5/D9).
 
 ### Observações
 

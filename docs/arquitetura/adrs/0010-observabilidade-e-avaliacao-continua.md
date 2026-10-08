@@ -2,9 +2,20 @@
 
 ## Status
 
-Aceita em 2026-10-07, com a aprovação da SPEC-001. Parcialmente implementada: os itens 1, 2 e 5
-da decisão estão no código, e o item 8 é aplicado aos logs. O item 3 depende da execução no
-ambiente Docker. Os itens 4, 6, 7 e 9 pertencem à Fase 6.
+Aceita em 2026-10-07, com a aprovação da SPEC-001. Itens 1, 2, 5, 6, 7, 8 e 9 no código (os
+quatro últimos na Fase 6, em 2026-10-08). O item 3 depende da execução no ambiente Docker. O item
+4 foi ajustado pela decisão D4 da SPEC-006 (ver abaixo).
+
+### Ajustes da SPEC-006 (2026-10-08)
+
+- **Item 4 (D4):** a integração contínua do GitHub roda os testes unitários e as verificações
+  estáticas; a avaliação de qualidade roda por script local (`scripts/quality-gate.sh`), com o
+  mesmo critério de regressão, para que nenhuma API key vire segredo no GitHub.
+- **Item 6 (D2):** "OpenTelemetry" significa o formato e o protocolo (OTLP/HTTP em JSON), não o
+  SDK. O rastreamento e as métricas são implementação própria, só com a biblioteca padrão, atrás
+  das portas `Tracer` e `MetricsRecorder` do domínio. Detalhes em
+  [observabilidade.md](../../infraestrutura/observabilidade.md).
+- **Item 9 (D1):** Jaeger, Prometheus e Grafana no perfil `observabilidade` do Compose.
 
 ## Contexto
 

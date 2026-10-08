@@ -17,7 +17,7 @@ testes são escritos antes da implementação.
 | SPEC-20261007-003 | 3 — Busca híbrida, reranking e citações | [`SPEC-003-busca-hibrida-reranking-citacoes.md`](SPEC-003-busca-hibrida-reranking-citacoes.md) | Aprovada (em implementação) | RF-33 a RF-39 |
 | SPEC-20261007-004 | 4 — Autenticação e controle de acesso | [`SPEC-004-autenticacao-e-controle-de-acesso.md`](SPEC-004-autenticacao-e-controle-de-acesso.md) | Aprovada (em implementação) | RF-40 a RF-47 |
 | SPEC-20261007-005 | 5 — Ingestão e ciclo de vida | [`SPEC-005-ingestao-e-ciclo-de-vida.md`](SPEC-005-ingestao-e-ciclo-de-vida.md) | Aprovada (em implementação) | RF-48 a RF-55 |
-| SPEC-20261007-006 | 6 — Operação e governança | [`SPEC-006-operacao-e-governanca.md`](SPEC-006-operacao-e-governanca.md) | Aprovada | RF-56 a RF-63 |
+| SPEC-20261007-006 | 6 — Operação e governança | [`SPEC-006-operacao-e-governanca.md`](SPEC-006-operacao-e-governanca.md) | Aprovada; código entregue | RF-56 a RF-63 |
 
 ## Status possíveis
 
@@ -50,7 +50,8 @@ data e está em implementação, conforme o
 data e teve o código entregue sobre as Fases 2 e 3 ainda não validadas no Docker, conforme o
 [plano de implementação](SPEC-004-plano-de-implementacao.md). A SPEC-005 foi aprovada em
 2026-10-08 e teve o código entregue sobre as Fases 2 a 4 ainda não validadas no Docker, conforme o
-[plano de implementação](SPEC-005-plano-de-implementacao.md). A SPEC-006 foi aprovada em 2026-10-08, com as decisões D1 a D5.
+[plano de implementação](SPEC-005-plano-de-implementacao.md). A SPEC-006 foi aprovada em 2026-10-08, com as decisões D1 a D5, e teve o código entregue no mesmo
+dia, com os valores D6 a D9 ([plano de implementação](SPEC-006-plano-de-implementacao.md)).
 
 ## Decisões já tomadas
 
