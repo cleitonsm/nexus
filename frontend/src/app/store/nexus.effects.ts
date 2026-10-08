@@ -8,6 +8,7 @@ import {
   map,
   mergeMap,
   of,
+  scan,
   switchMap,
   takeUntil,
   timer,
@@ -21,6 +22,7 @@ import {
   hasDocumentsInProgress
 } from "../shared/documents/document-lifecycle";
 import { describeChatError } from "../shared/chat/chat-stream";
+import { INDEX_POLL_INTERVAL_MS, isReindexRunning } from "../shared/documents/index-status";
 import { ChatStreamEvent } from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
 import { selectActiveAssistantId } from "./nexus.selectors";
@@ -542,6 +544,89 @@ export const pollDocumentStatusEffect = createEffect(
   { functional: true }
 );
 
+export const loadIndexStatusEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadIndexStatus),
+      switchMap(({ assistantId }) =>
+        api.getIndexStatus(assistantId).pipe(
+          map((status) => nexusActions.loadIndexStatusSuccess({ status })),
+          catchError((error) =>
+            of(nexusActions.loadIndexStatusFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const startReindexEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.startReindex),
+      mergeMap(({ assistantId }) =>
+        api.startReindex(assistantId).pipe(
+          map((job) => nexusActions.startReindexSuccess({ job })),
+          catchError((error) =>
+            of(nexusActions.startReindexFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+/** Acompanha a reindexacao sem recarregar a pagina; para ao sair da tela. */
+export const pollIndexStatusEffect = createEffect(
+  (actions$ = inject(Actions), store = inject(Store)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadIndexStatusSuccess, nexusActions.startReindexSuccess),
+      map((action) =>
+        "job" in action
+          ? { assistantId: action.job.assistant_id, running: action.job.status === "running" }
+          : { assistantId: action.status.assistant_id, running: isReindexRunning(action.status) }
+      ),
+      switchMap(({ assistantId, running }) =>
+        running
+          ? timer(INDEX_POLL_INTERVAL_MS).pipe(
+              takeUntil(
+                actions$.pipe(ofType(nexusActions.stopDocumentPolling, nexusActions.loadIndexStatus))
+              ),
+              withLatestFrom(store.select(selectActiveAssistantId)),
+              filter(([, activeAssistantId]) => activeAssistantId === assistantId),
+              map(() => nexusActions.loadIndexStatus({ assistantId, background: true }))
+            )
+          : of()
+      )
+    ),
+  { functional: true }
+);
+
+/** Ao terminar a reindexacao, a lista de documentos reflete a nova base. */
+export const reloadDocumentsAfterReindexEffect = createEffect(
+  (actions$ = inject(Actions)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadIndexStatusSuccess),
+      filter(({ status }) => status.last_reindex !== null),
+      map(({ status }) => ({
+        assistantId: status.assistant_id,
+        jobId: status.last_reindex!.id,
+        running: isReindexRunning(status)
+      })),
+      // So a transicao de "em andamento" para concluida ou falha dispara a recarga.
+      scan(
+        (previous, current) => ({
+          ...current,
+          finished: previous.jobId === current.jobId && previous.running && !current.running
+        }),
+        { assistantId: "", jobId: "", running: false, finished: false }
+      ),
+      filter(({ finished }) => finished),
+      map(({ assistantId }) => nexusActions.loadDocumentAccess({ assistantId, background: true }))
+    ),
+  { functional: true }
+);
+
 export const deleteDocumentEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
     actions$.pipe(
@@ -642,6 +727,10 @@ export const nexusEffects = {
   loadDocumentAccessEffect,
   refreshDocumentAccessEffect,
   pollDocumentStatusEffect,
+  loadIndexStatusEffect,
+  startReindexEffect,
+  pollIndexStatusEffect,
+  reloadDocumentsAfterReindexEffect,
   deleteDocumentEffect,
   replaceDocumentEffect,
   reprocessDocumentEffect,

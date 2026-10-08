@@ -28,6 +28,42 @@ export interface DocumentAccess {
   has_original: boolean;
 }
 
+export type ReindexStatus = "running" | "succeeded" | "failed";
+
+export interface ReindexJob {
+  id: string;
+  assistant_id: string;
+  status: ReindexStatus;
+  target_collection: string;
+  total_documents: number;
+  processed_documents: number;
+  error: string | null;
+  started_at: string;
+  finished_at: string | null;
+}
+
+export interface SparseParameters {
+  k1: number;
+  b: number;
+  average_length: number;
+}
+
+/** Estado do indice de busca de um assistente (RF-31, PC-D2). */
+export interface IndexStatus {
+  assistant_id: string;
+  embedding_model: string;
+  pipeline_version: string;
+  collection_name: string | null;
+  outdated: boolean;
+  documents_total: number;
+  documents_indexed: number;
+  documents_without_original: string[];
+  last_reindex: ReindexJob | null;
+  sparse_parameters_changed: boolean;
+  sparse_parameters_recorded: SparseParameters | null;
+  sparse_parameters_current: SparseParameters | null;
+}
+
 export interface AuditEvent {
   id: string;
   occurred_at: string;

@@ -10,6 +10,8 @@ import {
   Conversation,
   DocumentAccess,
   FeedbackRating,
+  IndexStatus,
+  ReindexJob,
   FeedbackReview,
   MessageFeedback,
   UsageLimits,
@@ -158,6 +160,13 @@ export const nexusActions = createActionGroup({
     "Reprocess Document": props<{ documentId: string }>(),
     "Reprocess Document Success": props<{ document: DocumentAccess }>(),
     "Reprocess Document Failure": props<{ error: string }>(),
+    /** ``background``: consulta durante a reindexacao, sem aviso de carregamento. */
+    "Load Index Status": props<{ assistantId: string; background?: boolean }>(),
+    "Load Index Status Success": props<{ status: IndexStatus }>(),
+    "Load Index Status Failure": props<{ error: string }>(),
+    "Start Reindex": props<{ assistantId: string }>(),
+    "Start Reindex Success": props<{ job: ReindexJob }>(),
+    "Start Reindex Failure": props<{ error: string }>(),
     "Load Audit Events": props<{ filters: AuditFilters }>(),
     "Load Audit Events Success": props<{ events: AuditEvent[] }>(),
     "Load Audit Events Failure": props<{ error: string }>()

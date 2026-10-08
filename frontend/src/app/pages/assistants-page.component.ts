@@ -12,12 +12,14 @@ import {
   pendingVersionOf,
   statusLabel
 } from "../shared/documents/document-lifecycle";
+import { canStartReindex, indexNotices } from "../shared/documents/index-status";
 import { DocumentAccess, DocumentStatus } from "../shared/models/nexus.models";
 import { selectMenu } from "../store/auth.selectors";
 import { nexusActions } from "../store/nexus.actions";
 import {
   selectActiveAssistantId,
   selectActiveDocumentAccess,
+  selectActiveIndexStatus,
   selectAssistants,
   selectError,
   selectLoadingState
@@ -48,6 +50,10 @@ export class AssistantsPageComponent {
   protected readonly loading = this.store.selectSignal(selectLoadingState);
   protected readonly error = this.store.selectSignal(selectError);
   protected readonly menu = this.store.selectSignal(selectMenu);
+  /** Estado do indice de busca (RF-31) e avisos, inclusive o do BM25 (PC-D2). */
+  protected readonly indexStatus = this.store.selectSignal(selectActiveIndexStatus);
+  protected readonly indexNotices = computed(() => indexNotices(this.indexStatus()));
+  protected readonly canStartReindex = computed(() => canStartReindex(this.indexStatus()));
 
   protected readonly activeAssistant = computed(
     () => this.assistants().find((assistant) => assistant.id === this.activeAssistantId()) ?? null
@@ -73,6 +79,7 @@ export class AssistantsPageComponent {
       const assistantId = this.activeAssistantId();
       if (assistantId) {
         this.store.dispatch(nexusActions.loadDocumentAccess({ assistantId }));
+        this.store.dispatch(nexusActions.loadIndexStatus({ assistantId }));
       }
     });
     // A consulta periodica so existe com a tela aberta.
@@ -189,6 +196,25 @@ export class AssistantsPageComponent {
   protected onUploadGroupsInput(event: Event): void {
     const target = event.target as HTMLInputElement | null;
     this.uploadGroups.set(target?.value ?? "");
+  }
+
+  protected startReindex(): void {
+    const assistantId = this.activeAssistantId();
+    if (!assistantId || !this.canStartReindex() || this.loading().startReindex) {
+      return;
+    }
+    this.store.dispatch(nexusActions.startReindex({ assistantId }));
+  }
+
+  protected noticeClass(level: "warning" | "info" | "error"): string {
+    switch (level) {
+      case "error":
+        return "border-rose-400/50 bg-rose-500/10 text-rose-200";
+      case "info":
+        return "border-sky-400/40 bg-sky-500/10 text-sky-100";
+      default:
+        return "border-amber-400/40 bg-amber-500/10 text-amber-100";
+    }
   }
 
   protected clearError(): void {

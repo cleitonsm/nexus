@@ -10,6 +10,7 @@ import {
   Conversation,
   DocumentAccess,
   FeedbackRating,
+  IndexStatus,
   MessageFeedback,
   UsageLimits,
   UsageReport
@@ -28,6 +29,8 @@ export interface NexusState {
   documents: DocumentAccess[];
   /** Documentos de cada assistente com a restricao por grupo (RF-43). */
   documentAccessByAssistant: Record<string, DocumentAccess[]>;
+  /** Estado do indice de busca por assistente (RF-31, PC-D2). */
+  indexStatusByAssistant: Record<string, IndexStatus>;
   auditEvents: AuditEvent[];
   createAssistantModalOpen: boolean;
   inferAssistantError: string | null;
@@ -66,6 +69,8 @@ export interface NexusState {
     usageReport: boolean;
     usageLimits: boolean;
     saveUsageLimits: boolean;
+    indexStatus: boolean;
+    startReindex: boolean;
   };
   error: string | null;
 }
@@ -85,6 +90,7 @@ export const initialNexusState: NexusState = {
   messagesByConversation: {},
   documents: [],
   documentAccessByAssistant: {},
+  indexStatusByAssistant: {},
   auditEvents: [],
   createAssistantModalOpen: false,
   inferAssistantError: null,
@@ -118,7 +124,9 @@ export const initialNexusState: NexusState = {
     exportFeedback: false,
     usageReport: false,
     usageLimits: false,
-    saveUsageLimits: false
+    saveUsageLimits: false,
+    indexStatus: false,
+    startReindex: false
   },
   error: null
 };
@@ -725,6 +733,48 @@ export const nexusReducer = createReducer(
       error
     })
   ),
+
+  on(nexusActions.loadIndexStatus, (state, { background }) =>
+    background
+      ? state
+      : { ...state, loading: { ...state.loading, indexStatus: true } }
+  ),
+  on(nexusActions.loadIndexStatusSuccess, (state, { status }) => ({
+    ...state,
+    indexStatusByAssistant: {
+      ...state.indexStatusByAssistant,
+      [status.assistant_id]: status
+    },
+    loading: { ...state.loading, indexStatus: false }
+  })),
+  on(nexusActions.loadIndexStatusFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, indexStatus: false },
+    error
+  })),
+  on(nexusActions.startReindex, (state) => ({
+    ...state,
+    loading: { ...state.loading, startReindex: true },
+    error: null
+  })),
+  on(nexusActions.startReindexSuccess, (state, { job }) => {
+    const current = state.indexStatusByAssistant[job.assistant_id];
+    return {
+      ...state,
+      indexStatusByAssistant: current
+        ? {
+            ...state.indexStatusByAssistant,
+            [job.assistant_id]: { ...current, last_reindex: job }
+          }
+        : state.indexStatusByAssistant,
+      loading: { ...state.loading, startReindex: false }
+    };
+  }),
+  on(nexusActions.startReindexFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, startReindex: false },
+    error
+  })),
 
   on(nexusActions.loadAuditEvents, (state) => ({
     ...state,

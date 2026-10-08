@@ -7,6 +7,7 @@ import {
   Citation,
   Conversation,
   DocumentAccess,
+  IndexStatus,
   MessageFeedback
 } from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
@@ -18,6 +19,7 @@ import {
 import {
   selectActiveAssistantConversations,
   selectActiveDocumentAccess,
+  selectActiveIndexStatus,
   selectAuditEvents,
   selectCurrentChatStream,
   selectCurrentCitationsByMessage,
@@ -636,5 +638,79 @@ describe("chat streaming and feedback (SPEC-006)", () => {
     expect(state.usageLimits?.per_minute).toBe(5);
     expect(state.notice).toContain("próxima pergunta");
     expect(nexusReducer(state, nexusActions.clearError()).notice).toBeNull();
+  });
+});
+
+describe("index status (RF-31, PC-D2)", () => {
+  const indexStatus = (changes: Partial<IndexStatus> = {}): IndexStatus => ({
+    assistant_id: "assistant-1",
+    embedding_model: "modelo",
+    pipeline_version: "3",
+    collection_name: "assistant-assistant-1-v1",
+    outdated: false,
+    documents_total: 2,
+    documents_indexed: 2,
+    documents_without_original: [],
+    last_reindex: null,
+    sparse_parameters_changed: true,
+    sparse_parameters_recorded: { k1: 1.2, b: 0.75, average_length: 64 },
+    sparse_parameters_current: { k1: 1.5, b: 0.75, average_length: 64 },
+    ...changes
+  });
+
+  it("stores the status per assistant and exposes the active one", () => {
+    const loading = nexusReducer(
+      initialNexusState,
+      nexusActions.loadIndexStatus({ assistantId: "assistant-1" })
+    );
+    expect(loading.loading.indexStatus).toBe(true);
+    const loaded = nexusReducer(
+      { ...loading, activeAssistantId: "assistant-1" },
+      nexusActions.loadIndexStatusSuccess({ status: indexStatus() })
+    );
+    expect(loaded.loading.indexStatus).toBe(false);
+    expect(selectActiveIndexStatus.projector(loaded)?.sparse_parameters_changed).toBe(true);
+    expect(selectActiveIndexStatus.projector({ ...loaded, activeAssistantId: "outro" })).toBeNull();
+  });
+
+  it("background refresh does not show the loading indicator", () => {
+    const state = nexusReducer(
+      initialNexusState,
+      nexusActions.loadIndexStatus({ assistantId: "assistant-1", background: true })
+    );
+    expect(state.loading.indexStatus).toBe(false);
+  });
+
+  it("records the started reindex in the status", () => {
+    const base = nexusReducer(
+      initialNexusState,
+      nexusActions.loadIndexStatusSuccess({ status: indexStatus() })
+    );
+    const starting = nexusReducer(base, nexusActions.startReindex({ assistantId: "assistant-1" }));
+    expect(starting.loading.startReindex).toBe(true);
+    const started = nexusReducer(
+      starting,
+      nexusActions.startReindexSuccess({
+        job: {
+          id: "job-1",
+          assistant_id: "assistant-1",
+          status: "running",
+          target_collection: "assistant-assistant-1-v2",
+          total_documents: 2,
+          processed_documents: 0,
+          error: null,
+          started_at: "2026-10-08T10:00:00Z",
+          finished_at: null
+        }
+      })
+    );
+    expect(started.loading.startReindex).toBe(false);
+    expect(started.indexStatusByAssistant["assistant-1"].last_reindex?.status).toBe("running");
+    const refused = nexusReducer(
+      starting,
+      nexusActions.startReindexFailure({ error: "a reindex is already running." })
+    );
+    expect(refused.loading.startReindex).toBe(false);
+    expect(refused.error).toBe("a reindex is already running.");
   });
 });

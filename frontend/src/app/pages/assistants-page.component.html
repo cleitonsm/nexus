@@ -84,6 +84,34 @@
         </label>
       </div>
 
+      <div *ngIf="indexStatus() as index" class="mt-4 rounded-2xl border border-slate-700 px-4 py-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-semibold">Índice de busca</h3>
+            <p class="text-xs text-slate-400">
+              {{ index.documents_indexed }} de {{ index.documents_total }} documentos na base atual
+              <span *ngIf="index.collection_name"> · {{ index.collection_name }}</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            (click)="startReindex()"
+            [disabled]="!canStartReindex() || loading().startReindex"
+            class="shrink-0 rounded-full border border-slate-700 px-4 py-1.5 text-xs text-slate-200 hover:bg-nexus-hover disabled:opacity-50"
+          >
+            {{ loading().startReindex ? "Iniciando..." : "Reindexar" }}
+          </button>
+        </div>
+        <p
+          *ngFor="let notice of indexNotices()"
+          class="mt-2 rounded-xl border px-3 py-2 text-xs"
+          [ngClass]="noticeClass(notice.level)"
+          role="status"
+        >
+          {{ notice.text }}
+        </p>
+      </div>
+
       <p class="mt-2 text-xs text-slate-500">
         Até 25 MB por arquivo. O arquivo é processado em segundo plano e passa a responder quando
         chega a "Indexado". PDF digitalizado passa por OCR.

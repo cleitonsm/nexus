@@ -13,6 +13,8 @@ import {
   Conversation,
   ConversationDetail,
   DocumentAccess,
+  IndexStatus,
+  ReindexJob,
   FeedbackRating,
   FeedbackReview,
   MessageFeedback,
@@ -66,6 +68,14 @@ export class NexusApiService {
     return this.http.get<DocumentAccess[]>(
       `${this.baseUrl}/assistants/${assistantId}/documents`
     );
+  }
+
+  getIndexStatus(assistantId: string): Observable<IndexStatus> {
+    return this.http.get<IndexStatus>(`${this.baseUrl}/assistants/${assistantId}/index-status`);
+  }
+
+  startReindex(assistantId: string): Observable<ReindexJob> {
+    return this.http.post<ReindexJob>(`${this.baseUrl}/assistants/${assistantId}/reindex`, {});
   }
 
   setDocumentGroups(documentId: string, groups: string[]): Observable<DocumentAccess> {
