@@ -9,6 +9,9 @@ export interface Assistant {
 }
 
 /** Documento de um assistente e os grupos a que esta restrito (RF-43). */
+/** Ciclo de vida do documento (SPEC-005). */
+export type DocumentStatus = "pendente" | "processando" | "indexado" | "falhou" | "substituido";
+
 export interface DocumentAccess {
   id: string;
   assistant_id: string;
@@ -16,6 +19,13 @@ export interface DocumentAccess {
   created_at: string;
   chunk_count: number;
   groups: string[];
+  status: DocumentStatus;
+  version: number;
+  failure_reason: string | null;
+  size_bytes: number | null;
+  replaces_document_id: string | null;
+  content_hash: string;
+  has_original: boolean;
 }
 
 export interface AuditEvent {
@@ -37,18 +47,6 @@ export interface AuditFilters {
   to: string;
 }
 
-export interface IngestedDocument {
-  id: string;
-  assistant_id: string;
-  source_name: string;
-  content_hash: string;
-  created_at: string;
-  collection_name: string;
-  chunk_count: number;
-  embedding_dimension: number;
-  groups?: string[];
-}
-
 export interface Conversation {
   id: string;
   assistant_id: string;
@@ -67,6 +65,8 @@ export interface Citation {
   page: number | null;
   score: number;
   excerpt: string;
+  /** Falso quando o documento citado foi excluído ou substituído (RN-29). */
+  document_available?: boolean;
 }
 
 export interface ChatMessage {

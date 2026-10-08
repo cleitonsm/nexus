@@ -84,25 +84,60 @@
         </label>
       </div>
 
+      <p class="mt-2 text-xs text-slate-500">
+        Até 25 MB por arquivo. O arquivo é processado em segundo plano e passa a responder quando
+        chega a "Indexado". PDF digitalizado passa por OCR.
+      </p>
+
       <ul class="mt-4 space-y-3 text-sm">
         <li
           *ngFor="let document of documents()"
-          class="rounded-2xl border border-slate-700 px-4 py-3"
+          class="rounded-2xl border px-4 py-3"
+          [ngClass]="document.replaces_document_id ? 'ml-6 border-dashed border-slate-600' : 'border-slate-700'"
         >
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <span class="font-medium">{{ document.source_name }}</span>
-            <span
-              class="rounded-full px-3 py-0.5 text-xs"
-              [ngClass]="
-                document.groups.length > 0
-                  ? 'bg-amber-500/15 text-amber-200'
-                  : 'bg-emerald-500/15 text-emerald-200'
-              "
-            >
-              {{ document.groups.length > 0 ? "Restrito" : "Acesso do assistente" }}
+            <span class="font-medium break-all">
+              {{ document.source_name }}
+              <span *ngIf="document.version > 1" class="ml-1 text-xs text-slate-400">
+                versão {{ document.version }}
+              </span>
             </span>
+            <div class="flex flex-wrap items-center gap-2">
+              <span
+                class="rounded-full px-3 py-0.5 text-xs"
+                [ngClass]="statusClass(document.status)"
+                role="status"
+                [attr.aria-label]="'Estado: ' + statusLabel(document.status)"
+              >
+                {{ statusLabel(document.status) }}
+              </span>
+              <span
+                class="rounded-full px-3 py-0.5 text-xs"
+                [ngClass]="
+                  document.groups.length > 0
+                    ? 'bg-amber-500/15 text-amber-200'
+                    : 'bg-emerald-500/15 text-emerald-200'
+                "
+              >
+                {{ document.groups.length > 0 ? "Restrito" : "Acesso do assistente" }}
+              </span>
+            </div>
           </div>
-          <div class="mt-1 text-xs text-slate-400">trechos: {{ document.chunk_count }}</div>
+          <div class="mt-1 flex flex-wrap gap-x-3 text-xs text-slate-400">
+            <span *ngIf="document.status === 'indexado'">trechos: {{ document.chunk_count }}</span>
+            <span *ngIf="document.size_bytes !== null">{{ formatBytes(document.size_bytes) }}</span>
+            <span *ngIf="document.replaces_document_id">
+              nova versão: a anterior responde até esta ser indexada
+            </span>
+            <span *ngIf="hasPendingVersion(document)">nova versão em processamento</span>
+          </div>
+          <p
+            *ngIf="document.status === 'falhou' && document.failure_reason"
+            class="mt-2 rounded-xl border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-100"
+          >
+            {{ document.failure_reason }}
+          </p>
+
           <div class="mt-3 flex flex-col gap-2 sm:flex-row">
             <input
               type="text"
@@ -120,6 +155,60 @@
             >
               Salvar restrição
             </button>
+          </div>
+
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <label
+              *ngIf="canReplace(document)"
+              class="cursor-pointer rounded-full border border-slate-600 px-4 py-1.5 text-xs text-slate-100 hover:bg-nexus-hover"
+            >
+              Substituir por nova versão
+              <input
+                type="file"
+                class="hidden"
+                [attr.aria-label]="'Nova versão de ' + document.source_name"
+                accept=".txt,.md,.markdown,.pdf,.doc,.docx,text/plain,text/markdown,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                (change)="onReplacementSelected(document, $event)"
+              />
+            </label>
+            <button
+              *ngIf="canReprocess(document)"
+              type="button"
+              (click)="reprocess(document)"
+              [disabled]="loading().documentAction"
+              class="rounded-full border border-slate-600 px-4 py-1.5 text-xs text-slate-100 disabled:opacity-50"
+            >
+              Reprocessar
+            </button>
+            <ng-container *ngIf="confirmingDelete() !== document.id; else confirmDeletion">
+              <button
+                type="button"
+                (click)="askDelete(document)"
+                [disabled]="loading().documentAction"
+                class="rounded-full border border-rose-500/60 px-4 py-1.5 text-xs text-rose-200 disabled:opacity-50"
+              >
+                Excluir
+              </button>
+            </ng-container>
+            <ng-template #confirmDeletion>
+              <span class="text-xs text-rose-100">
+                Excluir "{{ document.source_name }}"? Os trechos e o arquivo serão removidos.
+              </span>
+              <button
+                type="button"
+                (click)="confirmDelete(document)"
+                class="rounded-full bg-rose-600 px-4 py-1.5 text-xs font-medium text-white"
+              >
+                Confirmar exclusão
+              </button>
+              <button
+                type="button"
+                (click)="cancelDelete()"
+                class="rounded-full border border-slate-600 px-4 py-1.5 text-xs text-slate-100"
+              >
+                Cancelar
+              </button>
+            </ng-template>
           </div>
         </li>
         <li

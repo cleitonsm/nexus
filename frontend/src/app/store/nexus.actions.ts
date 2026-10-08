@@ -8,8 +8,7 @@ import {
   AuditFilters,
   ChatMessage,
   Conversation,
-  DocumentAccess,
-  IngestedDocument
+  DocumentAccess
 } from "../shared/models/nexus.models";
 
 export const nexusActions = createActionGroup({
@@ -65,7 +64,7 @@ export const nexusActions = createActionGroup({
       /** Grupos a que o documento ja nasce restrito; vazio segue o assistente. */
       groups?: string[];
     }>(),
-    "Upload Document Success": props<{ document: IngestedDocument }>(),
+    "Upload Document Success": props<{ document: DocumentAccess }>(),
     "Upload Document Failure": props<{ error: string }>(),
 
     "Send Chat Question": props<{
@@ -102,7 +101,8 @@ export const nexusActions = createActionGroup({
     "Set Assistant Groups": props<{ assistantId: string; groups: string[] }>(),
     "Set Assistant Groups Success": props<{ assistantId: string; groups: string[] }>(),
     "Set Assistant Groups Failure": props<{ error: string }>(),
-    "Load Document Access": props<{ assistantId: string }>(),
+    /** ``background``: consulta periodica (D4), sem o aviso de carregamento. */
+    "Load Document Access": props<{ assistantId: string; background?: boolean }>(),
     "Load Document Access Success": props<{
       assistantId: string;
       documents: DocumentAccess[];
@@ -111,6 +111,16 @@ export const nexusActions = createActionGroup({
     "Set Document Groups": props<{ documentId: string; groups: string[] }>(),
     "Set Document Groups Success": props<{ document: DocumentAccess }>(),
     "Set Document Groups Failure": props<{ error: string }>(),
+    "Stop Document Polling": emptyProps(),
+    "Delete Document": props<{ assistantId: string; documentId: string }>(),
+    "Delete Document Success": props<{ assistantId: string; documentId: string }>(),
+    "Delete Document Failure": props<{ error: string }>(),
+    "Replace Document": props<{ assistantId: string; documentId: string; file: File }>(),
+    "Replace Document Success": props<{ document: DocumentAccess }>(),
+    "Replace Document Failure": props<{ error: string }>(),
+    "Reprocess Document": props<{ documentId: string }>(),
+    "Reprocess Document Success": props<{ document: DocumentAccess }>(),
+    "Reprocess Document Failure": props<{ error: string }>(),
     "Load Audit Events": props<{ filters: AuditFilters }>(),
     "Load Audit Events Success": props<{ events: AuditEvent[] }>(),
     "Load Audit Events Failure": props<{ error: string }>()

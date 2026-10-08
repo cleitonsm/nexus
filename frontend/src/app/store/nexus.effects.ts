@@ -1,16 +1,29 @@
 import { inject } from "@angular/core";
 import { Actions, createEffect, ofType } from "@ngrx/effects";
-import { catchError, map, mergeMap, of, switchMap } from "rxjs";
+import { Store } from "@ngrx/store";
+import {
+  catchError,
+  filter,
+  map,
+  mergeMap,
+  of,
+  switchMap,
+  takeUntil,
+  timer,
+  withLatestFrom
+} from "rxjs";
 
 import { NexusApiService } from "../core/services/nexus-api.service";
+import {
+  DOCUMENT_POLL_INTERVAL_MS,
+  describeApiError,
+  hasDocumentsInProgress
+} from "../shared/documents/document-lifecycle";
 import { nexusActions } from "./nexus.actions";
+import { selectActiveAssistantId } from "./nexus.selectors";
 
 function resolveError(error: unknown): string {
-  if (typeof error === "object" && error !== null && "error" in error) {
-    const wrappedError = error as { error?: { detail?: string } };
-    return wrappedError.error?.detail ?? "Falha inesperada ao processar a requisição.";
-  }
-  return "Falha inesperada ao processar a requisição.";
+  return describeApiError(error);
 }
 
 export const loadAssistantsEffect = createEffect(
@@ -161,11 +174,12 @@ export const loadConversationEffect = createEffect(
   { functional: true }
 );
 
+/** ``mergeMap``: varios arquivos selecionados de uma vez sao todos enviados. */
 export const uploadDocumentEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
     actions$.pipe(
       ofType(nexusActions.uploadDocument),
-      switchMap(({ assistantId, file, metadata, groups }) =>
+      mergeMap(({ assistantId, file, metadata, groups }) =>
         api.uploadDocument(assistantId, file, metadata, groups ?? []).pipe(
           map((document) => nexusActions.uploadDocumentSuccess({ document })),
           catchError((error) =>
@@ -368,13 +382,92 @@ export const loadDocumentAccessEffect = createEffect(
   { functional: true }
 );
 
-/** Depois de um envio, a lista de documentos do assistente e lida de novo. */
+/** Depois de enviar, substituir ou reprocessar, a lista e lida de novo. */
 export const refreshDocumentAccessEffect = createEffect(
   (actions$ = inject(Actions)) =>
     actions$.pipe(
-      ofType(nexusActions.uploadDocumentSuccess),
+      ofType(
+        nexusActions.uploadDocumentSuccess,
+        nexusActions.replaceDocumentSuccess,
+        nexusActions.reprocessDocumentSuccess
+      ),
       map(({ document }) =>
         nexusActions.loadDocumentAccess({ assistantId: document.assistant_id })
+      )
+    ),
+  { functional: true }
+);
+
+/**
+ * RNF-33, D4: enquanto houver documento pendente ou processando, a lista e
+ * consultada de novo a cada 3 s. Para quando tudo terminou, quando outro
+ * assistente e selecionado ou quando a tela de documentos e fechada.
+ */
+export const pollDocumentStatusEffect = createEffect(
+  (actions$ = inject(Actions), store = inject(Store)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadDocumentAccessSuccess),
+      switchMap(({ assistantId, documents }) =>
+        hasDocumentsInProgress(documents)
+          ? timer(DOCUMENT_POLL_INTERVAL_MS).pipe(
+              takeUntil(
+                actions$.pipe(
+                  ofType(nexusActions.stopDocumentPolling, nexusActions.loadDocumentAccess)
+                )
+              ),
+              withLatestFrom(store.select(selectActiveAssistantId)),
+              filter(([, activeAssistantId]) => activeAssistantId === assistantId),
+              map(() => nexusActions.loadDocumentAccess({ assistantId, background: true }))
+            )
+          : of()
+      )
+    ),
+  { functional: true }
+);
+
+export const deleteDocumentEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.deleteDocument),
+      mergeMap(({ assistantId, documentId }) =>
+        api.deleteDocument(documentId).pipe(
+          map(() => nexusActions.deleteDocumentSuccess({ assistantId, documentId })),
+          catchError((error) =>
+            of(nexusActions.deleteDocumentFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const replaceDocumentEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.replaceDocument),
+      mergeMap(({ documentId, file }) =>
+        api.replaceDocument(documentId, file).pipe(
+          map((document) => nexusActions.replaceDocumentSuccess({ document })),
+          catchError((error) =>
+            of(nexusActions.replaceDocumentFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const reprocessDocumentEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.reprocessDocument),
+      mergeMap(({ documentId }) =>
+        api.reprocessDocument(documentId).pipe(
+          map((document) => nexusActions.reprocessDocumentSuccess({ document })),
+          catchError((error) =>
+            of(nexusActions.reprocessDocumentFailure({ error: resolveError(error) }))
+          )
+        )
       )
     ),
   { functional: true }
@@ -431,6 +524,10 @@ export const nexusEffects = {
   setAssistantGroupsEffect,
   loadDocumentAccessEffect,
   refreshDocumentAccessEffect,
+  pollDocumentStatusEffect,
+  deleteDocumentEffect,
+  replaceDocumentEffect,
+  reprocessDocumentEffect,
   setDocumentGroupsEffect,
   loadAuditEventsEffect
 };

@@ -11,8 +11,7 @@ import {
   ChatResponse,
   Conversation,
   ConversationDetail,
-  DocumentAccess,
-  IngestedDocument
+  DocumentAccess
 } from "../../shared/models/nexus.models";
 import { SessionUser } from "../auth/auth.models";
 
@@ -94,27 +93,51 @@ export class NexusApiService {
     return this.http.delete<void>(`${this.baseUrl}/assistants/${assistantId}`);
   }
 
+  /** RF-48: a API responde 202 com o documento pendente; o worker o indexa. */
   uploadDocument(
     assistantId: string,
     file: File,
     metadata?: Record<string, string>,
     groups: string[] = []
-  ): Observable<IngestedDocument> {
+  ): Observable<DocumentAccess> {
     const formData = new FormData();
     formData.set("file", file, file.name);
     if (metadata && Object.keys(metadata).length > 0) {
       formData.set("metadata", JSON.stringify(metadata));
     }
-    // Restricao ja no envio (D8): os trechos nascem restritos a estes grupos.
+    // Restricao ja no envio (D8 da SPEC-004): os trechos nascem restritos.
     if (groups.length > 0) {
       formData.set("groups", JSON.stringify(groups));
     }
-    // #region agent log
-    fetch("http://127.0.0.1:7657/ingest/1e04e285-e754-4529-87f1-5953edf93f4e", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a1f259" }, body: JSON.stringify({ sessionId: "a1f259", runId: "pre-fix", hypothesisId: "H3", location: "frontend/src/app/core/services/nexus-api.service.ts:uploadDocument", message: "frontend starting document upload", data: { fileSizeBytes: file.size, fileType: file.type, hasMetadata: Boolean(metadata && Object.keys(metadata).length > 0), metadataKeysCount: metadata ? Object.keys(metadata).length : 0, url: `${this.baseUrl}/assistants/${assistantId}/documents` }, timestamp: Date.now() }) }).catch(() => {});
-    // #endregion
-    return this.http.post<IngestedDocument>(
+    return this.http.post<DocumentAccess>(
       `${this.baseUrl}/assistants/${assistantId}/documents`,
       formData
+    );
+  }
+
+  getDocument(documentId: string): Observable<DocumentAccess> {
+    return this.http.get<DocumentAccess>(`${this.baseUrl}/documents/${documentId}`);
+  }
+
+  deleteDocument(documentId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/documents/${documentId}`);
+  }
+
+  /** RF-51: nova versao; a atual continua respondendo ate a nova ser indexada. */
+  replaceDocument(documentId: string, file: File): Observable<DocumentAccess> {
+    const formData = new FormData();
+    formData.set("file", file, file.name);
+    return this.http.put<DocumentAccess>(
+      `${this.baseUrl}/documents/${documentId}/content`,
+      formData
+    );
+  }
+
+  /** RF-54: reprocessa a partir do original guardado, sem novo envio. */
+  reprocessDocument(documentId: string): Observable<DocumentAccess> {
+    return this.http.post<DocumentAccess>(
+      `${this.baseUrl}/documents/${documentId}/reprocess`,
+      {}
     );
   }
 

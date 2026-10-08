@@ -4,7 +4,8 @@
 server {
     listen 80;
     server_name _;
-    client_max_body_size 25m;
+    # 25 MB de arquivo (RN-30) mais a sobrecarga do formulario multipart.
+    client_max_body_size 26m;
 
     # A documentacao interativa da API nao exige token: fica fora do proxy.
     location ~ ^/api/(docs|redoc|openapi\.json) {

@@ -1,9 +1,18 @@
 import { CommonModule } from "@angular/common";
-import { Component, computed, effect, inject, signal } from "@angular/core";
+import { Component, DestroyRef, computed, effect, inject, signal } from "@angular/core";
 import { Store } from "@ngrx/store";
 
 import { parseGroups } from "../core/auth/access";
-import { DocumentAccess } from "../shared/models/nexus.models";
+import {
+  canReplace,
+  canReprocess,
+  formatBytes,
+  isInProgress,
+  orderWithVersions,
+  pendingVersionOf,
+  statusLabel
+} from "../shared/documents/document-lifecycle";
+import { DocumentAccess, DocumentStatus } from "../shared/models/nexus.models";
 import { selectMenu } from "../store/auth.selectors";
 import { nexusActions } from "../store/nexus.actions";
 import {
@@ -15,8 +24,11 @@ import {
 } from "../store/nexus.selectors";
 
 /**
- * Permissoes do assistente (administrador) e restricao de documentos por
- * grupo (curador e administrador). A API repete toda verificacao.
+ * Permissoes do assistente (administrador), documentos com seu estado e
+ * restricao por grupo (curador e administrador). A API repete toda verificacao.
+ *
+ * O estado dos documentos e atualizado sem recarregar a pagina enquanto algum
+ * estiver pendente ou processando (RNF-33, D4).
  */
 @Component({
   selector: "app-assistants-page",
@@ -30,7 +42,9 @@ export class AssistantsPageComponent {
 
   protected readonly assistants = this.store.selectSignal(selectAssistants);
   protected readonly activeAssistantId = this.store.selectSignal(selectActiveAssistantId);
-  protected readonly documents = this.store.selectSignal(selectActiveDocumentAccess);
+  private readonly allDocuments = this.store.selectSignal(selectActiveDocumentAccess);
+  /** Versao vigente seguida da nova versao em processamento (RN-28). */
+  protected readonly documents = computed(() => orderWithVersions(this.allDocuments()));
   protected readonly loading = this.store.selectSignal(selectLoadingState);
   protected readonly error = this.store.selectSignal(selectError);
   protected readonly menu = this.store.selectSignal(selectMenu);
@@ -46,6 +60,14 @@ export class AssistantsPageComponent {
   /** Texto digitado e ainda nao salvo; a chave e o id do assistente ou do documento. */
   private readonly drafts = signal<Record<string, string>>({});
 
+  /** Documento cuja exclusao aguarda confirmacao. */
+  protected readonly confirmingDelete = signal<string | null>(null);
+
+  protected readonly statusLabel = statusLabel;
+  protected readonly formatBytes = formatBytes;
+  protected readonly isInProgress = isInProgress;
+  protected readonly canReprocess = canReprocess;
+
   constructor() {
     effect(() => {
       const assistantId = this.activeAssistantId();
@@ -53,6 +75,70 @@ export class AssistantsPageComponent {
         this.store.dispatch(nexusActions.loadDocumentAccess({ assistantId }));
       }
     });
+    // A consulta periodica so existe com a tela aberta.
+    inject(DestroyRef).onDestroy(() =>
+      this.store.dispatch(nexusActions.stopDocumentPolling())
+    );
+  }
+
+  protected canReplace(document: DocumentAccess): boolean {
+    return canReplace(document, this.allDocuments());
+  }
+
+  protected hasPendingVersion(document: DocumentAccess): boolean {
+    return pendingVersionOf(document, this.allDocuments()) !== null;
+  }
+
+  protected statusClass(status: DocumentStatus): string {
+    switch (status) {
+      case "indexado":
+        return "bg-emerald-500/15 text-emerald-200";
+      case "falhou":
+        return "bg-rose-500/15 text-rose-200";
+      case "processando":
+        return "bg-sky-500/15 text-sky-200 animate-pulse";
+      default:
+        return "bg-slate-500/20 text-slate-200";
+    }
+  }
+
+  protected askDelete(document: DocumentAccess): void {
+    this.confirmingDelete.set(document.id);
+  }
+
+  protected cancelDelete(): void {
+    this.confirmingDelete.set(null);
+  }
+
+  protected confirmDelete(document: DocumentAccess): void {
+    this.confirmingDelete.set(null);
+    this.store.dispatch(
+      nexusActions.deleteDocument({
+        assistantId: document.assistant_id,
+        documentId: document.id
+      })
+    );
+  }
+
+  protected reprocess(document: DocumentAccess): void {
+    this.store.dispatch(nexusActions.reprocessDocument({ documentId: document.id }));
+  }
+
+  protected onReplacementSelected(document: DocumentAccess, event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    const file = target?.files?.[0];
+    if (file) {
+      this.store.dispatch(
+        nexusActions.replaceDocument({
+          assistantId: document.assistant_id,
+          documentId: document.id,
+          file
+        })
+      );
+    }
+    if (target) {
+      target.value = "";
+    }
   }
 
   protected draft(id: string, saved: readonly string[]): string {

@@ -305,7 +305,14 @@ describe("access management (SPEC-004)", () => {
     source_name: `${id}.md`,
     created_at: "2026-10-07T10:00:00Z",
     chunk_count: 3,
-    groups
+    groups,
+    status: "indexado",
+    version: 1,
+    failure_reason: null,
+    size_bytes: 100,
+    replaces_document_id: null,
+    content_hash: `hash-${id}`,
+    has_original: true
   });
 
   it("stores the groups returned for an assistant", () => {
@@ -398,5 +405,97 @@ describe("access management (SPEC-004)", () => {
     expect(loading.loading.auditEvents).toBe(true);
     expect(selectAuditEvents({ nexus: loaded })).toEqual([event]);
     expect(loaded.loading.auditEvents).toBe(false);
+  });
+});
+
+describe("document lifecycle (SPEC-005)", () => {
+  const document = (id: string, changes: Partial<DocumentAccess> = {}): DocumentAccess => ({
+    id,
+    assistant_id: "assistant-1",
+    source_name: `${id}.md`,
+    created_at: "2026-10-08T10:00:00Z",
+    chunk_count: 0,
+    groups: [],
+    status: "pendente",
+    version: 1,
+    failure_reason: null,
+    size_bytes: 100,
+    replaces_document_id: null,
+    content_hash: `hash-${id}`,
+    has_original: true,
+    ...changes
+  });
+
+  const loaded = (documents: DocumentAccess[]): NexusState =>
+    nexusReducer(
+      initialNexusState,
+      nexusActions.loadDocumentAccessSuccess({ assistantId: "assistant-1", documents })
+    );
+
+  it("background polling neither shows the loading notice nor clears an error", () => {
+    const state = { ...loaded([document("doc-1")]), error: "Arquivo duplicado." };
+    const polled = nexusReducer(
+      state,
+      nexusActions.loadDocumentAccess({ assistantId: "assistant-1", background: true })
+    );
+    expect(polled.loading.documentAccess).toBe(false);
+    expect(polled.error).toBe("Arquivo duplicado.");
+
+    const explicit = nexusReducer(
+      state,
+      nexusActions.loadDocumentAccess({ assistantId: "assistant-1" })
+    );
+    expect(explicit.loading.documentAccess).toBe(true);
+    expect(explicit.error).toBeNull();
+  });
+
+  it("removes a deleted document together with its pending version", () => {
+    const state = loaded([
+      document("doc-1", { status: "indexado" }),
+      document("doc-1-v2", { version: 2, replaces_document_id: "doc-1" }),
+      document("doc-2", { status: "indexado" })
+    ]);
+    const deleted = nexusReducer(
+      { ...state, loading: { ...state.loading, documentAction: true } },
+      nexusActions.deleteDocumentSuccess({ assistantId: "assistant-1", documentId: "doc-1" })
+    );
+    expect(deleted.documentAccessByAssistant["assistant-1"]?.map((item) => item.id)).toEqual([
+      "doc-2"
+    ]);
+    expect(deleted.loading.documentAction).toBe(false);
+  });
+
+  it("adds the new version and updates a reprocessed document", () => {
+    const state = loaded([
+      document("doc-1", { status: "indexado" }),
+      document("doc-2", { status: "falhou", failure_reason: "Sem texto." })
+    ]);
+    const replaced = nexusReducer(
+      state,
+      nexusActions.replaceDocumentSuccess({
+        document: document("doc-1-v2", { version: 2, replaces_document_id: "doc-1" })
+      })
+    );
+    expect(replaced.documentAccessByAssistant["assistant-1"]?.map((item) => item.id)).toEqual([
+      "doc-1-v2",
+      "doc-1",
+      "doc-2"
+    ]);
+    const reprocessed = nexusReducer(
+      replaced,
+      nexusActions.reprocessDocumentSuccess({ document: document("doc-2") })
+    );
+    expect(
+      reprocessed.documentAccessByAssistant["assistant-1"]?.find((item) => item.id === "doc-2")
+    ).toEqual(document("doc-2"));
+  });
+
+  it("shows a refused action as an error", () => {
+    const state = nexusReducer(
+      { ...initialNexusState, loading: { ...initialNexusState.loading, documentAction: true } },
+      nexusActions.deleteDocumentFailure({ error: "a reindex is in progress for this assistant." })
+    );
+    expect(state.loading.documentAction).toBe(false);
+    expect(state.error).toBe("a reindex is in progress for this assistant.");
   });
 });

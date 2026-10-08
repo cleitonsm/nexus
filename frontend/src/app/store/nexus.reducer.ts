@@ -7,8 +7,7 @@ import {
   AuditEvent,
   ChatMessage,
   Conversation,
-  DocumentAccess,
-  IngestedDocument
+  DocumentAccess
 } from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
 
@@ -21,7 +20,7 @@ export interface NexusState {
   selectedConversationByAssistant: Record<string, string | null>;
   currentConversationId: string | null;
   messagesByConversation: Record<string, ChatMessage[]>;
-  documents: IngestedDocument[];
+  documents: DocumentAccess[];
   /** Documentos de cada assistente com a restricao por grupo (RF-43). */
   documentAccessByAssistant: Record<string, DocumentAccess[]>;
   auditEvents: AuditEvent[];
@@ -43,6 +42,7 @@ export interface NexusState {
     testApiKey: boolean;
     assistantGroups: boolean;
     documentAccess: boolean;
+    documentAction: boolean;
     documentGroups: boolean;
     auditEvents: boolean;
   };
@@ -77,6 +77,7 @@ export const initialNexusState: NexusState = {
     testApiKey: false,
     assistantGroups: false,
     documentAccess: false,
+    documentAction: false,
     documentGroups: false,
     auditEvents: false
   },
@@ -458,11 +459,12 @@ export const nexusReducer = createReducer(
     error
   })),
 
-  on(nexusActions.loadDocumentAccess, (state) => ({
-    ...state,
-    loading: { ...state.loading, documentAccess: true },
-    error: null
-  })),
+  on(nexusActions.loadDocumentAccess, (state, { background }) =>
+    // A consulta periodica nao pisca o aviso nem apaga um erro sendo exibido.
+    background
+      ? state
+      : { ...state, loading: { ...state.loading, documentAccess: true }, error: null }
+  ),
   on(nexusActions.loadDocumentAccessSuccess, (state, { assistantId, documents }) => ({
     ...state,
     documentAccessByAssistant: {
@@ -498,6 +500,53 @@ export const nexusReducer = createReducer(
     error
   })),
 
+  on(
+    nexusActions.deleteDocument,
+    nexusActions.replaceDocument,
+    nexusActions.reprocessDocument,
+    (state) => ({
+      ...state,
+      loading: { ...state.loading, documentAction: true },
+      error: null
+    })
+  ),
+  on(nexusActions.deleteDocumentSuccess, (state, { assistantId, documentId }) => ({
+    ...state,
+    documentAccessByAssistant: {
+      ...state.documentAccessByAssistant,
+      // A nova versao pendente sai junto com a vigente (RF-50).
+      [assistantId]: (state.documentAccessByAssistant[assistantId] ?? []).filter(
+        (item) => item.id !== documentId && item.replaces_document_id !== documentId
+      )
+    },
+    loading: { ...state.loading, documentAction: false }
+  })),
+  on(
+    nexusActions.replaceDocumentSuccess,
+    nexusActions.reprocessDocumentSuccess,
+    (state, { document }) => ({
+      ...state,
+      documentAccessByAssistant: {
+        ...state.documentAccessByAssistant,
+        [document.assistant_id]: upsertDocument(
+          state.documentAccessByAssistant[document.assistant_id] ?? [],
+          document
+        )
+      },
+      loading: { ...state.loading, documentAction: false }
+    })
+  ),
+  on(
+    nexusActions.deleteDocumentFailure,
+    nexusActions.replaceDocumentFailure,
+    nexusActions.reprocessDocumentFailure,
+    (state, { error }) => ({
+      ...state,
+      loading: { ...state.loading, documentAction: false },
+      error
+    })
+  ),
+
   on(nexusActions.loadAuditEvents, (state) => ({
     ...state,
     loading: { ...state.loading, auditEvents: true },
@@ -514,3 +563,12 @@ export const nexusReducer = createReducer(
     error
   }))
 );
+
+function upsertDocument(
+  documents: readonly DocumentAccess[],
+  document: DocumentAccess
+): DocumentAccess[] {
+  return documents.some((item) => item.id === document.id)
+    ? documents.map((item) => (item.id === document.id ? document : item))
+    : [document, ...documents];
+}
