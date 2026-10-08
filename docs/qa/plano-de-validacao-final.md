@@ -7,6 +7,8 @@
 **Quando executar**: somente depois que **toda** a implementação estiver concluída (Fase 6 e
 lacunas das Fases 1 a 5). Ver a seção 2.
 
+**Ordem e prazos**: ver o [plano de conclusão](../plano-de-conclusao.md), etapas E7 a E9.
+
 ## 1. Objetivo
 
 Provar, com evidência registrada e repetível, que o Nexus entrega 100% do previsto na evolução RAG
@@ -31,7 +33,8 @@ exemplo, a sintaxe e os dublês). A validação que conta é a da Parte B.
 
 A campanha só começa quando todos os itens abaixo estiverem marcados:
 
-- [ ] SPEC-006 aprovada e implementada, com CT-41 a CT-48 escritos.
+- [ ] SPEC-006 aprovada e implementada, com CT-41 a CT-48 escritos. Aprovada e com código entregue
+      em 2026-10-08; CT-41 a CT-45 escritos, CT-46 a CT-48 pendentes.
 - [x] D11 decidida (tabelas em PDF), e implementada se a opção for (a). Decidida em 2026-10-08: (b) adiar.
 - [ ] Lacunas de código fechadas:
   - [x] blocos `#region agent log` removidos (2026-10-08);
@@ -40,7 +43,8 @@ A campanha só começa quando todos os itens abaixo estiverem marcados:
   - reindexação no worker;
   - tela de conversas arquivadas;
   - seleção de grupos;
-  - versões de `qdrant-client` e `langgraph` fixadas;
+  - [x] versões de `qdrant-client` e `langgraph` fixadas (2026-10-08, pelo `pip freeze` da imagem;
+    falta conferir a compatibilidade do cliente 1.19.1 com o servidor Qdrant 1.11.3);
   - detecção de mudança em `BM25_*`;
   - origens do realm configuráveis.
 - [ ] Parte A concluída (seção 4), com todos os testes novos revisados.
@@ -79,7 +83,9 @@ reexecução definida na seção 9.
 | CT-04 | **Não**: só existe a execução manual de `eval.sh` | — |
 | CT-39 | **Parcial**: o teste unitário usa Tesseract `eng`; não há teste no container com `por` | — |
 | CT-40 | **Não** | — |
-| CT-41 a CT-48 | **Não**: escritos na Fase 6 | — |
+| CT-41 a CT-43 | Sim, executados como testes unitários | `test_operations.py`, `test_feedback.py` |
+| CT-44, CT-45 | Sim, nunca executados | `test_operations_api.py`, `test_chat_citations.py` |
+| CT-46 a CT-48 | **Não** | — |
 | Migrações (RNF-31) | **Não** | — |
 | Keycloak real (RNF-22) | **Não**: os testes assinam tokens com uma chave local | — |
 | Fluxo completo na pilha real | **Não**: as rotas usam repositórios em memória | — |
@@ -175,7 +181,7 @@ de um sistema que ainda falha em teste funcional.
 
 1. Medir o tempo de `docker compose up -d --build` até todos os healthchecks ficarem saudáveis
    (backend, worker, frontend, PostgreSQL, Keycloak, Qdrant).
-2. `alembic upgrade head` limpo; conferir `alembic current` = `0005` ou a revisão da Fase 6.
+2. `alembic upgrade head` limpo; conferir `alembic current` = `0006` (ou a revisão mais nova, se as lacunas exigirem migração).
 3. Login manual em `http://localhost:4200` com `admin.nexus`.
 4. Reiniciar o ambiente e confirmar que o histórico é retomado (critério do MVP).
 
@@ -244,7 +250,7 @@ Executado pela interface, com os usuários do realm. Inclui os roteiros já exis
 | E3 | Duplicidade avisada; substituir; reprocessar um documento com falha | RF-51, RF-52, RF-54 |
 | E4 | Resposta com fontes; trecho aberto em um clique; excluir o documento → "fonte removida" | RF-38, RNF-33, D10 |
 | E5 | `usuario.financeiro` não vê o assistente de RH (403) nem trechos restritos | RF-42, RF-43 |
-| E6 | Auditoria lista as ações; conversas arquivadas visíveis ao dono | RF-45, Fase 4 |
+| E6 | Auditoria lista as ações; conversas arquivadas conforme a decisão PC-D5 do [plano de conclusão](../plano-de-conclusao.md) | RF-45, Fase 4 |
 | E7 | Streaming progressivo; avaliação "não útil" com comentário; limite atingido com mensagem e horário | RF-58, RF-59, RF-61 |
 | E8 | Tela de consumo do administrador | RF-57 |
 | E9 | LLM fora do ar (URL inválida) → erro compreensível | RNF-14 |

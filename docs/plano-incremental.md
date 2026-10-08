@@ -148,8 +148,9 @@ Validação:
 
 As etapas 1 a 8 construíram o MVP. As etapas 9 a 14 levam o RAG ao nível corporativo. Cada etapa
 tem uma especificação SDD em [`docs/especificacao/specs/`](especificacao/specs/README.md), que
-precisa estar aprovada antes do início da implementação. A etapa 9 está em validação; as demais
-não foram iniciadas.
+precisa estar aprovada antes do início da implementação. Em 2026-10-08 o código das etapas 9 a 14
+está entregue e coberto por testes unitários, mas nenhuma etapa foi validada no ambiente Docker. O
+que falta para concluir está no [plano de conclusão](plano-de-conclusao.md).
 
 Decisões fixadas para todas as etapas: embeddings locais (ADR 0004) e Keycloak como provedor de
 identidade (ADR 0008).
@@ -163,7 +164,8 @@ Estimativa: 1 a 2 semanas.
 
 Situação: código e testes unitários entregues em 2026-10-07; conjunto de referência piloto (27
 itens) validado pelo autor na mesma data. Falta executar os testes de integração e a avaliação no
-ambiente Docker, registrar a linha de base oficial e ampliar o conjunto para 50 a 100 itens.
+ambiente Docker, registrar a linha de base oficial e ampliar o conjunto para cerca de 80 itens
+(V-D7 do [plano de validação final](qa/plano-de-validacao-final.md)).
 
 Entregáveis:
 
@@ -212,6 +214,10 @@ Objetivo: acertar termos exatos, ordenar melhor os trechos e mostrar a origem da
 Especificação: [SPEC-003](especificacao/specs/SPEC-003-busca-hibrida-reranking-citacoes.md).
 Estimativa: 3 a 4 semanas.
 
+Situação: especificação aprovada e código entregue em 2026-10-07, com testes unitários. Faltam a
+validação no ambiente Docker e a calibração dos parâmetros (CT-22). Ver o
+[plano de implementação](especificacao/specs/SPEC-003-plano-de-implementacao.md).
+
 Entregáveis:
 
 - vetor esparso BM25 e busca híbrida com RRF
@@ -233,6 +239,11 @@ Objetivo: autenticar pelo Keycloak e restringir assistentes e documentos por gru
 
 Especificação: [SPEC-004](especificacao/specs/SPEC-004-autenticacao-e-controle-de-acesso.md).
 Estimativa: 3 a 4 semanas.
+
+Situação: especificação aprovada e código entregue em 2026-10-07, com testes unitários. Faltam a
+validação no ambiente Docker, a tela de conversas arquivadas, a seleção de grupos e as origens
+configuráveis do realm. Ver o
+[plano de implementação](especificacao/specs/SPEC-004-plano-de-implementacao.md).
 
 Entregáveis:
 
@@ -256,6 +267,11 @@ Objetivo: processar em segundo plano e manter a base atual.
 Especificação: [SPEC-005](especificacao/specs/SPEC-005-ingestao-e-ciclo-de-vida.md).
 Estimativa: 2 a 3 semanas.
 
+Situação: especificação aprovada e código entregue em 2026-10-08, com testes unitários; tabelas em
+PDF adiadas (D11). Faltam a validação no ambiente Docker, a reindexação no worker e a conferência
+de contagens entre PostgreSQL e Qdrant (R18). Ver o
+[plano de implementação](especificacao/specs/SPEC-005-plano-de-implementacao.md).
+
 Entregáveis:
 
 - fila em PostgreSQL e serviço worker
@@ -276,6 +292,10 @@ Objetivo: tornar falhas, custos e abusos visíveis e controláveis.
 
 Especificação: [SPEC-006](especificacao/specs/SPEC-006-operacao-e-governanca.md).
 Estimativa: 1 a 2 semanas.
+
+Situação: especificação aprovada e código entregue em 2026-10-08, com testes unitários. Faltam os
+casos CT-46 a CT-48 e a validação no ambiente Docker. Ver o
+[plano de implementação](especificacao/specs/SPEC-006-plano-de-implementacao.md).
 
 Entregáveis:
 
@@ -299,3 +319,9 @@ Validação:
 De 13 a 19 semanas para uma pessoa dedicada, sem incluir homologação com usuários nem implantação
 em produção. As etapas 9 e 10 entregam a maior parte do ganho de qualidade em 4 a 6 semanas. Há um
 ponto de reavaliação de prioridades ao fim da etapa 11.
+
+## Conclusão
+
+O trabalho restante (lacunas de código, preparação e campanha de validação, atualização da
+documentação) está ordenado no [plano de conclusão](plano-de-conclusao.md), com meta de encerramento
+em 2026-11-19.

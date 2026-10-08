@@ -67,12 +67,12 @@ As metas são valores iniciais e serão calibradas após a linha de base da Fase
 
 | Fase | Entrega | Valor para o negócio | Situação |
 |------|---------|----------------------|----------|
-| 1 — Avaliação e linha de base | Conjunto de referência e relatório de qualidade | Decisões baseadas em medida, não em impressão | Implementada, em validação |
-| 2 — Recuperação semântica | Busca por significado | O usuário pergunta com as próprias palavras | Especificada |
-| 3 — Busca híbrida, reranking e citações | Fontes em cada resposta | O usuário confere e confia | Especificada |
-| 4 — Autenticação e controle de acesso | Login e permissões | O conteúdo sensível fica protegido | Especificada |
-| 5 — Ingestão e ciclo de vida | Base sempre atual | Documento desatualizado deixa de responder | Especificada |
-| 6 — Operação e governança | Visibilidade, custo e backup | O serviço pode ser sustentado | Especificada |
+| 1 — Avaliação e linha de base | Conjunto de referência e relatório de qualidade | Decisões baseadas em medida, não em impressão | Código entregue; validação pendente |
+| 2 — Recuperação semântica | Busca por significado | O usuário pergunta com as próprias palavras | Código entregue; validação pendente |
+| 3 — Busca híbrida, reranking e citações | Fontes em cada resposta | O usuário confere e confia | Código entregue; validação pendente |
+| 4 — Autenticação e controle de acesso | Login e permissões | O conteúdo sensível fica protegido | Código entregue; validação pendente |
+| 5 — Ingestão e ciclo de vida | Base sempre atual | Documento desatualizado deixa de responder | Código entregue; validação pendente |
+| 6 — Operação e governança | Visibilidade, custo e backup | O serviço pode ser sustentado | Código entregue; validação pendente |
 
 ### Andamento
 
@@ -81,6 +81,10 @@ respostas contra um conjunto de perguntas validado pelo responsável pelo conte�
 do sistema passaram a permitir acompanhar cada pergunta de ponta a ponta. A medição inicial
 confirma a motivação desta evolução: com a busca atual, uma parte relevante das perguntas do
 piloto não localiza o documento correto. Os números oficiais serão os da execução no ambiente completo.
+
+Em 2026-10-08 o código das seis fases estava entregue e coberto por testes unitários, mas nenhuma
+fase tinha sido validada no ambiente completo. A conclusão, com a comprovação das metas acima,
+segue o [plano de conclusão](../plano-de-conclusao.md), com meta em 2026-11-19.
 
 ## Critérios de Aceite da Evolução
 

@@ -137,7 +137,7 @@ Uma fase só é considerada concluída quando:
 
 ## Situação dos Casos de Teste
 
-Atualizado em 2026-10-07.
+Atualizado em 2026-10-08.
 
 | Casos | Situação | Onde |
 |-------|----------|------|
@@ -159,13 +159,20 @@ Atualizado em 2026-10-07.
 | CT-26, CT-27, CT-29, CT-30 | Implementados, ainda não executados (exigem FastAPI); os contratos equivalentes, com dublês, rodam em `test_access_control.py` | `backend/tests/integration/test_access_control_api.py` |
 | CT-28, CT-31 | Implementados, ainda não executados (exigem o Qdrant e o PostgreSQL) | `backend/tests/integration/test_access_control_storage.py` |
 | CT-32 | Implementado; a lógica foi executada com um substituto local do Vitest, e a execução com o Vitest real está pendente | `frontend/src/app/core/auth/access.spec.ts` |
-| CT-33 a CT-48 | Não implementados; pertencem às Fases 5 e 6 | — |
+| CT-33 a CT-36 | Implementados e executados com sucesso | `backend/tests/unit/test_document_lifecycle.py` |
+| CT-37, CT-38 | Implementados, ainda não executados (exigem o PostgreSQL e o Qdrant) | `backend/tests/integration/test_document_lifecycle_storage.py` |
+| CT-39 | Parte unitária executada com o Tesseract `eng`; falta o teste no container com `por` | `backend/tests/unit/test_ocr_extraction.py` |
+| CT-40 | Rotas cobertas com repositórios em memória, ainda não executadas; falta medir os 2 segundos | `backend/tests/integration/test_api_routes.py` |
+| CT-41, CT-42, CT-43 | Implementados e executados com sucesso | `backend/tests/unit/test_operations.py`, `backend/tests/unit/test_feedback.py` |
+| CT-44, CT-45 | Implementados, ainda não executados (exigem FastAPI e o ambiente Docker) | `backend/tests/integration/test_operations_api.py`, `backend/tests/integration/test_chat_citations.py` |
+| CT-46, CT-47, CT-48 | Não implementados; etapa E6 do [plano de conclusão](../plano-de-conclusao.md) | — |
+| CT-49 a CT-57 | Não implementados; definidos no [plano de validação final](../qa/plano-de-validacao-final.md) | — |
 
 Os testes de integração da Fase 4 não sobem o Keycloak: usam o verificador de token real com
 tokens assinados por uma chave gerada no próprio teste.
 
-A suíte unitária soma 372 testes; a Fase 4 acrescentou 107 e adaptou os anteriores para receber o
-usuário autenticado. Ela foi executada fora do Docker, com
+A suíte unitária soma 497 testes: 372 até a Fase 4, 52 da Fase 5 e 73 da Fase 6. Ela foi executada
+fora do Docker, com
 o LangGraph substituído por um dublê local; a execução dentro do container ainda está pendente.
 
 O projeto utiliza `unittest`, sem dependência adicional de framework de testes.

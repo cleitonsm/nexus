@@ -12,12 +12,12 @@ testes são escritos antes da implementação.
 
 | ID | Fase | Arquivo | Status | Requisitos |
 |----|------|---------|--------|------------|
-| SPEC-20261007-001 | 1 — Avaliação e linha de base | [`SPEC-001-avaliacao-e-linha-de-base.md`](SPEC-001-avaliacao-e-linha-de-base.md) | Aprovada (em validação) | RF-24 a RF-27 |
-| SPEC-20261007-002 | 2 — Recuperação semântica | [`SPEC-002-recuperacao-semantica.md`](SPEC-002-recuperacao-semantica.md) | Aprovada (em implementação) | RF-28 a RF-32 |
-| SPEC-20261007-003 | 3 — Busca híbrida, reranking e citações | [`SPEC-003-busca-hibrida-reranking-citacoes.md`](SPEC-003-busca-hibrida-reranking-citacoes.md) | Aprovada (em implementação) | RF-33 a RF-39 |
-| SPEC-20261007-004 | 4 — Autenticação e controle de acesso | [`SPEC-004-autenticacao-e-controle-de-acesso.md`](SPEC-004-autenticacao-e-controle-de-acesso.md) | Aprovada (em implementação) | RF-40 a RF-47 |
-| SPEC-20261007-005 | 5 — Ingestão e ciclo de vida | [`SPEC-005-ingestao-e-ciclo-de-vida.md`](SPEC-005-ingestao-e-ciclo-de-vida.md) | Aprovada (em implementação) | RF-48 a RF-55 |
-| SPEC-20261007-006 | 6 — Operação e governança | [`SPEC-006-operacao-e-governanca.md`](SPEC-006-operacao-e-governanca.md) | Aprovada; código entregue | RF-56 a RF-63 |
+| SPEC-20261007-001 | 1 — Avaliação e linha de base | [`SPEC-001-avaliacao-e-linha-de-base.md`](SPEC-001-avaliacao-e-linha-de-base.md) | Aprovada; código entregue, validação no Docker pendente | RF-24 a RF-27 |
+| SPEC-20261007-002 | 2 — Recuperação semântica | [`SPEC-002-recuperacao-semantica.md`](SPEC-002-recuperacao-semantica.md) | Aprovada; código entregue, validação no Docker pendente | RF-28 a RF-32 |
+| SPEC-20261007-003 | 3 — Busca híbrida, reranking e citações | [`SPEC-003-busca-hibrida-reranking-citacoes.md`](SPEC-003-busca-hibrida-reranking-citacoes.md) | Aprovada; código entregue, validação no Docker pendente | RF-33 a RF-39 |
+| SPEC-20261007-004 | 4 — Autenticação e controle de acesso | [`SPEC-004-autenticacao-e-controle-de-acesso.md`](SPEC-004-autenticacao-e-controle-de-acesso.md) | Aprovada; código entregue, validação no Docker pendente | RF-40 a RF-47 |
+| SPEC-20261007-005 | 5 — Ingestão e ciclo de vida | [`SPEC-005-ingestao-e-ciclo-de-vida.md`](SPEC-005-ingestao-e-ciclo-de-vida.md) | Aprovada; código entregue, validação no Docker pendente | RF-48 a RF-55 |
+| SPEC-20261007-006 | 6 — Operação e governança | [`SPEC-006-operacao-e-governanca.md`](SPEC-006-operacao-e-governanca.md) | Aprovada; código entregue, validação no Docker pendente | RF-56 a RF-63 |
 
 ## Status possíveis
 
@@ -53,6 +53,9 @@ data e teve o código entregue sobre as Fases 2 e 3 ainda não validadas no Dock
 [plano de implementação](SPEC-005-plano-de-implementacao.md). A SPEC-006 foi aprovada em 2026-10-08, com as decisões D1 a D5, e teve o código entregue no mesmo
 dia, com os valores D6 a D9 ([plano de implementação](SPEC-006-plano-de-implementacao.md)).
 
+Até 2026-10-08 nenhuma fase foi validada no ambiente Docker. O caminho até o status `Implementada`
+está no [plano de conclusão](../../plano-de-conclusao.md).
+
 ## Decisões já tomadas
 
 - **Embeddings locais**, conforme a ADR 0004: nenhum conteúdo de documento sai do ambiente na
@@ -70,7 +73,12 @@ dia, com os valores D6 a D9 ([plano de implementação](SPEC-006-plano-de-implem
 - **SPEC-005**: OCR com Tesseract e Poppler na imagem; limite de 25 MB; estado na tela por
   consulta a cada 3 s; só a versão vigente de cada documento; originais em volume local; três
   tentativas (esperas de 30 s e 120 s, limite de 600 s por job); envio aceito durante a
-  reindexação; duplicidade por hash no assistente; citações de documento excluído marcadas.
+  reindexação; duplicidade por hash no assistente; citações de documento excluído marcadas; tabelas de PDF adiadas (D11).
+- **SPEC-006**: Jaeger, Prometheus e Grafana em perfil opcional do Compose; rastreamento e
+  métricas sem dependência nova; limite de 20 perguntas por minuto e 500 por dia, ajustável pelo
+  administrador; custo estimado em USD pela tabela do `gpt-4o-mini`; avaliação útil ou não útil
+  com comentário; avaliação com LLM por script local, fora do GitHub; backup diário em volume
+  local, com 7 dias de retenção.
 - **SPEC-001**: assistente piloto com a documentação do próprio Nexus, tolerância de regressão de
   0,02 e fidelidade julgada pelo mesmo `LLM_MODEL`.
 

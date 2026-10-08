@@ -175,13 +175,13 @@ nexus/
 
 ## Evolução: RAG Enterprise
 
-O MVP comprovou o ciclo completo. O próximo passo é levar o RAG ao nível corporativo: respostas mais precisas e verificáveis, acesso controlado e operação mensurável. As seis fases estão especificadas; **a Fase 1 já está implementada** e em validação no ambiente Docker, e as demais ainda não foram iniciadas.
+O MVP comprovou o ciclo completo. O próximo passo é levar o RAG ao nível corporativo: respostas mais precisas e verificáveis, acesso controlado e operação mensurável. As seis fases estão especificadas e com código entregue, cobertas por testes unitários; falta validá-las no ambiente Docker. O caminho até a conclusão está no [plano de conclusão](docs/plano-de-conclusao.md).
 
-### Onde o MVP está hoje
+### Do MVP à evolução
 
-Uma revisão do código mostrou diferenças entre o que este README descreve e o que está implementado:
+Como cada aspecto funcionava no MVP e como fica com a evolução (código entregue, validação no Docker pendente):
 
-| Aspecto | Implementação atual | Evolução planejada |
+| Aspecto | MVP | Evolução |
 |---|---|---|
 | Embeddings | Hash determinístico de palavras em 384 posições (`LocalHashEmbeddingGateway`); o modelo citado acima ainda não é carregado | Modelo semântico local da ADR 0004 |
 | Chunking | Corte fixo de 700 caracteres | Por estrutura do documento, medido em tokens |
@@ -190,8 +190,8 @@ Uma revisão do código mostrou diferenças entre o que este README descreve e o
 | Fontes | Não exibidas | Citação de documento, seção e página |
 | Acesso | Sem autenticação | Keycloak, papéis e grupos por assistente e por documento |
 | Ingestão | Síncrona, sem exclusão de documento | Em segundo plano, com ciclo de vida completo |
-| Qualidade | Medida sob demanda por um comando, com conjunto de referência piloto (Fase 1) | Avaliação contínua na integração |
-| Logs | Estruturados em JSON, com identificador de requisição (Fase 1) | Rastreamento, métricas e custo por conversa |
+| Qualidade | Não medida | Comando de avaliação com conjunto de referência (Fase 1) e portão de qualidade local (Fase 6) |
+| Logs | Sem identificador de requisição | JSON com identificador de requisição (Fase 1); rastreamento, métricas e custo por conversa (Fase 6) |
 
 ### Decisões fixadas
 
@@ -204,12 +204,12 @@ Cada fase tem uma especificação que precisa ser aprovada antes de qualquer có
 
 | Fase | Entrega | Especificação | Situação |
 |---|---|---|---|
-| 1 | Avaliação e linha de base | [SPEC-001](docs/especificacao/specs/SPEC-001-avaliacao-e-linha-de-base.md) | Implementada, em validação |
+| 1 | Avaliação e linha de base | [SPEC-001](docs/especificacao/specs/SPEC-001-avaliacao-e-linha-de-base.md) | Código entregue; validação no Docker pendente |
 | 2 | Recuperação semântica | [SPEC-002](docs/especificacao/specs/SPEC-002-recuperacao-semantica.md) | Código entregue; validação no Docker pendente |
 | 3 | Busca híbrida, reranking e citações | [SPEC-003](docs/especificacao/specs/SPEC-003-busca-hibrida-reranking-citacoes.md) | Código entregue; validação no Docker pendente |
 | 4 | Autenticação e controle de acesso | [SPEC-004](docs/especificacao/specs/SPEC-004-autenticacao-e-controle-de-acesso.md) | Código entregue; validação no Docker pendente |
 | 5 | Ingestão e ciclo de vida de documentos | [SPEC-005](docs/especificacao/specs/SPEC-005-ingestao-e-ciclo-de-vida.md) | Código entregue; validação no Docker pendente |
-| 6 | Operação e governança | [SPEC-006](docs/especificacao/specs/SPEC-006-operacao-e-governanca.md) | Especificada |
+| 6 | Operação e governança | [SPEC-006](docs/especificacao/specs/SPEC-006-operacao-e-governanca.md) | Código entregue; validação no Docker pendente |
 
 ### Medindo a qualidade (Fase 1)
 
@@ -242,7 +242,7 @@ flowchart LR
 
 O backend continua em Clean Architecture: tudo o que é novo entra atrás de portas do domínio, e o worker de ingestão é o mesmo código do backend, não um microsserviço.
 
-A documentação desta evolução foi gerada com apoio de IA generativa. O autor aprovou a SPEC-001 e validou o conjunto de referência piloto; o restante está **pendente de revisão do autor**.
+A documentação desta evolução foi gerada com apoio de IA generativa. O autor aprovou as SPEC-001 a SPEC-006 e validou o conjunto de referência piloto; os planos de implementação e o código seguem **pendentes de revisão do autor**.
 
 ---
 
@@ -265,5 +265,7 @@ A documentação desta evolução foi gerada com apoio de IA generativa. O autor
 | [Estratégia de testes](docs/especificacao/estrategia-de-testes.md) | Níveis de teste e casos de teste da evolução |
 | [Escopo da evolução RAG Enterprise](docs/negocio/escopo-rag-enterprise.md) | Objetivo de negócio, escopo, benefícios e critérios de aceite |
 | [ADRs](docs/arquitetura/adrs) | Decisões arquiteturais; 0006 a 0011 tratam da evolução |
+| [Plano de conclusão da evolução](docs/plano-de-conclusao.md) | O que falta, em que ordem e até quando, para concluir a evolução |
+| [Plano de validação final](docs/qa/plano-de-validacao-final.md) | Preparação e campanha de testes que comprovam a evolução |
 | [Validação manual da evolução](docs/qa/validacao-manual-rag-enterprise.md) | Roteiro ponta a ponta por fase |
 | [Avaliação de qualidade](backend/tests/evaluation/README.md) | Conjunto de referência, comando de avaliação e métricas |
