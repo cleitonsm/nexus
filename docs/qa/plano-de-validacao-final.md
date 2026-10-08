@@ -41,7 +41,7 @@ A campanha só começa quando todos os itens abaixo estiverem marcados:
   - [x] `MarkdownPipe` sem HTML não sanitizado (2026-10-08);
   - [x] conferência das contagens PostgreSQL × Qdrant (R18; PC-D3, `src.cli.check_consistency`, 2026-10-08);
   - [x] reindexação no worker (PC-D4, migração `0007`, 2026-10-08);
-  - tela de conversas arquivadas;
+  - [x] tela de conversas arquivadas (PC-D5, `/admin/archived`, 2026-10-08);
   - seleção de grupos;
   - [x] versões de `qdrant-client` e `langgraph` fixadas (2026-10-08, pelo `pip freeze` da imagem;
     falta conferir a compatibilidade do cliente 1.19.1 com o servidor Qdrant 1.11.3);

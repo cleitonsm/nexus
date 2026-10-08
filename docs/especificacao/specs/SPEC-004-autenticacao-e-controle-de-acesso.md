@@ -225,7 +225,7 @@ Registradas por Cleiton Medeiros em 2026-10-07.
 | Decisão | Escolha |
 |---------|---------|
 | Restrição por documento nesta fase | Entregue junto (RF-43) |
-| Conversas anteriores à autenticação | Arquivadas: permanecem no banco sem dono e não são exibidas a ninguém |
+| Conversas anteriores à autenticação | Arquivadas: permanecem no banco sem dono e fora das listas dos usuários. **Alterada em 2026-10-08 (PC-D5):** o administrador as lista, lê e exclui na tela "Conversas arquivadas" (`/admin/archived`, rotas `/admin/archived-conversations`), e cada ação entra na auditoria |
 | Acesso de administradores ao conteúdo de conversas | Mantido privado (RN-24) |
 | Origem dos usuários | Usuários locais no realm de exemplo |
 | Versão do Keycloak (2026-10-08) | `26.0` |

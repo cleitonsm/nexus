@@ -64,7 +64,7 @@ Registradas por Cleiton Medeiros em 2026-10-07.
 |---|---------|---------|
 | D1 | Aprovação da SPEC-004 e da ADR 0008 | Aprovadas pelo pedido de implementação, sobre as Fases 2 e 3 ainda não validadas no Docker |
 | D2 | Restrição por documento (RF-43) | Entregue nesta fase |
-| D3 | Conversas anteriores à autenticação | Arquivadas: ficam no banco sem dono e não são exibidas a ninguém |
+| D3 | Conversas anteriores à autenticação | Arquivadas: ficam no banco sem dono e fora das listas dos usuários. Alterada pela PC-D5 (2026-10-08): o administrador lista, lê e exclui, com auditoria (`archived_conversation.*`) |
 | D4 | Acesso de administradores a conversas | Mantido privado (RN-24): conversa alheia responde 404 também para o administrador |
 | D5 | Origem dos usuários | Usuários locais no realm de exemplo; federação com diretório fica para depois |
 
@@ -173,7 +173,8 @@ papéis do token sem depender do serviço. O login pelo Keycloak de verdade fica
 - A SPEC-004 pede migração de dados "explícita" para assistentes e conversas: nada é migrado, e
   o efeito (assistentes ocultos, conversas arquivadas) precisa ser comunicado antes de ativar a
   fase em um ambiente com dados (risco R20).
-- Não há tela para ver ou recuperar conversas arquivadas.
+- Conversas arquivadas: tela do administrador desde 2026-10-08 (PC-D5); não há como atribuí-las a
+  um usuário.
 - Os grupos são digitados como texto; o Nexus não consulta o Keycloak para listar os grupos
   existentes, então um nome digitado errado não é detectado.
 - O realm de exemplo só aceita o frontend em `http://localhost:4200`.
