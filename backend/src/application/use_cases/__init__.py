@@ -25,6 +25,10 @@ from .ingest_document import (
     DocumentTooLargeError,
     IngestDocumentInput,
     IngestDocumentUseCase,
+    ReplaceDocumentInput,
+    ReplaceDocumentUseCase,
+    ReprocessDocumentInput,
+    ReprocessDocumentUseCase,
 )
 from .infer_assistant import (
     InferAssistantInput,
@@ -48,6 +52,11 @@ from .manage_assistant_access import (
     SetDocumentGroupsInput,
     SetDocumentGroupsUseCase,
 )
+from .manage_documents import (
+    DeleteDocumentUseCase,
+    DocumentRefInput,
+    GetDocumentUseCase,
+)
 from .manage_conversation import (
     AddMessageInput,
     AddMessageUseCase,
@@ -60,6 +69,11 @@ from .manage_api_key import (
     GetGlobalApiKeyValueUseCase,
     SaveGlobalApiKeyInput,
     SaveGlobalApiKeyUseCase,
+)
+from .process_ingestion import (
+    ProcessingOutcome,
+    ProcessNextIngestionJobUseCase,
+    RequeueExpiredIngestionJobsUseCase,
 )
 from .register_conversation import (
     RegisterConversationInput,
@@ -91,13 +105,16 @@ __all__ = [
     "DeleteAssistantInput",
     "DeleteAssistantUseCase",
     "DeleteConversationUseCase",
+    "DeleteDocumentUseCase",
     "DescribeCurrentUserUseCase",
     "DocumentNotFoundError",
+    "DocumentRefInput",
     "DocumentTooLargeError",
     "EvaluateAssistantInput",
     "EvaluateAssistantUseCase",
     "FailInterruptedReindexesUseCase",
     "GetConversationUseCase",
+    "GetDocumentUseCase",
     "GetGlobalApiKeyStatusUseCase",
     "GetGlobalApiKeyValueUseCase",
     "GetIndexStatusInput",
@@ -115,12 +132,19 @@ __all__ = [
     "ListDocumentsInput",
     "ListDocumentsUseCase",
     "MAINTENANCE_USER",
+    "ProcessNextIngestionJobUseCase",
+    "ProcessingOutcome",
     "PurgeAuditEventsInput",
     "PurgeAuditEventsResult",
     "PurgeAuditEventsUseCase",
     "RegisterConversationInput",
     "RegisterConversationUseCase",
     "ReindexJobNotFoundError",
+    "ReplaceDocumentInput",
+    "ReplaceDocumentUseCase",
+    "ReprocessDocumentInput",
+    "ReprocessDocumentUseCase",
+    "RequeueExpiredIngestionJobsUseCase",
     "RunReindexInput",
     "RunReindexUseCase",
     "SaveGlobalApiKeyInput",

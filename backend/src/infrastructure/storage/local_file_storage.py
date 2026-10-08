@@ -41,6 +41,10 @@ class LocalDocumentFileStorage:
             raise FileNotFoundError(f"original file not found: {storage_key}")
         return path.read_bytes()
 
+    def delete(self, storage_key: str) -> None:
+        """Remove o original (RN-29); chave sem arquivo nao e erro."""
+        self._resolve(storage_key).unlink(missing_ok=True)
+
     def _resolve(self, storage_key: str) -> Path:
         path = (self._base_dir / storage_key).resolve()
         if not storage_key.strip() or not path.is_relative_to(self._base_dir):

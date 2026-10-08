@@ -9,6 +9,7 @@ from src.api.dependencies import (
     get_context_retriever,
     get_conversation_repository,
     get_current_user,
+    get_document_repository,
     get_token_counter,
 )
 from src.api.schemas import (
@@ -42,6 +43,7 @@ from src.application.use_cases import (
 from src.domain import (
     AssistantId,
     AuthenticatedUser,
+    DocumentRepository,
     DomainValidationError,
     IndexOutdatedError,
     TokenCounter,
@@ -123,8 +125,9 @@ def get_conversation(
     user: AuthenticatedUser = Depends(get_current_user),
     access_control: AccessControl = Depends(get_access_control),
     repository: PostgresConversationRepository = Depends(get_conversation_repository),
+    document_repository: DocumentRepository = Depends(get_document_repository),
 ) -> ConversationDetailResponse:
-    use_case = GetConversationUseCase(repository, access_control)
+    use_case = GetConversationUseCase(repository, access_control, document_repository)
     try:
         conversation = use_case.execute(
             ConversationRefInput(user=user, conversation_id=conversation_id)
@@ -136,13 +139,16 @@ def get_conversation(
         ) from exc
     except ConversationNotFoundError as exc:
         raise _not_found(exc) from exc
+    removed = use_case.removed_sources(conversation)
     return ConversationDetailResponse(
         id=conversation.id.value,
         assistant_id=conversation.assistant_id.value,
         created_at=conversation.created_at,
         updated_at=conversation.updated_at,
         messages=[
-            _message_response(MessageDTO.from_entity(message))
+            _message_response(
+                MessageDTO.from_entity(message, removed_documents=removed)
+            )
             for message in conversation.messages
         ],
     )
@@ -297,6 +303,7 @@ def _message_response(message: MessageDTO) -> MessageResponse:
                 page=item.page,
                 score=item.score,
                 excerpt=item.excerpt,
+                document_available=item.document_available,
             )
             for item in message.citations
         ],

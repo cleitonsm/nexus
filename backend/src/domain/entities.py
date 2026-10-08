@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 
 from .citations import Citation
-from .errors import DomainValidationError
+from .errors import DomainValidationError, InvalidDocumentStateError
 from .value_objects import (
     AssistantId,
     AssistantName,
@@ -45,6 +45,29 @@ class Assistant:
             )
 
 
+class DocumentStatus(StrEnum):
+    """Ciclo de vida do documento (SPEC-005)."""
+
+    PENDING = "pendente"
+    PROCESSING = "processando"
+    INDEXED = "indexado"
+    FAILED = "falhou"
+    # Versao anterior de um documento substituido (D5): sem trechos nem
+    # arquivo; o registro fica para identificar citacoes antigas (RN-29).
+    REPLACED = "substituido"
+
+
+_DOCUMENT_TRANSITIONS: dict[DocumentStatus, frozenset[DocumentStatus]] = {
+    DocumentStatus.PENDING: frozenset({DocumentStatus.PROCESSING}),
+    DocumentStatus.PROCESSING: frozenset(
+        {DocumentStatus.INDEXED, DocumentStatus.PENDING, DocumentStatus.FAILED}
+    ),
+    DocumentStatus.INDEXED: frozenset({DocumentStatus.REPLACED}),
+    DocumentStatus.FAILED: frozenset({DocumentStatus.PENDING}),
+    DocumentStatus.REPLACED: frozenset(),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class Document:
     id: DocumentId
@@ -59,6 +82,14 @@ class Document:
     pipeline_version: str | None = None
     chunk_count: int = 0
     storage_key: str | None = None
+    # Documentos anteriores a SPEC-005 ja estavam indexados ao serem gravados.
+    status: DocumentStatus = DocumentStatus.INDEXED
+    failure_reason: str | None = None
+    attempts: int = 0
+    size_bytes: int | None = None
+    version: int = 1
+    replaces_document_id: DocumentId | None = None
+    uploaded_by: str | None = None
 
     def __post_init__(self) -> None:
         if not self.source_name.strip():
@@ -67,6 +98,14 @@ class Document:
             raise DomainValidationError("document content_hash must not be empty.")
         if self.chunk_count < 0:
             raise DomainValidationError("document chunk_count must not be negative.")
+        if self.attempts < 0:
+            raise DomainValidationError("document attempts must not be negative.")
+        if self.version < 1:
+            raise DomainValidationError("document version must be at least 1.")
+        if self.size_bytes is not None and self.size_bytes < 0:
+            raise DomainValidationError("document size_bytes must not be negative.")
+        if self.replaces_document_id == self.id:
+            raise DomainValidationError("a document cannot replace itself.")
 
     @property
     def is_indexed(self) -> bool:
@@ -76,6 +115,15 @@ class Document:
     @property
     def has_original(self) -> bool:
         return self.storage_key is not None
+
+    @property
+    def is_searchable(self) -> bool:
+        """RN-27: so documentos indexados participam das buscas."""
+        return self.status is DocumentStatus.INDEXED
+
+    @property
+    def is_in_progress(self) -> bool:
+        return self.status in (DocumentStatus.PENDING, DocumentStatus.PROCESSING)
 
     def is_current(self, *, embedding_model: str, pipeline_version: str) -> bool:
         return (
@@ -96,6 +144,62 @@ class Document:
             pipeline_version=pipeline_version,
             chunk_count=chunk_count,
         )
+
+    def start_processing(self, attempt: int) -> "Document":
+        """O worker reservou o job; ``attempt`` conta a partir de 1."""
+        if attempt < 1:
+            raise DomainValidationError("processing attempt must be at least 1.")
+        return self._move_to(DocumentStatus.PROCESSING, attempts=attempt)
+
+    def mark_indexed(
+        self,
+        *,
+        embedding_model: str,
+        pipeline_version: str,
+        chunk_count: int,
+    ) -> "Document":
+        return self._move_to(
+            DocumentStatus.INDEXED,
+            failure_reason=None,
+            embedding_model=embedding_model,
+            pipeline_version=pipeline_version,
+            chunk_count=chunk_count,
+        )
+
+    def retry_later(self) -> "Document":
+        """Falha transitoria: volta a fila para nova tentativa (RF-55)."""
+        return self._move_to(DocumentStatus.PENDING)
+
+    def mark_failed(self, reason: str) -> "Document":
+        if not reason.strip():
+            raise DomainValidationError("failure reason must not be empty.")
+        return self._move_to(
+            DocumentStatus.FAILED,
+            failure_reason=reason.strip(),
+            chunk_count=0,
+        )
+
+    def request_processing(self) -> "Document":
+        """Reprocessamento a partir do original guardado (RF-54)."""
+        if not self.has_original:
+            raise InvalidDocumentStateError(
+                "document has no stored original file to reprocess."
+            )
+        return self._move_to(
+            DocumentStatus.PENDING,
+            failure_reason=None,
+            attempts=0,
+        )
+
+    def mark_replaced(self) -> "Document":
+        return self._move_to(DocumentStatus.REPLACED, chunk_count=0)
+
+    def _move_to(self, target: DocumentStatus, **changes: object) -> "Document":
+        if target not in _DOCUMENT_TRANSITIONS[self.status]:
+            raise InvalidDocumentStateError(
+                f"document cannot go from {self.status.value} to {target.value}."
+            )
+        return replace(self, status=target, **changes)  # type: ignore[arg-type]
 
 
 @dataclass(frozen=True, slots=True)
@@ -197,4 +301,66 @@ class ReindexJob:
             status=ReindexStatus.FAILED,
             error=error.strip() or "unknown error",
             finished_at=_utc_now(),
+        )
+
+
+class IngestionJobKind(StrEnum):
+    INGEST = "ingestao"
+    REPROCESS = "reprocessamento"
+
+
+class IngestionJobStatus(StrEnum):
+    PENDING = "pendente"
+    PROCESSING = "processando"
+    DONE = "concluido"
+    FAILED = "falhou"
+
+
+@dataclass(frozen=True, slots=True)
+class IngestionJob:
+    """Pedido de processamento de um documento, consumido pelo worker (RF-48)."""
+
+    id: str
+    document_id: DocumentId
+    kind: IngestionJobKind = IngestionJobKind.INGEST
+    status: IngestionJobStatus = IngestionJobStatus.PENDING
+    attempts: int = 0
+    available_at: datetime = field(default_factory=_utc_now)
+    reserved_at: datetime | None = None
+    last_error: str | None = None
+    created_at: datetime = field(default_factory=_utc_now)
+
+    def __post_init__(self) -> None:
+        if not self.id.strip():
+            raise DomainValidationError("ingestion job id must not be empty.")
+        if self.attempts < 0:
+            raise DomainValidationError("ingestion job attempts must not be negative.")
+
+    def reserve(self, now: datetime) -> "IngestionJob":
+        if self.status is not IngestionJobStatus.PENDING:
+            raise DomainValidationError("only pending jobs can be reserved.")
+        return replace(
+            self,
+            status=IngestionJobStatus.PROCESSING,
+            attempts=self.attempts + 1,
+            reserved_at=now,
+        )
+
+    def complete(self) -> "IngestionJob":
+        return replace(self, status=IngestionJobStatus.DONE, last_error=None)
+
+    def retry_at(self, available_at: datetime, error: str) -> "IngestionJob":
+        return replace(
+            self,
+            status=IngestionJobStatus.PENDING,
+            available_at=available_at,
+            reserved_at=None,
+            last_error=error.strip() or "unknown error",
+        )
+
+    def fail(self, error: str) -> "IngestionJob":
+        return replace(
+            self,
+            status=IngestionJobStatus.FAILED,
+            last_error=error.strip() or "unknown error",
         )

@@ -31,6 +31,7 @@ from src.domain import (
     DocumentRepository,
     DomainValidationError,
     EmbeddingGateway,
+    IngestionInProgressError,
     ReindexInProgressError,
     ReindexJobRepository,
     VectorStoreGateway,
@@ -95,7 +96,7 @@ def start_reindex(
         job = use_case.execute(
             StartReindexInput(user=user, assistant_id=assistant_ref.value)
         )
-    except ReindexInProgressError as exc:
+    except (ReindexInProgressError, IngestionInProgressError) as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),

@@ -23,7 +23,6 @@ from .conversations import (
     CreateConversationRequest,
     MessageResponse,
 )
-from .documents import DocumentIngestionResponse
 from .index import IndexStatusResponse, ReindexJobResponse
 
 __all__ = [
@@ -44,7 +43,6 @@ __all__ = [
     "CreateConversationRequest",
     "CurrentUserResponse",
     "DocumentAccessResponse",
-    "DocumentIngestionResponse",
     "GroupsRequest",
     "GroupsResponse",
     "IndexStatusResponse",

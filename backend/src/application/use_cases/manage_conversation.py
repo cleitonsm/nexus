@@ -16,7 +16,11 @@ from src.domain import (
     ChatMessage,
     Conversation,
     ConversationId,
+    Document,
     ConversationRepository,
+    DocumentId,
+    DocumentRepository,
+    DocumentStatus,
     MessageId,
     MessageRole,
 )
@@ -49,9 +53,31 @@ class GetConversationUseCase:
         self,
         repository: ConversationRepository,
         access_control: AccessControl,
+        document_repository: DocumentRepository | None = None,
     ) -> None:
         self._repository = repository
         self._access = access_control
+        self._documents = document_repository
+
+    def removed_sources(self, conversation: Conversation) -> frozenset[str]:
+        """RN-29, D10: documentos citados que foram excluidos ou substituidos.
+
+        As citacoes guardadas continuam na conversa; a tela as marca como
+        fonte removida.
+        """
+        documents = self._documents
+        if documents is None:
+            return frozenset()
+        cited = {
+            citation.document_id.value
+            for message in conversation.messages
+            for citation in message.citations
+        }
+        return frozenset(
+            document_id
+            for document_id in cited
+            if not _is_available(documents.get_by_id(DocumentId(document_id)))
+        )
 
     def execute(self, data: ConversationRefInput) -> Conversation:
         return load_owned_conversation(
@@ -60,6 +86,10 @@ class GetConversationUseCase:
             data.user,
             ConversationId(data.conversation_id),
         )
+
+
+def _is_available(document: Document | None) -> bool:
+    return document is not None and document.status is not DocumentStatus.REPLACED
 
 
 class DeleteConversationUseCase:

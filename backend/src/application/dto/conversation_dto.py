@@ -47,9 +47,16 @@ class CitationDTO:
     page: int | None
     score: float
     excerpt: str
+    # Falso quando o documento citado foi excluido ou substituido (RN-29, D10).
+    document_available: bool = True
 
     @classmethod
-    def from_entity(cls, citation: Citation) -> "CitationDTO":
+    def from_entity(
+        cls,
+        citation: Citation,
+        *,
+        removed_documents: frozenset[str] = frozenset(),
+    ) -> "CitationDTO":
         return cls(
             number=citation.number,
             document_id=citation.document_id.value,
@@ -59,6 +66,7 @@ class CitationDTO:
             page=citation.page,
             score=citation.score,
             excerpt=citation.excerpt,
+            document_available=citation.document_id.value not in removed_documents,
         )
 
 
@@ -72,7 +80,12 @@ class MessageDTO:
     citations: tuple[CitationDTO, ...] = ()
 
     @classmethod
-    def from_entity(cls, message: ChatMessage) -> "MessageDTO":
+    def from_entity(
+        cls,
+        message: ChatMessage,
+        *,
+        removed_documents: frozenset[str] = frozenset(),
+    ) -> "MessageDTO":
         return cls(
             id=message.id.value,
             conversation_id=message.conversation_id.value,
@@ -80,7 +93,8 @@ class MessageDTO:
             content=message.content,
             created_at=message.created_at,
             citations=tuple(
-                CitationDTO.from_entity(item) for item in message.citations
+                CitationDTO.from_entity(item, removed_documents=removed_documents)
+                for item in message.citations
             ),
         )
 

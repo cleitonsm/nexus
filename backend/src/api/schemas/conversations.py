@@ -48,6 +48,8 @@ class CitationResponse(BaseModel):
     page: int | None
     score: float
     excerpt: str
+    # Falso quando o documento foi excluido ou substituido (RN-29).
+    document_available: bool = True
 
 
 class MessageResponse(BaseModel):

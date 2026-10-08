@@ -23,12 +23,21 @@ class GroupsResponse(BaseModel):
 
 
 class DocumentAccessResponse(BaseModel):
+    """Documento, seu estado (RF-49) e sua restricao por grupo (RF-43)."""
+
     id: str
     assistant_id: str
     source_name: str
     created_at: datetime
     chunk_count: int
     groups: list[str]
+    status: str
+    version: int
+    failure_reason: str | None = None
+    size_bytes: int | None = None
+    replaces_document_id: str | None = None
+    content_hash: str
+    has_original: bool
 
 
 class AuditEventResponse(BaseModel):

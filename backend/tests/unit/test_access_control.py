@@ -7,6 +7,7 @@ integracao CT-27 a CT-31 conferem contra o ambiente real.
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from access_doubles import AccessFixture, admin, curator, make_user
@@ -16,6 +17,11 @@ from chat_doubles import (
     WordTokenCounter,
     build_retriever,
     hit,
+)
+from ingestion_doubles import (
+    InMemoryIngestionJobQueue,
+    current_documents,
+    find_current_by_hash,
 )
 from src.application.services import (
     AuditTrail,
@@ -43,6 +49,7 @@ from src.application.use_cases import (
     GetIndexStatusUseCase,
     IngestDocumentInput,
     IngestDocumentUseCase,
+    ProcessNextIngestionJobUseCase,
     ListAssistantsUseCase,
     ListAuditEventsInput,
     ListAuditEventsUseCase,
@@ -309,7 +316,17 @@ class DocumentRepository:
         return self.items.get(document_id.value)
 
     def list_by_assistant(self, assistant_id: AssistantId) -> list[Document]:
-        return [d for d in self.items.values() if d.assistant_id == assistant_id]
+        return current_documents(self.items, assistant_id)
+
+    def find_by_hash(
+        self,
+        assistant_id: AssistantId,
+        content_hash: str,
+    ) -> Document | None:
+        return find_current_by_hash(self.items, assistant_id, content_hash)
+
+    def delete(self, document_id: DocumentId) -> bool:
+        return self.items.pop(document_id.value, None) is not None
 
     def add(self, document_id: str, storage_key: str | None = None) -> Document:
         return self.save(
@@ -374,6 +391,31 @@ class GroupVectorStore:
             raise RuntimeError("vector store unavailable")
         self.group_updates.append((collection_name.value, document_id.value, groups))
 
+    def delete_by_document(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+    ) -> None:
+        physical = self.aliases.get(collection_name.value, collection_name.value)
+        if physical in self.collections:
+            self.collections[physical] = [
+                chunk
+                for chunk in self.collections[physical]
+                if chunk.document_id != document_id
+            ]
+
+    def set_document_active(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+        active: bool,
+    ) -> None:
+        physical = self.aliases.get(collection_name.value, collection_name.value)
+        self.collections[physical] = [
+            replace(chunk, active=active) if chunk.document_id == document_id else chunk
+            for chunk in self.collections.get(physical, [])
+        ]
+
     def delete_collection(self, collection_name: CollectionName) -> None:
         self.deleted.append(collection_name.value)
         self.collections.pop(collection_name.value, None)
@@ -404,6 +446,9 @@ class FileStorage:
 
     def load(self, storage_key: str) -> bytes:
         return self.files[storage_key]
+
+    def delete(self, storage_key: str) -> None:
+        self.files.pop(storage_key, None)
 
 
 class OneVectorEmbedding:
@@ -816,12 +861,15 @@ class DocumentManagementTestCase(AccessTestCase):
         document_id: str = "doc-1",
         groups: tuple[str, ...] = (),
     ):
-        return IngestDocumentUseCase(
+        """Envio seguido do processamento pelo worker."""
+        queue = InMemoryIngestionJobQueue(self.documents, self.jobs)
+        indexer = _indexer()
+        result = IngestDocumentUseCase(
             document_repository=self.documents,
             vector_store_gateway=self.vector_store,
-            document_indexer=_indexer(),
+            document_indexer=indexer,
             file_storage=self.storage,
-            reindex_job_repository=self.jobs,
+            job_queue=queue,
             max_file_bytes=1024,
             access_control=self.access.control,
         ).execute(
@@ -830,10 +878,20 @@ class DocumentManagementTestCase(AccessTestCase):
                 assistant_id=ASSISTANT,
                 document_id=document_id,
                 source_name="politica.md",
-                raw_content=self.CONTENT,
+                raw_content=self.CONTENT + document_id.encode(),
                 groups=groups,
             )
         )
+        ProcessNextIngestionJobUseCase(
+            job_queue=queue,
+            document_repository=self.documents,
+            vector_store_gateway=self.vector_store,
+            document_indexer=indexer,
+            file_storage=self.storage,
+            reindex_job_repository=self.jobs,
+            access_control=self.access.control,
+        ).execute()
+        return result
 
     def _restrict(self, user: AuthenticatedUser, *groups: str, document_id: str = "doc-1"):
         return SetDocumentGroupsUseCase(

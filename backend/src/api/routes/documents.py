@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from json import JSONDecodeError
 
 from fastapi import (
@@ -10,6 +12,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Response,
     UploadFile,
     status,
 )
@@ -22,24 +25,28 @@ from src.api.dependencies import (
     get_document_indexer,
     get_document_repository,
     get_file_storage,
+    get_ingestion_job_queue,
     get_max_file_bytes,
     get_reindex_job_repository,
     get_vector_store_gateway,
 )
-from src.api.schemas import (
-    DocumentAccessResponse,
-    DocumentIngestionResponse,
-    GroupsRequest,
-)
+from src.api.schemas import DocumentAccessResponse, GroupsRequest
 from src.application.dto import DocumentAccessDTO
 from src.application.services import AccessControl, DocumentIndexer
 from src.application.use_cases import (
+    DeleteDocumentUseCase,
     DocumentNotFoundError,
+    DocumentRefInput,
     DocumentTooLargeError,
+    GetDocumentUseCase,
     IngestDocumentInput,
     IngestDocumentUseCase,
     ListDocumentsInput,
     ListDocumentsUseCase,
+    ReplaceDocumentInput,
+    ReplaceDocumentUseCase,
+    ReprocessDocumentInput,
+    ReprocessDocumentUseCase,
     SetDocumentGroupsInput,
     SetDocumentGroupsUseCase,
 )
@@ -50,7 +57,10 @@ from src.domain import (
     DocumentFileStorage,
     DocumentRepository,
     DomainValidationError,
+    DuplicateDocumentError,
     IndexOutdatedError,
+    IngestionJobQueue,
+    InvalidDocumentStateError,
     ReindexInProgressError,
     ReindexJobRepository,
     VectorStoreGateway,
@@ -61,7 +71,7 @@ router = APIRouter(
     tags=["documents"],
     dependencies=[Depends(get_current_user)],
 )
-# A restricao e endereçada pelo documento: o assistente vem do proprio registro.
+# Operacoes sobre um documento: o assistente vem do proprio registro.
 document_router = APIRouter(
     prefix="/documents",
     tags=["documents"],
@@ -74,8 +84,8 @@ logger = logging.getLogger(__name__)
 
 @router.post(
     "",
-    response_model=DocumentIngestionResponse,
-    status_code=status.HTTP_201_CREATED,
+    response_model=DocumentAccessResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 async def ingest_document(
     assistant_id: str,
@@ -89,51 +99,39 @@ async def ingest_document(
     vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
     document_indexer: DocumentIndexer = Depends(get_document_indexer),
     file_storage: DocumentFileStorage = Depends(get_file_storage),
-    reindex_job_repository: ReindexJobRepository = Depends(
-        get_reindex_job_repository
-    ),
+    job_queue: IngestionJobQueue = Depends(get_ingestion_job_queue),
     max_file_bytes: int = Depends(get_max_file_bytes),
-) -> DocumentIngestionResponse:
-    logger.info(
-        "document.upload.started",
-        extra={
-            "assistant_id": assistant_id,
-            "content_type": file.content_type,
-            "has_metadata": metadata is not None,
-        },
-    )
-    try:
-        assistant_ref = AssistantId(assistant_id)
-    except DomainValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+) -> DocumentAccessResponse:
+    """RF-48: guarda o original e enfileira; o worker indexa em segundo plano.
 
-    assistant = assistant_repository.get_by_id(assistant_ref)
-    if assistant is None:
+    Responde 202 com o documento pendente; 409 para arquivo ja enviado ao
+    assistente (RN-26), com o documento existente no corpo.
+    """
+    assistant_ref = _assistant_ref(assistant_id)
+    if assistant_repository.get_by_id(assistant_ref) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="assistant not found",
         )
-
     file_bytes = await file.read()
     logger.info(
-        "document.upload.read",
-        extra={"file_size_bytes": len(file_bytes)},
+        "document.upload.received",
+        extra={
+            "assistant_id": assistant_ref.value,
+            "content_type": file.content_type,
+            "file_size_bytes": len(file_bytes),
+        },
     )
     use_case = IngestDocumentUseCase(
         document_repository=document_repository,
         vector_store_gateway=vector_store_gateway,
         document_indexer=document_indexer,
         file_storage=file_storage,
-        reindex_job_repository=reindex_job_repository,
+        job_queue=job_queue,
         max_file_bytes=max_file_bytes,
         access_control=access_control,
     )
-    try:
-        # A vetorizacao em CPU e demorada: fora do laco de eventos, a API
-        # continua respondendo (inclusive ao healthcheck) durante o upload.
+    with _translate_errors():
         result = await run_in_threadpool(
             use_case.execute,
             IngestDocumentInput(
@@ -146,46 +144,7 @@ async def ingest_document(
                 groups=_parse_groups_field(groups),
             ),
         )
-    except DocumentTooLargeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=str(exc),
-        ) from exc
-    except (IndexOutdatedError, ReindexInProgressError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
-    except (DomainValidationError, ValueError, RuntimeError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
-
-    return DocumentIngestionResponse(
-        id=result.id,
-        assistant_id=result.assistant_id,
-        source_name=result.source_name,
-        content_hash=result.content_hash,
-        created_at=result.created_at,
-        collection_name=result.collection_name,
-        chunk_count=result.chunk_count,
-        embedding_dimension=result.embedding_dimension,
-        embedding_model=result.embedding_model,
-        pipeline_version=result.pipeline_version,
-        groups=list(result.groups),
-    )
-
-
-def _document_response(item: DocumentAccessDTO) -> DocumentAccessResponse:
-    return DocumentAccessResponse(
-        id=item.id,
-        assistant_id=item.assistant_id,
-        source_name=item.source_name,
-        created_at=item.created_at,
-        chunk_count=item.chunk_count,
-        groups=list(item.groups),
-    )
+    return _document_response(result)
 
 
 @router.get("", response_model=list[DocumentAccessResponse])
@@ -196,14 +155,8 @@ def list_documents(
     assistant_repository: AssistantRepository = Depends(get_assistant_repository),
     document_repository: DocumentRepository = Depends(get_document_repository),
 ) -> list[DocumentAccessResponse]:
-    """Documentos do assistente e a restricao de cada um (HU-25)."""
-    try:
-        assistant_ref = AssistantId(assistant_id)
-    except DomainValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    """Documentos vigentes do assistente, com estado e restricao (RF-49, HU-25)."""
+    assistant_ref = _assistant_ref(assistant_id)
     if assistant_repository.get_by_id(assistant_ref) is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -214,6 +167,110 @@ def list_documents(
         access_control=access_control,
     ).execute(ListDocumentsInput(user=user, assistant_id=assistant_ref.value))
     return [_document_response(item) for item in documents]
+
+
+@document_router.get("/{document_id}", response_model=DocumentAccessResponse)
+def get_document(
+    document_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    document_repository: DocumentRepository = Depends(get_document_repository),
+) -> DocumentAccessResponse:
+    """RF-49: estado atual, consultado pela tela enquanto o documento processa."""
+    with _translate_errors():
+        result = GetDocumentUseCase(
+            document_repository=document_repository,
+            access_control=access_control,
+        ).execute(DocumentRefInput(user=user, document_id=document_id))
+    return _document_response(result)
+
+
+@document_router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(
+    document_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    document_repository: DocumentRepository = Depends(get_document_repository),
+    vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
+    file_storage: DocumentFileStorage = Depends(get_file_storage),
+    reindex_job_repository: ReindexJobRepository = Depends(
+        get_reindex_job_repository
+    ),
+) -> Response:
+    """RF-50, RN-29: remove trechos, arquivo original e registro."""
+    with _translate_errors():
+        DeleteDocumentUseCase(
+            document_repository=document_repository,
+            vector_store_gateway=vector_store_gateway,
+            file_storage=file_storage,
+            reindex_job_repository=reindex_job_repository,
+            access_control=access_control,
+        ).execute(DocumentRefInput(user=user, document_id=document_id))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@document_router.put(
+    "/{document_id}/content",
+    response_model=DocumentAccessResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def replace_document(
+    document_id: str,
+    file: UploadFile = File(...),
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    document_repository: DocumentRepository = Depends(get_document_repository),
+    vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
+    document_indexer: DocumentIndexer = Depends(get_document_indexer),
+    file_storage: DocumentFileStorage = Depends(get_file_storage),
+    job_queue: IngestionJobQueue = Depends(get_ingestion_job_queue),
+    max_file_bytes: int = Depends(get_max_file_bytes),
+) -> DocumentAccessResponse:
+    """RF-51, RN-28: a nova versao fica pendente; a atual responde ate o fim."""
+    file_bytes = await file.read()
+    use_case = ReplaceDocumentUseCase(
+        document_repository=document_repository,
+        vector_store_gateway=vector_store_gateway,
+        document_indexer=document_indexer,
+        file_storage=file_storage,
+        job_queue=job_queue,
+        max_file_bytes=max_file_bytes,
+        access_control=access_control,
+    )
+    with _translate_errors():
+        result = await run_in_threadpool(
+            use_case.execute,
+            ReplaceDocumentInput(
+                user=user,
+                document_id=document_id,
+                source_name=file.filename or "uploaded-document.txt",
+                raw_content=file_bytes,
+                content_type=file.content_type,
+            ),
+        )
+    return _document_response(result)
+
+
+@document_router.post(
+    "/{document_id}/reprocess",
+    response_model=DocumentAccessResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def reprocess_document(
+    document_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    document_repository: DocumentRepository = Depends(get_document_repository),
+    job_queue: IngestionJobQueue = Depends(get_ingestion_job_queue),
+) -> DocumentAccessResponse:
+    """RF-54: documento que falhou volta a fila, a partir do original guardado."""
+    with _translate_errors():
+        result = ReprocessDocumentUseCase(
+            document_repository=document_repository,
+            job_queue=job_queue,
+            access_control=access_control,
+        ).execute(ReprocessDocumentInput(user=user, document_id=document_id))
+    return _document_response(result)
 
 
 @document_router.put("/{document_id}/groups", response_model=DocumentAccessResponse)
@@ -235,7 +292,7 @@ def set_document_groups(
         reindex_job_repository=reindex_job_repository,
         access_control=access_control,
     )
-    try:
+    with _translate_errors():
         result = use_case.execute(
             SetDocumentGroupsInput(
                 user=user,
@@ -243,22 +300,76 @@ def set_document_groups(
                 groups=tuple(payload.groups),
             )
         )
+    return _document_response(result)
+
+
+@contextmanager
+def _translate_errors() -> Iterator[None]:
+    """Traduz os erros dos casos de uso de documentos para HTTP."""
+    try:
+        yield
+    except DuplicateDocumentError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "duplicate_document",
+                "message": str(exc),
+                "document_id": exc.existing_document_id,
+                "source_name": exc.existing_source_name,
+            },
+        ) from exc
     except DocumentNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="document not found",
         ) from exc
-    except ReindexInProgressError as exc:
+    except DocumentTooLargeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=str(exc),
+        ) from exc
+    except (
+        IndexOutdatedError,
+        ReindexInProgressError,
+        InvalidDocumentStateError,
+    ) as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
+    except (DomainValidationError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+def _assistant_ref(assistant_id: str) -> AssistantId:
+    try:
+        return AssistantId(assistant_id)
     except DomainValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
-    return _document_response(result)
+
+
+def _document_response(item: DocumentAccessDTO) -> DocumentAccessResponse:
+    return DocumentAccessResponse(
+        id=item.id,
+        assistant_id=item.assistant_id,
+        source_name=item.source_name,
+        created_at=item.created_at,
+        chunk_count=item.chunk_count,
+        groups=list(item.groups),
+        status=item.status,
+        version=item.version,
+        failure_reason=item.failure_reason,
+        size_bytes=item.size_bytes,
+        replaces_document_id=item.replaces_document_id,
+        content_hash=item.content_hash,
+        has_original=item.has_original,
+    )
 
 
 def _parse_groups_field(raw_groups: str | None) -> tuple[str, ...]:
@@ -268,11 +379,11 @@ def _parse_groups_field(raw_groups: str | None) -> tuple[str, ...]:
     try:
         parsed = json.loads(raw_groups)
     except JSONDecodeError as exc:
-        raise ValueError("groups field must be a JSON array of strings.") from exc
+        raise _invalid_form("groups field must be a JSON array of strings.") from exc
     if not isinstance(parsed, list) or not all(
         isinstance(item, str) for item in parsed
     ):
-        raise ValueError("groups field must be a JSON array of strings.")
+        raise _invalid_form("groups field must be a JSON array of strings.")
     return tuple(parsed)
 
 
@@ -282,9 +393,14 @@ def _parse_metadata_field(raw_metadata: str | None) -> dict[str, str]:
     try:
         parsed = json.loads(raw_metadata)
     except JSONDecodeError as exc:
-        raise ValueError(
-            "metadata field must be a valid JSON object."
-        ) from exc
+        raise _invalid_form("metadata field must be a valid JSON object.") from exc
     if not isinstance(parsed, dict):
-        raise ValueError("metadata field must be a JSON object.")
+        raise _invalid_form("metadata field must be a JSON object.")
     return {str(key): str(value) for key, value in parsed.items()}
+
+
+def _invalid_form(detail: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail=detail,
+    )

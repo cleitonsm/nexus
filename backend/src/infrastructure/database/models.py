@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     DateTime,
     ForeignKey,
     Index,
@@ -46,6 +47,10 @@ class AssistantModel(Base):
 
 class DocumentModel(Base):
     __tablename__ = "documents"
+    __table_args__ = (
+        # RN-26: busca do mesmo conteudo no assistente a cada envio.
+        Index("ix_documents_assistant_hash", "assistant_id", "content_hash"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     assistant_id: Mapped[str] = mapped_column(
@@ -84,9 +89,75 @@ class DocumentModel(Base):
         String(512),
         nullable=True,
     )
+    # Ciclo de vida (SPEC-005). Documentos anteriores ficam indexados (C3).
+    status: Mapped[str] = mapped_column(
+        String(16),
+        default="indexado",
+        server_default="indexado",
+        nullable=False,
+    )
+    failure_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    attempts: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger(), nullable=True)
+    version: Mapped[int] = mapped_column(
+        Integer(),
+        default=1,
+        server_default="1",
+        nullable=False,
+    )
+    replaces_document_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    uploaded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     assistant: Mapped[AssistantModel] = relationship(
         back_populates="documents"
+    )
+
+
+class IngestionJobModel(Base):
+    """Fila de processamento consumida pelo worker (ADR 0009)."""
+
+    __tablename__ = "ingestion_jobs"
+    __table_args__ = (
+        Index("ix_ingestion_jobs_status_available", "status", "available_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    document_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    attempts: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    available_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    reserved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_error: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=_utc_now,
+        nullable=False,
     )
 
 

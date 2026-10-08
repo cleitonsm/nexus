@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -12,6 +14,7 @@ from src.api.dependencies import (
     get_document_repository,
     get_embedding_gateway,
     get_file_storage,
+    get_ingestion_job_queue,
     get_max_file_bytes,
     get_reindex_job_repository,
     get_reindex_runner,
@@ -27,6 +30,7 @@ from src.api.routes import (
     index_router,
 )
 from src.application.services import DocumentIndexer
+from src.application.use_cases import ProcessNextIngestionJobUseCase
 from src.domain import (
     Assistant,
     AssistantId,
@@ -37,6 +41,9 @@ from src.domain import (
     Document,
     DocumentId,
     DocumentMetadata,
+    DocumentStatus,
+    IngestionJob,
+    IngestionJobStatus,
     ReindexJob,
     SearchResult,
     SparseVector,
@@ -104,12 +111,72 @@ class InMemoryDocumentRepository:
         self.items[document.id.value] = document
         return document
 
+    def get_by_id(self, document_id: DocumentId) -> Document | None:
+        return self.items.get(document_id.value)
+
     def list_by_assistant(self, assistant_id: AssistantId) -> list[Document]:
         return [
             item
             for item in self.items.values()
             if item.assistant_id == assistant_id
+            and item.status is not DocumentStatus.REPLACED
         ]
+
+    def find_by_hash(
+        self,
+        assistant_id: AssistantId,
+        content_hash: str,
+    ) -> Document | None:
+        return next(
+            (
+                item
+                for item in self.list_by_assistant(assistant_id)
+                if item.content_hash == content_hash
+            ),
+            None,
+        )
+
+    def delete(self, document_id: DocumentId) -> bool:
+        return self.items.pop(document_id.value, None) is not None
+
+
+class InMemoryJobQueue:
+    """Fila do worker; ``complete``, ``retry`` e ``fail`` gravam o documento."""
+
+    def __init__(self, documents: InMemoryDocumentRepository) -> None:
+        self.documents = documents
+        self.jobs: dict[str, IngestionJob] = {}
+
+    def enqueue(self, job: IngestionJob) -> IngestionJob:
+        self.jobs[job.id] = job
+        return job
+
+    def reserve_next(self, now: datetime) -> IngestionJob | None:
+        for job in self.jobs.values():
+            if (
+                job.status is IngestionJobStatus.PENDING
+                and self.documents.get_by_id(job.document_id) is not None
+            ):
+                self.jobs[job.id] = job.reserve(now)
+                return self.jobs[job.id]
+        return None
+
+    def list_expired(self, reserved_before: datetime) -> list[IngestionJob]:
+        return []
+
+    def complete(self, job, document, replaced=None) -> None:
+        self.jobs[job.id] = job
+        self.documents.save(document)
+        if replaced is not None:
+            self.documents.save(replaced)
+
+    def retry(self, job, document) -> None:
+        self.jobs[job.id] = job
+        self.documents.save(document)
+
+    def fail(self, job, document) -> None:
+        self.jobs[job.id] = job
+        self.documents.save(document)
 
 
 class FakeEmbeddingGateway:
@@ -163,6 +230,9 @@ class InMemoryFileStorage:
     def load(self, storage_key: str) -> bytes:
         return self.files[storage_key]
 
+    def delete(self, storage_key: str) -> None:
+        self.files.pop(storage_key, None)
+
 
 class InMemoryReindexJobRepository:
     def __init__(self) -> None:
@@ -197,6 +267,7 @@ class SpyVectorStoreGateway:
         self.aliases: dict[str, str] = {}
         self.upserts: list[tuple[str, list[VectorChunk]]] = []
         self.group_updates: list[tuple[str, str, frozenset[str]]] = []
+        self.deleted_documents: list[str] = []
 
     def ensure_collection(
         self, collection_name: CollectionName, vector_size: int
@@ -229,6 +300,34 @@ class SpyVectorStoreGateway:
         self.group_updates.append(
             (collection_name.value, document_id.value, groups)
         )
+
+    def delete_by_document(
+        self, collection_name: CollectionName, document_id: DocumentId
+    ) -> None:
+        self.deleted_documents.append(document_id.value)
+        self.upserts = [
+            (name, [chunk for chunk in chunks if chunk.document_id != document_id])
+            for name, chunks in self.upserts
+        ]
+
+    def set_document_active(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+        active: bool,
+    ) -> None:
+        self.upserts = [
+            (
+                name,
+                [
+                    replace(chunk, active=active)
+                    if chunk.document_id == document_id
+                    else chunk
+                    for chunk in chunks
+                ],
+            )
+            for name, chunks in self.upserts
+        ]
 
     def delete_collection(self, collection_name: CollectionName) -> None:
         self.collections.pop(collection_name.value, None)
@@ -358,9 +457,26 @@ class ApiRoutesTestCase(unittest.TestCase):
         overrides[get_embedding_gateway] = FakeEmbeddingGateway
         overrides[get_max_file_bytes] = lambda: max_file_bytes
         overrides[get_reindex_runner] = lambda: self.started_jobs.append
+        self.queue = InMemoryJobQueue(document_repository)
+        overrides[get_ingestion_job_queue] = lambda: self.queue
+        self.worker = ProcessNextIngestionJobUseCase(
+            job_queue=self.queue,
+            document_repository=document_repository,
+            vector_store_gateway=vector_store,
+            document_indexer=_fake_document_indexer(),
+            file_storage=file_storage,
+            reindex_job_repository=job_repository,
+            access_control=self.access.control,
+        )
         return document_repository, vector_store
 
+    def _run_worker(self) -> None:
+        """Faz o papel do servico ``worker`` ate a fila esvaziar."""
+        while self.worker.execute() is not None:
+            pass
+
     def test_ingest_document_endpoint_accepts_text_file_and_metadata(self) -> None:
+        """RF-48: responde 202 com o documento pendente; o worker indexa."""
         document_repository, vector_store = self._override_indexing()
 
         with TestClient(self.app) as client:
@@ -369,30 +485,38 @@ class ApiRoutesTestCase(unittest.TestCase):
                 files={"file": ("manual.txt", b"Conteudo principal", "text/plain")},
                 data={"metadata": '{"source":"qa","team":"ops"}'},
             )
+            self.assertEqual(response.status_code, 202)
+            payload = response.json()
+            self.assertEqual(payload["assistant_id"], "assistant-1")
+            self.assertEqual(payload["source_name"], "manual.txt")
+            self.assertEqual(payload["status"], "pendente")
+            self.assertEqual(payload["version"], 1)
+            self.assertEqual(payload["chunk_count"], 0)
+            self.assertEqual(payload["size_bytes"], len(b"Conteudo principal"))
+            self.assertEqual(vector_store.upserts, [])
 
-        self.assertEqual(response.status_code, 201)
-        payload = response.json()
-        self.assertEqual(payload["assistant_id"], "assistant-1")
-        self.assertEqual(payload["source_name"], "manual.txt")
-        self.assertGreaterEqual(payload["chunk_count"], 1)
-        self.assertEqual(payload["embedding_dimension"], 2)
-        self.assertEqual(payload["embedding_model"], "fake-model")
-        self.assertEqual(payload["collection_name"], "assistant-assistant-1")
+            self._run_worker()
+            current = client.get(f"/documents/{payload['id']}")
+
+        self.assertEqual(current.status_code, 200)
+        self.assertEqual(current.json()["status"], "indexado")
+        self.assertGreaterEqual(current.json()["chunk_count"], 1)
         self.assertIn("assistant-assistant-1-v1", vector_store.collections)
         self.assertEqual(
             vector_store.aliases,
             {"assistant-assistant-1": "assistant-assistant-1-v1"},
         )
-        self.assertEqual(len(document_repository.items), 1)
         stored = next(iter(document_repository.items.values()))
         self.assertEqual(
             stored.metadata,
             DocumentMetadata(values={"source": "qa", "team": "ops"}),
         )
         self.assertIsNotNone(stored.storage_key)
+        (_, chunks), = vector_store.upserts
+        self.assertTrue(all(chunk.active for chunk in chunks))
 
     def test_ingest_document_endpoint_restricts_chunks_from_the_start(self) -> None:
-        """D8: grupos no envio gravam os trechos ja restritos."""
+        """D8 da SPEC-004: grupos no envio gravam os trechos ja restritos."""
         document_repository, vector_store = self._override_indexing()
 
         with TestClient(self.app) as client:
@@ -403,11 +527,12 @@ class ApiRoutesTestCase(unittest.TestCase):
             )
             invalid = client.post(
                 "/assistants/assistant-1/documents",
-                files={"file": ("manual.txt", b"Conteudo principal", "text/plain")},
+                files={"file": ("outro.txt", b"Outro conteudo", "text/plain")},
                 data={"groups": "diretoria"},
             )
+        self._run_worker()
 
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, 202)
         self.assertEqual(response.json()["groups"], ["diretoria", "rh"])
         (_, chunks), = vector_store.upserts
         self.assertTrue(all(chunk.allowed_groups == ("diretoria", "rh") for chunk in chunks))
@@ -418,6 +543,80 @@ class ApiRoutesTestCase(unittest.TestCase):
         )
         self.assertEqual(invalid.status_code, 422)
         self.assertEqual(len(document_repository.items), 1)
+
+    def test_duplicate_upload_reports_the_existing_document(self) -> None:
+        """RN-26: 409 com o documento ja enviado; nada e gravado."""
+        document_repository, _ = self._override_indexing()
+        upload = {"file": ("manual.txt", b"Conteudo principal", "text/plain")}
+
+        with TestClient(self.app) as client:
+            first = client.post("/assistants/assistant-1/documents", files=upload)
+            again = client.post(
+                "/assistants/assistant-1/documents",
+                files={"file": ("copia.txt", b"Conteudo principal", "text/plain")},
+            )
+
+        self.assertEqual(again.status_code, 409)
+        detail = again.json()["detail"]
+        self.assertEqual(detail["code"], "duplicate_document")
+        self.assertEqual(detail["document_id"], first.json()["id"])
+        self.assertEqual(detail["source_name"], "manual.txt")
+        self.assertEqual(len(document_repository.items), 1)
+
+    def test_document_lifecycle_routes(self) -> None:
+        """RF-50, RF-51, RF-54: excluir, substituir e reprocessar."""
+        document_repository, vector_store = self._override_indexing()
+
+        with TestClient(self.app) as client:
+            created = client.post(
+                "/assistants/assistant-1/documents",
+                files={"file": ("manual.txt", b"Versao um.", "text/plain")},
+            ).json()
+            self._run_worker()
+            reprocess_indexed = client.post(f"/documents/{created['id']}/reprocess")
+            replaced = client.put(
+                f"/documents/{created['id']}/content",
+                files={"file": ("manual-v2.txt", b"Versao dois.", "text/plain")},
+            )
+            self._run_worker()
+            listed = client.get("/assistants/assistant-1/documents")
+            new_id = replaced.json()["id"]
+            deleted = client.delete(f"/documents/{new_id}")
+            after_delete = client.get(f"/documents/{new_id}")
+            unknown = client.delete("/documents/nao-existe")
+
+        self.assertEqual(reprocess_indexed.status_code, 409)
+        self.assertEqual(replaced.status_code, 202)
+        self.assertEqual(replaced.json()["version"], 2)
+        self.assertEqual(replaced.json()["replaces_document_id"], created["id"])
+        self.assertEqual(
+            [(item["id"], item["status"]) for item in listed.json()],
+            [(new_id, "indexado")],
+        )
+        self.assertEqual(deleted.status_code, 204)
+        self.assertEqual(after_delete.status_code, 404)
+        self.assertEqual(unknown.status_code, 404)
+        self.assertIn(new_id, vector_store.deleted_documents)
+        self.assertEqual(
+            document_repository.items[created["id"]].status, DocumentStatus.REPLACED
+        )
+
+    def test_failed_document_is_reprocessed_from_the_original(self) -> None:
+        document_repository, _ = self._override_indexing()
+
+        with TestClient(self.app) as client:
+            created = client.post(
+                "/assistants/assistant-1/documents",
+                files={"file": ("vazio.txt", b"   ", "text/plain")},
+            ).json()
+            self._run_worker()
+            failed = client.get(f"/documents/{created['id']}").json()
+            again = client.post(f"/documents/{created['id']}/reprocess")
+
+        self.assertEqual(failed["status"], "falhou")
+        self.assertTrue(failed["failure_reason"])
+        self.assertEqual(again.status_code, 202)
+        self.assertEqual(again.json()["status"], "pendente")
 
     def test_ingest_document_endpoint_rejects_file_above_limit(self) -> None:
         document_repository, _ = self._override_indexing(max_file_bytes=8)
@@ -473,6 +672,7 @@ class ApiRoutesTestCase(unittest.TestCase):
                 "/assistants/assistant-1/documents",
                 files={"file": ("manual.txt", b"Conteudo principal", "text/plain")},
             )
+            self._run_worker()
             response = client.get("/assistants/assistant-1/index-status")
 
         self.assertEqual(response.status_code, 200)

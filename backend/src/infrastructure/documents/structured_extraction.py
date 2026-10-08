@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import re
-from typing import Callable, Iterator
+from typing import Callable, Iterator, Protocol
 
 from src.domain import BlockType, DocumentBlock, ExtractedDocument
 
@@ -30,12 +30,20 @@ _PDF_HEADING_MAX_WORDS = 12
 _SENTENCE_END = ".;:,!?"
 
 
+class PdfPageOcr(Protocol):
+    """Reconhece o texto de uma pagina de PDF sem camada de texto (RF-53)."""
+
+    def recognize_page(self, pdf_content: bytes, page_number: int) -> str: ...
+
+
 def extract_supported_document(
     *,
     filename: str | None,
     content_type: str | None,
     raw_content: bytes,
+    ocr: PdfPageOcr | None = None,
 ) -> ExtractedDocument:
+    """``ocr`` trata as paginas de PDF sem texto; sem ele, elas ficam vazias."""
     document_type = resolve_document_type(filename, content_type)
     if document_type is None:
         raise ValueError(
@@ -45,7 +53,10 @@ def extract_supported_document(
     if not raw_content:
         raise ValueError("uploaded file is empty.")
 
-    blocks = _BLOCK_EXTRACTORS[document_type](raw_content)
+    if document_type == ".pdf":
+        blocks = _parse_pdf_pages(_read_pdf_pages(raw_content, ocr))
+    else:
+        blocks = _BLOCK_EXTRACTORS[document_type](raw_content)
     if not blocks:
         raise ValueError("uploaded file does not contain text content.")
     return ExtractedDocument(blocks=tuple(blocks))
@@ -217,16 +228,31 @@ def _pdf_heading(line: str) -> tuple[int, str] | None:
     return match.group(1).count(".") + 1, title
 
 
-def _read_pdf_pages(raw_content: bytes) -> list[str]:
+def _read_pdf_pages(
+    raw_content: bytes,
+    ocr: PdfPageOcr | None = None,
+) -> list[str]:
     try:
         from pypdf import PdfReader  # type: ignore[import-not-found]
+        from pypdf.errors import PyPdfError  # type: ignore[import-not-found]
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(
             "pypdf dependency is required to process PDF files."
         ) from exc
 
-    reader = PdfReader(io.BytesIO(raw_content))
-    return [(page.extract_text() or "") for page in reader.pages]
+    try:
+        reader = PdfReader(io.BytesIO(raw_content))
+        pages = [(page.extract_text() or "") for page in reader.pages]
+    except PyPdfError as exc:
+        # Arquivo corrompido: nenhuma nova tentativa o tornaria legivel (C1).
+        raise ValueError(f"could not read the PDF file: {exc}") from exc
+    if ocr is None:
+        return pages
+    # Pagina digitalizada: so imagem, nenhum caractere na camada de texto.
+    return [
+        text if text.strip() else ocr.recognize_page(raw_content, number)
+        for number, text in enumerate(pages, start=1)
+    ]
 
 
 def _parse_docx(raw_content: bytes) -> list[DocumentBlock]:
@@ -311,10 +337,6 @@ def _plain_blocks(raw_content: bytes) -> list[DocumentBlock]:
     return _parse_plain_text(_extract_plain_text(raw_content))
 
 
-def _pdf_blocks(raw_content: bytes) -> list[DocumentBlock]:
-    return _parse_pdf_pages(_read_pdf_pages(raw_content))
-
-
 def _doc_blocks(raw_content: bytes) -> list[DocumentBlock]:
     return _parse_plain_text(_extract_doc_text(raw_content))
 
@@ -323,7 +345,6 @@ _BLOCK_EXTRACTORS: dict[str, Callable[[bytes], list[DocumentBlock]]] = {
     ".txt": _plain_blocks,
     ".md": _markdown_blocks,
     ".markdown": _markdown_blocks,
-    ".pdf": _pdf_blocks,
     ".docx": _parse_docx,
     ".doc": _doc_blocks,
 }

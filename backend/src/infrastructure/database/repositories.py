@@ -20,6 +20,10 @@ from src.domain import (
     Document,
     DocumentId,
     DocumentMetadata,
+    DocumentStatus,
+    IngestionJob,
+    IngestionJobKind,
+    IngestionJobStatus,
     MessageId,
     MessageRole,
     ReindexInProgressError,
@@ -34,6 +38,7 @@ from .models import (
     ConversationModel,
     DocumentGroupModel,
     DocumentModel,
+    IngestionJobModel,
     MessageModel,
     ReindexJobModel,
     SecretSettingModel,
@@ -195,30 +200,7 @@ class PostgresDocumentRepository:
         self._session = session
 
     def save(self, document: Document) -> Document:
-        model = self._session.get(DocumentModel, document.id.value)
-        if model is None:
-            model = DocumentModel(
-                id=document.id.value,
-                assistant_id=document.assistant_id.value,
-                source_name=document.source_name,
-                content_hash=document.content_hash,
-                metadata_json=json.dumps(document.metadata.values),
-                created_at=document.created_at,
-                embedding_model=document.embedding_model,
-                pipeline_version=document.pipeline_version,
-                chunk_count=document.chunk_count,
-                storage_key=document.storage_key,
-            )
-            self._session.add(model)
-        else:
-            model.assistant_id = document.assistant_id.value
-            model.source_name = document.source_name
-            model.content_hash = document.content_hash
-            model.metadata_json = json.dumps(document.metadata.values)
-            model.embedding_model = document.embedding_model
-            model.pipeline_version = document.pipeline_version
-            model.chunk_count = document.chunk_count
-            model.storage_key = document.storage_key
+        model = _write_document(self._session, document)
         self._session.commit()
         self._session.refresh(model)
         return _document_to_entity(model)
@@ -228,9 +210,13 @@ class PostgresDocumentRepository:
         return _document_to_entity(model) if model else None
 
     def list_by_assistant(self, assistant_id: AssistantId) -> list[Document]:
+        """Documentos vigentes; versoes substituidas ficam de fora (D5)."""
         stmt = (
             select(DocumentModel)
-            .where(DocumentModel.assistant_id == assistant_id.value)
+            .where(
+                DocumentModel.assistant_id == assistant_id.value,
+                DocumentModel.status != DocumentStatus.REPLACED.value,
+            )
             .order_by(DocumentModel.created_at.desc())
         )
         return [
@@ -238,6 +224,23 @@ class PostgresDocumentRepository:
             for item in self._session.scalars(stmt).all()
         ]
 
+    def find_by_hash(
+        self,
+        assistant_id: AssistantId,
+        content_hash: str,
+    ) -> Document | None:
+        stmt = (
+            select(DocumentModel)
+            .where(
+                DocumentModel.assistant_id == assistant_id.value,
+                DocumentModel.content_hash == content_hash,
+                DocumentModel.status != DocumentStatus.REPLACED.value,
+            )
+            .order_by(DocumentModel.created_at)
+            .limit(1)
+        )
+        model = self._session.scalars(stmt).first()
+        return _document_to_entity(model) if model else None
 
     def delete(self, document_id: DocumentId) -> bool:
         model = self._session.get(DocumentModel, document_id.value)
@@ -246,6 +249,96 @@ class PostgresDocumentRepository:
         self._session.delete(model)
         self._session.commit()
         return True
+
+
+class PostgresIngestionJobQueue:
+    """Fila sobre a tabela ``ingestion_jobs`` (ADR 0009).
+
+    A reserva usa ``FOR UPDATE SKIP LOCKED``: varios workers consultam ao
+    mesmo tempo sem pegar o mesmo job. Conclusao, nova tentativa e falha
+    gravam job e documento numa unica transacao.
+    """
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def enqueue(self, job: IngestionJob) -> IngestionJob:
+        model = IngestionJobModel(id=job.id, created_at=job.created_at)
+        _apply_job(model, job)
+        self._session.add(model)
+        self._session.commit()
+        return job
+
+    def reserve_next(self, now: datetime) -> IngestionJob | None:
+        reindexing = (
+            select(ReindexJobModel.id)
+            .where(
+                ReindexJobModel.assistant_id == DocumentModel.assistant_id,
+                ReindexJobModel.status == ReindexStatus.RUNNING.value,
+            )
+            .exists()
+        )
+        stmt = (
+            select(IngestionJobModel)
+            .join(DocumentModel, DocumentModel.id == IngestionJobModel.document_id)
+            .where(
+                IngestionJobModel.status == IngestionJobStatus.PENDING.value,
+                IngestionJobModel.available_at <= now,
+                ~reindexing,
+            )
+            .order_by(IngestionJobModel.available_at, IngestionJobModel.created_at)
+            .limit(1)
+            .with_for_update(skip_locked=True, of=IngestionJobModel)
+        )
+        model = self._session.scalars(stmt).first()
+        if model is None:
+            self._session.rollback()
+            return None
+        job = _ingestion_job_to_entity(model).reserve(now)
+        _apply_job(model, job)
+        self._session.commit()
+        return job
+
+    def list_expired(self, reserved_before: datetime) -> list[IngestionJob]:
+        stmt = select(IngestionJobModel).where(
+            IngestionJobModel.status == IngestionJobStatus.PROCESSING.value,
+            IngestionJobModel.reserved_at < reserved_before,
+        )
+        jobs = [
+            _ingestion_job_to_entity(item)
+            for item in self._session.scalars(stmt).all()
+        ]
+        self._session.rollback()
+        return jobs
+
+    def complete(
+        self,
+        job: IngestionJob,
+        document: Document,
+        replaced: Document | None = None,
+    ) -> None:
+        documents = [document] if replaced is None else [document, replaced]
+        self._write(job, documents)
+
+    def retry(self, job: IngestionJob, document: Document) -> None:
+        self._write(job, [document])
+
+    def fail(self, job: IngestionJob, document: Document) -> None:
+        self._write(job, [document])
+
+    def _write(self, job: IngestionJob, documents: list[Document]) -> None:
+        try:
+            model = self._session.get(IngestionJobModel, job.id)
+            if model is not None:
+                _apply_job(model, job)
+            for document in documents:
+                # Documento excluido durante o processamento nao volta (C4).
+                if self._session.get(DocumentModel, document.id.value) is not None:
+                    _write_document(self._session, document)
+            self._session.commit()
+        except Exception:
+            self._session.rollback()
+            raise
 
 
 class PostgresReindexJobRepository:
@@ -575,6 +668,56 @@ def _citation_from_json(item: dict[str, object]) -> Citation:
     )
 
 
+def _write_document(session: Session, document: Document) -> DocumentModel:
+    """Inclui ou atualiza o documento na sessao, sem confirmar a transacao."""
+    model = session.get(DocumentModel, document.id.value)
+    if model is None:
+        model = DocumentModel(id=document.id.value, created_at=document.created_at)
+        session.add(model)
+    model.assistant_id = document.assistant_id.value
+    model.source_name = document.source_name
+    model.content_hash = document.content_hash
+    model.metadata_json = json.dumps(document.metadata.values)
+    model.embedding_model = document.embedding_model
+    model.pipeline_version = document.pipeline_version
+    model.chunk_count = document.chunk_count
+    model.storage_key = document.storage_key
+    model.status = document.status.value
+    model.failure_reason = document.failure_reason
+    model.attempts = document.attempts
+    model.size_bytes = document.size_bytes
+    model.version = document.version
+    model.replaces_document_id = (
+        document.replaces_document_id.value if document.replaces_document_id else None
+    )
+    model.uploaded_by = document.uploaded_by
+    return model
+
+
+def _apply_job(model: IngestionJobModel, job: IngestionJob) -> None:
+    model.document_id = job.document_id.value
+    model.kind = job.kind.value
+    model.status = job.status.value
+    model.attempts = job.attempts
+    model.available_at = job.available_at
+    model.reserved_at = job.reserved_at
+    model.last_error = job.last_error
+
+
+def _ingestion_job_to_entity(model: IngestionJobModel) -> IngestionJob:
+    return IngestionJob(
+        id=model.id,
+        document_id=DocumentId(model.document_id),
+        kind=IngestionJobKind(model.kind),
+        status=IngestionJobStatus(model.status),
+        attempts=model.attempts,
+        available_at=model.available_at,
+        reserved_at=model.reserved_at,
+        last_error=model.last_error,
+        created_at=model.created_at,
+    )
+
+
 def _document_to_entity(model: DocumentModel) -> Document:
     metadata = json.loads(model.metadata_json)
     return Document(
@@ -588,6 +731,17 @@ def _document_to_entity(model: DocumentModel) -> Document:
         pipeline_version=model.pipeline_version,
         chunk_count=model.chunk_count,
         storage_key=model.storage_key,
+        status=DocumentStatus(model.status),
+        failure_reason=model.failure_reason,
+        attempts=model.attempts,
+        size_bytes=model.size_bytes,
+        version=model.version,
+        replaces_document_id=(
+            DocumentId(model.replaces_document_id)
+            if model.replaces_document_id
+            else None
+        ),
+        uploaded_by=model.uploaded_by,
     )
 
 

@@ -18,6 +18,7 @@ from src.api.dependencies import (
     get_assistant_repository,
     get_context_retriever,
     get_conversation_repository,
+    get_document_repository,
     get_token_counter,
 )
 from src.api.routes import conversations_router
@@ -35,6 +36,7 @@ from src.domain import (
     CollectionName,
     Conversation,
     ConversationId,
+    Document,
     DocumentId,
     IndexOutdatedError,
     MessageId,
@@ -53,6 +55,23 @@ OWNER = member("user-1", "rh")
 class InMemoryAssistantRepository:
     def get_by_id(self, assistant_id: AssistantId) -> Assistant | None:
         return Assistant(id=ASSISTANT, name=AssistantName("RH"))
+
+
+class KnownDocuments:
+    """Documentos que ainda existem; os demais foram excluidos (RN-29)."""
+
+    def __init__(self, document_ids: tuple[str, ...]) -> None:
+        self._ids = set(document_ids)
+
+    def get_by_id(self, document_id: DocumentId) -> Document | None:
+        if document_id.value not in self._ids:
+            return None
+        return Document(
+            id=document_id,
+            assistant_id=ASSISTANT,
+            source_name="politica.pdf",
+            content_hash="hash",
+        )
 
 
 class InMemoryConversationRepository:
@@ -139,6 +158,7 @@ class ChatCitationsApiTestCase(unittest.TestCase):
         self,
         results: list[SearchResult],
         outdated: bool = False,
+        existing_documents: tuple[str, ...] = ("doc-1",),
     ) -> TestClient:
         app = FastAPI()
         app.include_router(conversations_router)
@@ -159,6 +179,7 @@ class ChatCitationsApiTestCase(unittest.TestCase):
             llm_gateway=FakeContextAwareLLM()
         )
         overrides[get_token_counter] = WordTokenCounter
+        overrides[get_document_repository] = lambda: KnownDocuments(existing_documents)
         return TestClient(app)
 
     def test_chat_returns_citations_and_conversation_keeps_them(self) -> None:
@@ -182,6 +203,7 @@ class ChatCitationsApiTestCase(unittest.TestCase):
             "page": 3,
             "score": 0.9,
             "excerpt": "As ferias sao de trinta dias.",
+            "document_available": True,
         }
         self.assertEqual(body["citations"], [expected])
         self.assertEqual(body["assistant_message"]["citations"], [expected])
@@ -191,6 +213,19 @@ class ChatCitationsApiTestCase(unittest.TestCase):
         user_message, assistant_message = detail.json()["messages"]
         self.assertEqual(user_message["citations"], [])
         self.assertEqual(assistant_message["citations"], [expected])
+
+    def test_citation_of_a_deleted_document_is_marked(self) -> None:
+        """RN-29, D10: a conversa guarda a citacao e a marca como removida."""
+        with self._client([_hit(0.9)], existing_documents=()) as client:
+            client.post(
+                "/conversations/conv-1/chat",
+                json={"question": "Quanto duram as ferias?"},
+            )
+            detail = client.get("/conversations/conv-1")
+        _, assistant_message = detail.json()["messages"]
+        (citation,) = assistant_message["citations"]
+        self.assertEqual(citation["document_id"], "doc-1")
+        self.assertFalse(citation["document_available"])
 
     def test_out_of_scope_question_returns_fallback_without_citations(self) -> None:
         with self._client([_hit(0.2)]) as client:

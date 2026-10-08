@@ -47,6 +47,7 @@ from src.infrastructure.database import (
     PostgresAuditLogRepository,
     PostgresConversationRepository,
     PostgresDocumentRepository,
+    PostgresIngestionJobQueue,
     PostgresReindexJobRepository,
     PostgresSecretSettingsRepository,
     SessionLocal,
@@ -154,6 +155,12 @@ def get_reindex_job_repository(
     session: Session = Depends(get_session),
 ) -> PostgresReindexJobRepository:
     return PostgresReindexJobRepository(session=session)
+
+
+def get_ingestion_job_queue(
+    session: Session = Depends(get_session),
+) -> PostgresIngestionJobQueue:
+    return PostgresIngestionJobQueue(session=session)
 
 
 def get_embedding_gateway() -> EmbeddingGateway:

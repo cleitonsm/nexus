@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from src.domain import AuditEvent, AuthenticatedUser, Document
+from src.domain import AuditEvent, AuthenticatedUser, Document, DocumentStatus
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,7 +25,7 @@ class CurrentUserDTO:
 
 @dataclass(frozen=True, slots=True)
 class DocumentAccessDTO:
-    """Documento de um assistente e os grupos a que esta restrito (RF-43)."""
+    """Documento de um assistente, seu estado (RF-49) e sua restricao (RF-43)."""
 
     id: str
     assistant_id: str
@@ -33,6 +33,13 @@ class DocumentAccessDTO:
     created_at: datetime
     chunk_count: int
     groups: tuple[str, ...] = ()
+    status: str = DocumentStatus.INDEXED.value
+    version: int = 1
+    failure_reason: str | None = None
+    size_bytes: int | None = None
+    replaces_document_id: str | None = None
+    content_hash: str = ""
+    has_original: bool = False
 
     @classmethod
     def from_entity(
@@ -47,6 +54,17 @@ class DocumentAccessDTO:
             created_at=document.created_at,
             chunk_count=document.chunk_count,
             groups=tuple(sorted(groups)),
+            status=document.status.value,
+            version=document.version,
+            failure_reason=document.failure_reason,
+            size_bytes=document.size_bytes,
+            replaces_document_id=(
+                document.replaces_document_id.value
+                if document.replaces_document_id
+                else None
+            ),
+            content_hash=document.content_hash,
+            has_original=document.has_original,
         )
 
 

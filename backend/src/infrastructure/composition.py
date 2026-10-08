@@ -9,14 +9,22 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 
-from src.application.services import DocumentIndexer, RetrievalSettings
+from src.application.services import (
+    DocumentIndexer,
+    IngestionSettings,
+    RetrievalSettings,
+)
 from src.infrastructure.auth import (
     KeycloakTokenVerifier,
     http_jwks_fetcher,
     issuer_url,
 )
 from src.infrastructure.chunking import StructuralDocumentChunker
-from src.infrastructure.documents import SupportedDocumentExtractor
+from src.infrastructure.documents import (
+    DEFAULT_OCR_LANGUAGES,
+    SupportedDocumentExtractor,
+    TesseractPdfOcr,
+)
 from src.infrastructure.embeddings import (
     DEFAULT_BM25_AVERAGE_LENGTH,
     DEFAULT_BM25_B,
@@ -34,7 +42,8 @@ DEFAULT_EMBEDDING_MODEL = (
 DEFAULT_VECTOR_SIZE = 384
 DEFAULT_OVERLAP_SENTENCES = 1
 DEFAULT_PREFIX_MAX_TOKENS = 32
-DEFAULT_MAX_FILE_BYTES = 20 * 1024 * 1024
+# RN-30 e D3: 25 MB (decisao de 2026-10-08; a Fase 2 usava 20 MB).
+DEFAULT_MAX_FILE_BYTES = 25 * 1024 * 1024
 DEFAULT_DOCUMENTS_DIR = "/app/data/documents"
 DEFAULT_RERANKER_MODEL = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
 DEFAULT_KEYCLOAK_URL = "http://localhost:8080"
@@ -124,10 +133,17 @@ def build_document_chunker() -> StructuralDocumentChunker:
     )
 
 
+def build_ocr() -> TesseractPdfOcr:
+    """RF-53, D2: Tesseract local; ``OCR_LANGUAGES`` no formato ``por+eng``."""
+    return TesseractPdfOcr(
+        languages=_text_env("OCR_LANGUAGES", DEFAULT_OCR_LANGUAGES)
+    )
+
+
 @lru_cache(maxsize=1)
 def build_document_indexer() -> DocumentIndexer:
     return DocumentIndexer(
-        extractor=SupportedDocumentExtractor(),
+        extractor=SupportedDocumentExtractor(ocr=build_ocr()),
         chunker=build_document_chunker(),
         embedding_gateway=build_embedding_gateway(),
         sparse_embedding_gateway=build_sparse_embedding_gateway(),
@@ -170,13 +186,40 @@ def api_docs_enabled() -> bool:
 
 
 def build_file_storage() -> LocalDocumentFileStorage:
+    """D3: ``DOCUMENTS_STORAGE_PATH``; ``DOCUMENTS_DIR`` ainda e aceito."""
     return LocalDocumentFileStorage(
-        base_dir=os.getenv("DOCUMENTS_DIR", "").strip() or DEFAULT_DOCUMENTS_DIR
+        base_dir=_first_text_env(
+            ("DOCUMENTS_STORAGE_PATH", "DOCUMENTS_DIR"), DEFAULT_DOCUMENTS_DIR
+        )
     )
 
 
 def max_file_bytes() -> int:
-    return _int_env("DOCUMENT_MAX_FILE_BYTES", DEFAULT_MAX_FILE_BYTES)
+    """D3: ``UPLOAD_MAX_BYTES``; ``DOCUMENT_MAX_FILE_BYTES`` ainda e aceito."""
+    for name in ("UPLOAD_MAX_BYTES", "DOCUMENT_MAX_FILE_BYTES"):
+        if os.getenv(name, "").strip():
+            return _int_env(name, DEFAULT_MAX_FILE_BYTES)
+    return DEFAULT_MAX_FILE_BYTES
+
+
+def ingestion_settings() -> IngestionSettings:
+    """D7: tentativas e tempo limite do job; as esperas sao fixas (30 s e 120 s)."""
+    defaults = IngestionSettings()
+    return IngestionSettings(
+        max_attempts=_int_env("INGESTION_MAX_ATTEMPTS", defaults.max_attempts),
+        retry_delays_seconds=defaults.retry_delays_seconds,
+        job_timeout_seconds=_int_env(
+            "INGESTION_JOB_TIMEOUT_SECONDS", defaults.job_timeout_seconds
+        ),
+    )
+
+
+def _first_text_env(names: tuple[str, ...], default: str) -> str:
+    for name in names:
+        value = os.getenv(name, "").strip()
+        if value:
+            return value
+    return default
 
 
 def _text_env(name: str, default: str) -> str:

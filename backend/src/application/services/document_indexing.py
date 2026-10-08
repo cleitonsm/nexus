@@ -46,6 +46,12 @@ class DocumentIndexer:
     def embedding_dimension(self) -> int:
         return self._embedding_gateway.dimension
 
+    def supports(self, *, source_name: str, content_type: str | None) -> bool:
+        return self._extractor.supports(
+            filename=source_name,
+            content_type=content_type,
+        )
+
     def build_chunks(
         self,
         *,
@@ -55,8 +61,13 @@ class DocumentIndexer:
         content_type: str | None,
         raw_content: bytes,
         allowed_groups: frozenset[str] = frozenset(),
+        active: bool = True,
     ) -> list[VectorChunk]:
-        """``allowed_groups`` e a restricao vigente do documento (RF-43)."""
+        """``allowed_groups`` e a restricao vigente do documento (RF-43).
+
+        ``active=False`` grava os trechos fora das buscas, para que o documento
+        so passe a responder quando estiver indexado (RN-27, RN-28).
+        """
         extracted = self._extractor.extract(
             filename=source_name,
             content_type=content_type,
@@ -88,6 +99,7 @@ class DocumentIndexer:
                 pipeline_version=PIPELINE_VERSION,
                 sparse_vector=sparse_vector,
                 allowed_groups=groups,
+                active=active,
             )
             for chunk, vector, sparse_vector in zip(chunks, vectors, sparse_vectors)
         ]

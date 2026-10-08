@@ -14,6 +14,7 @@ from .entities import (
     ChatMessage,
     Conversation,
     Document,
+    IngestionJob,
     ReindexJob,
 )
 from .value_objects import (
@@ -42,9 +43,53 @@ class DocumentRepository(Protocol):
     def list_by_assistant(
         self,
         assistant_id: AssistantId,
-    ) -> list[Document]: ...
+    ) -> list[Document]:
+        """Documentos vigentes; versoes substituidas ficam de fora (D5)."""
+        ...
+
+    def find_by_hash(
+        self,
+        assistant_id: AssistantId,
+        content_hash: str,
+    ) -> Document | None:
+        """Documento vigente do assistente com o mesmo conteudo (RN-26)."""
+        ...
 
     def delete(self, document_id: DocumentId) -> bool: ...
+
+
+class IngestionJobQueue(Protocol):
+    """Fila de processamento de documentos consumida pelo worker (RF-48)."""
+
+    def enqueue(self, job: IngestionJob) -> IngestionJob: ...
+
+    def reserve_next(self, now: datetime) -> IngestionJob | None:
+        """Reserva o proximo job disponivel, sem disputa entre workers.
+
+        Jobs de assistentes com reindexacao em curso nao sao reservados (D8).
+        """
+        ...
+
+    def list_expired(self, reserved_before: datetime) -> list[IngestionJob]:
+        """Jobs em processamento reservados antes do instante informado."""
+        ...
+
+    def complete(
+        self,
+        job: IngestionJob,
+        document: Document,
+        replaced: Document | None = None,
+    ) -> None:
+        """Conclui o job e grava o documento (e a versao substituida) juntos."""
+        ...
+
+    def retry(self, job: IngestionJob, document: Document) -> None:
+        """Devolve o job a fila e o documento a pendente, na mesma transacao."""
+        ...
+
+    def fail(self, job: IngestionJob, document: Document) -> None:
+        """Encerra o job com falha e grava o documento falho juntos."""
+        ...
 
 
 class ReindexJobRepository(Protocol):
@@ -155,6 +200,9 @@ class VectorChunk:
     sparse_vector: SparseVector | None = None
     # Grupos a que o documento esta restrito; vazio segue o assistente (RF-43).
     allowed_groups: tuple[str, ...] = ()
+    # Trecho fora das buscas ate o documento terminar de ser indexado
+    # (RN-27, RN-28).
+    active: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -201,7 +249,8 @@ class VectorStoreGateway(Protocol):
         reservado a processos sem usuario, como a avaliacao.
 
         ``payload_filter`` restringe os candidatos por igualdade de campos do
-        payload. Collection inexistente devolve lista vazia. Collection
+        payload. Trechos inativos (documento ainda em processamento) nunca
+        voltam (RN-27). Collection inexistente devolve lista vazia. Collection
         anterior a busca hibrida e consultada so pelo vetor denso; se nem isso
         for possivel, levanta ``IndexOutdatedError``.
         """
@@ -217,6 +266,23 @@ class VectorStoreGateway(Protocol):
 
         Collection inexistente nao e erro: o documento ainda nao tem trechos.
         """
+        ...
+
+    def delete_by_document(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+    ) -> None:
+        """Remove todos os trechos do documento; collection inexistente nao e erro."""
+        ...
+
+    def set_document_active(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+        active: bool,
+    ) -> None:
+        """Inclui ou retira das buscas os trechos do documento (RN-28)."""
         ...
 
     def delete_collection(self, collection_name: CollectionName) -> None: ...
@@ -260,6 +326,10 @@ class DocumentChunker(Protocol):
 class DocumentExtractor(Protocol):
     """Converte o arquivo enviado em blocos; ValueError para arquivo invalido."""
 
+    def supports(self, *, filename: str | None, content_type: str | None) -> bool:
+        """Indica, sem ler o conteudo, se o formato e aceito."""
+        ...
+
     def extract(
         self,
         *,
@@ -284,6 +354,10 @@ class DocumentFileStorage(Protocol):
         ...
 
     def load(self, storage_key: str) -> bytes: ...
+
+    def delete(self, storage_key: str) -> None:
+        """Remove o arquivo; chave sem arquivo nao e erro (RN-29)."""
+        ...
 
 
 class RerankerGateway(Protocol):

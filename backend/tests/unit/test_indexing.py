@@ -1,11 +1,22 @@
 """Ingestao, reindexacao e situacao do indice (SPEC-20261007-002)."""
 
 import logging
+from dataclasses import replace
 import tempfile
 import unittest
 
 from access_doubles import AccessFixture, admin
-from src.application.services import PIPELINE_VERSION, DocumentIndexer
+from ingestion_doubles import (
+    InMemoryIngestionJobQueue,
+    ManualClock,
+    current_documents,
+    find_current_by_hash,
+)
+from src.application.services import (
+    PIPELINE_VERSION,
+    UNREADABLE_DOCUMENT_REASON,
+    DocumentIndexer,
+)
 from src.application.use_cases import (
     DocumentTooLargeError,
     FailInterruptedReindexesUseCase,
@@ -13,6 +24,7 @@ from src.application.use_cases import (
     GetIndexStatusUseCase,
     IngestDocumentInput,
     IngestDocumentUseCase,
+    ProcessNextIngestionJobUseCase,
     ReindexJobNotFoundError,
     RunReindexInput,
     RunReindexUseCase,
@@ -24,6 +36,7 @@ from src.domain import (
     CollectionName,
     Document,
     DocumentId,
+    DocumentStatus,
     IndexOutdatedError,
     ReindexInProgressError,
     ReindexJob,
@@ -123,6 +136,28 @@ class InMemoryVectorStore:
     ) -> None:
         raise AssertionError("not used by these tests")
 
+    def delete_by_document(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+    ) -> None:
+        points = self.collections.get(self._physical(collection_name))
+        if points is None:
+            return
+        for key in [k for k, chunk in points.items() if chunk.document_id == document_id]:
+            del points[key]
+
+    def set_document_active(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+        active: bool,
+    ) -> None:
+        points = self.collections.get(self._physical(collection_name), {})
+        for key, chunk in list(points.items()):
+            if chunk.document_id == document_id:
+                points[key] = replace(chunk, active=active)
+
     def delete_collection(self, collection_name: CollectionName) -> None:
         self.collections.pop(collection_name.value, None)
         self.aliases = {
@@ -159,12 +194,18 @@ class InMemoryDocumentRepository:
         self.items[document.id.value] = document
         return document
 
+    def get_by_id(self, document_id: DocumentId) -> Document | None:
+        return self.items.get(document_id.value)
+
     def list_by_assistant(self, assistant_id: AssistantId) -> list[Document]:
-        return [
-            item
-            for item in self.items.values()
-            if item.assistant_id == assistant_id
-        ]
+        return current_documents(self.items, assistant_id)
+
+    def find_by_hash(
+        self,
+        assistant_id: AssistantId,
+        content_hash: str,
+    ) -> Document | None:
+        return find_current_by_hash(self.items, assistant_id, content_hash)
 
     def delete(self, document_id: DocumentId) -> bool:
         return self.items.pop(document_id.value, None) is not None
@@ -208,6 +249,9 @@ class Scenario:
         self.vector_store = InMemoryVectorStore()
         self.jobs = InMemoryReindexJobRepository()
         self.storage = LocalDocumentFileStorage(base_dir=base_dir)
+        self.queue = InMemoryIngestionJobQueue(self.documents, self.jobs)
+        self.clock = ManualClock()
+        self.max_file_bytes = MAX_BYTES
         self.access = AccessFixture()
         self.user = admin()
         self.use_model(model_name)
@@ -226,20 +270,24 @@ class Scenario:
             sparse_embedding_gateway=Bm25SparseEmbeddingGateway(),
         )
 
-    def ingest(
+    def upload(
         self,
         assistant_id: str = "a1",
         document_id: str = "doc-1",
         source_name: str = "politica.md",
-        raw_content: bytes = MARKDOWN,
+        raw_content: bytes | None = None,
     ):
+        if raw_content is None:
+            # RN-26: cada documento precisa de conteudo proprio.
+            suffix = b"" if document_id == "doc-1" else f"\nRevisao {document_id}.\n".encode()
+            raw_content = MARKDOWN + suffix
         return IngestDocumentUseCase(
             document_repository=self.documents,
             vector_store_gateway=self.vector_store,
             document_indexer=self.indexer,
             file_storage=self.storage,
-            reindex_job_repository=self.jobs,
-            max_file_bytes=MAX_BYTES,
+            job_queue=self.queue,
+            max_file_bytes=self.max_file_bytes,
             access_control=self.access.control,
         ).execute(
             IngestDocumentInput(
@@ -251,6 +299,23 @@ class Scenario:
                 metadata={"origem": "teste"},
             )
         )
+
+    def process(self):
+        return ProcessNextIngestionJobUseCase(
+            job_queue=self.queue,
+            document_repository=self.documents,
+            vector_store_gateway=self.vector_store,
+            document_indexer=self.indexer,
+            file_storage=self.storage,
+            reindex_job_repository=self.jobs,
+            access_control=self.access.control,
+            clock=self.clock,
+        ).execute()
+
+    def ingest(self, **kwargs):
+        """Envio seguido do processamento pelo worker."""
+        self.upload(**kwargs)
+        return self.process()
 
     def start_reindex(self, assistant_id: str = "a1"):
         return StartReindexUseCase(
@@ -306,7 +371,7 @@ class IngestDocumentTestCase(IndexingTestCase):
     def test_first_ingestion_creates_versioned_collection_and_alias(self) -> None:
         result = self.scenario.ingest()
         store = self.scenario.vector_store
-        self.assertEqual(result.collection_name, "assistant-a1")
+        self.assertEqual(result.status, "indexado")
         self.assertEqual(store.aliases, {"assistant-a1": "assistant-a1-v1"})
         self.assertEqual(len(store.collections["assistant-a1-v1"]), result.chunk_count)
         self.assertGreaterEqual(result.chunk_count, 2)
@@ -362,8 +427,9 @@ class IngestDocumentTestCase(IndexingTestCase):
         self.assertEqual(document.pipeline_version, PIPELINE_VERSION)
         self.assertEqual(document.chunk_count, result.chunk_count)
         self.assertEqual(document.metadata.values, {"origem": "teste"})
-        self.assertEqual(result.embedding_model, MODEL)
-        self.assertEqual(result.embedding_dimension, 2)
+        self.assertEqual(document.status, DocumentStatus.INDEXED)
+        self.assertEqual(document.size_bytes, len(MARKDOWN))
+        self.assertEqual(document.uploaded_by, self.scenario.user.id)
         self.assertEqual(
             self.scenario.storage.load(document.storage_key or ""),
             MARKDOWN,
@@ -380,15 +446,34 @@ class IngestDocumentTestCase(IndexingTestCase):
         self.assertEqual(self.scenario.documents.items, {})
         self.assertEqual(self.scenario.vector_store.collections, {})
 
-    def test_file_without_text_is_rejected_before_any_write(self) -> None:
+    def test_empty_file_is_rejected_before_any_write(self) -> None:
         with self.assertRaises(ValueError):
-            self.scenario.ingest(source_name="vazio.txt", raw_content=b"   ")
+            self.scenario.upload(source_name="vazio.txt", raw_content=b"")
         self.assertEqual(self.scenario.documents.items, {})
-        self.assertEqual(self.scenario.vector_store.collections, {})
+        self.assertEqual(self.scenario.queue.jobs, {})
+
+    def test_file_without_text_fails_in_the_worker_without_retries(self) -> None:
+        """C1: erro definitivo vai direto a ``falhou``."""
+        outcome = self.scenario.ingest(source_name="vazio.txt", raw_content=b"   ")
+        document = self.scenario.documents.items["doc-1"]
+        self.assertEqual(outcome.status, "falhou")
+        self.assertEqual(outcome.attempts, 1)
+        self.assertEqual(document.status, DocumentStatus.FAILED)
+        self.assertEqual(document.failure_reason, UNREADABLE_DOCUMENT_REASON)
+        self.assertEqual(self.scenario.queue.pending(), [])
+        self.assertEqual(
+            self.scenario.vector_store.collections.get("assistant-a1-v1", {}), {}
+        )
 
     def test_unsupported_format_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
-            self.scenario.ingest(source_name="dados.csv", raw_content=b"a,b")
+            self.scenario.upload(source_name="dados.csv", raw_content=b"a,b")
+        self.assertEqual(self.scenario.queue.jobs, {})
+
+    def test_file_without_extension_is_rejected(self) -> None:
+        """O worker reconhece o formato pela extensao do nome."""
+        with self.assertRaises(ValueError):
+            self.scenario.upload(source_name="politica", raw_content=MARKDOWN)
 
     def test_ingestion_is_refused_while_base_is_from_the_mvp(self) -> None:
         """RN-16: base de outro modelo exige reindexacao antes."""
@@ -403,11 +488,23 @@ class IngestDocumentTestCase(IndexingTestCase):
         with self.assertRaises(IndexOutdatedError):
             self.scenario.ingest(document_id="doc-2")
 
-    def test_ingestion_is_refused_during_reindex(self) -> None:
+    def test_upload_during_reindex_waits_for_it_to_finish(self) -> None:
+        """D8: o envio e aceito e o job so roda depois da troca do alias."""
         self.scenario.ingest(document_id="doc-1")
-        self.scenario.start_reindex()
-        with self.assertRaises(ReindexInProgressError):
-            self.scenario.ingest(document_id="doc-2")
+        job = self.scenario.start_reindex()
+        self.scenario.upload(document_id="doc-2")
+        self.assertIsNone(self.scenario.process())
+        self.assertEqual(
+            self.scenario.documents.items["doc-2"].status, DocumentStatus.PENDING
+        )
+        self.scenario.run_reindex(job.id)
+        outcome = self.scenario.process()
+        self.assertEqual(outcome.status, "indexado")
+        target = self.scenario.vector_store.collections["assistant-a1-v2"]
+        self.assertEqual(
+            {chunk.document_id.value for chunk in target.values()},
+            {"doc-1", "doc-2"},
+        )
 
 
 class StartReindexTestCase(IndexingTestCase):

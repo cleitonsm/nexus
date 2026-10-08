@@ -22,6 +22,9 @@ SPARSE_VECTOR = "sparse"
 # o trecho segue o acesso do assistente.
 ALLOWED_GROUPS = "allowed_groups"
 DOCUMENT_ID = "document_id"
+# Falso enquanto o documento esta em processamento (RN-27, RN-28). Trechos
+# gravados antes da SPEC-005 nao tem o campo e contam como ativos.
+ACTIVE = "active"
 _NOT_FOUND = 404
 
 logger = logging.getLogger(__name__)
@@ -65,6 +68,20 @@ class QdrantVectorStoreGateway:
             field_schema=models.PayloadSchemaType.KEYWORD,
             wait=True,
         )
+        self._ensure_lifecycle_indexes(collection_name)
+
+    def _ensure_lifecycle_indexes(self, collection_name: CollectionName) -> None:
+        """Indices dos filtros por documento e por trecho ativo (SPEC-005)."""
+        for field_name, schema in (
+            (DOCUMENT_ID, models.PayloadSchemaType.KEYWORD),
+            (ACTIVE, models.PayloadSchemaType.BOOL),
+        ):
+            self._client.create_payload_index(
+                collection_name=collection_name.value,
+                field_name=field_name,
+                field_schema=schema,
+                wait=True,
+            )
 
     def upsert_chunks(
         self,
@@ -148,7 +165,7 @@ class QdrantVectorStoreGateway:
         collection_name: CollectionName,
         dense_vector: list[float],
         limit: int,
-        query_filter: models.Filter | None,
+        query_filter: models.Filter,
     ) -> models.QueryResponse:
         """Collection anterior a SPEC-003 (vetor sem nome): busca so densa.
 
@@ -197,20 +214,48 @@ class QdrantVectorStoreGateway:
             self._client.set_payload(
                 collection_name=target.value,
                 payload={ALLOWED_GROUPS: sorted(groups)},
-                points=models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key=DOCUMENT_ID,
-                            match=models.MatchValue(value=document_id.value),
-                        )
-                    ]
-                ),
+                points=_document_filter(document_id),
                 wait=True,
             )
         except UnexpectedResponse as exc:
             if exc.status_code != _NOT_FOUND:
                 raise
             # Assistente ainda sem collection: nao ha trecho para regravar.
+
+    def delete_by_document(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+    ) -> None:
+        """Remove os trechos do documento pelo filtro de ``document_id``."""
+        try:
+            self._client.delete(
+                collection_name=collection_name.value,
+                points_selector=models.FilterSelector(
+                    filter=_document_filter(document_id)
+                ),
+                wait=True,
+            )
+        except UnexpectedResponse as exc:
+            if exc.status_code != _NOT_FOUND:
+                raise
+            # Assistente ainda sem collection: nao ha trecho para remover.
+
+    def set_document_active(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+        active: bool,
+    ) -> None:
+        """Inclui (ou retira) das buscas todos os trechos do documento."""
+        target = self.resolve_alias(collection_name) or collection_name
+        self._ensure_lifecycle_indexes(target)
+        self._client.set_payload(
+            collection_name=target.value,
+            payload={ACTIVE: active},
+            points=_document_filter(document_id),
+            wait=True,
+        )
 
     def delete_collection(self, collection_name: CollectionName) -> None:
         if not self.collection_exists(collection_name):
@@ -278,15 +323,29 @@ def _sparse(vector: SparseVector) -> models.SparseVector:
 def _filter(
     payload_filter: dict[str, str] | None,
     user_groups: frozenset[str] | None,
-) -> models.Filter | None:
-    """Igualdade de campos e, quando ha usuario, o filtro de acesso (RF-43)."""
+) -> models.Filter:
+    """Igualdade de campos, trechos ativos (RN-27) e, com usuario, o acesso (RF-43)."""
     must: list[object] = [
         models.FieldCondition(key=key, match=models.MatchValue(value=value))
         for key, value in (payload_filter or {}).items()
     ]
     if user_groups is not None:
         must.append(_access_filter(user_groups))
-    return models.Filter(must=must) if must else None
+    # ``must_not`` em vez de ``active = true``: trechos sem o campo, gravados
+    # antes da SPEC-005, continuam nas buscas.
+    inactive = models.FieldCondition(key=ACTIVE, match=models.MatchValue(value=False))
+    return models.Filter(must=must or None, must_not=[inactive])
+
+
+def _document_filter(document_id: DocumentId) -> models.Filter:
+    return models.Filter(
+        must=[
+            models.FieldCondition(
+                key=DOCUMENT_ID,
+                match=models.MatchValue(value=document_id.value),
+            )
+        ]
+    )
 
 
 def _access_filter(user_groups: frozenset[str]) -> models.Filter:
@@ -346,4 +405,5 @@ def _payload(chunk: VectorChunk) -> dict[str, object]:
         "embedding_model": chunk.embedding_model,
         "pipeline_version": chunk.pipeline_version,
         ALLOWED_GROUPS: list(chunk.allowed_groups),
+        ACTIVE: chunk.active,
     }

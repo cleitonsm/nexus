@@ -23,7 +23,9 @@ from src.domain import (
     Document,
     DocumentFileStorage,
     DocumentRepository,
+    DocumentStatus,
     EmbeddingGateway,
+    IngestionInProgressError,
     ReindexInProgressError,
     ReindexJob,
     ReindexJobRepository,
@@ -71,7 +73,15 @@ class StartReindexUseCase:
                 "a reindex is already in progress for this assistant."
             )
         state = read_index_state(self._vector_store_gateway, assistant_id)
-        documents = self._document_repository.list_by_assistant(assistant_id)
+        listed = self._document_repository.list_by_assistant(assistant_id)
+        # O worker grava na collection vigente: trocar o alias agora perderia
+        # esses trechos. Os pendentes esperam o fim da reindexacao (D8).
+        if any(item.status is DocumentStatus.PROCESSING for item in listed):
+            raise IngestionInProgressError(
+                "documents of this assistant are being processed; "
+                "try again when they finish."
+            )
+        documents = [item for item in listed if item.is_searchable]
         job = self._reindex_job_repository.save(
             ReindexJob(
                 id=str(uuid4()),
@@ -107,7 +117,8 @@ class RunReindexUseCase:
 
     Roda em segundo plano, sem usuario: a autorizacao acontece em
     ``StartReindexUseCase``. Os trechos novos levam a restricao por grupo
-    vigente de cada documento (RF-43).
+    vigente de cada documento (RF-43). So documentos indexados entram; os
+    pendentes sao processados pelo worker depois da troca do alias (D8).
     """
 
     def __init__(
@@ -169,7 +180,7 @@ class RunReindexUseCase:
             for document in self._document_repository.list_by_assistant(
                 job.assistant_id
             )
-            if document.has_original
+            if document.has_original and document.is_searchable
         ]
         self._discard(target)
         self._vector_store_gateway.ensure_collection(
