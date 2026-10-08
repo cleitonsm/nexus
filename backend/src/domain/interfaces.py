@@ -364,6 +364,12 @@ class VectorStoreGateway(Protocol):
 
     def count_points(self, collection_name: CollectionName) -> int: ...
 
+    def count_points_by_document(
+        self, collection_name: CollectionName
+    ) -> dict[str, int]:
+        """Pontos por ``document_id`` na collection, ativos ou nao (R18, PC-D3)."""
+        ...
+
     def resolve_alias(self, alias: CollectionName) -> CollectionName | None:
         """Collection para a qual o alias aponta, ou None se nao existir."""
         ...

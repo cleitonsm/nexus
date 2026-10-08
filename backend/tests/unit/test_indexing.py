@@ -174,6 +174,15 @@ class InMemoryVectorStore:
     def count_points(self, collection_name: CollectionName) -> int:
         return len(self.collections[self._physical(collection_name)])
 
+    def count_points_by_document(
+        self, collection_name: CollectionName
+    ) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for chunk in self.collections[self._physical(collection_name)].values():
+            key = chunk.document_id.value
+            counts[key] = counts.get(key, 0) + 1
+        return counts
+
     def resolve_alias(self, alias: CollectionName) -> CollectionName | None:
         target = self.aliases.get(alias.value)
         return CollectionName(target) if target else None

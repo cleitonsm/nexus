@@ -98,6 +98,12 @@ from .register_conversation import (
     RegisterConversationInput,
     RegisterConversationUseCase,
 )
+from .check_consistency import (
+    AssistantConsistency,
+    CheckIndexConsistencyUseCase,
+    ConsistencyReport,
+    DocumentDivergence,
+)
 from .reindex_assistant import (
     GetIndexStatusInput,
     GetIndexStatusUseCase,
@@ -112,6 +118,10 @@ from .reindex_assistant import (
 )
 
 __all__ = [
+    "AssistantConsistency",
+    "CheckIndexConsistencyUseCase",
+    "ConsistencyReport",
+    "DocumentDivergence",
     "AddMessageInput",
     "AddMessageUseCase",
     "AssistantNotFoundError",

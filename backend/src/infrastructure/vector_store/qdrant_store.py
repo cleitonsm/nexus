@@ -22,6 +22,7 @@ SPARSE_VECTOR = "sparse"
 # o trecho segue o acesso do assistente.
 ALLOWED_GROUPS = "allowed_groups"
 DOCUMENT_ID = "document_id"
+_SCROLL_PAGE = 1024
 # Falso enquanto o documento esta em processamento (RN-27, RN-28). Trechos
 # gravados antes da SPEC-005 nao tem o campo e contam como ativos.
 ACTIVE = "active"
@@ -273,6 +274,31 @@ class QdrantVectorStoreGateway:
             exact=True,
         )
         return int(result.count)
+
+    def count_points_by_document(
+        self, collection_name: CollectionName
+    ) -> dict[str, int]:
+        """Percorre a collection lendo so o ``document_id`` (sem vetores).
+
+        O Qdrant 1.11 nao agrega por campo; a varredura em paginas de
+        ``_SCROLL_PAGE`` pontos atende a conferencia sob demanda (PC-D3).
+        """
+        counts: dict[str, int] = {}
+        offset = None
+        while True:
+            points, offset = self._client.scroll(
+                collection_name=collection_name.value,
+                limit=_SCROLL_PAGE,
+                offset=offset,
+                with_payload=[DOCUMENT_ID],
+                with_vectors=False,
+            )
+            for point in points:
+                document_id = (point.payload or {}).get(DOCUMENT_ID)
+                key = document_id if isinstance(document_id, str) else ""
+                counts[key] = counts.get(key, 0) + 1
+            if offset is None:
+                return counts
 
     def resolve_alias(self, alias: CollectionName) -> CollectionName | None:
         for item in self._client.get_aliases().aliases:
