@@ -55,6 +55,7 @@ rastreamentos não são enviados.
 | `nexus_usage_limit_blocked_total` | contador | `window` (RN-32) |
 | `nexus_feedback_total` | contador | `rating` (RF-61) |
 | `nexus_ingestion_jobs` | gauge | `status` (lido do banco a cada coleta) |
+| `nexus_index_sparse_parameters_changed_total` | contador | — (PC-D2: assistente com `BM25_*` diferente do usado na base, contado na subida da API) |
 
 `/metrics` não exige token e não passa pelo proxy do frontend (`/api/metrics` responde 404). No
 ambiente local continua acessível pela porta publicada do backend (`8000`); em produção, não

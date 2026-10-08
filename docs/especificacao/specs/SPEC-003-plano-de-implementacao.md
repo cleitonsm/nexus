@@ -75,7 +75,7 @@ três seguintes foram mantidos como implementados.
 | D7 | Falha do LLM na reescrita | **Alterado**: a busca segue com a pergunta original e o log registra `chat.rewrite.failed`. Uma pergunta fora do escopo recebe o fallback mesmo com o LLM indisponível. |
 | D8 | Base anterior à busca híbrida | **Alterado**: o chat consulta a collection só pelo vetor denso (log `vector_store.legacy_dense_search`) até a reindexação; termos exatos continuam falhando até lá. O 409 fica restrito à base incompatível com o modelo de embedding atual. O upload continua recusado. |
 | D9 | `top_k` do `POST /chat` | **Alterado**: teto por pergunta, nunca acima de `RERANK_TOP_N`. O frontend envia `top_k: 4` fixo, então o chat usa 4 trechos enquanto `RERANK_TOP_N` for 5; a avaliação usa `RERANK_TOP_N`. |
-| D10 | Parâmetros do BM25 | **Alterado**: `BM25_K1`, `BM25_B` e `BM25_AVG_LENGTH` no ambiente. Mudar exige reindexar e nada detecta a diferença. |
+| D10 | Parâmetros do BM25 | **Alterado**: `BM25_K1`, `BM25_B` e `BM25_AVG_LENGTH` no ambiente. Mudar exige reindexar. Desde 2026-10-08 a diferença é detectada e só avisa (PC-D2 do [plano de conclusão](../../plano-de-conclusao.md)): parâmetros registrados por collection, aviso no painel "Índice de busca", no log e na métrica. |
 | D11 | Fontes devolvidas | Mantido: apenas os trechos citados. |
 | D12 | Medida dos orçamentos | Mantido: tokenizador do modelo de embedding, por aproximação. |
 | D13 | Janela de histórico | Mantido: mensagens recentes contíguas; a janela não pula uma mensagem grande. |

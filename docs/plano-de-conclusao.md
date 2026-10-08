@@ -267,7 +267,7 @@ refeito ao fim da semana 1.
 | E1 | Roteiro pronto | 2026-10-08 | `scripts/validation/quick-check.ps1` grava as evidências em `docs/qa/relatorios/<data>-e1/`; falta o autor executar |
 | E2 | Pendente | — | — |
 | E3 | Concluída | 2026-10-08 | PC-D1 a PC-D7 decididas; C1–C11 (SPEC-006) e C9–C16 (SPEC-005) aprovados; skill `desenvolvedor-nexus` atualizada nas duas cópias |
-| E4 | Pendente | — | Versões já fixadas; falta a compatibilidade do Qdrant |
+| E4 | Em andamento | 2026-10-08 | PC-D1 (`NEXUS_FRONTEND_URL` no realm, checagem no CI) e PC-D2 (parâmetros do BM25 registrados por collection; aviso no painel novo "Índice de busca" da tela de assistentes, que também permite reindexar, no log e na métrica; 12 testes unitários do backend e specs do frontend) entregues. Falta a compatibilidade do Qdrant, que depende de E1 |
 | E5 | Pendente | — | — |
 | E6 | Pendente | — | CT-41 a CT-45 escritos |
 | E7 | Pendente | — | — |

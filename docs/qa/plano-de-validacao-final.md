@@ -45,8 +45,8 @@ A campanha só começa quando todos os itens abaixo estiverem marcados:
   - seleção de grupos;
   - [x] versões de `qdrant-client` e `langgraph` fixadas (2026-10-08, pelo `pip freeze` da imagem;
     falta conferir a compatibilidade do cliente 1.19.1 com o servidor Qdrant 1.11.3);
-  - detecção de mudança em `BM25_*`;
-  - origens do realm configuráveis.
+  - [x] detecção de mudança em `BM25_*` (PC-D2, 2026-10-08);
+  - [x] origens do realm configuráveis (PC-D1, `NEXUS_FRONTEND_URL`, 2026-10-08).
 - [ ] Parte A concluída (seção 4), com todos os testes novos revisados.
 - [ ] Conjunto de referência ampliado e **validado pelo curador** (seção 6.1).
 - [x] Decisões V-D1 a V-D9 tomadas (seção 10): sugestões aceitas em 2026-10-08.
