@@ -15,6 +15,7 @@ from src.api.dependencies import (
 from src.api.errors import register_error_handlers
 from src.api.routes import (
     admin_router,
+    archived_conversations_router,
     assistants_router,
     conversations_router,
     document_access_router,
@@ -77,6 +78,7 @@ app.add_middleware(
     expose_headers=["X-Request-ID", "Retry-After"],
 )
 app.include_router(admin_router)
+app.include_router(archived_conversations_router)
 app.include_router(assistants_router)
 app.include_router(conversations_router)
 app.include_router(document_access_router)

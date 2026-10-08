@@ -104,6 +104,12 @@ from .check_consistency import (
     ConsistencyReport,
     DocumentDivergence,
 )
+from .manage_archived_conversations import (
+    ArchivedConversationInput,
+    DeleteArchivedConversationUseCase,
+    GetArchivedConversationUseCase,
+    ListArchivedConversationsUseCase,
+)
 from .reindex_assistant import (
     GetIndexStatusInput,
     GetIndexStatusUseCase,
@@ -118,6 +124,10 @@ from .reindex_assistant import (
 )
 
 __all__ = [
+    "ArchivedConversationInput",
+    "DeleteArchivedConversationUseCase",
+    "GetArchivedConversationUseCase",
+    "ListArchivedConversationsUseCase",
     "AssistantConsistency",
     "CheckIndexConsistencyUseCase",
     "ConsistencyReport",

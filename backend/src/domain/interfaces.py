@@ -146,6 +146,12 @@ class ConversationRepository(Protocol):
 
     def delete(self, conversation_id: ConversationId) -> bool: ...
 
+    def list_archived(self) -> list[Conversation]:
+        """Conversas sem dono (anteriores a autenticacao), mais recentes antes.
+
+        So o administrador as consulta (decisao PC-D5)."""
+        ...
+
     def get_message(self, message_id: str) -> ChatMessage | None:
         """Mensagem pelo id, de qualquer conversa; quem chama confere o dono."""
         ...

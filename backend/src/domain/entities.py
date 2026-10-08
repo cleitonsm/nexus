@@ -229,8 +229,13 @@ class Conversation:
     updated_at: datetime = field(default_factory=_utc_now)
     messages: tuple[ChatMessage, ...] = ()
     # Quem criou a conversa (RF-44). Nulo em conversas anteriores a
-    # autenticacao, que ficam arquivadas e nao sao exibidas a ninguem.
+    # autenticacao: ficam arquivadas, fora das listas dos usuarios; so o
+    # administrador as lista, le e exclui (decisao PC-D5).
     owner_user_id: str | None = None
+
+    @property
+    def is_archived(self) -> bool:
+        return self.owner_user_id is None
 
     def append_message(self, message: ChatMessage) -> "Conversation":
         if message.conversation_id != self.id:

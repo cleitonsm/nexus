@@ -4,6 +4,7 @@ import contextvars
 import json
 import logging
 from collections.abc import Iterator
+from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.encoders import jsonable_encoder
@@ -43,6 +44,10 @@ from src.application.services import (
 )
 from src.application.use_cases import (
     AddMessageInput,
+    ArchivedConversationInput,
+    DeleteArchivedConversationUseCase,
+    GetArchivedConversationUseCase,
+    ListArchivedConversationsUseCase,
     AddMessageUseCase,
     ChatWithAssistantInput,
     ChatWithAssistantUseCase,
@@ -73,6 +78,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/conversations",
     tags=["conversations"],
+    dependencies=[Depends(get_current_user)],
+)
+
+# PC-D5: conversas anteriores a autenticacao, so para o administrador.
+archived_router = APIRouter(
+    prefix="/admin/archived-conversations",
+    tags=["admin"],
     dependencies=[Depends(get_current_user)],
 )
 
@@ -446,3 +458,74 @@ def _message_response(message: MessageDTO) -> MessageResponse:
             for item in message.citations
         ],
     )
+
+
+@archived_router.get("", response_model=list[ConversationResponse])
+def list_archived_conversations(
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    repository: PostgresConversationRepository = Depends(get_conversation_repository),
+) -> list[ConversationResponse]:
+    items = ListArchivedConversationsUseCase(repository, access_control).execute(user)
+    return [ConversationResponse(**asdict(item)) for item in items]
+
+
+@archived_router.get("/{conversation_id}", response_model=ConversationDetailResponse)
+def get_archived_conversation(
+    conversation_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    repository: PostgresConversationRepository = Depends(get_conversation_repository),
+    document_repository: DocumentRepository = Depends(get_document_repository),
+) -> ConversationDetailResponse:
+    try:
+        conversation = GetArchivedConversationUseCase(repository, access_control).execute(
+            ArchivedConversationInput(user=user, conversation_id=conversation_id)
+        )
+    except DomainValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except ConversationNotFoundError as exc:
+        raise _not_found(exc) from exc
+    removed = GetConversationUseCase(
+        repository, access_control, document_repository
+    ).removed_sources(conversation)
+    return ConversationDetailResponse(
+        id=conversation.id.value,
+        assistant_id=conversation.assistant_id.value,
+        created_at=conversation.created_at,
+        updated_at=conversation.updated_at,
+        messages=[
+            _message_response(
+                MessageDTO.from_entity(message, removed_documents=removed)
+            )
+            for message in conversation.messages
+        ],
+    )
+
+
+@archived_router.delete(
+    "/{conversation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_archived_conversation(
+    conversation_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    repository: PostgresConversationRepository = Depends(get_conversation_repository),
+) -> Response:
+    try:
+        DeleteArchivedConversationUseCase(repository, access_control).execute(
+            ArchivedConversationInput(user=user, conversation_id=conversation_id)
+        )
+    except DomainValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except ConversationNotFoundError as exc:
+        raise _not_found(exc) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

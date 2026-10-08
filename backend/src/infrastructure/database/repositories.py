@@ -151,6 +151,19 @@ class PostgresConversationRepository:
             for model in self._session.scalars(stmt).all()
         ]
 
+    def list_archived(self) -> list[Conversation]:
+        """PC-D5: conversas sem dono, anteriores a autenticacao."""
+        stmt = (
+            select(ConversationModel)
+            .where(ConversationModel.owner_user_id.is_(None))
+            .options(selectinload(ConversationModel.messages))
+            .order_by(ConversationModel.updated_at.desc())
+        )
+        return [
+            _conversation_to_entity(model)
+            for model in self._session.scalars(stmt).all()
+        ]
+
     def save_message(self, message: ChatMessage) -> ChatMessage:
         model = MessageModel(
             id=message.id.value,

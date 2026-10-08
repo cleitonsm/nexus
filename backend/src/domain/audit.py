@@ -37,6 +37,9 @@ class AuditAction(StrEnum):
     FEEDBACK_EXPORTED = "feedback.exported"
     USAGE_CONSULTED = "usage.consulted"
     USAGE_LIMITS_CHANGED = "usage.limits_changed"
+    ARCHIVED_CONVERSATIONS_CONSULTED = "archived_conversation.consulted"
+    ARCHIVED_CONVERSATION_VIEWED = "archived_conversation.viewed"
+    ARCHIVED_CONVERSATION_DELETED = "archived_conversation.deleted"
 
 
 class AuditResource(StrEnum):
