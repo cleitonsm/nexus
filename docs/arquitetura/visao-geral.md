@@ -156,18 +156,19 @@ flowchart LR
 
 | Fase | O que entrega | Situação |
 |------|---------------|----------|
-| 1 | Avaliação de qualidade, logs estruturados e identificador de requisição | Implementada, em validação no Docker |
-| 2 | Embeddings semânticos locais, chunking estrutural, reindexação | Especificada |
-| 3 | Busca híbrida, reranking, citações | Especificada |
+| 1 | Avaliação de qualidade, logs estruturados e identificador de requisição | Código entregue; validação no Docker pendente |
+| 2 | Embeddings semânticos locais, chunking estrutural, reindexação | Código entregue; validação no Docker pendente |
+| 3 | Busca híbrida, reranking, citações | Código entregue; validação no Docker pendente |
 | 4 | Keycloak, permissões, auditoria | Código entregue; validação no Docker pendente |
-| 5 | Worker, fila, ciclo de vida de documentos, OCR | Especificada |
-| 6 | Rastreamento, métricas, custo, streaming, backup | Especificada |
+| 5 | Worker, fila, ciclo de vida de documentos, OCR | Código entregue; validação no Docker pendente |
+| 6 | Rastreamento, métricas, custo, streaming, backup | Código entregue; validação no Docker pendente |
 
 ### Novos componentes
 
 - **Keycloak**: provedor de identidade; emite tokens com papéis e grupos.
-- **Worker de ingestão**: mesma imagem do backend, processa a fila em segundo plano.
-- **Fila em PostgreSQL**: tabela de jobs, sem broker dedicado.
+- **Worker de ingestão e reindexação**: mesma imagem do backend; processa a fila de ingestão e,
+  com ela vazia, as reindexações pedidas pela API (PC-D4).
+- **Filas em PostgreSQL**: tabelas `ingestion_jobs` e `reindex_jobs`, sem broker dedicado.
 - **Armazenamento de originais**: volume com os arquivos enviados.
 - **Reranker local** e **embeddings esparsos**: executados no próprio ambiente.
 - **Avaliação de qualidade**: caso de uso que mede o pipeline pelas mesmas portas do chat. Já

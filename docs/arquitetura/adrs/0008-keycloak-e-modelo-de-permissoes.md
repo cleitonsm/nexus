@@ -39,6 +39,11 @@ precisa identificar o usuário, limitar o conhecimento acessível a cada um e re
 - Os dados do MVP precisam de migração: assistentes sem grupo ficam visíveis só a administradores
   e conversas antigas ficam sem dono.
 - A indisponibilidade do Keycloak impede novos logins.
+- Desde 2026-10-08 (decisão PC-D6 do [plano de conclusão](../../plano-de-conclusao.md)) o backend
+  também consulta o Keycloak para listar os grupos na tela, como o cliente de serviço
+  `nexus-backend`, cuja conta só tem o papel `query-groups`. Sem esse cliente ou com o Keycloak
+  fora do ar, `GET /groups` responde 503 e a tela volta ao campo de texto; o login e a validação
+  de tokens não dependem dele.
 - Uma falha no filtro de acesso expõe conteúdo entre grupos; por isso há testes de integração
   recorrentes para esse comportamento.
 

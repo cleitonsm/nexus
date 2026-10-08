@@ -52,7 +52,11 @@ flowchart LR
 
 - **Keycloak**: autenticação, papéis e grupos; usa um banco próprio no PostgreSQL existente.
 - **Worker de Ingestão**: mesma imagem do backend; extrai, aplica OCR, fragmenta, vetoriza e
-  indexa em segundo plano, lendo a fila armazenada no PostgreSQL.
+  indexa em segundo plano, lendo a fila armazenada no PostgreSQL. Também executa as reindexações
+  pedidas pela API (PC-D4) e, sob demanda, a conferência de contagens com o Qdrant roda pela
+  mesma imagem (`python -m src.cli.check_consistency`, PC-D3).
+- **Keycloak (cliente de serviço)**: além de emitir os tokens, responde ao backend a lista de
+  grupos do realm pelo cliente `nexus-backend`, só de leitura (PC-D6).
 - **Volume de documentos originais**: guarda os arquivos enviados para reprocessamento.
 - **Observabilidade**: coletor e visualização de rastreamentos e métricas, ativados por perfil.
 

@@ -89,6 +89,11 @@ indexadas antes da Fase 3 não têm o vetor esparso: até `POST /assistants/{id}
 - `OIDC_FRONTEND_CLIENT_ID`: cliente público usado pelo frontend (`nexus-frontend`).
 - `KEYCLOAK_ADMIN` e `KEYCLOAK_ADMIN_PASSWORD`: credenciais administrativas do Keycloak (segredo;
   os valores do `.env.example` servem apenas ao ambiente local).
+- `KEYCLOAK_BACKEND_CLIENT_ID` e `KEYCLOAK_BACKEND_CLIENT_SECRET`: cliente de serviço com que o
+  backend lista os grupos do realm para a tela (PC-D6; padrões `nexus-backend` e
+  `nexus-backend-dev-secret`). O Compose passa o mesmo segredo ao Keycloak, que o usa na
+  importação do realm. Segredo vazio desliga a lista (a tela usa o campo de texto). Troque o
+  segredo fora do ambiente local.
 - `NEXUS_FRONTEND_URL`: endereço do frontend visto pelo navegador (`http://localhost:4200`).
   O Compose o repassa ao Keycloak, que o usa no realm importado (redirecionamento, origens e
   logout do cliente `nexus-frontend`). Só vale na primeira importação do realm.

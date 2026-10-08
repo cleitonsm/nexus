@@ -175,9 +175,9 @@ papéis do token sem depender do serviço. O login pelo Keycloak de verdade fica
   fase em um ambiente com dados (risco R20).
 - Conversas arquivadas: tela do administrador desde 2026-10-08 (PC-D5); não há como atribuí-las a
   um usuário.
-- Os grupos são digitados como texto; o Nexus não consulta o Keycloak para listar os grupos
-  existentes, então um nome digitado errado não é detectado.
-- O realm de exemplo só aceita o frontend em `http://localhost:4200`.
+- Grupos: desde 2026-10-08 (PC-D6) a tela lista os grupos do Keycloak (`GET /groups`, cliente de
+  serviço `nexus-backend`) e marca os que não existem mais; sem a lista, volta ao texto livre.
+- O endereço do frontend no realm é configurável por `NEXUS_FRONTEND_URL` desde 2026-10-08 (PC-D1).
 - Corrigido de passagem, por estar na rota reescrita: `POST /admin/api-key/test` passava um texto
   onde o LLM espera a lista de trechos e respondia 500.
 - Não corrigidos, anteriores a esta fase: o envio de vários arquivos de uma vez cancela os

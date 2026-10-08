@@ -83,8 +83,12 @@ flowchart LR
 ### Notas da Evolução
 
 - As regras de acesso ficam no domínio (`AccessPolicy`); as rotas apenas obtêm o usuário autenticado.
-- O worker de ingestão é um segundo ponto de entrada do mesmo código: invoca casos de uso de
-  aplicação, sem passar pelas rotas HTTP.
+- O worker é um segundo ponto de entrada do mesmo código: invoca casos de uso de aplicação
+  (ingestão e, desde a PC-D4, reindexação), sem passar pelas rotas HTTP. Os comandos
+  `src.cli.evaluate`, `src.cli.purge_audit` e `src.cli.check_consistency` (R18, PC-D3) são outros
+  pontos de entrada.
+- A porta `GroupDirectory` (PC-D6) é implementada pelo `KeycloakGroupDirectory`, que lê os grupos
+  pela API de administração do Keycloak com o cliente de serviço `nexus-backend`.
 - O caso de uso de avaliação, já implementado, reutiliza as portas de documentos, embedding,
   vector store e LLM do chat e acrescenta a porta `AnswerJudge`; é acionado pelo comando
   `python -m src.cli.evaluate`, não por rota HTTP.

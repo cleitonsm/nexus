@@ -233,7 +233,7 @@ Ao fim de cada etapa:
 | SPEC-002/003 e planos | PC-D2; compatibilidade do Qdrant | E4 |
 | SPEC-006 e plano | CT-46 a CT-48; C1–C11 revisados | E6 |
 | `infra/keycloak/README.md` | Variável do frontend; cliente `nexus-tests`; cliente de serviço, se houver | E4, E5, E7 |
-| `docs/arquitetura/c4-*.md`, `clean-architecture-backend.md`, `frontend-angular-ngrx.md` | Worker com reindexação, comando de consistência, telas novas | E5 |
+| `docs/arquitetura/c4-*.md`, `visao-geral.md`, `frontend-angular-ngrx.md` | Worker com reindexação, comando de consistência, telas novas | E5 (feito em 2026-10-08) |
 | `docs/gestao-riscos/` (ciclo 2) | Situação de R9 a R20 depois da campanha (R17, R18 em especial) | E10 |
 | SPEC-001 a 006 e `specs/README.md` | Status `Implementada` | E10 |
 | `plano-incremental.md`, `escopo-rag-enterprise.md`, `README.md` | Fases concluídas; metas com os valores medidos; seção "Limitações" | E10 |
@@ -268,7 +268,7 @@ refeito ao fim da semana 1.
 | E2 | Pendente | — | — |
 | E3 | Concluída | 2026-10-08 | PC-D1 a PC-D7 decididas; C1–C11 (SPEC-006) e C9–C16 (SPEC-005) aprovados; skill `desenvolvedor-nexus` atualizada nas duas cópias |
 | E4 | Em andamento | 2026-10-08 | PC-D1 (`NEXUS_FRONTEND_URL` no realm, checagem no CI) e PC-D2 (parâmetros do BM25 registrados por collection; aviso no painel novo "Índice de busca" da tela de assistentes, que também permite reindexar, no log e na métrica; 12 testes unitários do backend e specs do frontend) entregues. Falta a compatibilidade do Qdrant, que depende de E1 |
-| E5 | Em andamento | 2026-10-08 | PC-D4 entregue: a API só registra o pedido; o worker reserva `reindex_jobs` com `SKIP LOCKED` e prazo renovado por documento (migração `0007`), retoma do zero após interrupção e falha depois de `INGESTION_MAX_ATTEMPTS`; 7 testes unitários e 3 de integração (PostgreSQL). PC-D3 entregue: `python -m src.cli.check_consistency` (só lê; códigos de saída 0, 1 e 2; 10 testes unitários em `test_index_consistency.py`). PC-D5 entregue: tela "Conversas arquivadas" do administrador (`/admin/archived`; listar, ler e excluir, com auditoria; SPEC-004 D3 ajustada; 6 testes unitários e specs do frontend). Falta a seleção de grupos (PC-D6) |
+| E5 | Concluída | 2026-10-08 | PC-D4 entregue: a API só registra o pedido; o worker reserva `reindex_jobs` com `SKIP LOCKED` e prazo renovado por documento (migração `0007`), retoma do zero após interrupção e falha depois de `INGESTION_MAX_ATTEMPTS`; 7 testes unitários e 3 de integração (PostgreSQL). PC-D3 entregue: `python -m src.cli.check_consistency` (só lê; códigos de saída 0, 1 e 2; 10 testes unitários em `test_index_consistency.py`). PC-D5 entregue: tela "Conversas arquivadas" do administrador (`/admin/archived`; listar, ler e excluir, com auditoria; SPEC-004 D3 ajustada; 6 testes unitários e specs do frontend). PC-D6 entregue: `GET /groups` lê os grupos pelo cliente de serviço `nexus-backend` (só `query-groups`; 503 sem ele) e a tela de assistentes usa um seletor que volta ao texto livre sem a lista; 7 testes unitários e specs do frontend |
 | E6 | Pendente | — | CT-41 a CT-45 escritos |
 | E7 | Pendente | — | — |
 | EP | Pendente | — | 27 itens validados |

@@ -43,7 +43,11 @@ Conteúdo **planejado**; as seções acima continuam descrevendo o frontend do M
 - `/chat`: qualquer usuário autenticado, restrito aos assistentes dos seus grupos.
 - `/assistants`: curadores e administradores; gestão de documentos com estado, exclusão,
   substituição e restrição por grupo.
-- `/admin`: administradores; chave do LLM, permissões de assistentes, auditoria e consumo.
+- `/assistants`: também mostra o painel "Índice de busca" (estado do índice, aviso de mudança do
+  BM25 e botão de reindexar, PC-D2) e escolhe grupos do Keycloak num seletor (PC-D6).
+- `/admin`, `/admin/audit`, `/admin/usage` e `/admin/archived`: administradores; chave do LLM,
+  auditoria, consumo e conversas anteriores à autenticação (PC-D5).
+- `/feedback`: curadores e administradores; avaliações negativas.
 - Guards de rota por papel; itens de menu ocultos quando o papel não permite.
 
 ### Estado Global (acréscimos)

@@ -58,4 +58,5 @@ flowchart LR
 - **Route Guards**: bloqueiam rotas conforme o papel e redirecionam para o login.
 - **Store**: novo estado de sessão; documentos com estado de ingestão; mensagens com citações e feedback.
 - **Cliente de Streaming**: recebe a resposta em partes e as fontes ao final.
-- **Novas telas**: permissões do assistente, gestão de documentos, auditoria e consumo.
+- **Novas telas**: permissões do assistente, gestão de documentos, índice de busca, auditoria,
+  consumo, avaliações e conversas arquivadas.
