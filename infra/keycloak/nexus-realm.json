@@ -1,0 +1,213 @@
+{
+  "realm": "nexus",
+  "displayName": "Nexus (desenvolvimento)",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "loginWithEmailAllowed": true,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "eventsEnabled": true,
+  "eventsExpiration": 31536000,
+  "eventsListeners": [
+    "jboss-logging"
+  ],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": false,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "pt-BR",
+    "en"
+  ],
+  "defaultLocale": "pt-BR",
+  "roles": {
+    "realm": [
+      {
+        "name": "nexus-admin",
+        "description": "Administrador: assistentes, permissoes, chave do LLM e auditoria."
+      },
+      {
+        "name": "nexus-curador",
+        "description": "Curador: documentos dos assistentes a que tem acesso."
+      },
+      {
+        "name": "nexus-usuario",
+        "description": "Usuario: conversa com os assistentes a que tem acesso."
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "rh",
+      "path": "/rh"
+    },
+    {
+      "name": "financeiro",
+      "path": "/financeiro"
+    },
+    {
+      "name": "diretoria",
+      "path": "/diretoria"
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "nexus-frontend",
+      "name": "Nexus (frontend)",
+      "description": "Aplicacao Angular. Cliente publico: Authorization Code com PKCE.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "rootUrl": "http://localhost:4200",
+      "baseUrl": "/",
+      "redirectUris": [
+        "http://localhost:4200/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:4200/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "audiencia-nexus-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "nexus-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "grupos",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "groups",
+            "full.path": "false",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin.nexus",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Administradora",
+      "email": "admin.nexus@nexus.example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "nexus-dev",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "nexus-admin"
+      ],
+      "groups": []
+    },
+    {
+      "username": "curadora.rh",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Carla",
+      "lastName": "Curadora",
+      "email": "curadora.rh@nexus.example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "nexus-dev",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "nexus-curador"
+      ],
+      "groups": [
+        "/rh"
+      ]
+    },
+    {
+      "username": "usuario.rh",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Usuaria",
+      "email": "usuario.rh@nexus.example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "nexus-dev",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "nexus-usuario"
+      ],
+      "groups": [
+        "/rh"
+      ]
+    },
+    {
+      "username": "usuario.financeiro",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bruno",
+      "lastName": "Usuario",
+      "email": "usuario.financeiro@nexus.example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "nexus-dev",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "nexus-usuario"
+      ],
+      "groups": [
+        "/financeiro"
+      ]
+    },
+    {
+      "username": "diretora",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Diana",
+      "lastName": "Diretora",
+      "email": "diretora@nexus.example",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "nexus-dev",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "nexus-usuario"
+      ],
+      "groups": [
+        "/rh",
+        "/diretoria"
+      ]
+    }
+  ]
+}

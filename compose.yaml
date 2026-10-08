@@ -30,11 +30,20 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
+      # A API so busca as chaves do Keycloak na primeira requisicao com token.
+      keycloak:
+        condition: service_started
 
   frontend:
     build:
       context: .
       dockerfile: infra/docker/frontend.Dockerfile
+    # Enderecos do login, publicados em /config.json pelo Nginx.
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
     ports:
       - "${FRONTEND_PORT:-4200}:80"
     healthcheck:
@@ -64,6 +73,64 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # Cria o banco do Keycloak no PostgreSQL existente, se ainda nao existir.
+  # Funciona tambem em volumes criados antes da Fase 4.
+  keycloak-db-init:
+    image: postgres:16-alpine
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        export PGPASSWORD="$$POSTGRES_PASSWORD"
+        psql -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tAc \
+          "SELECT 1 FROM pg_database WHERE datname = 'keycloak'" | grep -q 1 \
+          || psql -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "CREATE DATABASE keycloak"
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER:-nexus}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-nexus}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # Endereco pelo qual o navegador chega ao Keycloak: e o emissor dos
+      # tokens. A API busca as chaves pelo nome do servico (backchannel).
+      KC_HOSTNAME: ${KEYCLOAK_URL:-http://localhost:8080}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+    volumes:
+      - ./infra/keycloak/nexus-realm.json:/opt/keycloak/data/import/nexus-realm.json:ro
+    healthcheck:
+      # A imagem nao traz curl nem wget; a consulta usa o /dev/tcp do bash.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          read -r status <&3 &&
+          case "$$status" in *" 200 "*) exit 0 ;; *) exit 1 ;; esac
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      keycloak-db-init:
+        condition: service_completed_successfully
 
   qdrant:
     image: qdrant/qdrant:v1.11.3
