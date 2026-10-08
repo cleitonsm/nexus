@@ -169,8 +169,78 @@ services:
       retries: 5
       start_period: 10s
 
+  # --- SPEC-006 D1: observabilidade, desligada por padrao ---------------
+  # docker compose --profile observabilidade up -d
+  # e, no .env, OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    profiles: ["observabilidade"]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+    # Memoria limitada: os rastreamentos ficam so em memoria (risco R17).
+    command: ["--memory.max-traces=20000"]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: ["observabilidade"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    profiles: ["observabilidade"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - jaeger
+
+  # --- SPEC-006 D5: backup diario em volume local ------------------------
+  # docker compose --profile backup up -d backup
+  # Restauracao: docs/infraestrutura/backup-e-restauracao.md
+  backup:
+    build:
+      context: .
+      dockerfile: infra/docker/backup.Dockerfile
+    profiles: ["backup"]
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    volumes:
+      - ${BACKUP_PATH:-./backups}:/backups
+      - documents_data:/documents
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   qdrant_data:
   backend_cache:
   documents_data:
+  prometheus_data:
+  grafana_data:

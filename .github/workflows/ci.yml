@@ -1,0 +1,81 @@
+# Integracao continua (SPEC-006 D4): testes unitarios e verificacoes
+# estaticas. A avaliacao com LLM (RF-62) roda por script local
+# (scripts/quality-gate.sh), para que nenhuma API key vire segredo no GitHub.
+name: ci
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: OCR local (mesmos pacotes da imagem)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-por tesseract-ocr-eng
+      - name: Dependencias (PyTorch so para CPU, como na imagem)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      - name: Verificacao estatica (nomes indefinidos, imports sem uso, sintaxe)
+        run: |
+          pip install ruff==0.8.6
+          ruff check --select F,E9 src tests
+          python -m compileall -q src
+      - name: Testes unitarios
+        env:
+          DATABASE_URL: postgresql+psycopg://nexus:nexus@localhost:5432/nexus
+          HF_HUB_OFFLINE: "1"
+        run: python -m unittest discover -s tests/unit -v
+
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Testes (Vitest)
+        run: npm test
+      - name: Build de producao
+        run: npm run build
+
+  infra:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose valido, com os perfis opcionais
+        run: |
+          docker compose config -q
+          docker compose --profile observabilidade --profile backup config -q
+      - name: Scripts de backup (sintaxe POSIX)
+        run: |
+          for script in scripts/backup.sh scripts/restore.sh scripts/backup-loop.sh scripts/backup-common.sh; do
+            sh -n "$script"
+          done

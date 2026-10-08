@@ -23,3 +23,6 @@ data/
 # IDE
 .vscode/
 .idea/
+
+# Backups locais (SPEC-006, scripts/backup.sh)
+backups/
