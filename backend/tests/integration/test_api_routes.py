@@ -5,6 +5,7 @@ import unittest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from access_support import ADMIN, AccessHarness
 from src.api.dependencies import (
     get_assistant_repository,
     get_document_indexer,
@@ -82,11 +83,16 @@ class InMemoryConversationRepository:
     def __init__(self, conversations: list[Conversation]) -> None:
         self.items = conversations
 
-    def list_by_assistant(self, assistant_id: AssistantId) -> list[Conversation]:
+    def list_by_assistant(
+        self,
+        assistant_id: AssistantId,
+        owner_user_id: str,
+    ) -> list[Conversation]:
         return [
             conversation
             for conversation in self.items
             if conversation.assistant_id == assistant_id
+            and conversation.owner_user_id == owner_user_id
         ]
 
 
@@ -190,6 +196,7 @@ class SpyVectorStoreGateway:
         self.collections: dict[str, int] = {}
         self.aliases: dict[str, str] = {}
         self.upserts: list[tuple[str, list[VectorChunk]]] = []
+        self.group_updates: list[tuple[str, str, frozenset[str]]] = []
 
     def ensure_collection(
         self, collection_name: CollectionName, vector_size: int
@@ -208,8 +215,20 @@ class SpyVectorStoreGateway:
         sparse_vector: SparseVector,
         limit: int,
         payload_filter: dict[str, str] | None = None,
+        *,
+        user_groups: frozenset[str] | None,
     ) -> list[SearchResult]:
         return []
+
+    def set_document_groups(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+        groups: frozenset[str],
+    ) -> None:
+        self.group_updates.append(
+            (collection_name.value, document_id.value, groups)
+        )
 
     def delete_collection(self, collection_name: CollectionName) -> None:
         self.collections.pop(collection_name.value, None)
@@ -238,6 +257,8 @@ class ApiRoutesTestCase(unittest.TestCase):
         self.app.include_router(documents_router)
         self.app.include_router(index_router)
         self.app.dependency_overrides.clear()
+        # As rotas exigem identidade; aqui quem chama e um administrador.
+        self.access = AccessHarness(self.app, ADMIN)
 
     def tearDown(self) -> None:
         self.app.dependency_overrides.clear()
@@ -277,11 +298,26 @@ class ApiRoutesTestCase(unittest.TestCase):
             Assistant(id=AssistantId("assistant-2"), name=AssistantName("Financeiro")),
         ]
         conversations = [
-            Conversation(id=ConversationId("conv-1"), assistant_id=assistant_id),
-            Conversation(id=ConversationId("conv-2"), assistant_id=assistant_id),
+            Conversation(
+                id=ConversationId("conv-1"),
+                assistant_id=assistant_id,
+                owner_user_id=ADMIN.id,
+            ),
+            Conversation(
+                id=ConversationId("conv-2"),
+                assistant_id=assistant_id,
+                owner_user_id=ADMIN.id,
+            ),
             Conversation(
                 id=ConversationId("conv-other"),
                 assistant_id=AssistantId("assistant-2"),
+                owner_user_id=ADMIN.id,
+            ),
+            # RN-24: nem o administrador ve a conversa de outra pessoa.
+            Conversation(
+                id=ConversationId("conv-alheia"),
+                assistant_id=assistant_id,
+                owner_user_id="outro-usuario",
             ),
         ]
         self.app.dependency_overrides[get_assistant_repository] = lambda: InMemoryAssistantRepository(
@@ -354,6 +390,34 @@ class ApiRoutesTestCase(unittest.TestCase):
             DocumentMetadata(values={"source": "qa", "team": "ops"}),
         )
         self.assertIsNotNone(stored.storage_key)
+
+    def test_ingest_document_endpoint_restricts_chunks_from_the_start(self) -> None:
+        """D8: grupos no envio gravam os trechos ja restritos."""
+        document_repository, vector_store = self._override_indexing()
+
+        with TestClient(self.app) as client:
+            response = client.post(
+                "/assistants/assistant-1/documents",
+                files={"file": ("manual.txt", b"Conteudo principal", "text/plain")},
+                data={"groups": '["/diretoria", "rh"]'},
+            )
+            invalid = client.post(
+                "/assistants/assistant-1/documents",
+                files={"file": ("manual.txt", b"Conteudo principal", "text/plain")},
+                data={"groups": "diretoria"},
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["groups"], ["diretoria", "rh"])
+        (_, chunks), = vector_store.upserts
+        self.assertTrue(all(chunk.allowed_groups == ("diretoria", "rh") for chunk in chunks))
+        stored = next(iter(document_repository.items.values()))
+        self.assertEqual(
+            self.access.permissions.get_document_groups(stored.id),
+            frozenset({"diretoria", "rh"}),
+        )
+        self.assertEqual(invalid.status_code, 422)
+        self.assertEqual(len(document_repository.items), 1)
 
     def test_ingest_document_endpoint_rejects_file_above_limit(self) -> None:
         document_repository, _ = self._override_indexing(max_file_bytes=8)

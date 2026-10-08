@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 
+from .access import AuthenticatedUser
+from .audit import AuditEvent, AuditQuery
 from .chunking import DocumentChunk, ExtractedDocument
 from .citations import ContextChunk
 from .errors import DomainValidationError
@@ -33,6 +36,8 @@ class AssistantRepository(Protocol):
 
 class DocumentRepository(Protocol):
     def save(self, document: Document) -> Document: ...
+
+    def get_by_id(self, document_id: DocumentId) -> Document | None: ...
 
     def list_by_assistant(
         self,
@@ -65,7 +70,10 @@ class ConversationRepository(Protocol):
     def list_by_assistant(
         self,
         assistant_id: AssistantId,
-    ) -> list[Conversation]: ...
+        owner_user_id: str,
+    ) -> list[Conversation]:
+        """Conversas do assistente que pertencem ao usuario (RN-24)."""
+        ...
 
     def save_message(self, message: ChatMessage) -> ChatMessage: ...
 
@@ -145,6 +153,8 @@ class VectorChunk:
     embedding_model: str = ""
     pipeline_version: str = ""
     sparse_vector: SparseVector | None = None
+    # Grupos a que o documento esta restrito; vazio segue o assistente (RF-43).
+    allowed_groups: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,13 +190,32 @@ class VectorStoreGateway(Protocol):
         sparse_vector: SparseVector,
         limit: int,
         payload_filter: dict[str, str] | None = None,
+        *,
+        user_groups: frozenset[str] | None,
     ) -> list[SearchResult]:
         """Busca densa e esparsa com fusao RRF (RF-33).
+
+        ``user_groups`` e obrigatorio e aplica, dentro da consulta, a restricao
+        por documento (RF-43, RNF-23): so voltam trechos sem restricao ou
+        restritos a algum desses grupos. ``None`` desliga a restricao e e
+        reservado a processos sem usuario, como a avaliacao.
 
         ``payload_filter`` restringe os candidatos por igualdade de campos do
         payload. Collection inexistente devolve lista vazia. Collection
         anterior a busca hibrida e consultada so pelo vetor denso; se nem isso
         for possivel, levanta ``IndexOutdatedError``.
+        """
+        ...
+
+    def set_document_groups(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+        groups: frozenset[str],
+    ) -> None:
+        """Regrava a restricao nos trechos do documento, sem reindexar vetores.
+
+        Collection inexistente nao e erro: o documento ainda nao tem trechos.
         """
         ...
 
@@ -292,3 +321,64 @@ class AnswerJudge(Protocol):
         answer: str,
         context_chunks: list[str],
     ) -> bool: ...
+
+
+class TokenVerifier(Protocol):
+    """Valida o token de acesso e devolve quem o apresentou (RNF-22)."""
+
+    def verify(self, token: str) -> AuthenticatedUser:
+        """Levanta ``AuthenticationError`` para qualquer token nao aceito."""
+        ...
+
+
+class AssistantPermissionRepository(Protocol):
+    """Vinculos de assistentes e de documentos com grupos (RF-42, RF-43)."""
+
+    def get_assistant_groups(self, assistant_id: AssistantId) -> frozenset[str]: ...
+
+    def list_assistant_groups(self) -> dict[str, frozenset[str]]:
+        """Grupos por id de assistente; assistentes sem grupo ficam de fora."""
+        ...
+
+    def set_assistant_groups(
+        self,
+        assistant_id: AssistantId,
+        groups: frozenset[str],
+    ) -> None: ...
+
+    def get_document_groups(self, document_id: DocumentId) -> frozenset[str]: ...
+
+    def list_document_groups(
+        self,
+        assistant_id: AssistantId,
+    ) -> dict[str, frozenset[str]]:
+        """Grupos por id de documento do assistente; sem restricao fica de fora."""
+        ...
+
+    def set_document_groups(
+        self,
+        document_id: DocumentId,
+        groups: frozenset[str],
+    ) -> None: ...
+
+
+class AuditRetentionRepository(Protocol):
+    """Remocao por retencao (RNF-24), separada da trilha usada pela aplicacao.
+
+    So o comando de manutencao a recebe: nenhuma rota nem caso de uso de
+    usuario consegue apagar eventos (RN-25).
+    """
+
+    def purge_older_than(self, cutoff: datetime) -> int:
+        """Apaga os eventos anteriores a ``cutoff`` e devolve quantos eram."""
+        ...
+
+
+class AuditLogRepository(Protocol):
+    """Trilha somente de inclusao: nao ha alteracao nem exclusao (RN-25)."""
+
+    def append(self, event: AuditEvent) -> AuditEvent: ...
+
+    def list_events(self, query: AuditQuery) -> list[AuditEvent]:
+        """Eventos do mais recente para o mais antigo."""
+        ...

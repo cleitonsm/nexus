@@ -25,3 +25,5 @@ class AssistantResponse(BaseModel):
     description: str | None
     initial_prompt: str | None
     created_at: datetime
+    # Grupos vinculados; vazio para quem nao gerencia o assistente.
+    groups: list[str] = Field(default_factory=list)

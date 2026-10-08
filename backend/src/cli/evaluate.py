@@ -27,6 +27,8 @@ from src.application.use_cases import (
 )
 from src.application.services import (
     PIPELINE_VERSION,
+    AccessControl,
+    AuditTrail,
     ContextRetriever,
     GroundedAnswerGenerator,
     RetrievalSettings,
@@ -35,10 +37,12 @@ from src.application.services import (
 )
 from src.domain import (
     AssistantId,
+    AuthenticatedUser,
     DocumentRepository,
     EmbeddingGateway,
     EvaluationItem,
     LLMGateway,
+    Role,
     VectorStoreGateway,
 )
 from src.infrastructure.composition import (
@@ -54,7 +58,9 @@ from src.infrastructure.composition import (
     retrieval_settings,
 )
 from src.infrastructure.database import (
+    PostgresAssistantPermissionRepository,
     PostgresAssistantRepository,
+    PostgresAuditLogRepository,
     PostgresDocumentRepository,
     PostgresReindexJobRepository,
     PostgresSecretSettingsRepository,
@@ -78,6 +84,14 @@ EXIT_INVALID_DATASET = 2
 
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
 DEFAULT_LLM_API_URL = "https://api.openai.com/v1/chat/completions"
+
+# O comando roda no servidor, sem token: age como uma identidade de sistema,
+# e e com esse identificador que as acoes dele aparecem na auditoria.
+EVALUATION_USER = AuthenticatedUser(
+    id="system:evaluation",
+    name="Avaliacao (linha de comando)",
+    roles=frozenset({Role.ADMIN}),
+)
 
 logger = logging.getLogger("nexus.evaluation")
 
@@ -127,7 +141,13 @@ def _run(
         api_key=os.getenv("QDRANT_API_KEY", "") or None,
     )
     document_repository = PostgresDocumentRepository(session=session)
-    assistant_id = _ensure_assistant(args, session)
+    access_control = AccessControl(
+        permission_repository=PostgresAssistantPermissionRepository(
+            session=session
+        ),
+        audit_trail=AuditTrail(PostgresAuditLogRepository(session=session)),
+    )
+    assistant_id = _ensure_assistant(args, session, access_control)
     _discard_outdated_index(
         assistant_id,
         document_repository,
@@ -144,6 +164,7 @@ def _run(
             file_storage=build_file_storage(),
             reindex_job_repository=PostgresReindexJobRepository(session=session),
             max_file_bytes=max_file_bytes(),
+            access_control=access_control,
         ),
         document_repository,
     )
@@ -181,13 +202,18 @@ def _run(
     return _store_and_compare(args, report.to_dict(), report.metrics)
 
 
-def _ensure_assistant(args: argparse.Namespace, session: Session) -> AssistantId:
+def _ensure_assistant(
+    args: argparse.Namespace,
+    session: Session,
+    access_control: AccessControl,
+) -> AssistantId:
     repository = PostgresAssistantRepository(session=session)
     for assistant in repository.list_all():
         if assistant.name.value == args.assistant_name:
             return assistant.id
-    created = CreateAssistantUseCase(repository).execute(
+    created = CreateAssistantUseCase(repository, access_control).execute(
         CreateAssistantInput(
+            user=EVALUATION_USER,
             name=args.assistant_name,
             description="Assistente piloto usado na avaliacao de qualidade.",
         )
@@ -241,6 +267,7 @@ def _seed_documents(
         for path in sorted(directory.glob("*.md")):
             result = ingest.execute(
                 IngestDocumentInput(
+                    user=EVALUATION_USER,
                     assistant_id=assistant_id.value,
                     source_name=path.name,
                     raw_content=path.read_bytes(),

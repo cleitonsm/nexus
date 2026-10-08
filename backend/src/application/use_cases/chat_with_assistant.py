@@ -11,14 +11,19 @@ from langgraph.graph import END, StateGraph  # type: ignore[import-untyped]
 from src.application.dto import ChatTurnResult, MessageDTO
 from src.application.services import (
     DEFAULT_ANSWER_INSTRUCTION,
+    AccessControl,
     ContextRetriever,
     GroundedAnswerGenerator,
     fit_context,
     trim_history,
 )
 from src.domain import (
+    Assistant,
     AssistantId,
     AssistantRepository,
+    AuditAction,
+    AuditResource,
+    AuthenticatedUser,
     ChatMessage,
     Citation,
     ContextChunk,
@@ -47,6 +52,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class ChatWithAssistantInput:
+    user: AuthenticatedUser
     conversation_id: str
     question: str
     # Teto por pergunta: pede menos trechos que RERANK_TOP_N, nunca mais.
@@ -61,6 +67,8 @@ class ChatState(TypedDict):
     conversation_id: ConversationId
     assistant_id: AssistantId
     question: str
+    # Grupos de quem pergunta: filtro obrigatorio da busca (RF-43).
+    user_groups: frozenset[str]
     top_n: int
     fallback_answer: str
     assistant_initial_prompt: str | None
@@ -83,6 +91,11 @@ class ChatWithAssistantUseCase:
     historico -> pergunta -> reescrita -> busca hibrida -> reranking ->
     nota minima -> orcamento -> geracao -> validacao das citacoes -> gravacao.
     Sem trecho acima da nota minima, ou sem citacao valida, vale o fallback.
+
+    SPEC-004: a conversa precisa ser de quem pergunta (RN-24), o assistente
+    precisa estar ao alcance dos seus grupos (RF-42) e a busca so devolve
+    documentos que esses grupos podem ler (RF-43). Cada pergunta fica na
+    auditoria com os documentos recuperados, sem texto algum (RF-45).
     """
 
     def __init__(
@@ -93,12 +106,15 @@ class ChatWithAssistantUseCase:
         context_retriever: ContextRetriever,
         answer_generator: GroundedAnswerGenerator,
         token_counter: TokenCounter,
+        access_control: AccessControl,
     ) -> None:
+        self._access = access_control
         self._assistant_repository = assistant_repository
         self._conversation_repository = conversation_repository
         self._retriever = context_retriever
         self._answer_generator = answer_generator
         self._token_counter = token_counter
+        self._ranked_so_far: list[SearchResult] = []
         self._graph = self._build_graph()
 
     def execute(self, data: ChatWithAssistantInput) -> ChatTurnResult:
@@ -108,25 +124,34 @@ class ChatWithAssistantUseCase:
 
         conversation_id = ConversationId(data.conversation_id)
         conversation = self._conversation_repository.get_by_id(conversation_id)
-        if conversation is None:
+        if conversation is None or not self._access.owns_conversation(
+            data.user, conversation.owner_user_id
+        ):
             raise ConversationNotFoundError("conversation not found.")
+        self._access.require_assistant_access(
+            data.user,
+            conversation.assistant_id,
+            AuditAction.CHAT_QUESTION,
+        )
         assistant = self._assistant_repository.get_by_id(
             conversation.assistant_id
         )
 
-        final_state = self._graph.invoke(
-            {
-                "conversation_id": conversation_id,
-                "assistant_id": conversation.assistant_id,
-                "question": question,
-                "top_n": self._top_n(data.top_k),
-                "fallback_answer": data.fallback_answer,
-                "assistant_initial_prompt": (
-                    assistant.initial_prompt if assistant else None
-                ),
-            }
+        # Trechos ja ranqueados: se a pergunta falhar depois, a auditoria
+        # ainda registra o que foi recuperado (C9).
+        self._ranked_so_far = []
+        initial_state = self._initial_state(
+            data, conversation_id, conversation.assistant_id, question, assistant
         )
+        try:
+            final_state = self._graph.invoke(initial_state)
+        except Exception as exc:
+            self._audit_failure(
+                data.user, conversation_id, conversation.assistant_id, exc
+            )
+            raise
         fallback_used = final_state["fallback_used"]
+        self._audit_question(data.user, final_state)
         return ChatTurnResult(
             conversation_id=final_state["conversation_id"].value,
             assistant_id=final_state["assistant_id"].value,
@@ -139,6 +164,68 @@ class ChatWithAssistantUseCase:
             ),
             fallback_used=fallback_used,
             rewritten_query=final_state["search_query"],
+        )
+
+    def _initial_state(
+        self,
+        data: ChatWithAssistantInput,
+        conversation_id: ConversationId,
+        assistant_id: AssistantId,
+        question: str,
+        assistant: Assistant | None,
+    ) -> dict[str, object]:
+        return {
+            "conversation_id": conversation_id,
+            "assistant_id": assistant_id,
+            "question": question,
+            "user_groups": data.user.groups,
+            "top_n": self._top_n(data.top_k),
+            "fallback_answer": data.fallback_answer,
+            "assistant_initial_prompt": (
+                assistant.initial_prompt if assistant else None
+            ),
+        }
+
+    def _audit_failure(
+        self,
+        user: AuthenticatedUser,
+        conversation_id: ConversationId,
+        assistant_id: AssistantId,
+        error: Exception,
+    ) -> None:
+        """C9: pergunta interrompida tambem entra na trilha, marcada como falha."""
+        self._access.audit(
+            user,
+            AuditAction.CHAT_QUESTION,
+            resource_type=AuditResource.ASSISTANT,
+            resource_id=assistant_id.value,
+            details={
+                "assistant_id": assistant_id.value,
+                "conversation_id": conversation_id.value,
+                "failed": True,
+                "error_type": type(error).__name__,
+                "retrieved_documents": _retrieved(self._ranked_so_far),
+                "cited_documents": [],
+            },
+        )
+
+    def _audit_question(self, user: AuthenticatedUser, state: ChatState) -> None:
+        """So identificadores: nem a pergunta nem os trechos entram na trilha."""
+        self._access.audit(
+            user,
+            AuditAction.CHAT_QUESTION,
+            resource_type=AuditResource.ASSISTANT,
+            resource_id=state["assistant_id"].value,
+            details={
+                "assistant_id": state["assistant_id"].value,
+                "conversation_id": state["conversation_id"].value,
+                "fallback_used": state["fallback_used"],
+                "failed": False,
+                "retrieved_documents": _retrieved(state["ranked"]),
+                "cited_documents": sorted(
+                    {item.document_id.value for item in state["citations"]}
+                ),
+            },
         )
 
     def _top_n(self, top_k: int | None) -> int:
@@ -250,6 +337,7 @@ class ChatWithAssistantUseCase:
         candidates = self._retriever.search(
             state["assistant_id"],
             state["search_query"],
+            user_groups=state["user_groups"],
         )
         logger.info(
             "chat.retrieval.finished",
@@ -270,6 +358,7 @@ class ChatWithAssistantUseCase:
             state["candidates"],
             limit=state["top_n"],
         )
+        self._ranked_so_far = ranked
         logger.info(
             "chat.rerank.finished",
             extra={
@@ -386,6 +475,18 @@ class ChatWithAssistantUseCase:
             **state,
             "assistant_message": saved,
         }
+
+
+def _retrieved(ranked: list[SearchResult]) -> list[dict[str, object]]:
+    return [
+        {
+            "document_id": item.document_id.value,
+            "source_name": item.source_name,
+            "chunk_id": item.chunk_id,
+            "score": round(item.score, 4),
+        }
+        for item in ranked
+    ]
 
 
 def _elapsed_ms(started_at: float) -> int:

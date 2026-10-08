@@ -1,3 +1,10 @@
+from .access import (
+    AuditEventResponse,
+    CurrentUserResponse,
+    DocumentAccessResponse,
+    GroupsRequest,
+    GroupsResponse,
+)
 from .admin import ApiKeyStatusResponse, ApiKeyTestResponse, SaveApiKeyRequest
 from .assistants import (
     AssistantResponse,
@@ -24,6 +31,7 @@ __all__ = [
     "ApiKeyStatusResponse",
     "ApiKeyTestResponse",
     "AssistantResponse",
+    "AuditEventResponse",
     "ChatRequest",
     "ChatResponse",
     "CitationResponse",
@@ -34,7 +42,11 @@ __all__ = [
     "InferAssistantRequest",
     "InferAssistantResponse",
     "CreateConversationRequest",
+    "CurrentUserResponse",
+    "DocumentAccessResponse",
     "DocumentIngestionResponse",
+    "GroupsRequest",
+    "GroupsResponse",
     "IndexStatusResponse",
     "MessageResponse",
     "ReindexJobResponse",

@@ -4,10 +4,12 @@ import logging
 import os
 from collections.abc import Callable, Generator
 
-from fastapi import Depends
+from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.application.services import (
+    AccessControl,
+    AuditTrail,
     ContextRetriever,
     DocumentIndexer,
     GroundedAnswerGenerator,
@@ -18,12 +20,15 @@ from src.application.use_cases import (
     RunReindexUseCase,
 )
 from src.domain import (
+    AuthenticatedUser,
+    AuthenticationError,
     ChatMessage,
     ContextChunk,
     DocumentFileStorage,
     EmbeddingGateway,
     LLMGateway,
     TokenCounter,
+    TokenVerifier,
 )
 from src.infrastructure.composition import (
     build_document_indexer,
@@ -32,11 +37,14 @@ from src.infrastructure.composition import (
     build_reranker_gateway,
     build_sparse_embedding_gateway,
     build_token_counter,
+    build_token_verifier,
     max_file_bytes,
     retrieval_settings,
 )
 from src.infrastructure.database import (
+    PostgresAssistantPermissionRepository,
     PostgresAssistantRepository,
+    PostgresAuditLogRepository,
     PostgresConversationRepository,
     PostgresDocumentRepository,
     PostgresReindexJobRepository,
@@ -55,6 +63,62 @@ logger = logging.getLogger(__name__)
 
 def get_session() -> Generator[Session, None, None]:
     yield from get_db_session()
+
+
+def get_token_verifier() -> TokenVerifier:
+    return build_token_verifier()
+
+
+def get_current_user(
+    authorization: str | None = Header(default=None),
+    token_verifier: TokenVerifier = Depends(get_token_verifier),
+) -> AuthenticatedUser:
+    """RF-40: toda rota, exceto ``/health``, exige um token valido.
+
+    O token nunca e registrado em log (RNF-25); so o motivo da recusa.
+    """
+    scheme, _, token = (authorization or "").strip().partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        raise _unauthenticated("authentication required")
+    try:
+        return token_verifier.verify(token.strip())
+    except AuthenticationError as exc:
+        logger.info("auth.token.rejected", extra={"reason": str(exc)})
+        raise _unauthenticated("invalid or expired token") from exc
+
+
+def _unauthenticated(detail: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=detail,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+def get_permission_repository(
+    session: Session = Depends(get_session),
+) -> PostgresAssistantPermissionRepository:
+    return PostgresAssistantPermissionRepository(session=session)
+
+
+def get_audit_log_repository(
+    session: Session = Depends(get_session),
+) -> PostgresAuditLogRepository:
+    return PostgresAuditLogRepository(session=session)
+
+
+def get_access_control(
+    permission_repository: PostgresAssistantPermissionRepository = Depends(
+        get_permission_repository
+    ),
+    audit_log_repository: PostgresAuditLogRepository = Depends(
+        get_audit_log_repository
+    ),
+) -> AccessControl:
+    return AccessControl(
+        permission_repository=permission_repository,
+        audit_trail=AuditTrail(audit_log_repository),
+    )
 
 
 def get_assistant_repository(
@@ -118,6 +182,9 @@ def run_reindex_job(job_id: str) -> None:
             document_indexer=build_document_indexer(),
             file_storage=build_file_storage(),
             reindex_job_repository=PostgresReindexJobRepository(session=session),
+            permission_repository=PostgresAssistantPermissionRepository(
+                session=session
+            ),
         ).execute(RunReindexInput(job_id=job_id))
 
 

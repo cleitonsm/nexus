@@ -18,6 +18,10 @@ from src.domain import (
 
 DENSE_VECTOR = "dense"
 SPARSE_VECTOR = "sparse"
+# Grupos a que o documento do trecho esta restrito (RF-43). Ausente ou vazio:
+# o trecho segue o acesso do assistente.
+ALLOWED_GROUPS = "allowed_groups"
+DOCUMENT_ID = "document_id"
 _NOT_FOUND = 404
 
 logger = logging.getLogger(__name__)
@@ -51,6 +55,16 @@ class QdrantVectorStoreGateway:
                 )
             },
         )
+        self._ensure_group_index(collection_name)
+
+    def _ensure_group_index(self, collection_name: CollectionName) -> None:
+        """Indice de payload do filtro de acesso; cria-lo de novo nao tem efeito."""
+        self._client.create_payload_index(
+            collection_name=collection_name.value,
+            field_name=ALLOWED_GROUPS,
+            field_schema=models.PayloadSchemaType.KEYWORD,
+            wait=True,
+        )
 
     def upsert_chunks(
         self,
@@ -79,11 +93,17 @@ class QdrantVectorStoreGateway:
         sparse_vector: SparseVector,
         limit: int,
         payload_filter: dict[str, str] | None = None,
+        *,
+        user_groups: frozenset[str] | None,
     ) -> list[SearchResult]:
-        """Pre-busca densa e esparsa, fundidas por RRF na Query API (RF-33)."""
+        """Pre-busca densa e esparsa, fundidas por RRF na Query API (RF-33).
+
+        O filtro de acesso entra em cada pre-busca: um trecho restrito a
+        grupos que o usuario nao tem nunca chega a ser candidato (RNF-23).
+        """
         if limit <= 0:
             return []
-        query_filter = _filter(payload_filter)
+        query_filter = _filter(payload_filter, user_groups)
         prefetch = [
             models.Prefetch(
                 query=dense_vector,
@@ -163,6 +183,35 @@ class QdrantVectorStoreGateway:
             and SPARSE_VECTOR in sparse
         )
 
+    def set_document_groups(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+        groups: frozenset[str],
+    ) -> None:
+        """Regrava ``allowed_groups`` em todos os trechos do documento."""
+        # O indice e criado na collection fisica; o nome recebido e o alias.
+        target = self.resolve_alias(collection_name) or collection_name
+        try:
+            self._ensure_group_index(target)
+            self._client.set_payload(
+                collection_name=target.value,
+                payload={ALLOWED_GROUPS: sorted(groups)},
+                points=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key=DOCUMENT_ID,
+                            match=models.MatchValue(value=document_id.value),
+                        )
+                    ]
+                ),
+                wait=True,
+            )
+        except UnexpectedResponse as exc:
+            if exc.status_code != _NOT_FOUND:
+                raise
+            # Assistente ainda sem collection: nao ha trecho para regravar.
+
     def delete_collection(self, collection_name: CollectionName) -> None:
         if not self.collection_exists(collection_name):
             return
@@ -226,15 +275,38 @@ def _sparse(vector: SparseVector) -> models.SparseVector:
     )
 
 
-def _filter(payload_filter: dict[str, str] | None) -> models.Filter | None:
-    if not payload_filter:
-        return None
-    return models.Filter(
-        must=[
-            models.FieldCondition(key=key, match=models.MatchValue(value=value))
-            for key, value in payload_filter.items()
-        ]
+def _filter(
+    payload_filter: dict[str, str] | None,
+    user_groups: frozenset[str] | None,
+) -> models.Filter | None:
+    """Igualdade de campos e, quando ha usuario, o filtro de acesso (RF-43)."""
+    must: list[object] = [
+        models.FieldCondition(key=key, match=models.MatchValue(value=value))
+        for key, value in (payload_filter or {}).items()
+    ]
+    if user_groups is not None:
+        must.append(_access_filter(user_groups))
+    return models.Filter(must=must) if must else None
+
+
+def _access_filter(user_groups: frozenset[str]) -> models.Filter:
+    """Trecho sem restricao, ou restrito a algum grupo do usuario.
+
+    ``is_empty`` cobre campo ausente, nulo e lista vazia; por isso os trechos
+    gravados antes da SPEC-004 continuam sem restricao.
+    """
+    unrestricted = models.IsEmptyCondition(
+        is_empty=models.PayloadField(key=ALLOWED_GROUPS)
     )
+    conditions: list[object] = [unrestricted]
+    if user_groups:
+        conditions.append(
+            models.FieldCondition(
+                key=ALLOWED_GROUPS,
+                match=models.MatchAny(any=sorted(user_groups)),
+            )
+        )
+    return models.Filter(should=conditions)
 
 
 def _to_result(point: models.ScoredPoint) -> SearchResult | None:
@@ -273,4 +345,5 @@ def _payload(chunk: VectorChunk) -> dict[str, object]:
         "page": chunk.page,
         "embedding_model": chunk.embedding_model,
         "pipeline_version": chunk.pipeline_version,
+        ALLOWED_GROUPS: list(chunk.allowed_groups),
     }

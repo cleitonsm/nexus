@@ -6,7 +6,9 @@ from dataclasses import asdict
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from src.api.dependencies import (
+    get_access_control,
     get_assistant_repository,
+    get_current_user,
     get_document_repository,
     get_embedding_gateway,
     get_reindex_job_repository,
@@ -15,6 +17,7 @@ from src.api.dependencies import (
 )
 from src.api.schemas import IndexStatusResponse, ReindexJobResponse
 from src.application.dto import ReindexJobDTO
+from src.application.services import AccessControl
 from src.application.use_cases import (
     GetIndexStatusInput,
     GetIndexStatusUseCase,
@@ -24,6 +27,7 @@ from src.application.use_cases import (
 from src.domain import (
     AssistantId,
     AssistantRepository,
+    AuthenticatedUser,
     DocumentRepository,
     DomainValidationError,
     EmbeddingGateway,
@@ -32,7 +36,11 @@ from src.domain import (
     VectorStoreGateway,
 )
 
-router = APIRouter(prefix="/assistants/{assistant_id}", tags=["index"])
+router = APIRouter(
+    prefix="/assistants/{assistant_id}",
+    tags=["index"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _existing_assistant_id(
@@ -66,6 +74,8 @@ def _job_response(job: ReindexJobDTO) -> ReindexJobResponse:
 def start_reindex(
     assistant_id: str,
     background_tasks: BackgroundTasks,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
     assistant_repository: AssistantRepository = Depends(get_assistant_repository),
     document_repository: DocumentRepository = Depends(get_document_repository),
     vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
@@ -79,9 +89,12 @@ def start_reindex(
         document_repository=document_repository,
         vector_store_gateway=vector_store_gateway,
         reindex_job_repository=reindex_job_repository,
+        access_control=access_control,
     )
     try:
-        job = use_case.execute(StartReindexInput(assistant_id=assistant_ref.value))
+        job = use_case.execute(
+            StartReindexInput(user=user, assistant_id=assistant_ref.value)
+        )
     except ReindexInProgressError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -94,6 +107,8 @@ def start_reindex(
 @router.get("/index-status", response_model=IndexStatusResponse)
 def get_index_status(
     assistant_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
     assistant_repository: AssistantRepository = Depends(get_assistant_repository),
     document_repository: DocumentRepository = Depends(get_document_repository),
     vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
@@ -108,7 +123,8 @@ def get_index_status(
         vector_store_gateway=vector_store_gateway,
         embedding_gateway=embedding_gateway,
         reindex_job_repository=reindex_job_repository,
-    ).execute(GetIndexStatusInput(assistant_id=assistant_ref.value))
+        access_control=access_control,
+    ).execute(GetIndexStatusInput(user=user, assistant_id=assistant_ref.value))
     return IndexStatusResponse(
         assistant_id=result.assistant_id,
         embedding_model=result.embedding_model,

@@ -6,6 +6,7 @@ from uuid import uuid4
 from src.application.dto import DocumentIngestionDTO
 from src.application.services import (
     PIPELINE_VERSION,
+    AccessControl,
     DocumentIndexer,
     IndexState,
     is_index_outdated,
@@ -14,6 +15,9 @@ from src.application.services import (
 from src.application.services.document_indexing import hash_content
 from src.domain import (
     AssistantId,
+    AuditAction,
+    AuditResource,
+    AuthenticatedUser,
     CollectionName,
     Document,
     DocumentFileStorage,
@@ -24,6 +28,7 @@ from src.domain import (
     ReindexInProgressError,
     ReindexJobRepository,
     VectorStoreGateway,
+    normalize_groups,
 )
 
 
@@ -33,12 +38,15 @@ class DocumentTooLargeError(ValueError):
 
 @dataclass(frozen=True, slots=True)
 class IngestDocumentInput:
+    user: AuthenticatedUser
     assistant_id: str
     source_name: str
     raw_content: bytes
     content_type: str | None = None
     metadata: dict[str, str] | None = None
     document_id: str | None = None
+    # Grupos a que o documento ja nasce restrito (D8); vazio segue o assistente.
+    groups: tuple[str, ...] = ()
 
 
 class IngestDocumentUseCase:
@@ -51,6 +59,7 @@ class IngestDocumentUseCase:
         file_storage: DocumentFileStorage,
         reindex_job_repository: ReindexJobRepository,
         max_file_bytes: int,
+        access_control: AccessControl,
     ) -> None:
         if max_file_bytes <= 0:
             raise ValueError("max_file_bytes must be positive.")
@@ -60,8 +69,19 @@ class IngestDocumentUseCase:
         self._file_storage = file_storage
         self._reindex_job_repository = reindex_job_repository
         self._max_file_bytes = max_file_bytes
+        self._access = access_control
 
     def execute(self, data: IngestDocumentInput) -> DocumentIngestionDTO:
+        """RN-21: envia quem gerencia documentos do assistente.
+
+        Com ``groups``, os trechos ja sao gravados restritos (D8): o documento
+        nunca fica visivel a todo o assistente, nem por um instante.
+        """
+        self._access.require_document_management(
+            data.user,
+            AssistantId(data.assistant_id),
+            AuditAction.DOCUMENT_UPLOADED,
+        )
         if len(data.raw_content) > self._max_file_bytes:
             raise DocumentTooLargeError(
                 f"file exceeds the limit of {self._max_file_bytes} bytes."
@@ -69,6 +89,7 @@ class IngestDocumentUseCase:
         assistant_id = AssistantId(data.assistant_id)
         document_id = DocumentId(data.document_id or str(uuid4()))
         metadata = DocumentMetadata.from_dict(data.metadata)
+        groups = normalize_groups(data.groups)
         state = self._writable_index_state(assistant_id)
 
         chunks = self._document_indexer.build_chunks(
@@ -77,6 +98,7 @@ class IngestDocumentUseCase:
             source_name=data.source_name,
             content_type=data.content_type,
             raw_content=data.raw_content,
+            allowed_groups=groups,
         )
         storage_key = self._file_storage.save(
             assistant_id=assistant_id,
@@ -102,11 +124,29 @@ class IngestDocumentUseCase:
                 storage_key=storage_key,
             )
         )
+        if groups:
+            # Os trechos ja estao restritos; o banco guarda a mesma restricao
+            # para a tela e para a reindexacao.
+            self._access.permissions.set_document_groups(document_id, groups)
+        self._access.audit(
+            data.user,
+            AuditAction.DOCUMENT_UPLOADED,
+            resource_type=AuditResource.DOCUMENT,
+            resource_id=document.id.value,
+            details={
+                "assistant_id": assistant_id.value,
+                "source_name": document.source_name,
+                "content_hash": document.content_hash,
+                "chunk_count": len(chunks),
+                "groups": sorted(groups),
+            },
+        )
         return DocumentIngestionDTO.from_entity(
             document,
             collection_name=state.alias.value,
             chunk_count=len(chunks),
             embedding_dimension=self._document_indexer.embedding_dimension,
+            groups=groups,
         )
 
     def _writable_index_state(self, assistant_id: AssistantId) -> IndexState:

@@ -7,6 +7,7 @@ from uuid import uuid4
 from src.application.dto import IndexStatusDTO, ReindexJobDTO
 from src.application.services import (
     PIPELINE_VERSION,
+    AccessControl,
     DocumentIndexer,
     IndexState,
     is_index_outdated,
@@ -14,6 +15,10 @@ from src.application.services import (
 )
 from src.domain import (
     AssistantId,
+    AssistantPermissionRepository,
+    AuditAction,
+    AuditResource,
+    AuthenticatedUser,
     CollectionName,
     Document,
     DocumentFileStorage,
@@ -36,6 +41,7 @@ class ReindexJobNotFoundError(LookupError):
 
 @dataclass(frozen=True, slots=True)
 class StartReindexInput:
+    user: AuthenticatedUser
     assistant_id: str
 
 
@@ -48,13 +54,18 @@ class StartReindexUseCase:
         document_repository: DocumentRepository,
         vector_store_gateway: VectorStoreGateway,
         reindex_job_repository: ReindexJobRepository,
+        access_control: AccessControl,
     ) -> None:
         self._document_repository = document_repository
         self._vector_store_gateway = vector_store_gateway
         self._reindex_job_repository = reindex_job_repository
+        self._access = access_control
 
     def execute(self, data: StartReindexInput) -> ReindexJobDTO:
         assistant_id = AssistantId(data.assistant_id)
+        self._access.require_document_management(
+            data.user, assistant_id, AuditAction.ASSISTANT_REINDEX_STARTED
+        )
         if self._reindex_job_repository.get_running(assistant_id) is not None:
             raise ReindexInProgressError(
                 "a reindex is already in progress for this assistant."
@@ -69,6 +80,17 @@ class StartReindexUseCase:
                 total_documents=len(documents),
             )
         )
+        self._access.audit(
+            data.user,
+            AuditAction.ASSISTANT_REINDEX_STARTED,
+            resource_type=AuditResource.ASSISTANT,
+            resource_id=assistant_id.value,
+            details={
+                "assistant_id": assistant_id.value,
+                "job_id": job.id,
+                "total_documents": job.total_documents,
+            },
+        )
         return ReindexJobDTO.from_entity(job)
 
 
@@ -82,6 +104,10 @@ class RunReindexUseCase:
 
     Falhas de processamento nao sao propagadas: ficam registradas na
     reindexacao, a collection parcial e descartada e o alias nao muda.
+
+    Roda em segundo plano, sem usuario: a autorizacao acontece em
+    ``StartReindexUseCase``. Os trechos novos levam a restricao por grupo
+    vigente de cada documento (RF-43).
     """
 
     def __init__(
@@ -92,7 +118,9 @@ class RunReindexUseCase:
         document_indexer: DocumentIndexer,
         file_storage: DocumentFileStorage,
         reindex_job_repository: ReindexJobRepository,
+        permission_repository: AssistantPermissionRepository,
     ) -> None:
+        self._permission_repository = permission_repository
         self._document_repository = document_repository
         self._vector_store_gateway = vector_store_gateway
         self._document_indexer = document_indexer
@@ -148,9 +176,16 @@ class RunReindexUseCase:
             collection_name=target,
             vector_size=self._document_indexer.embedding_dimension,
         )
+        groups = self._permission_repository.list_document_groups(job.assistant_id)
         reindexed: list[Document] = []
         for document in documents:
-            reindexed.append(self._reindex_document(document, target))
+            reindexed.append(
+                self._reindex_document(
+                    document,
+                    target,
+                    groups.get(document.id.value, frozenset()),
+                )
+            )
             self._reindex_job_repository.save(
                 job.with_progress(
                     total=job.total_documents,
@@ -169,6 +204,7 @@ class RunReindexUseCase:
         self,
         document: Document,
         target: CollectionName,
+        allowed_groups: frozenset[str],
     ) -> Document:
         chunks = self._document_indexer.build_chunks(
             assistant_id=document.assistant_id,
@@ -176,6 +212,7 @@ class RunReindexUseCase:
             source_name=document.source_name,
             content_type=None,
             raw_content=self._file_storage.load(document.storage_key or ""),
+            allowed_groups=allowed_groups,
         )
         self._vector_store_gateway.upsert_chunks(
             collection_name=target,
@@ -227,6 +264,7 @@ class FailInterruptedReindexesUseCase:
 
 @dataclass(frozen=True, slots=True)
 class GetIndexStatusInput:
+    user: AuthenticatedUser
     assistant_id: str
 
 
@@ -238,7 +276,9 @@ class GetIndexStatusUseCase:
         vector_store_gateway: VectorStoreGateway,
         embedding_gateway: EmbeddingGateway,
         reindex_job_repository: ReindexJobRepository,
+        access_control: AccessControl,
     ) -> None:
+        self._access = access_control
         self._document_repository = document_repository
         self._vector_store_gateway = vector_store_gateway
         self._embedding_gateway = embedding_gateway
@@ -246,6 +286,9 @@ class GetIndexStatusUseCase:
 
     def execute(self, data: GetIndexStatusInput) -> IndexStatusDTO:
         assistant_id = AssistantId(data.assistant_id)
+        self._access.require_document_management(
+            data.user, assistant_id, "index.status"
+        )
         state = read_index_state(self._vector_store_gateway, assistant_id)
         documents = self._document_repository.list_by_assistant(assistant_id)
         model = self._embedding_gateway.model_name

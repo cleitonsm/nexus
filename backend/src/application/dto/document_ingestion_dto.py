@@ -18,6 +18,7 @@ class DocumentIngestionDTO:
     embedding_dimension: int
     embedding_model: str | None = None
     pipeline_version: str | None = None
+    groups: tuple[str, ...] = ()
 
     @classmethod
     def from_entity(
@@ -27,6 +28,7 @@ class DocumentIngestionDTO:
         collection_name: str,
         chunk_count: int,
         embedding_dimension: int,
+        groups: frozenset[str] = frozenset(),
     ) -> "DocumentIngestionDTO":
         return cls(
             id=document.id.value,
@@ -39,4 +41,5 @@ class DocumentIngestionDTO:
             embedding_dimension=embedding_dimension,
             embedding_model=document.embedding_model,
             pipeline_version=document.pipeline_version,
+            groups=tuple(sorted(groups)),
         )

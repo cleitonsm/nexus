@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 from datetime import UTC, datetime, timedelta
 
+from access_doubles import AccessFixture, make_user
 from chat_doubles import (
     ScriptedLLM,
     ScriptedReranker,
@@ -40,6 +41,8 @@ CONVERSATION = "conv-1"
 ASSISTANT = "assistant-1"
 FALLBACK = "Nao encontrei contexto suficiente"
 BASE_TIME = datetime(2026, 10, 7, 12, 0, tzinfo=UTC)
+GROUP = "rh"
+OWNER = make_user("user-1", groups=(GROUP,))
 
 
 class InMemoryAssistantRepository:
@@ -59,6 +62,7 @@ class InMemoryConversationRepository:
         self.conversation = Conversation(
             id=ConversationId(CONVERSATION),
             assistant_id=AssistantId(ASSISTANT),
+            owner_user_id=OWNER.id,
         )
         self.messages: list[ChatMessage] = []
 
@@ -105,6 +109,8 @@ class Scenario:
         self.vector_store = ScriptedVectorStore(results)
         self.reranker = ScriptedReranker(scores)
         self.llm = ScriptedLLM(*answers)
+        self.access = AccessFixture()
+        self.access.link_assistant(ASSISTANT, GROUP)
         self.use_case = ChatWithAssistantUseCase(
             assistant_repository=InMemoryAssistantRepository(initial_prompt),
             conversation_repository=self.conversations,
@@ -115,6 +121,7 @@ class Scenario:
             ),
             answer_generator=GroundedAnswerGenerator(llm_gateway=self.llm),
             token_counter=WordTokenCounter(),
+            access_control=self.access.control,
         )
 
     def ask(
@@ -122,9 +129,11 @@ class Scenario:
         question: str,
         conversation_id: str = CONVERSATION,
         top_k: int | None = None,
+        user=OWNER,
     ):
         return self.use_case.execute(
             ChatWithAssistantInput(
+                user=user,
                 conversation_id=conversation_id,
                 question=question,
                 top_k=top_k,
@@ -450,6 +459,7 @@ class RewriteFailureTestCase(unittest.TestCase):
             context_retriever=build_retriever(scenario.vector_store),
             answer_generator=GroundedAnswerGenerator(llm_gateway=scenario.llm),
             token_counter=WordTokenCounter(),
+            access_control=scenario.access.control,
         )
         scenario.conversations.add_turn("Pergunta anterior?", "Resposta anterior.")
         with self.assertLogs(

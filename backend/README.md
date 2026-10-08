@@ -37,7 +37,14 @@ implementada; as Fases 2 a 6 ainda não.
 - Busca: densa, sem nota mínima.
 - Esquema do banco: migrações Alembic aplicadas na subida da API (Fase 2).
 - A Fase 2 ainda não foi executada no Docker: só os testes unitários rodaram.
-- Rotas sem autenticação.
+- Autenticação (Fase 4): toda rota, exceto `/health`, exige token do Keycloak, validado por
+  `KeycloakTokenVerifier`. As regras de acesso estão em `src/domain/access.py` (`AccessPolicy`)
+  e os casos de uso as consultam por `AccessControl`, que também grava a auditoria.
+- Permissões (Fase 4): grupos por assistente (`PUT /assistants/{id}/groups`) e restrição por
+  documento (`PUT /documents/{id}/groups`), aplicada como filtro dentro da busca no Qdrant.
+  Conversas pertencem a quem as criou. Auditoria em `GET /admin/audit-events`; limpeza por
+  retenção apenas pelo comando `python -m src.cli.purge_audit` (`AUDIT_RETENTION_DAYS`).
+- As Fases 3 e 4 ainda não foram executadas no Docker.
 
 ### Estrutura Prevista (Fases 2 a 6)
 

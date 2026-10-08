@@ -4,6 +4,7 @@ import logging
 import tempfile
 import unittest
 
+from access_doubles import AccessFixture, admin
 from src.application.services import PIPELINE_VERSION, DocumentIndexer
 from src.application.use_cases import (
     DocumentTooLargeError,
@@ -109,8 +110,18 @@ class InMemoryVectorStore:
         sparse_vector: SparseVector,
         limit: int,
         payload_filter: dict[str, str] | None = None,
+        *,
+        user_groups: frozenset[str] | None,
     ) -> list[SearchResult]:
         return []
+
+    def set_document_groups(
+        self,
+        collection_name: CollectionName,
+        document_id: DocumentId,
+        groups: frozenset[str],
+    ) -> None:
+        raise AssertionError("not used by these tests")
 
     def delete_collection(self, collection_name: CollectionName) -> None:
         self.collections.pop(collection_name.value, None)
@@ -197,6 +208,8 @@ class Scenario:
         self.vector_store = InMemoryVectorStore()
         self.jobs = InMemoryReindexJobRepository()
         self.storage = LocalDocumentFileStorage(base_dir=base_dir)
+        self.access = AccessFixture()
+        self.user = admin()
         self.use_model(model_name)
 
     def use_model(self, model_name: str) -> None:
@@ -227,8 +240,10 @@ class Scenario:
             file_storage=self.storage,
             reindex_job_repository=self.jobs,
             max_file_bytes=MAX_BYTES,
+            access_control=self.access.control,
         ).execute(
             IngestDocumentInput(
+                user=self.user,
                 assistant_id=assistant_id,
                 document_id=document_id,
                 source_name=source_name,
@@ -242,7 +257,8 @@ class Scenario:
             document_repository=self.documents,
             vector_store_gateway=self.vector_store,
             reindex_job_repository=self.jobs,
-        ).execute(StartReindexInput(assistant_id=assistant_id))
+            access_control=self.access.control,
+        ).execute(StartReindexInput(user=self.user, assistant_id=assistant_id))
 
     def run_reindex(self, job_id: str):
         return RunReindexUseCase(
@@ -251,6 +267,7 @@ class Scenario:
             document_indexer=self.indexer,
             file_storage=self.storage,
             reindex_job_repository=self.jobs,
+            permission_repository=self.access.permissions,
         ).execute(RunReindexInput(job_id=job_id))
 
     def status(self, assistant_id: str = "a1"):
@@ -259,7 +276,8 @@ class Scenario:
             vector_store_gateway=self.vector_store,
             embedding_gateway=self.embedding,
             reindex_job_repository=self.jobs,
-        ).execute(GetIndexStatusInput(assistant_id=assistant_id))
+            access_control=self.access.control,
+        ).execute(GetIndexStatusInput(user=self.user, assistant_id=assistant_id))
 
     def add_legacy_base(self, assistant_id: str = "a1") -> None:
         """Estado deixado pelo MVP: collection sem versao e documento sem original."""

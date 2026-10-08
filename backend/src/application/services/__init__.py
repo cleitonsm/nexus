@@ -1,3 +1,4 @@
+from .access_control import AccessControl, AuditTrail
 from .document_indexing import PIPELINE_VERSION, DocumentIndexer
 from .grounded_answer import (
     CITATION_INSTRUCTION,
@@ -17,6 +18,8 @@ __all__ = [
     "DEFAULT_ANSWER_INSTRUCTION",
     "PIPELINE_VERSION",
     "REWRITE_INSTRUCTION",
+    "AccessControl",
+    "AuditTrail",
     "ContextRetriever",
     "DocumentIndexer",
     "GroundedAnswer",

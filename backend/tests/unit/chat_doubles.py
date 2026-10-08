@@ -50,6 +50,8 @@ class ScriptedVectorStore:
         sparse_vector: SparseVector,
         limit: int,
         payload_filter: dict[str, str] | None = None,
+        *,
+        user_groups: frozenset[str] | None,
     ) -> list[SearchResult]:
         self.calls.append(
             {
@@ -58,6 +60,7 @@ class ScriptedVectorStore:
                 "sparse_vector": sparse_vector,
                 "limit": limit,
                 "payload_filter": payload_filter,
+                "user_groups": user_groups,
             }
         )
         if not self._results:

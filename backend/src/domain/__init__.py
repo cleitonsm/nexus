@@ -1,3 +1,11 @@
+from .access import (
+    AccessPolicy,
+    AuthenticatedUser,
+    Role,
+    normalize_group,
+    normalize_groups,
+)
+from .audit import AuditAction, AuditEvent, AuditQuery, AuditResource
 from .chunking import (
     BlockType,
     DocumentBlock,
@@ -21,6 +29,8 @@ from .entities import (
     ReindexStatus,
 )
 from .errors import (
+    AccessDeniedError,
+    AuthenticationError,
     DomainValidationError,
     IndexOutdatedError,
     ReindexInProgressError,
@@ -36,7 +46,10 @@ from .evaluation import (
 )
 from .interfaces import (
     AnswerJudge,
+    AssistantPermissionRepository,
     AssistantRepository,
+    AuditLogRepository,
+    AuditRetentionRepository,
     ConversationRepository,
     DocumentChunker,
     DocumentExtractor,
@@ -51,6 +64,7 @@ from .interfaces import (
     SparseEmbeddingGateway,
     SparseVector,
     TokenCounter,
+    TokenVerifier,
     VectorChunk,
     VectorStoreGateway,
 )
@@ -65,11 +79,22 @@ from .value_objects import (
 )
 
 __all__ = [
+    "AccessDeniedError",
+    "AccessPolicy",
     "AnswerJudge",
     "Assistant",
     "AssistantId",
     "AssistantName",
+    "AssistantPermissionRepository",
     "AssistantRepository",
+    "AuditAction",
+    "AuditEvent",
+    "AuditLogRepository",
+    "AuditQuery",
+    "AuditResource",
+    "AuditRetentionRepository",
+    "AuthenticatedUser",
+    "AuthenticationError",
     "BlockType",
     "ChatMessage",
     "Citation",
@@ -90,10 +115,10 @@ __all__ = [
     "DomainValidationError",
     "EmbeddingGateway",
     "EvaluationItem",
-    "ExtractedDocument",
     "EvaluationItemResult",
     "EvaluationMetrics",
     "EvaluationReport",
+    "ExtractedDocument",
     "IndexOutdatedError",
     "LLMGateway",
     "MessageId",
@@ -103,16 +128,20 @@ __all__ = [
     "ReindexJobRepository",
     "ReindexStatus",
     "RerankerGateway",
-    "SecretSettingsRepository",
+    "Role",
     "SearchResult",
+    "SecretSettingsRepository",
     "SparseEmbeddingGateway",
     "SparseVector",
     "TokenCounter",
+    "TokenVerifier",
     "VectorChunk",
     "VectorStoreGateway",
     "cited_numbers",
     "first_relevant_rank",
     "mean_reciprocal_rank",
+    "normalize_group",
+    "normalize_groups",
     "recall_at_k",
     "resolve_citations",
     "strip_unknown_markers",

@@ -61,8 +61,15 @@ class ContextRetriever:
         assistant_id: AssistantId,
         query: str,
         payload_filter: dict[str, str] | None = None,
+        *,
+        user_groups: frozenset[str] | None,
     ) -> list[SearchResult]:
-        """Candidatos da busca hibrida, restritos a collection do assistente."""
+        """Candidatos da busca hibrida, restritos a collection do assistente.
+
+        ``user_groups`` e obrigatorio: sao os grupos de quem pergunta, usados
+        pelo vector store para deixar de fora documentos restritos (RF-43).
+        ``None`` so cabe a processos sem usuario, como a avaliacao.
+        """
         dense_vector = self._embedding_gateway.embed_query(query)
         if not dense_vector:
             return []
@@ -72,6 +79,7 @@ class ContextRetriever:
             sparse_vector=self._sparse_embedding_gateway.embed_query(query),
             limit=self._settings.candidates,
             payload_filter=payload_filter,
+            user_groups=user_groups,
         )
         return [item for item in results if item.text.strip()]
 

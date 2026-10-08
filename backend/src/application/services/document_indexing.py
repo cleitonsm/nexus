@@ -54,7 +54,9 @@ class DocumentIndexer:
         source_name: str,
         content_type: str | None,
         raw_content: bytes,
+        allowed_groups: frozenset[str] = frozenset(),
     ) -> list[VectorChunk]:
+        """``allowed_groups`` e a restricao vigente do documento (RF-43)."""
         extracted = self._extractor.extract(
             filename=source_name,
             content_type=content_type,
@@ -69,6 +71,7 @@ class DocumentIndexer:
                 "embedding provider returned an unexpected vector count."
             )
         content_hash = hash_content(raw_content)
+        groups = tuple(sorted(allowed_groups))
         return [
             VectorChunk(
                 id=f"{document_id.value}:{chunk.index}",
@@ -84,6 +87,7 @@ class DocumentIndexer:
                 embedding_model=self.embedding_model,
                 pipeline_version=PIPELINE_VERSION,
                 sparse_vector=sparse_vector,
+                allowed_groups=groups,
             )
             for chunk, vector, sparse_vector in zip(chunks, vectors, sparse_vectors)
         ]

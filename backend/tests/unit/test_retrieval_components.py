@@ -279,6 +279,7 @@ class ContextRetrieverTestCase(unittest.TestCase):
             AssistantId("a1"),
             "o que diz a NR-35?",
             payload_filter={"document_id": "doc-1"},
+            user_groups=frozenset({"rh"}),
         )
         (call,) = store.calls
         self.assertEqual(call["collection"], "assistant-a1")
@@ -286,10 +287,19 @@ class ContextRetrieverTestCase(unittest.TestCase):
         self.assertFalse(call["sparse_vector"].is_empty)
         self.assertEqual(call["limit"], 12)
         self.assertEqual(call["payload_filter"], {"document_id": "doc-1"})
+        self.assertEqual(call["user_groups"], frozenset({"rh"}))
+
+    def test_search_requires_the_user_groups(self) -> None:
+        """RNF-23: esquecer o filtro de acesso e erro, nao busca sem filtro."""
+        retriever = build_retriever(ScriptedVectorStore([[hit("doc-1")]]))
+        with self.assertRaises(TypeError):
+            retriever.search(AssistantId("a1"), "pergunta")  # type: ignore[call-arg]
 
     def test_candidates_without_text_are_dropped(self) -> None:
         store = ScriptedVectorStore([[hit("doc-1", "  "), hit("doc-2", "Texto.")]])
-        results = build_retriever(store).search(AssistantId("a1"), "pergunta")
+        results = build_retriever(store).search(
+            AssistantId("a1"), "pergunta", user_groups=frozenset()
+        )
         self.assertEqual([item.text for item in results], ["Texto."])
 
     def test_rerank_orders_by_score_and_keeps_top_n(self) -> None:

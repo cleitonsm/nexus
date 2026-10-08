@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DocumentIngestionResponse(BaseModel):
@@ -16,3 +16,4 @@ class DocumentIngestionResponse(BaseModel):
     embedding_dimension: int
     embedding_model: str | None = None
     pipeline_version: str | None = None
+    groups: list[str] = Field(default_factory=list)

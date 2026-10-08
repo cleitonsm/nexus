@@ -16,7 +16,9 @@ from fastapi import (
 from fastapi.concurrency import run_in_threadpool
 
 from src.api.dependencies import (
+    get_access_control,
     get_assistant_repository,
+    get_current_user,
     get_document_indexer,
     get_document_repository,
     get_file_storage,
@@ -24,16 +26,27 @@ from src.api.dependencies import (
     get_reindex_job_repository,
     get_vector_store_gateway,
 )
-from src.api.schemas import DocumentIngestionResponse
-from src.application.services import DocumentIndexer
+from src.api.schemas import (
+    DocumentAccessResponse,
+    DocumentIngestionResponse,
+    GroupsRequest,
+)
+from src.application.dto import DocumentAccessDTO
+from src.application.services import AccessControl, DocumentIndexer
 from src.application.use_cases import (
+    DocumentNotFoundError,
     DocumentTooLargeError,
     IngestDocumentInput,
     IngestDocumentUseCase,
+    ListDocumentsInput,
+    ListDocumentsUseCase,
+    SetDocumentGroupsInput,
+    SetDocumentGroupsUseCase,
 )
 from src.domain import (
     AssistantId,
     AssistantRepository,
+    AuthenticatedUser,
     DocumentFileStorage,
     DocumentRepository,
     DomainValidationError,
@@ -46,6 +59,13 @@ from src.domain import (
 router = APIRouter(
     prefix="/assistants/{assistant_id}/documents",
     tags=["documents"],
+    dependencies=[Depends(get_current_user)],
+)
+# A restricao e endereçada pelo documento: o assistente vem do proprio registro.
+document_router = APIRouter(
+    prefix="/documents",
+    tags=["documents"],
+    dependencies=[Depends(get_current_user)],
 )
 
 
@@ -61,6 +81,9 @@ async def ingest_document(
     assistant_id: str,
     file: UploadFile = File(...),
     metadata: str | None = Form(default=None),
+    groups: str | None = Form(default=None),
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
     assistant_repository: AssistantRepository = Depends(get_assistant_repository),
     document_repository: DocumentRepository = Depends(get_document_repository),
     vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
@@ -106,6 +129,7 @@ async def ingest_document(
         file_storage=file_storage,
         reindex_job_repository=reindex_job_repository,
         max_file_bytes=max_file_bytes,
+        access_control=access_control,
     )
     try:
         # A vetorizacao em CPU e demorada: fora do laco de eventos, a API
@@ -113,11 +137,13 @@ async def ingest_document(
         result = await run_in_threadpool(
             use_case.execute,
             IngestDocumentInput(
+                user=user,
                 assistant_id=assistant_ref.value,
                 source_name=file.filename or "uploaded-document.txt",
                 raw_content=file_bytes,
                 content_type=file.content_type,
                 metadata=_parse_metadata_field(metadata),
+                groups=_parse_groups_field(groups),
             ),
         )
     except DocumentTooLargeError as exc:
@@ -147,7 +173,107 @@ async def ingest_document(
         embedding_dimension=result.embedding_dimension,
         embedding_model=result.embedding_model,
         pipeline_version=result.pipeline_version,
+        groups=list(result.groups),
     )
+
+
+def _document_response(item: DocumentAccessDTO) -> DocumentAccessResponse:
+    return DocumentAccessResponse(
+        id=item.id,
+        assistant_id=item.assistant_id,
+        source_name=item.source_name,
+        created_at=item.created_at,
+        chunk_count=item.chunk_count,
+        groups=list(item.groups),
+    )
+
+
+@router.get("", response_model=list[DocumentAccessResponse])
+def list_documents(
+    assistant_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    assistant_repository: AssistantRepository = Depends(get_assistant_repository),
+    document_repository: DocumentRepository = Depends(get_document_repository),
+) -> list[DocumentAccessResponse]:
+    """Documentos do assistente e a restricao de cada um (HU-25)."""
+    try:
+        assistant_ref = AssistantId(assistant_id)
+    except DomainValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    if assistant_repository.get_by_id(assistant_ref) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="assistant not found",
+        )
+    documents = ListDocumentsUseCase(
+        document_repository=document_repository,
+        access_control=access_control,
+    ).execute(ListDocumentsInput(user=user, assistant_id=assistant_ref.value))
+    return [_document_response(item) for item in documents]
+
+
+@document_router.put("/{document_id}/groups", response_model=DocumentAccessResponse)
+def set_document_groups(
+    document_id: str,
+    payload: GroupsRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    document_repository: DocumentRepository = Depends(get_document_repository),
+    vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
+    reindex_job_repository: ReindexJobRepository = Depends(
+        get_reindex_job_repository
+    ),
+) -> DocumentAccessResponse:
+    """RF-43: restringe o documento a grupos; lista vazia remove a restricao."""
+    use_case = SetDocumentGroupsUseCase(
+        document_repository=document_repository,
+        vector_store_gateway=vector_store_gateway,
+        reindex_job_repository=reindex_job_repository,
+        access_control=access_control,
+    )
+    try:
+        result = use_case.execute(
+            SetDocumentGroupsInput(
+                user=user,
+                document_id=document_id,
+                groups=tuple(payload.groups),
+            )
+        )
+    except DocumentNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="document not found",
+        ) from exc
+    except ReindexInProgressError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+    except DomainValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return _document_response(result)
+
+
+def _parse_groups_field(raw_groups: str | None) -> tuple[str, ...]:
+    """Campo ``groups`` do formulario: lista JSON de nomes, como ``metadata``."""
+    if raw_groups is None or not raw_groups.strip():
+        return ()
+    try:
+        parsed = json.loads(raw_groups)
+    except JSONDecodeError as exc:
+        raise ValueError("groups field must be a JSON array of strings.") from exc
+    if not isinstance(parsed, list) or not all(
+        isinstance(item, str) for item in parsed
+    ):
+        raise ValueError("groups field must be a JSON array of strings.")
+    return tuple(parsed)
 
 
 def _parse_metadata_field(raw_metadata: str | None) -> dict[str, str]:

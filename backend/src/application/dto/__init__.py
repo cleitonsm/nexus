@@ -1,3 +1,4 @@
+from .access_dto import AuditEventDTO, CurrentUserDTO, DocumentAccessDTO
 from .assistant_dto import AssistantDTO
 from .conversation_dto import (
     ChatTurnResult,
@@ -13,9 +14,12 @@ from .index_dto import IndexStatusDTO, ReindexJobDTO
 
 __all__ = [
     "AssistantDTO",
+    "AuditEventDTO",
     "ChatTurnResult",
     "CitationDTO",
     "ConversationDTO",
+    "CurrentUserDTO",
+    "DocumentAccessDTO",
     "DocumentIngestionDTO",
     "EvaluationComparisonDTO",
     "EvaluationReportDTO",

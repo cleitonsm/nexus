@@ -111,6 +111,12 @@ class ConversationModel(Base):
         default=_utc_now,
         nullable=False,
     )
+    # Quem criou a conversa (RF-44); nulo nas anteriores a autenticacao.
+    owner_user_id: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+        index=True,
+    )
 
     assistant: Mapped[AssistantModel] = relationship(
         back_populates="conversations"
@@ -210,3 +216,47 @@ class ReindexJobModel(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+
+
+class AssistantGroupModel(Base):
+    """Grupo do Keycloak que pode usar o assistente (RF-42)."""
+
+    __tablename__ = "assistant_groups"
+
+    assistant_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("assistants.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    group_name: Mapped[str] = mapped_column(String(255), primary_key=True)
+
+
+class DocumentGroupModel(Base):
+    """Grupo a que o documento esta restrito (RF-43)."""
+
+    __tablename__ = "document_groups"
+
+    document_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    group_name: Mapped[str] = mapped_column(String(255), primary_key=True)
+
+
+class AuditEventModel(Base):
+    """Trilha somente de inclusao (RN-25); o banco recusa UPDATE e DELETE."""
+
+    __tablename__ = "audit_events"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    resource_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    resource_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    details: Mapped[dict[str, object]] = mapped_column(JSON(), nullable=False)

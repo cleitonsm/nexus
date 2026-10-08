@@ -1,5 +1,6 @@
 import unittest
 
+from access_doubles import AccessFixture, admin, make_user
 from src.application.use_cases import (
     CreateAssistantInput,
     CreateAssistantUseCase,
@@ -63,6 +64,7 @@ class InMemoryConversationRepository:
             assistant_id=conversation.assistant_id,
             created_at=conversation.created_at,
             updated_at=conversation.updated_at,
+            owner_user_id=conversation.owner_user_id,
             messages=tuple(
                 sorted(
                     self.messages.get(conversation_id.value, []),
@@ -71,11 +73,16 @@ class InMemoryConversationRepository:
             ),
         )
 
-    def list_by_assistant(self, assistant_id: AssistantId) -> list[Conversation]:
+    def list_by_assistant(
+        self,
+        assistant_id: AssistantId,
+        owner_user_id: str,
+    ) -> list[Conversation]:
         conversations = [
             self.get_by_id(ConversationId(conversation.id.value))
             for conversation in self.items.values()
             if conversation.assistant_id == assistant_id
+            and conversation.owner_user_id == owner_user_id
         ]
         return [
             conversation
@@ -93,6 +100,7 @@ class InMemoryConversationRepository:
             assistant_id=conversation.assistant_id,
             created_at=conversation.created_at,
             updated_at=message.created_at,
+            owner_user_id=conversation.owner_user_id,
             messages=tuple(self.messages[message.conversation_id.value]),
         )
         return message
@@ -131,6 +139,11 @@ class FakeSecretCipher:
 
 
 class UseCasesTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        self.access = AccessFixture()
+        self.admin = admin()
+        self.member = make_user("user-1", groups=("financeiro",))
+
     def test_save_global_api_key_use_case_encrypts_and_persists_secret(
         self,
     ) -> None:
@@ -138,10 +151,11 @@ class UseCasesTestCase(unittest.TestCase):
         use_case = SaveGlobalApiKeyUseCase(
             secret_repository=repository,
             secret_cipher=FakeSecretCipher(),
+            access_control=self.access.control,
         )
 
         result = use_case.execute(
-            SaveGlobalApiKeyInput(api_key="  sk-test-123  ")
+            SaveGlobalApiKeyInput(user=self.admin, api_key="  sk-test-123  ")
         )
 
         self.assertTrue(result.configured)
@@ -160,8 +174,9 @@ class UseCasesTestCase(unittest.TestCase):
         )
 
         status_result = GetGlobalApiKeyStatusUseCase(
-            secret_repository=repository
-        ).execute()
+            secret_repository=repository,
+            access_control=self.access.control,
+        ).execute(self.admin)
         value_result = GetGlobalApiKeyValueUseCase(
             secret_repository=repository,
             secret_cipher=FakeSecretCipher(),
@@ -172,10 +187,11 @@ class UseCasesTestCase(unittest.TestCase):
 
     def test_create_assistant_use_case_creates_and_returns_dto(self) -> None:
         repo = InMemoryAssistantRepository()
-        use_case = CreateAssistantUseCase(repository=repo)
+        use_case = CreateAssistantUseCase(repo, self.access.control)
 
         created = use_case.execute(
             CreateAssistantInput(
+                user=self.admin,
                 assistant_id="assistant-abc",
                 name="Compliance",
                 description="Regras internas",
@@ -202,9 +218,9 @@ class UseCasesTestCase(unittest.TestCase):
                 name=AssistantName("Juridico"),
             )
         )
-        use_case = ListAssistantsUseCase(repository=repo)
+        use_case = ListAssistantsUseCase(repo, self.access.control)
 
-        items = use_case.execute()
+        items = use_case.execute(self.admin)
 
         self.assertEqual(len(items), 2)
         self.assertEqual(
@@ -214,10 +230,12 @@ class UseCasesTestCase(unittest.TestCase):
 
     def test_register_conversation_use_case_persists_conversation(self) -> None:
         repo = InMemoryConversationRepository()
-        use_case = RegisterConversationUseCase(repository=repo)
+        self.access.link_assistant("assistant-1", "financeiro")
+        use_case = RegisterConversationUseCase(repo, self.access.control)
 
         result = use_case.execute(
             RegisterConversationInput(
+                user=self.member,
                 conversation_id="conv-1",
                 assistant_id="assistant-1",
             )
@@ -225,33 +243,31 @@ class UseCasesTestCase(unittest.TestCase):
 
         self.assertEqual(result.conversation.id, "conv-1")
         self.assertEqual(result.conversation.assistant_id, "assistant-1")
-        self.assertIsNotNone(repo.get_by_id(ConversationId("conv-1")))
+        stored = repo.get_by_id(ConversationId("conv-1"))
+        self.assertIsNotNone(stored)
+        self.assertEqual(stored.owner_user_id, "user-1")
 
     def test_list_conversations_use_case_returns_assistant_history(self) -> None:
         repo = InMemoryConversationRepository()
-        register_use_case = RegisterConversationUseCase(repository=repo)
-        register_use_case.execute(
-            RegisterConversationInput(
-                conversation_id="conv-1",
-                assistant_id="assistant-1",
+        self.access.link_assistant("assistant-1", "financeiro")
+        self.access.link_assistant("assistant-2", "financeiro")
+        register_use_case = RegisterConversationUseCase(repo, self.access.control)
+        for conversation_id, assistant_id in (
+            ("conv-1", "assistant-1"),
+            ("conv-2", "assistant-1"),
+            ("conv-3", "assistant-2"),
+        ):
+            register_use_case.execute(
+                RegisterConversationInput(
+                    user=self.member,
+                    conversation_id=conversation_id,
+                    assistant_id=assistant_id,
+                )
             )
-        )
-        register_use_case.execute(
-            RegisterConversationInput(
-                conversation_id="conv-2",
-                assistant_id="assistant-1",
-            )
-        )
-        register_use_case.execute(
-            RegisterConversationInput(
-                conversation_id="conv-3",
-                assistant_id="assistant-2",
-            )
-        )
 
-        use_case = ListConversationsUseCase(repository=repo)
+        use_case = ListConversationsUseCase(repo, self.access.control)
         result = use_case.execute(
-            ListConversationsInput(assistant_id="assistant-1")
+            ListConversationsInput(user=self.member, assistant_id="assistant-1")
         )
 
         self.assertEqual(len(result.conversations), 2)

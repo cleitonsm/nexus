@@ -124,6 +124,9 @@ class Conversation:
     created_at: datetime = field(default_factory=_utc_now)
     updated_at: datetime = field(default_factory=_utc_now)
     messages: tuple[ChatMessage, ...] = ()
+    # Quem criou a conversa (RF-44). Nulo em conversas anteriores a
+    # autenticacao, que ficam arquivadas e nao sao exibidas a ninguem.
+    owner_user_id: str | None = None
 
     def append_message(self, message: ChatMessage) -> "Conversation":
         if message.conversation_id != self.id:
@@ -137,6 +140,7 @@ class Conversation:
             created_at=self.created_at,
             updated_at=message.created_at,
             messages=(*self.messages, message),
+            owner_user_id=self.owner_user_id,
         )
 
 

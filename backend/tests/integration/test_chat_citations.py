@@ -12,6 +12,7 @@ from uuid import uuid4
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from access_support import AccessHarness, member
 from src.api.dependencies import (
     get_answer_generator,
     get_assistant_repository,
@@ -46,6 +47,7 @@ from src.infrastructure.llm import FakeContextAwareLLM
 
 ASSISTANT = AssistantId("assistant-1")
 CONVERSATION = ConversationId("conv-1")
+OWNER = member("user-1", "rh")
 
 
 class InMemoryAssistantRepository:
@@ -64,6 +66,7 @@ class InMemoryConversationRepository:
             id=CONVERSATION,
             assistant_id=ASSISTANT,
             messages=tuple(self.messages),
+            owner_user_id=OWNER.id,
         )
 
     def save_message(self, message: ChatMessage) -> ChatMessage:
@@ -97,6 +100,8 @@ class FakeVectorStore:
         sparse_vector: SparseVector,
         limit: int,
         payload_filter: dict[str, str] | None = None,
+        *,
+        user_groups: frozenset[str] | None,
     ) -> list[SearchResult]:
         if self._outdated:
             raise IndexOutdatedError("the assistant index is incompatible.")
@@ -137,6 +142,7 @@ class ChatCitationsApiTestCase(unittest.TestCase):
     ) -> TestClient:
         app = FastAPI()
         app.include_router(conversations_router)
+        AccessHarness(app, OWNER).link_assistant(ASSISTANT.value, "rh")
         conversations = InMemoryConversationRepository()
         retriever = ContextRetriever(
             embedding_gateway=FakeEmbeddingGateway(),

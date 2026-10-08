@@ -141,14 +141,17 @@ class HybridSearchTestCase(unittest.TestCase):
             self.embedding.embed_query(query),
             self.sparse.embed_query(query),
             limit,
-            **kwargs,
+            **{"user_groups": None, **kwargs},
         )
 
     def test_exact_term_is_among_the_top_five_after_reranking(self) -> None:
         """CT-18 / cenario "Recuperar termo exato"."""
         retriever = self._retriever()
         query = "o que diz a NR-35?"
-        ranked = retriever.rerank(query, retriever.search(self.assistant_id, query))
+        ranked = retriever.rerank(
+            query,
+            retriever.search(self.assistant_id, query, user_groups=None),
+        )
         self.assertLessEqual(len(ranked), 5)
         self.assertIn(TARGET, [item.text for item in ranked])
 
@@ -188,7 +191,11 @@ class HybridSearchTestCase(unittest.TestCase):
     def test_unknown_collection_returns_no_candidates(self) -> None:
         missing = CollectionName(f"assistant-inexistente-{uuid4().hex[:8]}")
         hits = self.gateway.hybrid_search(
-            missing, self.embedding.embed_query("x"), self.sparse.embed_query("x"), 3
+            missing,
+            self.embedding.embed_query("x"),
+            self.sparse.embed_query("x"),
+            3,
+            user_groups=None,
         )
         self.assertEqual(hits, [])
 
@@ -235,6 +242,7 @@ class HybridSearchTestCase(unittest.TestCase):
                 self.embedding.embed_query(query),
                 self.sparse.embed_query(query),
                 2,
+                user_groups=None,
             )
         self.assertEqual(len(hits), 2)
         self.assertIn("extintores", hits[0].text)
@@ -248,6 +256,7 @@ class HybridSearchTestCase(unittest.TestCase):
                 self.embedding.embed_query("x"),
                 self.sparse.embed_query("x"),
                 3,
+                user_groups=None,
             )
 
     def test_reranker_orders_candidates_and_keeps_top_n(self) -> None:

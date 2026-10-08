@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -11,6 +11,8 @@ from src.domain import (
     Assistant,
     AssistantId,
     AssistantName,
+    AuditEvent,
+    AuditQuery,
     ChatMessage,
     Citation,
     Conversation,
@@ -26,8 +28,11 @@ from src.domain import (
 )
 
 from .models import (
+    AssistantGroupModel,
     AssistantModel,
+    AuditEventModel,
     ConversationModel,
+    DocumentGroupModel,
     DocumentModel,
     MessageModel,
     ReindexJobModel,
@@ -95,9 +100,11 @@ class PostgresConversationRepository:
                 name=conversation.name,
                 created_at=conversation.created_at,
                 updated_at=conversation.updated_at,
+                owner_user_id=conversation.owner_user_id,
             )
             self._session.add(model)
         else:
+            # O dono e definido na criacao e nao muda depois (RF-44).
             model.assistant_id = conversation.assistant_id.value
             model.updated_at = conversation.updated_at
             if conversation.name is not None:
@@ -117,51 +124,27 @@ class PostgresConversationRepository:
         model = self._session.scalars(stmt).first()
         if model is None:
             return None
-        sorted_messages = sorted(
-            model.messages,
-            key=lambda item: item.created_at,
-        )
-        messages = tuple(_message_to_entity(item) for item in sorted_messages)
-        return Conversation(
-            id=ConversationId(model.id),
-            assistant_id=AssistantId(model.assistant_id),
-            name=model.name,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-            messages=messages,
-        )
+        return _conversation_to_entity(model)
 
     def list_by_assistant(
         self,
         assistant_id: AssistantId,
+        owner_user_id: str,
     ) -> list[Conversation]:
+        """RN-24: o filtro pelo dono faz parte da consulta."""
         stmt = (
             select(ConversationModel)
-            .where(ConversationModel.assistant_id == assistant_id.value)
+            .where(
+                ConversationModel.assistant_id == assistant_id.value,
+                ConversationModel.owner_user_id == owner_user_id,
+            )
             .options(selectinload(ConversationModel.messages))
             .order_by(ConversationModel.updated_at.desc())
         )
-        items = self._session.scalars(stmt).all()
-        conversations: list[Conversation] = []
-        for model in items:
-            sorted_messages = sorted(
-                model.messages,
-                key=lambda message: message.created_at,
-            )
-            conversations.append(
-                Conversation(
-                    id=ConversationId(model.id),
-                    assistant_id=AssistantId(model.assistant_id),
-                    name=model.name,
-                    created_at=model.created_at,
-                    updated_at=model.updated_at,
-                    messages=tuple(
-                        _message_to_entity(message)
-                        for message in sorted_messages
-                    ),
-                )
-            )
-        return conversations
+        return [
+            _conversation_to_entity(model)
+            for model in self._session.scalars(stmt).all()
+        ]
 
     def save_message(self, message: ChatMessage) -> ChatMessage:
         model = MessageModel(
@@ -239,6 +222,10 @@ class PostgresDocumentRepository:
         self._session.commit()
         self._session.refresh(model)
         return _document_to_entity(model)
+
+    def get_by_id(self, document_id: DocumentId) -> Document | None:
+        model = self._session.get(DocumentModel, document_id.value)
+        return _document_to_entity(model) if model else None
 
     def list_by_assistant(self, assistant_id: AssistantId) -> list[Document]:
         stmt = (
@@ -322,6 +309,147 @@ class PostgresReindexJobRepository:
         ]
 
 
+class PostgresAssistantPermissionRepository:
+    """Vinculos de assistentes e de documentos com grupos (RF-42, RF-43)."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_assistant_groups(self, assistant_id: AssistantId) -> frozenset[str]:
+        stmt = select(AssistantGroupModel.group_name).where(
+            AssistantGroupModel.assistant_id == assistant_id.value
+        )
+        return frozenset(self._session.scalars(stmt).all())
+
+    def list_assistant_groups(self) -> dict[str, frozenset[str]]:
+        stmt = select(
+            AssistantGroupModel.assistant_id,
+            AssistantGroupModel.group_name,
+        )
+        return _group_by_owner(self._session.execute(stmt).all())
+
+    def set_assistant_groups(
+        self,
+        assistant_id: AssistantId,
+        groups: frozenset[str],
+    ) -> None:
+        self._session.execute(
+            delete(AssistantGroupModel).where(
+                AssistantGroupModel.assistant_id == assistant_id.value
+            )
+        )
+        self._session.add_all(
+            AssistantGroupModel(assistant_id=assistant_id.value, group_name=group)
+            for group in sorted(groups)
+        )
+        self._session.commit()
+
+    def get_document_groups(self, document_id: DocumentId) -> frozenset[str]:
+        stmt = select(DocumentGroupModel.group_name).where(
+            DocumentGroupModel.document_id == document_id.value
+        )
+        return frozenset(self._session.scalars(stmt).all())
+
+    def list_document_groups(
+        self,
+        assistant_id: AssistantId,
+    ) -> dict[str, frozenset[str]]:
+        stmt = (
+            select(DocumentGroupModel.document_id, DocumentGroupModel.group_name)
+            .join(DocumentModel, DocumentModel.id == DocumentGroupModel.document_id)
+            .where(DocumentModel.assistant_id == assistant_id.value)
+        )
+        return _group_by_owner(self._session.execute(stmt).all())
+
+    def set_document_groups(
+        self,
+        document_id: DocumentId,
+        groups: frozenset[str],
+    ) -> None:
+        self._session.execute(
+            delete(DocumentGroupModel).where(
+                DocumentGroupModel.document_id == document_id.value
+            )
+        )
+        self._session.add_all(
+            DocumentGroupModel(document_id=document_id.value, group_name=group)
+            for group in sorted(groups)
+        )
+        self._session.commit()
+
+
+class PostgresAuditLogRepository:
+    """So inclui e consulta: nao ha operacao de alteracao nem de exclusao."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def append(self, event: AuditEvent) -> AuditEvent:
+        self._session.add(
+            AuditEventModel(
+                id=event.id,
+                occurred_at=event.occurred_at,
+                user_id=event.user_id,
+                action=event.action,
+                resource_type=event.resource_type,
+                resource_id=event.resource_id,
+                details=dict(event.details),
+            )
+        )
+        self._session.commit()
+        return event
+
+    def list_events(self, query: AuditQuery) -> list[AuditEvent]:
+        stmt = select(AuditEventModel)
+        if query.user_id is not None:
+            stmt = stmt.where(AuditEventModel.user_id == query.user_id)
+        if query.action is not None:
+            stmt = stmt.where(AuditEventModel.action == query.action)
+        if query.assistant_id is not None:
+            stmt = stmt.where(
+                AuditEventModel.details["assistant_id"].as_string()
+                == query.assistant_id
+            )
+        if query.occurred_from is not None:
+            stmt = stmt.where(AuditEventModel.occurred_at >= query.occurred_from)
+        if query.occurred_to is not None:
+            stmt = stmt.where(AuditEventModel.occurred_at <= query.occurred_to)
+        stmt = (
+            stmt.order_by(AuditEventModel.occurred_at.desc(), AuditEventModel.id)
+            .limit(query.limit)
+            .offset(query.offset)
+        )
+        return [
+            _audit_event_to_entity(item)
+            for item in self._session.scalars(stmt).all()
+        ]
+
+
+class PostgresAuditRetentionRepository:
+    """Limpeza por retencao (D6), usada so pelo comando de manutencao.
+
+    O gatilho de ``audit_events`` recusa qualquer DELETE, exceto dentro de uma
+    transacao que ligue ``nexus.audit_purge``; ``SET LOCAL`` vale so para ela.
+    """
+
+    PURGE_SETTING = "SET LOCAL nexus.audit_purge = 'on'"
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def purge_older_than(self, cutoff: datetime) -> int:
+        try:
+            self._session.execute(text(self.PURGE_SETTING))
+            result = self._session.execute(
+                delete(AuditEventModel).where(AuditEventModel.occurred_at < cutoff)
+            )
+            self._session.commit()
+        except Exception:
+            self._session.rollback()
+            raise
+        return int(result.rowcount or 0)
+
+
 class PostgresSecretSettingsRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -361,6 +489,38 @@ def _assistant_to_entity(model: AssistantModel) -> Assistant:
         description=model.description,
         initial_prompt=model.initial_prompt,
         created_at=model.created_at,
+    )
+
+
+def _conversation_to_entity(model: ConversationModel) -> Conversation:
+    sorted_messages = sorted(model.messages, key=lambda item: item.created_at)
+    return Conversation(
+        id=ConversationId(model.id),
+        assistant_id=AssistantId(model.assistant_id),
+        name=model.name,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+        messages=tuple(_message_to_entity(item) for item in sorted_messages),
+        owner_user_id=model.owner_user_id,
+    )
+
+
+def _group_by_owner(rows: object) -> dict[str, frozenset[str]]:
+    grouped: dict[str, set[str]] = {}
+    for owner_id, group_name in rows:  # type: ignore[attr-defined]
+        grouped.setdefault(owner_id, set()).add(group_name)
+    return {owner_id: frozenset(names) for owner_id, names in grouped.items()}
+
+
+def _audit_event_to_entity(model: AuditEventModel) -> AuditEvent:
+    return AuditEvent(
+        id=model.id,
+        user_id=model.user_id,
+        action=model.action,
+        resource_type=model.resource_type,
+        resource_id=model.resource_id,
+        details=dict(model.details or {}),
+        occurred_at=model.occurred_at,
     )
 
 

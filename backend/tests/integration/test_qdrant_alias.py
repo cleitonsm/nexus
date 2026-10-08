@@ -66,7 +66,9 @@ def _search(
     limit: int,
 ) -> list[SearchResult]:
     """So a parte densa: o alias independe do vetor esparso."""
-    return gateway.hybrid_search(collection, vector, SparseVector(), limit)
+    return gateway.hybrid_search(
+        collection, vector, SparseVector(), limit, user_groups=None
+    )
 
 
 class QdrantAliasTestCase(unittest.TestCase):

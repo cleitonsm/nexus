@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from uuid import uuid4
-
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from src.api.dependencies import (
+    get_access_control,
     get_answer_generator,
     get_assistant_repository,
     get_context_retriever,
     get_conversation_repository,
+    get_current_user,
     get_token_counter,
 )
 from src.api.schemas import (
@@ -22,22 +22,28 @@ from src.api.schemas import (
     MessageResponse,
 )
 from src.application.dto import MessageDTO
-from src.application.services import ContextRetriever, GroundedAnswerGenerator
+from src.application.services import (
+    AccessControl,
+    ContextRetriever,
+    GroundedAnswerGenerator,
+)
 from src.application.use_cases import (
+    AddMessageInput,
+    AddMessageUseCase,
     ChatWithAssistantInput,
     ChatWithAssistantUseCase,
     ConversationNotFoundError,
+    ConversationRefInput,
+    DeleteConversationUseCase,
+    GetConversationUseCase,
     RegisterConversationInput,
     RegisterConversationUseCase,
 )
 from src.domain import (
     AssistantId,
-    ChatMessage,
-    ConversationId,
+    AuthenticatedUser,
     DomainValidationError,
     IndexOutdatedError,
-    MessageId,
-    MessageRole,
     TokenCounter,
 )
 from src.infrastructure.database import (
@@ -45,7 +51,19 @@ from src.infrastructure.database import (
     PostgresConversationRepository,
 )
 
-router = APIRouter(prefix="/conversations", tags=["conversations"])
+router = APIRouter(
+    prefix="/conversations",
+    tags=["conversations"],
+    dependencies=[Depends(get_current_user)],
+)
+
+
+def _not_found(exc: Exception) -> HTTPException:
+    """Conversa inexistente e conversa de outra pessoa respondem igual (RN-24)."""
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="conversation not found",
+    )
 
 
 @router.post(
@@ -55,6 +73,8 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 )
 def create_conversation(
     payload: CreateConversationRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
     conversation_repository: PostgresConversationRepository = Depends(
         get_conversation_repository
     ),
@@ -77,10 +97,10 @@ def create_conversation(
             detail="assistant not found",
         )
 
-    use_case = RegisterConversationUseCase(repository=conversation_repository)
+    use_case = RegisterConversationUseCase(conversation_repository, access_control)
     try:
         result = use_case.execute(
-            RegisterConversationInput(assistant_id=assistant_id.value)
+            RegisterConversationInput(user=user, assistant_id=assistant_id.value)
         )
     except DomainValidationError as exc:
         raise HTTPException(
@@ -100,22 +120,22 @@ def create_conversation(
 @router.get("/{conversation_id}", response_model=ConversationDetailResponse)
 def get_conversation(
     conversation_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
     repository: PostgresConversationRepository = Depends(get_conversation_repository),
 ) -> ConversationDetailResponse:
+    use_case = GetConversationUseCase(repository, access_control)
     try:
-        conversation_ref = ConversationId(conversation_id)
+        conversation = use_case.execute(
+            ConversationRefInput(user=user, conversation_id=conversation_id)
+        )
     except DomainValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
-
-    conversation = repository.get_by_id(conversation_ref)
-    if conversation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="conversation not found",
-        )
+    except ConversationNotFoundError as exc:
+        raise _not_found(exc) from exc
     return ConversationDetailResponse(
         id=conversation.id.value,
         assistant_id=conversation.assistant_id.value,
@@ -135,22 +155,22 @@ def get_conversation(
 )
 def delete_conversation(
     conversation_id: str,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
     repository: PostgresConversationRepository = Depends(get_conversation_repository),
 ) -> Response:
+    use_case = DeleteConversationUseCase(repository, access_control)
     try:
-        conversation_ref = ConversationId(conversation_id)
+        use_case.execute(
+            ConversationRefInput(user=user, conversation_id=conversation_id)
+        )
     except DomainValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
-
-    deleted = repository.delete(conversation_ref)
-    if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="conversation not found",
-        )
+    except ConversationNotFoundError as exc:
+        raise _not_found(exc) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -162,39 +182,29 @@ def delete_conversation(
 def add_message(
     conversation_id: str,
     payload: AddMessageRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
     repository: PostgresConversationRepository = Depends(get_conversation_repository),
 ) -> MessageResponse:
+    use_case = AddMessageUseCase(repository, access_control)
     try:
-        conversation_ref = ConversationId(conversation_id)
-    except DomainValidationError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
-
-    conversation = repository.get_by_id(conversation_ref)
-    if conversation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="conversation not found",
-        )
-
-    try:
-        saved = repository.save_message(
-            ChatMessage(
-                id=MessageId(str(uuid4())),
-                conversation_id=conversation_ref,
-                role=MessageRole(payload.role.value),
+        saved = use_case.execute(
+            AddMessageInput(
+                user=user,
+                conversation_id=conversation_id,
+                role=payload.role.value,
                 content=payload.content,
             )
         )
+    except ConversationNotFoundError as exc:
+        raise _not_found(exc) from exc
     except DomainValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
 
-    return _message_response(MessageDTO.from_entity(saved))
+    return _message_response(saved)
 
 
 @router.post(
@@ -205,6 +215,8 @@ def add_message(
 def chat_with_assistant(
     conversation_id: str,
     payload: ChatRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
     assistant_repository: PostgresAssistantRepository = Depends(
         get_assistant_repository
     ),
@@ -221,20 +233,19 @@ def chat_with_assistant(
         context_retriever=context_retriever,
         answer_generator=answer_generator,
         token_counter=token_counter,
+        access_control=access_control,
     )
     try:
         result = use_case.execute(
             ChatWithAssistantInput(
+                user=user,
                 conversation_id=conversation_id,
                 question=payload.question,
                 top_k=payload.top_k,
             )
         )
     except ConversationNotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
+        raise _not_found(exc) from exc
     except IndexOutdatedError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

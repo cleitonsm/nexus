@@ -119,7 +119,13 @@ class EvaluateAssistantUseCase:
         assistant_id: AssistantId,
         data: EvaluateAssistantInput,
     ) -> list[SearchResult]:
-        candidates = self._retriever.search(assistant_id, question)
+        # A avaliacao mede a base inteira e nao tem usuario: sem restricao
+        # por documento.
+        candidates = self._retriever.search(
+            assistant_id,
+            question,
+            user_groups=None,
+        )
         return self._retriever.rerank(
             question,
             candidates,
