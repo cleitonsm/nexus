@@ -40,6 +40,8 @@ O projeto adota monólito modular e evita novos serviços de infraestrutura sem 
 - Em volumes muito altos, a fila em PostgreSQL pode se tornar gargalo; a porta permite trocar a
   implementação sem alterar os casos de uso.
 - Falhas parciais podem deixar PostgreSQL e Qdrant divergentes; é necessária uma rotina de conferência.
+  Ela existe desde 2026-10-08 como comando sob demanda, `python -m src.cli.check_consistency`
+  (decisão PC-D3 do [plano de conclusão](../../plano-de-conclusao.md)).
 
 ## Alternativas Consideradas
 

@@ -39,7 +39,7 @@ A campanha só começa quando todos os itens abaixo estiverem marcados:
 - [ ] Lacunas de código fechadas:
   - [x] blocos `#region agent log` removidos (2026-10-08);
   - [x] `MarkdownPipe` sem HTML não sanitizado (2026-10-08);
-  - conferência das contagens PostgreSQL × Qdrant (R18);
+  - [x] conferência das contagens PostgreSQL × Qdrant (R18; PC-D3, `src.cli.check_consistency`, 2026-10-08);
   - [x] reindexação no worker (PC-D4, migração `0007`, 2026-10-08);
   - tela de conversas arquivadas;
   - seleção de grupos;

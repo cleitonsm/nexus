@@ -48,7 +48,7 @@ Os logs do backend são uma linha JSON por evento. Filtre pelo campo `request_id
 
 ## Evolução RAG Enterprise (Problemas Previstos)
 
-Situações esperadas após a implementação das próximas fases.
+Situações esperadas com as Fases 4 a 6 (código entregue; validação no Docker pendente).
 
 ### Login em Laço ou Erro 401
 
@@ -85,6 +85,24 @@ Vetores de modelos diferentes não são comparáveis. Execute a reindexação do
 
 A nota mínima de relevância pode estar alta demais. Ajuste `RELEVANCE_MIN_SCORE` com base na
 avaliação, nunca por tentativa isolada.
+
+### Respostas sem Trecho de um Documento Indexado (PostgreSQL e Qdrant Divergentes)
+
+Uma falha no meio de uma gravação pode deixar o banco e o Qdrant com contagens diferentes (risco
+R18). Confira com o comando sob demanda (decisão PC-D3):
+
+```bash
+docker compose run --rm --no-deps backend python -m src.cli.check_consistency
+# ou um assistente só:
+docker compose run --rm --no-deps backend python -m src.cli.check_consistency --assistant <id>
+```
+
+O comando só lê. Cada divergência sai no log como `consistency.divergence` (documento, trechos
+esperados e encontrados) ou `consistency.orphan_points` (trechos de documento que o banco não
+conhece); o resumo, como `consistency.finished`. O código de saída é `0` sem divergência, `1` com
+divergência e `2` se o banco ou o Qdrant não responderem. Documentos pendentes ou em processamento
+e assistentes em reindexação ficam de fora. Para corrigir: reprocesse ou reenvie o documento
+apontado; havendo vários, ou trechos órfãos, reindexe o assistente.
 
 ### Memória Insuficiente
 

@@ -129,7 +129,8 @@ mudança de `PIPELINE_VERSION` nem reindexação geral. Tabelas de DOCX e Markdo
 ## 6. Lacunas conhecidas
 
 - Tabelas em PDF: adiadas (D11 = b); continuam como texto corrido.
-- Sem rotina de conferência PostgreSQL × Qdrant (R18).
+- Conferência PostgreSQL × Qdrant (R18): comando sob demanda `python -m src.cli.check_consistency`
+  desde 2026-10-08 (PC-D3); não roda sozinho.
 - Desempenho (RNF-02: 10 MB em 60 s; RNF-17: resposta em 2 s) não medido. OCR em CPU de um PDF
   digitalizado grande pode passar dos 60 s.
 - Sem tela para documentos substituídos (D5 não guarda versões para consulta).
@@ -137,5 +138,5 @@ mudança de `PIPELINE_VERSION` nem reindexação geral. Tabelas de DOCX e Markdo
   é detectada e o job volta à fila; a janela entre a verificação e a gravação não é bloqueada.
 - Os blocos `#region agent log` foram removidos de todo o frontend em `b6aaf2f` (2026-10-08).
 - A reindexação passou da thread da API para o worker em 2026-10-08 (PC-D4, migração `0007`). A
-  conferência R18 e a aceitação das limitações (PC-D3 e PC-D7) estão nas etapas E5 e E10 do
+  conferência R18 virou comando (PC-D3) no mesmo dia; a aceitação das limitações (PC-D7) está na etapa E10 do
   [plano de conclusão](../../plano-de-conclusao.md).
