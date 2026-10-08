@@ -70,6 +70,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Realm de desenvolvimento valido e sem endereco fixo do frontend
+        run: |
+          python3 -c "import json; json.load(open('infra/keycloak/nexus-realm.json'))"
+          if grep -n 'localhost:4200' infra/keycloak/nexus-realm.json; then exit 1; fi
+          grep -q 'NEXUS_FRONTEND_URL' compose.yaml
       - name: Compose valido, com os perfis opcionais
         run: |
           docker compose config -q

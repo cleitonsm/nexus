@@ -64,17 +64,17 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
-      "rootUrl": "http://localhost:4200",
+      "rootUrl": "${NEXUS_FRONTEND_URL}",
       "baseUrl": "/",
       "redirectUris": [
-        "http://localhost:4200/*"
+        "${NEXUS_FRONTEND_URL}/*"
       ],
       "webOrigins": [
-        "http://localhost:4200"
+        "${NEXUS_FRONTEND_URL}"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:4200/*"
+        "post.logout.redirect.uris": "${NEXUS_FRONTEND_URL}/*"
       },
       "protocolMappers": [
         {

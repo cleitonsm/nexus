@@ -37,5 +37,13 @@ neste arquivo não são aplicadas: altere pelo console de administração ou rec
 `keycloak` (`DROP DATABASE keycloak;` no PostgreSQL, com o serviço `keycloak` parado) e suba de
 novo.
 
-Se o frontend passar a ser servido em outro endereço, ajuste `redirectUris`, `webOrigins` e
-`post.logout.redirect.uris` do cliente `nexus-frontend`, e `CORS_ALLOWED_ORIGINS` no backend.
+O endereço do frontend não fica fixo no arquivo: `redirectUris`, `webOrigins`, `rootUrl` e
+`post.logout.redirect.uris` do cliente `nexus-frontend` usam `${NEXUS_FRONTEND_URL}`, que o
+Keycloak resolve pelo ambiente na importação (decisão PC-D1 do
+[plano de conclusão](../../docs/plano-de-conclusao.md)). O Compose passa a variável ao serviço
+`keycloak`, com o padrão `http://localhost:4200`. Para servir o frontend em outro endereço:
+
+1. defina `NEXUS_FRONTEND_URL` no `.env` (por exemplo `http://nexus.local:8081`) e inclua o mesmo
+   valor em `CORS_ALLOWED_ORIGINS`;
+2. se o realm já foi importado, recrie o banco `keycloak` como descrito acima, ou ajuste o
+   cliente pelo console, porque a importação não sobrescreve um realm existente.

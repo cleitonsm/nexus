@@ -65,7 +65,13 @@ uploads são recusados até `POST /assistants/{id}/reindex` (RN-16).
 
 - `BM25_K1`, `BM25_B` e `BM25_AVG_LENGTH`: parâmetros do BM25 da busca híbrida (padrões `1.2`,
   `0.75` e `64` termos). **Mudar qualquer um deles exige reindexar os assistentes**: os vetores
-  esparsos já gravados não são recalculados e nada detecta a diferença.
+  esparsos já gravados não são recalculados. A diferença é detectada (decisão PC-D2): cada
+  collection registra os parâmetros com que foi gerada (tabela `app_settings`, chave
+  `bm25:<collection>`; as anteriores ao registro assumem os padrões), e a divergência aparece como
+  "Reindexação necessária" no painel "Índice de busca" da tela de assistentes, no log
+  `index.sparse_parameters_changed` (na subida da API e a cada consulta do estado do índice) e na
+  métrica `nexus_index_sparse_parameters_changed_total`. Nada é bloqueado: a busca e os envios
+  continuam até a reindexação.
 
 Os valores são pontos de partida, a calibrar com o conjunto de referência (CT-22). As bases
 indexadas antes da Fase 3 não têm o vetor esparso: até `POST /assistants/{id}/reindex`, o upload
@@ -83,7 +89,11 @@ indexadas antes da Fase 3 não têm o vetor esparso: até `POST /assistants/{id}
 - `OIDC_FRONTEND_CLIENT_ID`: cliente público usado pelo frontend (`nexus-frontend`).
 - `KEYCLOAK_ADMIN` e `KEYCLOAK_ADMIN_PASSWORD`: credenciais administrativas do Keycloak (segredo;
   os valores do `.env.example` servem apenas ao ambiente local).
+- `NEXUS_FRONTEND_URL`: endereço do frontend visto pelo navegador (`http://localhost:4200`).
+  O Compose o repassa ao Keycloak, que o usa no realm importado (redirecionamento, origens e
+  logout do cliente `nexus-frontend`). Só vale na primeira importação do realm.
 - `CORS_ALLOWED_ORIGINS`: origens autorizadas a chamar a API, separadas por vírgula; `*` é ignorado.
+  Deve incluir `NEXUS_FRONTEND_URL`.
 - `APP_ENV`: com `local`, a API publica a documentação interativa (`/docs`), que não exige token.
 - `AUDIT_RETENTION_DAYS`: retenção da trilha de auditoria em dias (padrão `365`). Só tem efeito
   quando o operador executa `python -m src.cli.purge_audit`; a API nunca apaga eventos.
