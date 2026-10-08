@@ -1,5 +1,5 @@
-import { Pipe, PipeTransform } from "@angular/core";
-import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
+import { Pipe, PipeTransform, SecurityContext } from "@angular/core";
+import { DomSanitizer } from "@angular/platform-browser";
 import hljs from "highlight.js";
 import { marked } from "marked";
 
@@ -15,7 +15,7 @@ marked.setOptions({
 export class MarkdownPipe implements PipeTransform {
   constructor(private readonly sanitizer: DomSanitizer) {}
 
-  transform(value: string | null | undefined): SafeHtml {
+  transform(value: string | null | undefined): string {
     if (!value) {
       return "";
     }
@@ -33,7 +33,10 @@ export class MarkdownPipe implements PipeTransform {
       }
     );
 
-    return this.sanitizer.bypassSecurityTrustHtml(highlighted);
+    // A resposta vem do LLM e pode refletir conteúdo de documentos: sanitiza antes de
+    // entregar ao [innerHTML]. O sanitizador do Angular mantém `class` e `span` (realce)
+    // e remove scripts, atributos `on*` e URLs `javascript:`.
+    return this.sanitizer.sanitize(SecurityContext.HTML, highlighted) ?? "";
   }
 
   private decodeHtml(code: string): string {
