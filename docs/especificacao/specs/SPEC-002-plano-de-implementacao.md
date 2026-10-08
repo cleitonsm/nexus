@@ -191,7 +191,8 @@ Cada pacote segue `TESTES → IMPLEMENTAÇÃO → VERIFICAÇÃO` e termina com a
 
 - Qdrant: criação de versão, alias, troca atômica, remoção da versão anterior.
 - Migração inicial das collections do MVP (indisponibilidade única, prevista na spec).
-- `ReindexAssistantUseCase` lê os originais (P6b), roda em segundo plano na API e descarta a
+- `ReindexAssistantUseCase` lê os originais (P6b), roda em segundo plano (na API até 2026-10-08;
+  desde então no worker, decisão PC-D4 do [plano de conclusão](../../plano-de-conclusao.md)) e descarta a
   versão parcial em caso de falha. Documentos sem original são listados no `index-status`.
 - Uma reindexação por assistente de cada vez.
 - Rotas `POST /assistants/{id}/reindex` (202) e `GET /assistants/{id}/index-status`.

@@ -34,7 +34,9 @@ O projeto adota monólito modular e evita novos serviços de infraestrutura sem 
 - A mudança de estado e a conclusão do job ocorrem na mesma transação do banco, sem coordenação
   entre sistemas diferentes.
 - O ambiente ganha um container, mas nenhum serviço de infraestrutura novo.
-- A reindexação (ADR 0006) passa a dispensar novo upload.
+- A reindexação (ADR 0006) passa a dispensar novo upload. Desde 2026-10-08 ela também roda no
+  worker, numa segunda fila (`reindex_jobs`, reserva com prazo renovado por documento), e não mais
+  numa thread da API (decisão PC-D4 do [plano de conclusão](../../plano-de-conclusao.md)).
 - Em volumes muito altos, a fila em PostgreSQL pode se tornar gargalo; a porta permite trocar a
   implementação sem alterar os casos de uso.
 - Falhas parciais podem deixar PostgreSQL e Qdrant divergentes; é necessária uma rotina de conferência.

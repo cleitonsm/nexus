@@ -136,5 +136,6 @@ mudança de `PIPELINE_VERSION` nem reindexação geral. Tabelas de DOCX e Markdo
 - Corrida residual: uma reindexação iniciada entre a reserva de um job e a verificação do worker
   é detectada e o job volta à fila; a janela entre a verificação e a gravação não é bloqueada.
 - Os blocos `#region agent log` foram removidos de todo o frontend em `b6aaf2f` (2026-10-08).
-- A conferência R18, a reindexação no worker e a aceitação das limitações (PC-D3, PC-D4 e PC-D7)
-  estão nas etapas E5 e E10 do [plano de conclusão](../../plano-de-conclusao.md).
+- A reindexação passou da thread da API para o worker em 2026-10-08 (PC-D4, migração `0007`). A
+  conferência R18 e a aceitação das limitações (PC-D3 e PC-D7) estão nas etapas E5 e E10 do
+  [plano de conclusão](../../plano-de-conclusao.md).

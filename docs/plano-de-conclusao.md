@@ -92,7 +92,7 @@ Exceção já aprovada à regra de validar só no final. Sem medições formais.
 | | |
 |-|-|
 | Responsável | Autor (execução); Claude (roteiro e análise dos logs) |
-| Roteiro | `docker compose up -d --build` → conferir `alembic current` = `0006` → login com `admin.nexus` → criar assistente e vincular grupo → enviar um PDF até `indexado` → pergunta com citação, em streaming → "não útil" com comentário → `docker compose logs backend worker keycloak qdrant > e1-logs.txt` |
+| Roteiro | `docker compose up -d --build` → conferir `alembic current` na revisão mais nova (`head`) → login com `admin.nexus` → criar assistente e vincular grupo → enviar um PDF até `indexado` → pergunta com citação, em streaming → "não útil" com comentário → `docker compose logs backend worker keycloak qdrant > e1-logs.txt` |
 | Também conferir | Aviso de compatibilidade do `qdrant-client` no log; tempo da primeira subida; `npm run build` do frontend dentro da imagem |
 | Saída | Lista de defeitos, cada um com etapa, log e prioridade (bloqueante ou não) |
 | Esforço | 0,5 dia |
@@ -268,7 +268,7 @@ refeito ao fim da semana 1.
 | E2 | Pendente | — | — |
 | E3 | Concluída | 2026-10-08 | PC-D1 a PC-D7 decididas; C1–C11 (SPEC-006) e C9–C16 (SPEC-005) aprovados; skill `desenvolvedor-nexus` atualizada nas duas cópias |
 | E4 | Em andamento | 2026-10-08 | PC-D1 (`NEXUS_FRONTEND_URL` no realm, checagem no CI) e PC-D2 (parâmetros do BM25 registrados por collection; aviso no painel novo "Índice de busca" da tela de assistentes, que também permite reindexar, no log e na métrica; 12 testes unitários do backend e specs do frontend) entregues. Falta a compatibilidade do Qdrant, que depende de E1 |
-| E5 | Pendente | — | — |
+| E5 | Em andamento | 2026-10-08 | PC-D4 entregue: a API só registra o pedido; o worker reserva `reindex_jobs` com `SKIP LOCKED` e prazo renovado por documento (migração `0007`), retoma do zero após interrupção e falha depois de `INGESTION_MAX_ATTEMPTS`; 7 testes unitários e 3 de integração (PostgreSQL). Faltam R18 (PC-D3), conversas arquivadas (PC-D5) e seleção de grupos (PC-D6) |
 | E6 | Pendente | — | CT-41 a CT-45 escritos |
 | E7 | Pendente | — | — |
 | EP | Pendente | — | 27 itens validados |

@@ -81,7 +81,7 @@ Add-Result "Servicos saudaveis" (-not $pending) "$elapsed s ate saudavel; $detai
 # 4. Migracoes ----------------------------------------------------------------
 $alembic = docker compose exec -T backend alembic current 2>&1
 $alembic | Set-Content -Encoding utf8 (Join-Path $out "02-alembic.txt")
-Add-Result "alembic current" (($alembic -join " ") -match "0006") (($alembic | Select-Object -Last 1) -as [string])
+Add-Result "alembic current (head)" (($alembic -join " ") -match "\(head\)") (($alembic | Select-Object -Last 1) -as [string])
 
 # 5. Dependencias -------------------------------------------------------------
 docker compose exec -T backend pip freeze 2>&1 | Set-Content -Encoding utf8 (Join-Path $out "03-pip-freeze.txt")

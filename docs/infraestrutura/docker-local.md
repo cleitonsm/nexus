@@ -125,8 +125,9 @@ Código entregue; ainda não executado neste ambiente.
 - O modelo de embedding é baixado no primeiro uso (primeiro upload, pergunta ou avaliação) e fica
   no volume. Depois disso, `HF_HUB_OFFLINE=1` impede qualquer download.
 - Assistentes criados antes desta fase ficam com a base desatualizada: reindexe com
-  `POST /assistants/{id}/reindex`, acompanhe em `GET /assistants/{id}/index-status` e reenvie os
-  documentos que não têm arquivo original.
+  o botão "Reindexar" do painel "Índice de busca" (tela de assistentes) ou
+  `POST /assistants/{id}/reindex`. O serviço `worker` executa a reindexação; acompanhe no painel ou
+  em `GET /assistants/{id}/index-status` e reenvie os documentos que não têm arquivo original.
 
 O roteiro de validação está em
 [`SPEC-002-plano-de-implementacao.md`](../especificacao/specs/SPEC-002-plano-de-implementacao.md).

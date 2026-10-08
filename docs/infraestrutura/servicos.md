@@ -31,9 +31,10 @@ Não é um serviço: é um comando executado sob demanda no container do backend
 (`python -m src.cli.evaluate`, acionado por `scripts/eval.sh` ou `scripts/eval.ps1`). Usa o
 PostgreSQL, o Qdrant e, quando há chave configurada, o provedor de LLM.
 
-## Evolução RAG Enterprise (Planejado)
+## Evolução RAG Enterprise
 
-Os serviços abaixo fazem parte da evolução especificada e **ainda não existem** no `compose.yaml`.
+Os serviços abaixo foram acrescentados ao `compose.yaml` pelas Fases 4 a 6 (código entregue;
+validação no Docker pendente, ver o [plano de conclusão](../plano-de-conclusao.md)).
 
 ### Keycloak
 
@@ -42,14 +43,21 @@ Os serviços abaixo fazem parte da evolução especificada e **ainda não existe
 um banco próprio dentro do PostgreSQL existente e importa o realm de desenvolvimento na subida
 (ADR 0008). Usuários de exemplo e console em `infra/keycloak/README.md`.
 
-### Worker de Ingestão
+### Worker de Ingestão e Reindexação
 
-Processo em segundo plano com a mesma imagem do backend. Extrai texto, aplica OCR, fragmenta,
-vetoriza e indexa os documentos enfileirados (ADR 0009).
+Serviço `worker`, com a mesma imagem do backend (`python -m src.cli.worker`). Extrai texto,
+aplica OCR, fragmenta, vetoriza e indexa os documentos enfileirados (ADR 0009). Quando a fila de
+ingestão está vazia, executa as reindexações pedidas pela API (decisão PC-D4): a API só registra o
+pedido (`POST /assistants/{id}/reindex`, 202), e o worker o reserva por um prazo renovado a cada
+documento. Se o worker parar no meio, a reindexação recomeça do zero depois do prazo
+(`INGESTION_JOB_TIMEOUT_SECONDS`), até `INGESTION_MAX_ATTEMPTS` tentativas; esgotadas, ela falha,
+a versão parcial é descartada e a base vigente continua respondendo. Com um único worker, a
+ingestão espera a reindexação em curso terminar; para paralelizar, suba mais réplicas do serviço.
 
-### Fila de Ingestão
+### Filas de Ingestão e de Reindexação
 
-Tabela no PostgreSQL existente; não há broker dedicado.
+Tabelas `ingestion_jobs` e `reindex_jobs` no PostgreSQL existente, reservadas com
+`FOR UPDATE SKIP LOCKED`; não há broker dedicado.
 
 ### Armazenamento de Documentos Originais
 

@@ -40,7 +40,7 @@ A campanha só começa quando todos os itens abaixo estiverem marcados:
   - [x] blocos `#region agent log` removidos (2026-10-08);
   - [x] `MarkdownPipe` sem HTML não sanitizado (2026-10-08);
   - conferência das contagens PostgreSQL × Qdrant (R18);
-  - reindexação no worker;
+  - [x] reindexação no worker (PC-D4, migração `0007`, 2026-10-08);
   - tela de conversas arquivadas;
   - seleção de grupos;
   - [x] versões de `qdrant-client` e `langgraph` fixadas (2026-10-08, pelo `pip freeze` da imagem;
@@ -181,7 +181,7 @@ de um sistema que ainda falha em teste funcional.
 
 1. Medir o tempo de `docker compose up -d --build` até todos os healthchecks ficarem saudáveis
    (backend, worker, frontend, PostgreSQL, Keycloak, Qdrant).
-2. `alembic upgrade head` limpo; conferir `alembic current` = `0006` (ou a revisão mais nova, se as lacunas exigirem migração).
+2. `alembic upgrade head` limpo; conferir `alembic current` = `0007_reindex_in_worker (head)` (ou a revisão mais nova).
 3. Login manual em `http://localhost:4200` com `admin.nexus`.
 4. Reiniciar o ambiente e confirmar que o histórico é retomado (critério do MVP).
 
