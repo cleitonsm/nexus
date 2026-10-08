@@ -145,9 +145,9 @@ Atualizado em 2026-10-07.
 | 1 — Avaliação e linha de base | SPEC-001 | Aprovada e implementada; em validação no ambiente Docker |
 | 2 — Recuperação semântica | SPEC-002 | Aprovada; código entregue, em validação no ambiente Docker |
 | 3 — Busca híbrida, reranking e citações | SPEC-003 | Aprovada; código entregue, em validação no ambiente Docker |
-| 4 — Autenticação e controle de acesso | SPEC-004 | Rascunho; não iniciada |
-| 5 — Ingestão e ciclo de vida | SPEC-005 | Rascunho; não iniciada |
-| 6 — Operação e governança | SPEC-006 | Rascunho; não iniciada |
+| 4 — Autenticação e controle de acesso | SPEC-004 | Aprovada; código entregue, validação pendente |
+| 5 — Ingestão e ciclo de vida | SPEC-005 | Aprovada; código entregue, validação pendente |
+| 6 — Operação e governança | SPEC-006 | Aprovada; não iniciada |
 
 ### Por que especificações SDD por fase?
 

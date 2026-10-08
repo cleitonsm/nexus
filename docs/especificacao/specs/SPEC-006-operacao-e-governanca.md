@@ -1,7 +1,7 @@
 # Spec: Operação e Governança
 
 **ID**: SPEC-20261007-006
-**Status**: Rascunho
+**Status**: Aprovada em 2026-10-08
 **Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa, pendente de revisão)
 **Data**: 2026-10-07
 **Fase**: 6 de 6 — etapa 14 do [plano incremental](../../plano-incremental.md)
@@ -192,11 +192,14 @@ Funcionalidade: Operação e governança do RAG
 - A avaliação na integração contínua depende de LLM para a fidelidade, com custo por execução.
 - O perfil de observabilidade aumenta o uso de memória local (risco R17).
 
-## Decisões Pendentes
+## Decisões
 
-| Decisão | Opções | Impacto |
-|---------|--------|---------|
-| Ferramentas de visualização de rastreamentos e métricas | Conjunto mínimo em perfil opcional; apenas exportação OTLP | Recursos do ambiente local |
-| Limite de uso padrão | Por minuto; por dia; ambos | Experiência do usuário e controle de custo |
-| Plataforma de integração contínua | GitHub Actions; execução local por script | Onde a avaliação roda |
-| Frequência e destino do backup | Diário em volume local; destino externo | Atendimento ao RNF-28 |
+Tomadas pelo autor em 2026-10-08, junto com a aprovação desta spec.
+
+| # | Decisão | Escolha | Consequência |
+|---|---------|---------|--------------|
+| D1 | Ferramentas de visualização de rastreamentos e métricas | Conjunto mínimo (Jaeger, Prometheus e Grafana) em perfil opcional do Compose, desligado por padrão | Nenhum recurso extra no ambiente padrão; `docker compose --profile observabilidade up` para demonstrar |
+| D2 | Bibliotecas de rastreamento e métricas | Implementação própria, sem dependência nova: porta no domínio, exportador OTLP/HTTP (JSON) e `/metrics` em formato de texto do Prometheus, só com a biblioteca padrão | Testável fora do Docker; sem SDK OpenTelemetry nem `prometheus-client` |
+| D3 | Limite de uso padrão | Por minuto e por dia, ambos configuráveis por variável de ambiente | Contém rajadas e custo diário; os valores padrão ainda serão definidos pelo autor |
+| D4 | Plataforma de integração contínua | Mista: GitHub Actions para testes unitários e verificações estáticas; avaliação com LLM por script local | Nenhuma API key como segredo no GitHub; RF-62 atendido pelo script local com o mesmo critério da SPEC-001 |
+| D5 | Frequência e destino do backup | Diário, em volume local, com retenção configurável e script de restauração (PostgreSQL, snapshot do Qdrant e arquivos originais) | Atende o RNF-28 (24 h); destino externo fica como evolução |

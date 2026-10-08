@@ -2,7 +2,7 @@
 
 **Spec**: [SPEC-20261007-005](SPEC-005-ingestao-e-ciclo-de-vida.md) (Aprovada em 2026-10-08)
 **ADR**: [0009 — Ingestão assíncrona com fila em PostgreSQL](../../arquitetura/adrs/0009-ingestao-assincrona.md) (Aceita em 2026-10-08)
-**Status do plano**: Código de P1 a P8 entregue em 2026-10-08; tabelas em PDF (parte do RF-53) aguardam a decisão D11; a validação no Docker está pendente
+**Status do plano**: Código de P1 a P8 entregue em 2026-10-08; tabelas em PDF (parte do RF-53) adiadas pela decisão D11 (2026-10-08); a validação no Docker está pendente
 **Data**: 2026-10-08
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
@@ -13,7 +13,7 @@
 | P1 Domínio | Entregue: `DocumentStatus` e transições validadas em `Document` (`start_processing`, `mark_indexed`, `retry_later`, `mark_failed`, `request_processing`, `mark_replaced`); campos de estado, versão, tamanho e autor; `IngestionJob`; porta `IngestionJobQueue`; `find_by_hash`; `DocumentFileStorage.delete`; `VectorStoreGateway.delete_by_document` e `set_document_active`; `VectorChunk.active`; erros `DuplicateDocumentError`, `InvalidDocumentStateError`, `IngestionInProgressError`; ações de auditoria novas | Testes unitários (CT-33) |
 | P2 Aplicação | Entregue: envio que só valida, guarda e enfileira; `ProcessNextIngestionJobUseCase` e `RequeueExpiredIngestionJobsUseCase` (worker); `ReplaceDocumentUseCase`, `ReprocessDocumentUseCase`, `DeleteDocumentUseCase`, `GetDocumentUseCase`; `IngestionSettings` (D7); citações de fonte removida; reindexação ajustada | Testes unitários (CT-34 a CT-36) |
 | P3 Persistência | Código entregue: migração `0005_document_lifecycle`, `IngestionJobModel`, `PostgresIngestionJobQueue` (`FOR UPDATE SKIP LOCKED`, documento e job na mesma transação), repositório de documentos com estado | Nada: SQLAlchemy e Alembic não estavam disponíveis fora do Docker |
-| P4 Extração e OCR | Entregue: `TesseractPdfOcr` (Poppler gera a imagem, Tesseract reconhece) para páginas de PDF sem texto; PDF corrompido vira erro definitivo. Tabelas em PDF: **não entregue** (D11) | Testes unitários com o Tesseract real (idioma `eng`), inclusive envio → worker → `indexado` |
+| P4 Extração e OCR | Entregue: `TesseractPdfOcr` (Poppler gera a imagem, Tesseract reconhece) para páginas de PDF sem texto; PDF corrompido vira erro definitivo. Tabelas em PDF: **adiadas** (D11 = b) | Testes unitários com o Tesseract real (idioma `eng`), inclusive envio → worker → `indexado` |
 | P5 Qdrant | Código entregue: payload `active`, índices de `document_id` e `active`, filtro `active ≠ false` em toda busca, `delete_by_document`, `set_document_active` | Nada: `qdrant-client` não estava disponível |
 | P6 API | Código entregue: `POST /assistants/{id}/documents` responde 202 (409 em duplicidade, com o documento existente); `GET /assistants/{id}/documents` com estado; `GET` e `DELETE /documents/{id}`; `PUT /documents/{id}/content`; `POST /documents/{id}/reprocess`; `document_available` nas citações de `GET /conversations/{id}` | Nada: FastAPI não estava disponível |
 | P7 Worker e Docker | Entregue: `python -m src.cli.worker`; serviço `worker` no Compose (mesma imagem, volumes `documents_data` e `backend_cache`, `stop_grace_period: 90s`); Tesseract (`por`, `eng`) e Poppler na imagem; variáveis novas; Nginx aceita 26 MB | Sintaxe do `compose.yaml`; o worker e a imagem não foram executados |
@@ -100,6 +100,9 @@ alterados.
 |---|---------|--------|---------|----------------------|
 | D11 | Preservar tabelas de PDF com camada de texto (RF-53) | (a) Detectar colunas pelo alinhamento do texto do `pypdf` (modo de layout) e gerar bloco `TABLE`, como no DOCX; exige escolher o critério (mínimo de colunas, de linhas e de espaços entre colunas) e mudar `PIPELINE_VERSION`, o que obriga a reindexar todos os assistentes antes de novos envios. (b) Adiar para a Fase 6 ou para uma biblioteca de layout | (a) melhora respostas sobre tabelas, com custo de reindexação geral e risco de falsos positivos; (b) mantém as tabelas de PDF como texto corrido | Só a parte de tabelas do RF-53. OCR, tabelas de DOCX e Markdown já estão entregues |
 
+**D11 decidida em 2026-10-08: (b) adiar.** As tabelas de PDF continuam como texto corrido; sem
+mudança de `PIPELINE_VERSION` nem reindexação geral. Tabelas de DOCX e Markdown seguem preservadas.
+
 ## 4. Diferenças em relação ao texto da spec
 
 - `ingestion_jobs.kind` tem `ingestao` e `reprocessamento`; `reindexacao` não é usado, porque a
@@ -125,7 +128,7 @@ alterados.
 
 ## 6. Lacunas conhecidas
 
-- Tabelas em PDF (D11).
+- Tabelas em PDF: adiadas (D11 = b); continuam como texto corrido.
 - Sem rotina de conferência PostgreSQL × Qdrant (R18).
 - Desempenho (RNF-02: 10 MB em 60 s; RNF-17: resposta em 2 s) não medido. OCR em CPU de um PDF
   digitalizado grande pode passar dos 60 s.
