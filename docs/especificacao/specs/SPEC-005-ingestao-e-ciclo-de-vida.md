@@ -1,7 +1,7 @@
 # Spec: Ingestão e Ciclo de Vida de Documentos
 
 **ID**: SPEC-20261007-005
-**Status**: Rascunho
+**Status**: Aprovada em 2026-10-08 por Cleiton Medeiros, com as decisões D1 a D10 do [plano](SPEC-005-plano-de-implementacao.md) — código entregue, aguardando validação no ambiente Docker
 **Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa, pendente de revisão)
 **Data**: 2026-10-07
 **Fase**: 5 de 6 — etapa 13 do [plano incremental](../../plano-incremental.md)
@@ -210,11 +210,18 @@ stateDiagram-v2
 - Documentos ingeridos antes desta fase não têm arquivo original e precisam de novo upload para
   reprocessamento (risco R9).
 
-## Decisões Pendentes
+## Decisões
 
-| Decisão | Opções | Impacto |
-|---------|--------|---------|
-| Mecanismo de OCR | Tesseract; biblioteca de análise de layout com OCR embutido | Qualidade em tabelas e tamanho da imagem |
-| Atualização do estado na interface | Consulta periódica; eventos enviados pelo servidor | Simplicidade contra imediatismo |
-| Histórico de versões | Manter apenas a versão vigente; manter versões anteriores para consulta | Uso de disco e rastreabilidade |
-| Armazenamento dos originais em produção | Volume local; serviço de objetos atrás da mesma porta | Só afeta o adaptador |
+Tomadas em 2026-10-08; detalhes e efeito no código no [plano](SPEC-005-plano-de-implementacao.md).
+
+| Decisão | Escolha |
+|---------|---------|
+| Mecanismo de OCR (D2) | Tesseract e Poppler como pacotes do sistema na imagem, chamados por processo |
+| Limite de upload e variáveis (D3) | 25 MB; `UPLOAD_MAX_BYTES` e `DOCUMENTS_STORAGE_PATH`, aceitando os nomes antigos |
+| Atualização do estado na interface (D4) | Consulta periódica a cada 3 s, só enquanto houver documento pendente ou processando |
+| Histórico de versões (D5) | Só a versão vigente; a anterior fica registrada como `substituido`, sem trechos nem arquivo |
+| Armazenamento dos originais em produção (D6) | Volume local; a porta permite trocar depois |
+| Novas tentativas (D7) | 3 tentativas, esperas de 30 s e 120 s, job reservado por mais de 600 s volta à fila |
+| Envio durante reindexação (D8) | Aceito; o job espera o fim da reindexação |
+| Arquivo idêntico (D9) | Mesmo hash no mesmo assistente → 409 com o documento existente |
+| Citação de documento excluído (D10) | Mantida na conversa e marcada como fonte removida |

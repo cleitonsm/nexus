@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposta.
+Aceita em 2026-10-08, com a aprovação da SPEC-005 (decisões no
+[plano de implementação](../../especificacao/specs/SPEC-005-plano-de-implementacao.md)).
+Implementada; ainda não executada no ambiente Docker.
 
 ## Contexto
 
@@ -23,7 +25,8 @@ O projeto adota monólito modular e evita novos serviços de infraestrutura sem 
 4. Armazenar o arquivo original em volume local, atrás da porta `DocumentFileStorage`.
 5. Tornar o processamento idempotente: identificadores de ponto determinísticos e remoção dos
    pontos do documento antes de regravar.
-6. Executar OCR localmente, no worker.
+6. Executar OCR localmente, no worker, com Tesseract e Poppler instalados na imagem e chamados
+   por processo (D2), sem dependência Python nova.
 
 ## Consequências
 
