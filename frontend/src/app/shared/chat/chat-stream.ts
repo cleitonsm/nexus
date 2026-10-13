@@ -20,12 +20,26 @@ export class ServerSentEventsReader {
       return [];
     }
     this.consumed += lastBreak + 2;
-    return pending
-      .slice(0, lastBreak)
-      .split("\n\n")
-      .map(parseEventBlock)
-      .filter((event): event is ChatStreamEvent => event !== null);
+    return parseBlocks(pending.slice(0, lastBreak));
   }
+
+  /**
+   * Fim da resposta: entrega tambem o ultimo evento, mesmo sem a linha em
+   * branco final (fix-6). Depois disso o leitor nao entrega mais nada.
+   */
+  finish(accumulated: string): ChatStreamEvent[] {
+    const pending = accumulated.slice(this.consumed);
+    this.consumed = accumulated.length;
+    return parseBlocks(pending);
+  }
+}
+
+function parseBlocks(text: string): ChatStreamEvent[] {
+  return text
+    .split("\n\n")
+    .filter((block) => block.trim().length > 0)
+    .map(parseEventBlock)
+    .filter((event): event is ChatStreamEvent => event !== null);
 }
 
 export function parseEventBlock(block: string): ChatStreamEvent | null {

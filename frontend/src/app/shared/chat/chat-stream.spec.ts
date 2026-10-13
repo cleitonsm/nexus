@@ -98,3 +98,19 @@ describe("describeChatError", () => {
     expect(describeChatError({ status: 502, error: "Bad Gateway" })).toBe("Bad Gateway");
   });
 });
+
+describe("ServerSentEventsReader.finish (fix-6)", () => {
+  it("delivers the last event even without the final blank line", () => {
+    const reader = new ServerSentEventsReader();
+    const text = 'event: delta\ndata: {"text": "A"}\n\nevent: replace\ndata: {"text": "B"}';
+    expect(reader.read(text)).toEqual([{ kind: "delta", text: "A" }]);
+    expect(reader.finish(text)).toEqual([{ kind: "replace", text: "B" }]);
+  });
+
+  it("delivers nothing twice and ignores trailing blank space", () => {
+    const reader = new ServerSentEventsReader();
+    const text = 'event: delta\ndata: {"text": "A"}\n\n';
+    expect(reader.finish(text)).toEqual([{ kind: "delta", text: "A" }]);
+    expect(reader.finish(text + "\n")).toEqual([]);
+  });
+});

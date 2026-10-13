@@ -100,6 +100,9 @@ export const nexusActions = createActionGroup({
     "Chat Stream Delta": props<{ text: string }>(),
     /** Texto final diferente do transmitido (fallback): substitui o exibido. */
     "Chat Stream Replace": props<{ text: string }>(),
+    /** D13: o usuario parou a resposta ou saiu do chat. */
+    "Cancel Chat Stream": emptyProps(),
+    "Chat Stream Cancelled": emptyProps(),
 
     "Submit Feedback": props<{
       messageId: string;

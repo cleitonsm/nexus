@@ -307,6 +307,19 @@
               </svg>
             </button>
             <button
+              *ngIf="chatStream(); else sendButton"
+              type="button"
+              (click)="stopAnswer()"
+              class="p-2 rounded-full bg-nexus-hover text-nexus-text hover:bg-nexus-active transition-all"
+              title="Parar a resposta"
+              aria-label="Parar a resposta"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            </button>
+            <ng-template #sendButton>
+            <button
               type="submit"
               [disabled]="((!activeAssistantId() && !hasAssistants()) || loading().sendChat || isInferring() || !chatForm.get('question')?.value)"
               class="p-2 rounded-full bg-nexus-accent text-white disabled:bg-nexus-hover disabled:text-nexus-dim transition-all"
@@ -333,6 +346,7 @@
                 </svg>
               </ng-template>
             </button>
+            </ng-template>
           </div>
         </div>
       </form>

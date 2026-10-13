@@ -227,13 +227,11 @@ export class NexusApiService {
             event.type === HttpEventType.DownloadProgress ||
             event.type === HttpEventType.Response
         ),
-        mergeMap((event) => {
-          const text =
-            event.type === HttpEventType.Response
-              ? event.body ?? ""
-              : (event as { partialText?: string }).partialText ?? "";
-          return reader.read(text);
-        })
+        mergeMap((event) =>
+          event.type === HttpEventType.Response
+            ? reader.finish(event.body ?? "")
+            : reader.read((event as { partialText?: string }).partialText ?? "")
+        )
       );
   }
 

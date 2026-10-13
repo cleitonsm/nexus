@@ -462,6 +462,11 @@ export const nexusReducer = createReducer(
       ? { ...state, chatStream: { ...state.chatStream, text: state.chatStream.text + text } }
       : state
   ),
+  on(nexusActions.chatStreamCancelled, (state) => ({
+    ...state,
+    chatStream: null,
+    loading: { ...state.loading, sendChat: false }
+  })),
   on(nexusActions.chatStreamReplace, (state, { text }) =>
     state.chatStream ? { ...state, chatStream: { ...state.chatStream, text } } : state
   ),

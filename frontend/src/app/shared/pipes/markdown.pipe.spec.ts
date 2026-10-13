@@ -58,4 +58,11 @@ describe("MarkdownPipe", () => {
     const nulo = fakeSanitizer(null);
     expect(new MarkdownPipe(nulo.sanitizer).transform("**oi**")).toBe("");
   });
+
+  it("nao deixa imagem remota chegar ao HTML final (SPEC-006 D12)", () => {
+    const fake = fakeSanitizer('<p><img src="https://externo.example/x.png?d=1" alt="x"></p>');
+    const output = new MarkdownPipe(fake.sanitizer).transform("![x](https://externo.example/x.png?d=1)");
+
+    expect(output).toBe("<p>[imagem: x]</p>");
+  });
 });

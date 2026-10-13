@@ -798,3 +798,25 @@ describe("available groups (PC-D6)", () => {
     expect(failed.error).toBeNull();
   });
 });
+
+describe("chat stream cancellation (SPEC-006 D13)", () => {
+  it("clears the streaming bubble and the waiting state", () => {
+    let state = nexusReducer(
+      initialNexusState,
+      nexusActions.sendChatQuestion({
+        assistantId: "assistant-1",
+        conversationId: "conv-1",
+        question: "Pergunta",
+        topK: 4
+      })
+    );
+    state = nexusReducer(
+      state,
+      nexusActions.chatStreamStarted({ conversationId: "conv-1", question: "Pergunta" })
+    );
+    state = nexusReducer(state, nexusActions.chatStreamCancelled());
+    expect(state.chatStream).toBeNull();
+    expect(state.loading.sendChat).toBe(false);
+    expect(state.error).toBeNull();
+  });
+});

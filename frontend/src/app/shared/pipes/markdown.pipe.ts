@@ -3,6 +3,8 @@ import { DomSanitizer } from "@angular/platform-browser";
 import hljs from "highlight.js";
 import { marked } from "marked";
 
+import { neutralizeRemoteContent } from "./markdown-safety";
+
 marked.setOptions({
   gfm: true,
   breaks: true
@@ -36,7 +38,9 @@ export class MarkdownPipe implements PipeTransform {
     // A resposta vem do LLM e pode refletir conteúdo de documentos: sanitiza antes de
     // entregar ao [innerHTML]. O sanitizador do Angular mantém `class` e `span` (realce)
     // e remove scripts, atributos `on*` e URLs `javascript:`.
-    return this.sanitizer.sanitize(SecurityContext.HTML, highlighted) ?? "";
+    // Depois, nenhuma imagem e carregada e os links nao enviam o Referer (D12).
+    const sanitized = this.sanitizer.sanitize(SecurityContext.HTML, highlighted) ?? "";
+    return neutralizeRemoteContent(sanitized);
   }
 
   private decodeHtml(code: string): string {

@@ -2,8 +2,10 @@ import { inject } from "@angular/core";
 import { Actions, createEffect, ofType } from "@ngrx/effects";
 import { Action, Store } from "@ngrx/store";
 import {
+  EMPTY,
   catchError,
   concat,
+  defer,
   filter,
   map,
   mergeMap,
@@ -11,6 +13,7 @@ import {
   scan,
   switchMap,
   takeUntil,
+  tap,
   timer,
   withLatestFrom
 } from "rxjs";
@@ -23,7 +26,8 @@ import {
 } from "../shared/documents/document-lifecycle";
 import { describeChatError } from "../shared/chat/chat-stream";
 import { INDEX_POLL_INTERVAL_MS, isReindexRunning } from "../shared/documents/index-status";
-import { ChatStreamEvent } from "../shared/models/nexus.models";
+import { Conversation } from "../shared/models/nexus.models";
+import { chatStreamActions, interruptedChatActions, isTerminal } from "./chat-stream-flow";
 import { nexusActions } from "./nexus.actions";
 import { selectActiveAssistantId } from "./nexus.selectors";
 
@@ -240,14 +244,22 @@ export const sendChatQuestionEffect = createEffect(
       ofType(nexusActions.sendChatQuestion),
       switchMap(({ assistantId, conversationId, question, topK }) => {
         // RF-58: a pergunta aparece ja; a resposta chega em partes.
-        const started = of(nexusActions.chatStreamStarted({ conversationId, question }));
+        let terminal = false;
+        let cancelled = false;
+        let createdConversation: Conversation | null = null;
+        const cancel$ = actions$.pipe(
+          ofType(nexusActions.cancelChatStream),
+          tap(() => (cancelled = true))
+        );
         const stream = (targetConversationId: string, onDone: Action[] = []) =>
-          api
-            .streamChatMessage(targetConversationId, { question, top_k: topK })
-            .pipe(mergeMap((event) => chatStreamActions(event, onDone)));
+          api.streamChatMessage(targetConversationId, { question, top_k: topK }).pipe(
+            tap((event) => (terminal = terminal || isTerminal(event))),
+            mergeMap((event) => chatStreamActions(event, onDone))
+          );
         const answer = conversationId
           ? stream(conversationId)
           : api.createConversation({ assistant_id: assistantId }).pipe(
+              tap((conversation) => (createdConversation = conversation)),
               // A conversa nova so vira a atual com a resposta pronta, para
               // que a recarga das mensagens nao duplique a pergunta exibida.
               mergeMap((conversation) =>
@@ -256,7 +268,25 @@ export const sendChatQuestionEffect = createEffect(
                 ])
               )
             );
-        return concat(started, answer).pipe(
+        // D13: sem evento final (parada ou conexao encerrada), o chat nao
+        // fica esperando para sempre.
+        const ending = defer(() =>
+          terminal
+            ? EMPTY
+            : of(
+                ...interruptedChatActions({
+                  cancelled,
+                  conversationId,
+                  assistantId,
+                  createdConversation
+                })
+              )
+        );
+        return concat(
+          of(nexusActions.chatStreamStarted({ conversationId, question })),
+          answer.pipe(takeUntil(cancel$)),
+          ending
+        ).pipe(
           catchError((error) =>
             of(nexusActions.sendChatQuestionFailure({ error: describeChatError(error) }))
           )
@@ -265,27 +295,6 @@ export const sendChatQuestionEffect = createEffect(
     ),
   { functional: true }
 );
-
-/** Acoes de cada evento do streaming; ``onDone`` vai antes do resultado. */
-export function chatStreamActions(event: ChatStreamEvent, onDone: Action[] = []): Action[] {
-  switch (event.kind) {
-    case "delta":
-      return [nexusActions.chatStreamDelta({ text: event.text })];
-    case "replace":
-      return [nexusActions.chatStreamReplace({ text: event.text })];
-    case "done":
-      return [
-        ...onDone,
-        nexusActions.sendChatQuestionSuccess({
-          conversationId: event.response.conversation_id,
-          userMessage: event.response.user_message,
-          assistantMessage: event.response.assistant_message
-        })
-      ];
-    case "error":
-      return [nexusActions.sendChatQuestionFailure({ error: event.detail })];
-  }
-}
 
 export const submitFeedbackEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>

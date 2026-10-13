@@ -1,5 +1,15 @@
 import { CommonModule } from "@angular/common";
-import { AfterViewChecked, Component, ElementRef, ViewChild, computed, effect, inject, signal } from "@angular/core";
+import {
+  AfterViewChecked,
+  Component,
+  ElementRef,
+  OnDestroy,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal
+} from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { Store } from "@ngrx/store";
 
@@ -30,7 +40,7 @@ export const FEEDBACK_COMMENT_MAX = 1000;
   templateUrl: "./chat-page.component.html",
   host: { class: "flex-1 min-h-0 flex flex-col overflow-hidden" }
 })
-export class ChatPageComponent implements AfterViewChecked {
+export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   @ViewChild("messagesContainer") private messagesContainer!: ElementRef<HTMLDivElement>;
   @ViewChild("chatTextarea") private chatTextarea!: ElementRef<HTMLTextAreaElement>;
 
@@ -237,6 +247,18 @@ export class ChatPageComponent implements AfterViewChecked {
       return;
     }
     this.store.dispatch(nexusActions.submitFeedback({ messageId, rating, comment }));
+  }
+
+  /** D13: para a resposta em andamento; a pergunta continua na conversa. */
+  protected stopAnswer(): void {
+    if (this.chatStream()) {
+      this.store.dispatch(nexusActions.cancelChatStream());
+    }
+  }
+
+  /** Sair do chat com uma resposta em andamento encerra o streaming (D13). */
+  ngOnDestroy(): void {
+    this.stopAnswer();
   }
 
   protected clearError(): void {
