@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 
-from src.domain import AuthenticatedUser
+from src.domain import AuthenticatedUser, IngestionPauseRepository
 
 # Identidade do worker: e com ela que o resultado do processamento aparece na
 # trilha de auditoria (C7).
@@ -67,3 +67,10 @@ class IngestionSettings:
     @property
     def job_timeout(self) -> timedelta:
         return timedelta(seconds=self.job_timeout_seconds)
+
+
+def ingestion_paused(repository: IngestionPauseRepository, now: datetime) -> bool:
+    """SPEC-006 D10: o worker so reserva jobs fora de uma pausa ativa."""
+    pause = repository.current()
+    return pause is not None and pause.is_active(now)
+

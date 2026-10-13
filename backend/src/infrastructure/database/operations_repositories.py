@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from hashlib import blake2b
@@ -16,6 +17,7 @@ from src.domain import (
     FeedbackRating,
     FeedbackReview,
     FeedbackStatus,
+    IngestionPause,
     MessageFeedback,
     SparseEncodingParameters,
     UsageLimitDecision,
@@ -35,7 +37,11 @@ from .models import (
     UsageRecordModel,
 )
 
+logger = logging.getLogger(__name__)
+
 USAGE_LIMITS_KEY = "usage_limits"
+# Gravada e apagada por scripts/backup.sh (SPEC-006 D10).
+INGESTION_PAUSE_KEY = "ingestion_pause"
 SPARSE_PARAMETERS_KEY_PREFIX = "bm25:"
 _SETTINGS_KEY_MAX_LENGTH = 64
 
@@ -388,3 +394,28 @@ def ingestion_job_gauges(session_factory) -> list[GaugeSample]:
         GaugeSample(name="nexus_ingestion_jobs", labels={"status": status}, value=count)
         for status, count in rows
     ]
+
+
+class PostgresIngestionPauseRepository:
+    """Le a pausa da ingestao; valor ilegivel conta como sem pausa (e fica no log)."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def current(self) -> IngestionPause | None:
+        model = self._session.get(AppSettingModel, INGESTION_PAUSE_KEY)
+        if model is None:
+            return None
+        value = model.value or {}
+        try:
+            return IngestionPause(
+                paused_until=_aware(datetime.fromisoformat(str(value["paused_until"]))),
+                reason=str(value.get("reason") or "backup"),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            logger.warning(
+                "ingestion.pause.unreadable",
+                extra={"error_type": type(exc).__name__},
+            )
+            return None
+

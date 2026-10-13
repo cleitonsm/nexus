@@ -18,7 +18,7 @@ import signal
 import sys
 import threading
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -27,6 +27,7 @@ from src.application.services import (
     AuditTrail,
     DocumentIndexer,
     IngestionSettings,
+    ingestion_paused,
 )
 from src.application.use_cases import (
     ProcessNextIngestionJobUseCase,
@@ -50,6 +51,7 @@ from src.infrastructure.database import (
     PostgresDocumentRepository,
     PostgresIndexParametersRepository,
     PostgresIngestionJobQueue,
+    PostgresIngestionPauseRepository,
     PostgresReindexJobRepository,
     SessionLocal,
 )
@@ -143,6 +145,29 @@ def run_reindex_once(session: Session, adapters: WorkerAdapters) -> bool:
     return result is not None
 
 
+def is_paused(session: Session) -> bool:
+    """SPEC-006 D10: durante o backup nenhum job novo e reservado."""
+    return ingestion_paused(
+        PostgresIngestionPauseRepository(session=session), datetime.now(UTC)
+    )
+
+
+def run_iteration(adapters: WorkerAdapters, was_paused: bool) -> tuple[bool, bool]:
+    """Uma volta do laco; devolve (havia trabalho, estava pausado)."""
+    with SessionLocal() as session:
+        paused = is_paused(session)
+    if paused != was_paused:
+        logger.info("ingestion.worker.paused" if paused else "ingestion.worker.resumed")
+    if paused:
+        return False, True
+    with SessionLocal() as session:
+        found = run_once(session, adapters)
+    if not found:
+        with SessionLocal() as session:
+            found = run_reindex_once(session, adapters)
+    return found, False
+
+
 def main() -> int:
     configure_logging(level=os.getenv("LOG_LEVEL", "INFO"))
     try:
@@ -170,13 +195,10 @@ def main() -> int:
             "job_timeout_seconds": adapters.settings.job_timeout_seconds,
         },
     )
+    paused = False
     while not stop.is_set():
         try:
-            with SessionLocal() as session:
-                found = run_once(session, adapters)
-            if not found:
-                with SessionLocal() as session:
-                    found = run_reindex_once(session, adapters)
+            found, paused = run_iteration(adapters, paused)
         except Exception:  # noqa: BLE001 - o worker nao pode parar por um job
             logger.exception("ingestion.worker.iteration_failed")
             found = False

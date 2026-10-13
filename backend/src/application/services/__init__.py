@@ -20,6 +20,7 @@ from .ingestion import (
     WORKER_USER,
     IngestionSettings,
     JobTimeoutError,
+    ingestion_paused,
 )
 from .index_state import (
     IndexState,
@@ -52,6 +53,7 @@ __all__ = [
     "IndexState",
     "IngestionSettings",
     "JobTimeoutError",
+    "ingestion_paused",
     "RetrievalSettings",
     "UsageGovernance",
     "UsageSettings",

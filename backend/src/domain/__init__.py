@@ -62,6 +62,7 @@ from .feedback import (
     MessageFeedback,
 )
 from .interfaces import (
+    IngestionPauseRepository,
     AnswerJudge,
     FeedbackRepository,
     UsageLimiter,
@@ -101,6 +102,7 @@ from .observability import (
     Span,
     Tracer,
 )
+from .maintenance import IngestionPause
 from .prompt_injection import detect_prompt_injection
 from .usage import (
     DAY,
@@ -128,6 +130,8 @@ from .value_objects import (
 )
 
 __all__ = [
+    "IngestionPause",
+    "IngestionPauseRepository",
     "DAY",
     "MINUTE",
     "AccessDeniedError",

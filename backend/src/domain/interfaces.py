@@ -11,6 +11,7 @@ from .chunking import DocumentChunk, ExtractedDocument
 from .citations import ContextChunk
 from .errors import DomainValidationError
 from .feedback import FeedbackQuery, MessageFeedback
+from .maintenance import IngestionPause
 from .usage import (
     LLMCompletion,
     LLMStreamChunk,
@@ -619,3 +620,10 @@ class FeedbackRepository(Protocol):
     def list_feedback(self, query: FeedbackQuery) -> list[MessageFeedback]:
         """Da mais recente para a mais antiga."""
         ...
+
+
+class IngestionPauseRepository(Protocol):
+    """Pausa da ingestao gravada pelo backup (SPEC-006 D10); ``None`` sem pausa."""
+
+    def current(self) -> IngestionPause | None: ...
+

@@ -18,6 +18,7 @@ from .models import (
 from .operations_repositories import (
     PostgresFeedbackRepository,
     PostgresIndexParametersRepository,
+    PostgresIngestionPauseRepository,
     PostgresUsageLimiter,
     PostgresUsageRecordRepository,
     PostgresUsageSettingsRepository,
@@ -59,6 +60,7 @@ __all__ = [
     "PostgresIngestionJobQueue",
     "PostgresReindexJobRepository",
     "PostgresSecretSettingsRepository",
+    "PostgresIngestionPauseRepository",
     "PostgresUsageLimiter",
     "PostgresUsageRecordRepository",
     "PostgresUsageSettingsRepository",
