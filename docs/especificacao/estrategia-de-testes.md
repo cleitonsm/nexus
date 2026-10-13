@@ -165,7 +165,9 @@ Atualizado em 2026-10-08.
 | CT-40 | Rotas cobertas com repositórios em memória, ainda não executadas; falta medir os 2 segundos | `backend/tests/integration/test_api_routes.py` |
 | CT-41, CT-42, CT-43 | Implementados e executados com sucesso | `backend/tests/unit/test_operations.py`, `backend/tests/unit/test_feedback.py` |
 | CT-44, CT-45 | Implementados, ainda não executados (exigem FastAPI e o ambiente Docker) | `backend/tests/integration/test_operations_api.py`, `backend/tests/integration/test_chat_citations.py` |
-| CT-46, CT-47, CT-48 | Não implementados; etapa E6 do [plano de conclusão](../plano-de-conclusao.md) | — |
+| CT-46 | Implementado e executado com sucesso (sem Docker; também no CI) | `backend/tests/integration/test_sensitive_data_leak.py` |
+| CT-47 | Roteiro implementado, ainda não executado (exige o Docker); os scripts de backup e restauração passam no ensaio com PostgreSQL real e Qdrant simulado | `scripts/validation/backup-restore.sh`, `backend/tests/validation/restored_search.py`, `scripts/validation/backup-scripts-check.sh` |
+| CT-48 | Comparação executada como teste unitário; o roteiro com o código de saída real exige o Docker | `backend/tests/unit/test_regression_gate.py`, `scripts/validation/regression-gate.sh` |
 | CT-49 a CT-57 | Não implementados; definidos no [plano de validação final](../qa/plano-de-validacao-final.md) | — |
 
 Os testes de integração da Fase 4 não sobem o Keycloak: usam o verificador de token real com

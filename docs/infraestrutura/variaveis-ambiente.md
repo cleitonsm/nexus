@@ -131,6 +131,9 @@ indexadas antes da Fase 3 não têm o vetor esparso: até `POST /assistants/{id}
   `GRAFANA_ADMIN_USER`/`GRAFANA_ADMIN_PASSWORD` (`admin`/`admin`, só desenvolvimento).
 - `BACKUP_PATH` (`./backups`), `BACKUP_RETENTION_DAYS` (`7`) e `BACKUP_INTERVAL_SECONDS`
   (`86400`): pasta dos backups no computador, retenção e intervalo do serviço `backup` (D5/D9).
+- `BACKUP_PAUSE_MAX_SECONDS` (`3600`): prazo da pausa de ingestão gravada pelo backup (D10). O
+  backup libera a pausa ao terminar; o prazo só protege contra um backup interrompido sem liberá-la.
+  O backup espera os jobs em andamento por até `INGESTION_JOB_TIMEOUT_SECONDS`.
 
 ### Observações
 

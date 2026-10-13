@@ -33,8 +33,8 @@ exemplo, a sintaxe e os dublês). A validação que conta é a da Parte B.
 
 A campanha só começa quando todos os itens abaixo estiverem marcados:
 
-- [ ] SPEC-006 aprovada e implementada, com CT-41 a CT-48 escritos. Aprovada e com código entregue
-      em 2026-10-08; CT-41 a CT-45 escritos, CT-46 a CT-48 pendentes.
+- [x] SPEC-006 aprovada e implementada, com CT-41 a CT-48 escritos. Código entregue em 2026-10-08;
+      CT-46 a CT-48 escritos em 2026-10-13 (etapa E6).
 - [x] D11 decidida (tabelas em PDF), e implementada se a opção for (a). Decidida em 2026-10-08: (b) adiar.
 - [ ] Lacunas de código fechadas:
   - [x] blocos `#region agent log` removidos (2026-10-08);
@@ -85,7 +85,9 @@ reexecução definida na seção 9.
 | CT-40 | **Não** | — |
 | CT-41 a CT-43 | Sim, executados como testes unitários | `test_operations.py`, `test_feedback.py` |
 | CT-44, CT-45 | Sim, nunca executados | `test_operations_api.py`, `test_chat_citations.py` |
-| CT-46 a CT-48 | **Não** | — |
+| CT-46 | Sim, executado fora do Docker e no CI | `test_sensitive_data_leak.py` |
+| CT-47 | Sim, nunca executado no Docker (ensaio dos scripts executado) | `scripts/validation/backup-restore.sh` |
+| CT-48 | Sim; parte unitária executada, roteiro nunca executado | `test_regression_gate.py`, `scripts/validation/regression-gate.sh` |
 | Migrações (RNF-31) | **Não** | — |
 | Keycloak real (RNF-22) | **Não**: os testes assinam tokens com uma chave local | — |
 | Fluxo completo na pilha real | **Não**: as rotas usam repositórios em memória | — |
@@ -269,11 +271,12 @@ Ver a seção 7.
 
 ### V8 — Operação, backup e encerramento
 
-1. `scripts/backup.sh` → ambiente limpo → `scripts/restore.sh` → conferência de contagens e uma
-   busca (CT-47). Registrar a duração e o tamanho do backup.
+1. `scripts/validation/backup-restore.sh`: `scripts/backup.sh` → ambiente limpo →
+   `scripts/restore.sh` → conferência de contagens, conferência PostgreSQL × Qdrant e uma busca
+   (CT-47). Registrar a duração e o tamanho do backup (`01-backup.log`).
 2. Confirmar o agendamento diário do backup, conforme a decisão de frequência e destino da SPEC-006 (RNF-28: RPO ≤ 24 h).
-3. CT-48: rodar o pipeline de integração contínua com uma regressão simulada e verificar que ele
-   falha. Depois, rodar sem a regressão e verificar que passa.
+3. CT-48: `scripts/validation/regression-gate.sh` (regressão simulada → a avaliação termina com
+   código 1). Depois, `scripts/quality-gate.sh` sem a regressão e verificar que passa.
 4. Coletar `docker stats` das etapas V6 e V7, com e sem o perfil `observability` (R17).
 5. Gerar o relatório final (seção 8) e atualizar a documentação.
 

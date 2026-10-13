@@ -14,7 +14,7 @@ Cada execução cria uma pasta `BACKUP_PATH/<AAAAMMDDTHHMMSSZ>/` com:
 | `qdrant/<collection>.snapshot` | snapshot de cada collection física do Qdrant |
 | `qdrant/aliases.json` | aliases das collections (`assistant_{id}` aponta para a versão ativa) |
 | `documents.tar.gz` | arquivos originais do volume `documents_data` (reprocessamento, SPEC-005) |
-| `counts.txt` | contagens por tabela, por collection e de arquivos, para a conferência |
+| `counts.txt` | contagens por tabela, por collection e de arquivos, tiradas do próprio backup (D10) |
 | `manifest.txt`, `SHA256SUMS` | data, banco e somas de verificação de todos os arquivos |
 
 Nenhum segredo é gravado fora dos próprios dumps; a API key do LLM continua cifrada no banco
@@ -45,9 +45,22 @@ O ponto de recuperação é de no máximo 24 h (RNF-28) enquanto o computador es
 Docker em execução. Um backup perdido por máquina desligada é refeito na próxima subida do
 serviço.
 
-**Consistência:** o `pg_dump` é consistente por banco; o snapshot do Qdrant é tirado logo depois.
-Uma ingestão concluída entre os dois pode deixar o Qdrant um documento à frente do banco. Para um
-backup exato, pare o `worker` antes (`docker compose stop worker`).
+**Consistência (D10):** o backup pausa a ingestão pelo banco. Ele grava a chave
+`ingestion_pause` em `app_settings`, e o worker, que a consulta antes de cada volta, deixa de
+reservar jobs de ingestão e de reindexação (log `ingestion.worker.paused`). O backup espera os jobs
+em andamento terminarem, por até `INGESTION_JOB_TIMEOUT_SECONDS`. Se não terminarem, o backup é
+adiado e o serviço tenta de novo em 1 hora. Com a ingestão parada, copia os três armazenamentos e
+libera a pausa, mesmo em caso de erro. A pausa tem prazo (`BACKUP_PAUSE_MAX_SECONDS`, 1 hora): um
+backup morto sem liberá-la não trava a ingestão para sempre.
+
+As contagens de `counts.txt` não vêm da base viva. O dump é restaurado num banco temporário
+(`nexus_backup_check`, apagado em seguida), o que também prova que ele é restaurável. As collections
+são contadas logo depois dos snapshots, e os arquivos, pelo próprio `documents.tar.gz`.
+
+O que a pausa **não** cobre: o chat continua gravando conversas, mensagens, consumo e auditoria
+durante o backup, o que é coerente porque o dump é um retrato consistente do banco. Uma exclusão
+de documento pela tela, durante os poucos segundos dos snapshots, pode deixar uma collection com um
+documento a menos que o banco; a conferência da restauração aponta a diferença.
 
 ## Restauração em ambiente limpo
 
@@ -81,5 +94,11 @@ backup exato, pare o `worker` antes (`docker compose stop worker`).
 - Destino só local (D5). Copiar `BACKUP_PATH` para outro disco ou nuvem fica como evolução.
 - Collections do Qdrant que existam no destino e não estejam no backup não são apagadas; em
   ambiente limpo não há nenhuma.
-- O procedimento não foi executado até 2026-10-08: só a sintaxe dos scripts foi verificada. O
-  ensaio completo é o CT-47 da campanha de validação final.
+- Verificação (2026-10-13): `scripts/validation/backup-scripts-check.sh` executa `backup.sh` e
+  `restore.sh` contra um PostgreSQL 16 real e um Qdrant simulado. Ele confere a pausa, a espera
+  pelo job em andamento, as contagens, a base restaurada sem a pausa e a recusa de um backup
+  corrompido. Roda no CI (job `backup-scripts`) e passou fora do Docker.
+- O ensaio completo no Docker é o CT-47: `scripts/validation/backup-restore.sh` faz o backup do
+  ambiente atual, restaura num projeto Compose limpo (`nexus-ct47`, com portas deslocadas), roda a
+  conferência PostgreSQL × Qdrant e uma busca nos dados restaurados, e grava as evidências em
+  `docs/qa/relatorios/<data>-ct47/`. Ainda não foi executado.

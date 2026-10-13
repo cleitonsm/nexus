@@ -212,3 +212,37 @@ Tomadas pelo autor em 2026-10-08, junto com a aprovação desta spec.
 | D7 | Moeda e preços | USD, tabela do `gpt-4o-mini` (0,00015 por mil tokens de entrada e 0,0006 de saída), exibido como estimativa |
 | D8 | Formato da avaliação | Útil / não útil, comentário opcional de até 1000 caracteres; uma por usuário e mensagem, a última substitui; o curador vê só as "não útil" |
 | D9 | Retenção e agendamento do backup | 7 dias; serviço `backup` no Compose (perfil `backup`), uma execução a cada 24 h |
+
+### Fechamento da Fase 6 (2026-10-13)
+
+Decididas pelo autor ao fechar a etapa E6 do [plano de conclusão](../../plano-de-conclusao.md), com
+base no backlog do Cartographer (`.cartographer/backlog.md`, itens fix-6, fix-9 e fix-12).
+
+| # | Decisão | Escolha |
+|---|---------|---------|
+| D10 | Consistência do backup (fix-9) | O backup pausa a ingestão pelo banco: grava a pausa em `app_settings`, o worker deixa de reservar jobs de ingestão e de reindexação, o backup espera os jobs em andamento terminarem, copia e libera. As contagens de conferência vêm do dump restaurado num banco temporário e do arquivo de documentos, não da base viva |
+| D11 | Onde roda o CT-47 | Script local no Docker (`scripts/validation/backup-restore.sh`), com projeto Compose separado como ambiente limpo e evidência em `docs/qa/relatorios/<data>-ct47/`; executado na campanha, como o teste rápido |
+| D12 | Imagens no markdown do LLM (fix-12, RF-60) | Não carregar: `![alt](url)` vira o texto `[imagem: alt]`, sem requisição; links ganham `rel="noopener noreferrer"`; o Nginx envia `Content-Security-Policy: img-src 'self' data:` |
+| D13 | Streaming interrompido (fix-6, RF-58) | O chat ganha o botão "Parar" e cancela ao sair da tela; resposta que termina sem evento final vira erro; a pergunta já gravada aparece ao recarregar a conversa |
+
+Critérios de aceite acrescentados:
+
+```gherkin
+  Cenário: Backup sem escrita concorrente
+    Dado um job de ingestão em andamento
+    Quando o backup começa
+    Então o worker não reserva novos jobs até o backup terminar
+    E o backup espera o job em andamento antes de copiar
+    E as contagens gravadas correspondem ao conteúdo do backup
+
+  Cenário: Resposta interrompida
+    Dado uma resposta em streaming
+    Quando o usuário clica em "Parar" ou a conexão termina sem evento final
+    Então o chat deixa de aguardar e a pergunta continua na conversa
+
+  Cenário: Imagem na resposta do LLM
+    Dado uma resposta com "![x](https://externo/x.png?dados)"
+    Quando ela é exibida no chat
+    Então nenhuma requisição é feita ao endereço externo
+```
+
