@@ -11,6 +11,8 @@
 # Ao final compara as contagens com as gravadas no backup (counts.txt) e
 # termina com erro se alguma for diferente.
 set -eu
+# pipefail onde o shell suporta (ash do BusyBox e bash; o dash nao tem).
+(set -o pipefail) 2>/dev/null && set -o pipefail
 SCRIPT_NAME="restore"
 . "$(dirname "$0")/backup-common.sh"
 
@@ -24,7 +26,7 @@ esac
 [ "${2:-}" = "--yes" ] || fail "a restauracao substitui os dados atuais; repita com --yes."
 
 log "conferindo as somas de verificacao"
-(cd "$source_dir" && sha256sum -c -s SHA256SUMS) || fail "arquivo do backup corrompido."
+(cd "$source_dir" && sha256sum -c SHA256SUMS > /dev/null) || fail "arquivo do backup corrompido."
 
 # 1. PostgreSQL.
 restore_database() {
@@ -37,6 +39,8 @@ restore_database() {
     log "PostgreSQL: $database restaurado"
 }
 restore_database "$NEXUS_DB" "$source_dir/nexus.dump"
+# O dump foi feito com a ingestao pausada (D10); a base restaurada nao herda a pausa.
+resume_ingestion
 if [ -f "$source_dir/keycloak.dump" ]; then
     restore_database "$KEYCLOAK_DB" "$source_dir/keycloak.dump"
 fi

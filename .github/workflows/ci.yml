@@ -47,6 +47,11 @@ jobs:
           DATABASE_URL: postgresql+psycopg://nexus:nexus@localhost:5432/nexus
           HF_HUB_OFFLINE: "1"
         run: python -m unittest discover -s tests/unit -v
+      - name: CT-46 - logs, trechos e metricas sem token, chave nem texto
+        env:
+          DATABASE_URL: postgresql+psycopg://nexus:nexus@localhost:5432/nexus
+          HF_HUB_OFFLINE: "1"
+        run: python -m unittest tests.integration.test_sensitive_data_leak -v
 
   frontend:
     runs-on: ubuntu-24.04
@@ -81,8 +86,42 @@ jobs:
         run: |
           docker compose config -q
           docker compose --profile observabilidade --profile backup config -q
-      - name: Scripts de backup (sintaxe POSIX)
+      - name: Scripts de backup (sintaxe POSIX) e de validacao (bash)
         run: |
           for script in scripts/backup.sh scripts/restore.sh scripts/backup-loop.sh scripts/backup-common.sh; do
             sh -n "$script"
           done
+          for script in scripts/validation/*.sh scripts/quality-gate.sh; do
+            bash -n "$script"
+          done
+
+  # SPEC-006 D10: backup e restauracao contra um PostgreSQL 16 real, com o
+  # Qdrant simulado. O ensaio completo no Docker e o CT-47 (local).
+  backup-scripts:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: nexus
+          POSTGRES_PASSWORD: nexus
+          POSTGRES_DB: nexus
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nexus" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cliente PostgreSQL 16 e jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-16 jq
+      - name: Ensaio de backup.sh e restore.sh
+        env:
+          PGHOST: localhost
+          PGPORT: "5432"
+          PGUSER: nexus
+          PGPASSWORD: nexus
+        run: |
+          export PATH="/usr/lib/postgresql/16/bin:$PATH"
+          bash scripts/validation/backup-scripts-check.sh

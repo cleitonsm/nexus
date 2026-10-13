@@ -32,3 +32,12 @@ Executados dentro do serviço `backup` do Compose (perfil `backup`), não no com
 - `backup-common.sh`: funções comuns aos dois scripts.
 
 Procedimento em `docs/infraestrutura/backup-e-restauracao.md`.
+
+## Validação (scripts/validation)
+
+- `quick-check.ps1`: teste rápido no Docker (etapa E1).
+- `backup-restore.sh`: CT-47, com backup, ambiente limpo (`nexus-ct47`), restauração, conferência e
+  uma busca.
+- `regression-gate.sh`: CT-48, em que uma regressão simulada faz a avaliação falhar.
+- `backup-scripts-check.sh`: ensaio de `backup.sh` e `restore.sh` com PostgreSQL real e Qdrant
+  simulado (`fake_qdrant.py`, `backup-fixture.sql`); roda no CI.

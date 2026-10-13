@@ -6,6 +6,9 @@ server {
     server_name _;
     # 25 MB de arquivo (RN-30) mais a sobrecarga do formulario multipart.
     client_max_body_size 26m;
+    # SPEC-006 D12 (RF-60): a pagina so carrega imagens do proprio site. Mesmo
+    # que uma resposta do LLM traga uma imagem externa, o navegador nao a busca.
+    add_header Content-Security-Policy "img-src 'self' data:" always;
 
     # A documentacao interativa da API nao exige token: fica fora do proxy.
     location ~ ^/api/(docs|redoc|openapi\.json) {
