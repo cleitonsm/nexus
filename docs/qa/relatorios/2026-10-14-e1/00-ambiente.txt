@@ -1,0 +1,5 @@
+﻿commit: 4584080 (feat/rag-enterprise), arquivos alterados: 11
+data: 2026-10-14T10:49:43.8308891-03:00
+docker: 29.4.3
+compose: 5.1.3
+cpus/mem docker: 12 CPUs, 8247230464 bytes
