@@ -18,6 +18,7 @@ mede o pipeline de RAG contra um conjunto de referência e compara com a execuç
 | `source_documents` | sim, exceto fora de escopo | Nomes dos arquivos que contêm a resposta |
 | `out_of_scope` | não | `true` para perguntas que devem resultar em fallback |
 | `validated_by` | sim | Curador que validou o item (RN-15) |
+| `history` | não | Turnos anteriores (`[{"role": "user" ou "assistant", "content": "..."}]`) de uma pergunta de continuação. Com LLM, a pergunta é reescrita com eles antes da busca (RF-36); com `--no-generation`, segue como foi escrita |
 
 Um conjunto com qualquer item inválido é rejeitado por inteiro e nenhuma métrica é calculada.
 
@@ -33,6 +34,27 @@ documentos, o que tende a favorecer a recuperação; e `neg-09` e `arq-01` trata
 
 Ao acrescentar itens, preencha `validated_by` com o nome de quem validou. Para testar um rascunho
 ainda não validado, use `--allow-unvalidated`; o relatório registra que o conjunto não foi validado.
+
+## Conjunto ampliado (rascunho)
+
+`datasets/nexus-docs-ampliado.jsonl` reúne os 27 itens validados e **55 rascunhos** redigidos com apoio
+de IA em 2026-10-14 (82 itens: 62 dentro e 20 fora do escopo), com 11 perguntas de termo exato, 9 de
+continuação (`history`), 9 sobre tabelas de DOCX e 15 fora do escopo, 4 delas perto do domínio
+(por exemplo, a diária de um cargo que a tabela não tem). Os documentos DOCX são fictícios e ficam em
+`fixtures/`.
+
+Os rascunhos **não estão validados**: cada um traz `origem` e não tem `validated_by`, então o comando
+os recusa. Revise cada item (pergunta, resposta esperada e fontes), corrija o que for preciso e registre
+a validação:
+
+```powershell
+python backend\tests\evaluation\validate_items.py backend\tests\evaluation\datasets\nexus-docs-ampliado.jsonl --list
+python backend\tests\evaluation\validate_items.py backend\tests\evaluation\datasets\nexus-docs-ampliado.jsonl --by "Seu Nome" --approve te-01 te-02
+```
+
+`scripts\eval.ps1 nexus-docs-ampliado` usa um assistente próprio ("Nexus Docs Ampliado (avaliacao)"), para
+não alterar a base do piloto, e indexa também os arquivos de `fixtures/`. Para testar antes de validar,
+acrescente `--allow-unvalidated` (o relatório registra que o conjunto não foi validado).
 
 ## Como executar
 
@@ -81,6 +103,15 @@ Opções úteis:
 - `--tolerance 0.02`: regressão máxima aceita; o padrão vem de `EVAL_REGRESSION_TOLERANCE`.
 
 Sem chave de LLM configurada, a geração é ignorada automaticamente.
+
+## Calibração da nota mínima (CT-22)
+
+Com o piloto já indexado por `scripts\eval.ps1`, `scripts\calibrate.ps1 nexus-docs` varre a nota
+mínima de 0,05 a 0,95 usando as notas reais do reranker, **sem chamar o LLM**. Para cada nota mostra
+quanto das perguntas dentro do escopo ainda encontram a fonte correta e quanto das perguntas fora do
+escopo termina em fallback, além da média das duas e dos itens problemáticos. O resumo também é salvo
+em `reports/<conjunto>/calibracao.json`. O comando não altera nenhuma configuração: o valor de
+`RELEVANCE_MIN_SCORE` é decisão de quem opera o sistema.
 
 ## Métricas
 
