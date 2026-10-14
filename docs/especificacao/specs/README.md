@@ -18,6 +18,7 @@ testes são escritos antes da implementação.
 | SPEC-20261007-004 | 4 — Autenticação e controle de acesso | [`SPEC-004-autenticacao-e-controle-de-acesso.md`](SPEC-004-autenticacao-e-controle-de-acesso.md) | Aprovada; código entregue, validação no Docker pendente | RF-40 a RF-47 |
 | SPEC-20261007-005 | 5 — Ingestão e ciclo de vida | [`SPEC-005-ingestao-e-ciclo-de-vida.md`](SPEC-005-ingestao-e-ciclo-de-vida.md) | Aprovada; código entregue, validação no Docker pendente | RF-48 a RF-55 |
 | SPEC-20261007-006 | 6 — Operação e governança | [`SPEC-006-operacao-e-governanca.md`](SPEC-006-operacao-e-governanca.md) | Aprovada; código entregue, validação no Docker pendente | RF-56 a RF-63 |
+| SPEC-20261014-007 | Endurecimento (fix-1 a fix-4 do cartographer) | [`SPEC-007-endurecimento.md`](SPEC-007-endurecimento.md) | Aprovada; código entregue, validação no Docker pendente | RF-64 a RF-67 |
 
 ## Status possíveis
 
