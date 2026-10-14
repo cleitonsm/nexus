@@ -23,6 +23,9 @@ from src.api.dependencies import (
     get_conversation_repository,
     get_document_repository,
     get_embedding_gateway,
+    get_llm_connection_default,
+    get_llm_connection_repository,
+    get_llm_insecure_http_allowed,
     get_reindex_job_repository,
     get_secret_cipher,
     get_secret_settings_repository,
@@ -53,6 +56,7 @@ from src.domain import (
     Conversation,
     ConversationId,
     DocumentId,
+    LLMConnection,
     Role,
     SearchResult,
     SparseVector,
@@ -577,6 +581,80 @@ class AuditApiTestCase(ApiAccessTestCase):
                 item = client.request(method, "/admin/audit-events/qualquer-id")
                 self.assertIn(item.status_code, (404, 405))
         self.assertIn("auth.session_started", self.access.audit.actions())
+
+
+class InMemoryLLMConnections:
+    def __init__(self) -> None:
+        self.connection: LLMConnection | None = None
+
+    def get(self) -> LLMConnection | None:
+        return self.connection
+
+    def save(self, connection: LLMConnection, *, updated_by: str) -> LLMConnection:
+        self.connection = connection
+        return connection
+
+
+class LLMSettingsApiTestCase(ApiAccessTestCase):
+    """SPEC-008 CT-68: GET e PUT /admin/llm-settings (200, 422, 403)."""
+
+    ENVIRONMENT = LLMConnection.from_environment(
+        model="gpt-4o-mini", api_url="https://api.openai.com/v1/chat/completions"
+    )
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.llm_connections = InMemoryLLMConnections()
+        overrides = self.app.dependency_overrides
+        overrides[get_llm_connection_repository] = lambda: self.llm_connections
+        overrides[get_llm_connection_default] = lambda: self.ENVIRONMENT
+        overrides[get_llm_insecure_http_allowed] = lambda: False
+        self.admin = member("root", role=Role.ADMIN)
+
+    def test_administrator_reads_the_environment_value_until_saving(self) -> None:
+        body = self.acting_as(self.admin).get("/admin/llm-settings").json()
+        self.assertEqual(
+            (body["provider"], body["model"], body["source"]),
+            ("openai", "gpt-4o-mini", "ambiente"),
+        )
+        self.assertIn("gemini", body["provider_urls"])
+
+    def test_saving_gemini_uses_the_provider_url_and_is_audited(self) -> None:
+        client = self.acting_as(self.admin)
+        saved = client.put(
+            "/admin/llm-settings",
+            json={"provider": "gemini", "model": "gemini-flash", "api_url": "https://x.example.com"},
+        )
+        self.assertEqual(saved.status_code, 200)
+        self.assertEqual(saved.json()["api_url"], saved.json()["provider_urls"]["gemini"])
+        self.assertEqual(client.get("/admin/llm-settings").json()["source"], "configurado")
+        self.assertIn("llm_settings.changed", self.access.audit.actions())
+
+    def test_invalid_values_answer_422_and_keep_the_previous_one(self) -> None:
+        client = self.acting_as(self.admin)
+        for payload in (
+            {"provider": "custom", "model": "m", "api_url": "http://inseguro.example.com/v1"},
+            {"provider": "custom", "model": "m", "api_url": "https://u:p@x.example.com/v1"},
+            {"provider": "custom", "model": "m", "api_url": "https://x.example.com/v1?key=1"},
+            {"provider": "gemini", "model": "dois nomes"},
+            {"provider": "inexistente", "model": "m"},
+        ):
+            with self.subTest(payload=payload):
+                self.assertEqual(
+                    client.put("/admin/llm-settings", json=payload).status_code, 422
+                )
+        self.assertIsNone(self.llm_connections.connection)
+
+    def test_non_administrators_answer_403(self) -> None:
+        for user in (ANA, member("carla", "rh", role=Role.CURATOR)):
+            client = self.acting_as(user)
+            with self.subTest(user=user.id):
+                self.assertEqual(client.get("/admin/llm-settings").status_code, 403)
+                put = client.put(
+                    "/admin/llm-settings", json={"provider": "openai", "model": "gpt-4o"}
+                )
+                self.assertEqual(put.status_code, 403)
+        self.assertIsNone(self.llm_connections.connection)
 
 
 if __name__ == "__main__":

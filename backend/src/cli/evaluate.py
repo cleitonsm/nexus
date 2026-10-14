@@ -15,6 +15,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from src.application.use_cases import (
+    resolve_llm_connection,
     CompareEvaluationReportsInput,
     CompareEvaluationReportsUseCase,
     CreateAssistantInput,
@@ -52,6 +53,7 @@ from src.infrastructure.composition import (
     bm25_parameters,
     build_document_indexer,
     build_embedding_gateway,
+    llm_connection_defaults,
     build_file_storage,
     build_reranker_gateway,
     build_sparse_embedding_gateway,
@@ -65,6 +67,7 @@ from src.infrastructure.database import (
     PostgresAssistantPermissionRepository,
     PostgresAssistantRepository,
     PostgresAuditLogRepository,
+    PostgresLLMConnectionRepository,
     PostgresDocumentRepository,
     PostgresIndexParametersRepository,
     PostgresIngestionJobQueue,
@@ -89,8 +92,6 @@ EXIT_REGRESSION = 1
 EXIT_INVALID_DATASET = 2
 EXIT_SEED_FAILED = 3
 
-DEFAULT_LLM_MODEL = "gpt-4o-mini"
-DEFAULT_LLM_API_URL = "https://api.openai.com/v1/chat/completions"
 
 # O comando roda no servidor, sem token: age como uma identidade de sistema,
 # e e com esse identificador que as acoes dele aparecem na auditoria.
@@ -324,15 +325,16 @@ def _build_llm_gateway(session: Session) -> LLMGateway | None:
     if not credential:
         logger.warning("evaluation.generation.skipped", extra={"reason": "no_llm_credential"})
         return None
+    # SPEC-008 RF-70: a mesma conexao do chat (tela de administracao ou ambiente).
+    connection = resolve_llm_connection(
+        PostgresLLMConnectionRepository(session=session),
+        llm_connection_defaults(),
+    )
     return HttpChatCompletionsLLM(
-        api_url=os.getenv("LLM_API_URL", DEFAULT_LLM_API_URL),
-        model=_llm_model(),
+        api_url=connection.api_url,
+        model=connection.model,
         api_key=credential,
     )
-
-
-def _llm_model() -> str:
-    return os.getenv("LLM_MODEL", "").strip() or DEFAULT_LLM_MODEL
 
 
 def _parameters(
@@ -361,7 +363,11 @@ def _parameters(
         "relevance_min_score": str(settings.min_score),
         "context_token_budget": str(settings.context_token_budget),
         "history_token_budget": str(settings.history_token_budget),
-        "llm_model": _llm_model() if llm_gateway else "nao utilizado",
+        "llm_model": (
+            getattr(llm_gateway, "model", None) or "nao utilizado"
+            if llm_gateway
+            else "nao utilizado"
+        ),
         "judge": "LLMAnswerJudge" if llm_gateway else "nao utilizado",
         "tolerance": str(args.tolerance),
     }

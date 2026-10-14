@@ -5,7 +5,13 @@ from .access import (
     GroupsRequest,
     GroupsResponse,
 )
-from .admin import ApiKeyStatusResponse, ApiKeyTestResponse, SaveApiKeyRequest
+from .admin import (
+    ApiKeyStatusResponse,
+    ApiKeyTestResponse,
+    LLMSettingsRequest,
+    LLMSettingsResponse,
+    SaveApiKeyRequest,
+)
 from .assistants import (
     AssistantResponse,
     CreateAssistantRequest,
@@ -38,6 +44,8 @@ __all__ = [
     "AddMessageRequest",
     "ApiKeyStatusResponse",
     "ApiKeyTestResponse",
+    "LLMSettingsRequest",
+    "LLMSettingsResponse",
     "AssistantResponse",
     "AuditEventResponse",
     "ChatRequest",

@@ -21,6 +21,7 @@ from .operations_repositories import (
     PostgresIngestionPauseRepository,
     PostgresUsageLimiter,
     PostgresUsageRecordRepository,
+    PostgresLLMConnectionRepository,
     PostgresUsageSettingsRepository,
     ingestion_job_gauges,
 )
@@ -58,6 +59,7 @@ __all__ = [
     "PostgresFeedbackRepository",
     "PostgresIndexParametersRepository",
     "PostgresIngestionJobQueue",
+    "PostgresLLMConnectionRepository",
     "PostgresReindexJobRepository",
     "PostgresSecretSettingsRepository",
     "PostgresIngestionPauseRepository",

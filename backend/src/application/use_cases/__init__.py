@@ -64,6 +64,13 @@ from .manage_conversation import (
     DeleteConversationUseCase,
     GetConversationUseCase,
 )
+from .manage_llm_connection import (
+    GetLLMConnectionUseCase,
+    LLMConnectionDTO,
+    UpdateLLMConnectionInput,
+    UpdateLLMConnectionUseCase,
+    resolve_llm_connection,
+)
 from .manage_api_key import (
     GetGlobalApiKeyStatusUseCase,
     GetGlobalApiKeyValueUseCase,
@@ -162,6 +169,11 @@ __all__ = [
     "GetConversationUseCase",
     "GetDocumentUseCase",
     "GetGlobalApiKeyStatusUseCase",
+    "GetLLMConnectionUseCase",
+    "LLMConnectionDTO",
+    "UpdateLLMConnectionInput",
+    "UpdateLLMConnectionUseCase",
+    "resolve_llm_connection",
     "GetGlobalApiKeyValueUseCase",
     "GetIndexStatusInput",
     "GetIndexStatusUseCase",

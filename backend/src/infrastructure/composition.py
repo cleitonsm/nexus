@@ -17,7 +17,14 @@ from src.application.services import (
     UsageSettings,
 )
 from src.application.use_cases.reindex_assistant import ReindexSettings
-from src.domain import LLMPricing, SparseEncodingParameters, UsageLimits
+from src.domain import (
+    PROVIDER_ENDPOINTS,
+    LLMConnection,
+    LLMPricing,
+    LLMProvider,
+    SparseEncodingParameters,
+    UsageLimits,
+)
 from src.infrastructure.auth import (
     KeycloakGroupDirectory,
     KeycloakTokenVerifier,
@@ -280,7 +287,21 @@ def llm_model_name() -> str:
     return model
 
 
-def usage_settings() -> UsageSettings:
+def llm_connection_defaults() -> LLMConnection:
+    """SPEC-008 D2: padrao do ambiente; a tela de administracao o substitui."""
+    return LLMConnection.from_environment(
+        model=llm_model_name(),
+        api_url=os.getenv("LLM_API_URL", "").strip()
+        or PROVIDER_ENDPOINTS[LLMProvider.OPENAI],
+    )
+
+
+def allow_insecure_llm_http() -> bool:
+    """SPEC-008 D3: URL ``http`` do LLM so no ambiente local."""
+    return api_docs_enabled()
+
+
+def usage_settings(model: str | None = None) -> UsageSettings:
     """D3: limites padrao do ambiente; a tela de administracao os substitui."""
     return UsageSettings(
         default_limits=UsageLimits(
@@ -298,7 +319,7 @@ def usage_settings() -> UsageSettings:
             ),
             currency=_text_env("LLM_PRICE_CURRENCY", DEFAULT_LLM_PRICE_CURRENCY),
         ),
-        model=llm_model_name(),
+        model=model or llm_model_name(),
     )
 
 

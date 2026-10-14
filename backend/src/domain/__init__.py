@@ -81,6 +81,7 @@ from .interfaces import (
     EmbeddingGateway,
     IndexParametersRepository,
     IngestionJobQueue,
+    LLMConnectionRepository,
     LLMGateway,
     ReindexJobRepository,
     RerankerGateway,
@@ -102,6 +103,12 @@ from .observability import (
     NoopTracer,
     Span,
     Tracer,
+)
+from .llm_settings import (
+    PROVIDER_ENDPOINTS,
+    LLMConnection,
+    LLMProvider,
+    provider_for_url,
 )
 from .maintenance import IngestionPause
 from .prompt_injection import detect_prompt_injection
@@ -213,6 +220,11 @@ __all__ = [
     "Role",
     "SearchResult",
     "SecretSettingsRepository",
+    "LLMConnection",
+    "LLMConnectionRepository",
+    "LLMProvider",
+    "PROVIDER_ENDPOINTS",
+    "provider_for_url",
     "Span",
     "SparseEmbeddingGateway",
     "SparseEncodingParameters",

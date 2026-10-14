@@ -26,6 +26,7 @@ class AuditAction(StrEnum):
     DOCUMENT_FAILED = "document.failed"
     LLM_API_KEY_CHANGED = "llm_api_key.changed"
     LLM_API_KEY_TESTED = "llm_api_key.tested"
+    LLM_SETTINGS_CHANGED = "llm_settings.changed"
     AUDIT_CONSULTED = "audit.consulted"
     AUDIT_PURGED = "audit.purged"
     # SPEC-006

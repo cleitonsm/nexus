@@ -11,6 +11,7 @@ from .chunking import DocumentChunk, ExtractedDocument
 from .citations import ContextChunk
 from .errors import DomainValidationError
 from .feedback import FeedbackQuery, MessageFeedback
+from .llm_settings import LLMConnection
 from .maintenance import IngestionPause
 from .usage import (
     LLMCompletion,
@@ -193,6 +194,14 @@ class SecretSettingsRepository(Protocol):
     ) -> None: ...
 
     def get_encrypted_value(self, *, key_name: str) -> str | None: ...
+
+
+class LLMConnectionRepository(Protocol):
+    """Conexao com o LLM definida na tela; sem valor gravado, vale o ambiente."""
+
+    def get(self) -> LLMConnection | None: ...
+
+    def save(self, connection: LLMConnection, *, updated_by: str) -> LLMConnection: ...
 
 
 class EmbeddingGateway(Protocol):

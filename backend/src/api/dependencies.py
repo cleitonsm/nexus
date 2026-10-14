@@ -18,6 +18,7 @@ from src.application.services import (
 )
 from src.application.use_cases import (
     GetGlobalApiKeyValueUseCase,
+    resolve_llm_connection,
 )
 from src.domain import (
     AuthenticatedUser,
@@ -28,6 +29,7 @@ from src.domain import (
     EmbeddingGateway,
     GroupDirectory,
     LLMCompletion,
+    LLMConnection,
     LLMGateway,
     LLMStreamChunk,
     MetricsRecorder,
@@ -43,7 +45,8 @@ from src.infrastructure.composition import (
     build_group_directory,
     build_metrics,
     build_tracer,
-    llm_model_name,
+    allow_insecure_llm_http,
+    llm_connection_defaults,
     usage_settings,
     build_reranker_gateway,
     build_sparse_embedding_gateway,
@@ -65,6 +68,7 @@ from src.infrastructure.database import (
     PostgresIngestionJobQueue,
     PostgresReindexJobRepository,
     PostgresSecretSettingsRepository,
+    PostgresLLMConnectionRepository,
     PostgresUsageLimiter,
     PostgresUsageRecordRepository,
     PostgresUsageSettingsRepository,
@@ -285,55 +289,77 @@ class UnconfiguredLLMGateway(LLMGateway):
         raise ValueError(self.MESSAGE)
 
 
+def get_llm_connection_repository(
+    session: Session = Depends(get_session),
+) -> PostgresLLMConnectionRepository:
+    return PostgresLLMConnectionRepository(session=session)
+
+
+def get_llm_connection_default() -> LLMConnection:
+    return llm_connection_defaults()
+
+
+def get_llm_insecure_http_allowed() -> bool:
+    return allow_insecure_llm_http()
+
+
+def get_effective_llm_connection(
+    repository: PostgresLLMConnectionRepository = Depends(
+        get_llm_connection_repository
+    ),
+) -> LLMConnection:
+    """SPEC-008 RF-70: valor gravado pela tela, ou o do ambiente."""
+    return resolve_llm_connection(repository, llm_connection_defaults())
+
+
 def get_llm_gateway(
     secret_repository: PostgresSecretSettingsRepository = Depends(
         get_secret_settings_repository
     ),
     secret_cipher: FernetSecretCipher = Depends(get_secret_cipher),
+    connection: LLMConnection = Depends(get_effective_llm_connection),
 ) -> LLMGateway:
-    return build_llm_gateway(secret_repository, secret_cipher)
+    return build_llm_gateway(secret_repository, secret_cipher, connection)
 
 
 def build_llm_gateway(
     secret_repository: PostgresSecretSettingsRepository,
     secret_cipher: FernetSecretCipher,
+    connection: LLMConnection,
 ) -> LLMGateway:
     """A chave e decifrada so em memoria, a cada requisicao (ADR 0005)."""
     api_key = GetGlobalApiKeyValueUseCase(
         secret_repository=secret_repository,
         secret_cipher=secret_cipher,
     ).execute()
-    api_url = os.getenv("LLM_API_URL", "https://api.openai.com/v1/chat/completions")
-    model = get_configured_llm_model()
     logger.info(
         "llm.gateway.resolved",
         extra={
             "has_llm_credential": bool(api_key),
-            "llm_model": model,
-            "api_url_configured": bool(api_url.strip()),
+            "llm_provider": connection.provider.value,
+            "llm_model": connection.model,
+            "api_url_configured": bool(connection.api_url.strip()),
         },
     )
     if not api_key:
         return UnconfiguredLLMGateway()
-    if not model:
+    if not connection.model:
         return UnconfiguredLLMGateway()
     return TracedLLMGateway(
         HttpChatCompletionsLLM(
-            api_url=api_url,
-            model=model,
+            api_url=connection.api_url,
+            model=connection.model,
             api_key=api_key,
         ),
         build_tracer(),
-        model=model,
+        model=connection.model,
     )
 
 
-def get_configured_llm_model() -> str:
-    return llm_model_name()
-
-
-def get_usage_settings() -> UsageSettings:
-    return usage_settings()
+def get_usage_settings(
+    connection: LLMConnection = Depends(get_effective_llm_connection),
+) -> UsageSettings:
+    return usage_settings(model=connection.model)
 
 
 def get_usage_record_repository(
@@ -359,7 +385,12 @@ def build_usage_governance(session: Session) -> UsageGovernance:
         limiter=PostgresUsageLimiter(session=session),
         record_repository=PostgresUsageRecordRepository(session=session),
         settings_repository=PostgresUsageSettingsRepository(session=session),
-        settings=usage_settings(),
+        settings=usage_settings(
+            model=resolve_llm_connection(
+                PostgresLLMConnectionRepository(session=session),
+                llm_connection_defaults(),
+            ).model
+        ),
         metrics=build_metrics(),
     )
 
