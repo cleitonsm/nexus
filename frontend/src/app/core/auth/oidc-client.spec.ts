@@ -5,6 +5,7 @@ import {
   OidcClient,
   OidcEnvironment,
   OidcError,
+  OidcUnavailableError,
   PENDING_LOGIN_KEY,
   safeReturnUrl
 } from "./oidc-client";
@@ -181,6 +182,22 @@ describe("OidcClient", () => {
       idToken: null,
       expiresAt: NOW + 60_000
     });
+  });
+
+  it("tells an unreachable Keycloak apart from a refused refresh token", async () => {
+    const unreachable = [{ fail: true }, { status: 503 }];
+    for (const response of unreachable) {
+      await expect(setup(response).client.refresh("refresh-1")).rejects.toBeInstanceOf(
+        OidcUnavailableError
+      );
+    }
+    for (const status of [400, 401]) {
+      const error = await setup({ status, body: { error: "invalid_grant" } })
+        .client.refresh("refresh-1")
+        .catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(OidcError);
+      expect(error).not.toBeInstanceOf(OidcUnavailableError);
+    }
   });
 
   it("builds the logout address with the id token hint", () => {

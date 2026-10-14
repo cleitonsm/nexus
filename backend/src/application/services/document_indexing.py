@@ -7,6 +7,7 @@ from src.domain import (
     DocumentChunker,
     DocumentExtractor,
     DocumentId,
+    TransientServiceError,
     EmbeddingGateway,
     SparseEmbeddingGateway,
     SparseEncodingParameters,
@@ -85,7 +86,8 @@ class DocumentIndexer:
         vectors = self._embedding_gateway.embed_documents(texts)
         sparse_vectors = self._sparse_embedding_gateway.embed_documents(texts)
         if len(vectors) != len(chunks) or len(sparse_vectors) != len(chunks):
-            raise ValueError(
+            # Falha do provedor, nao do documento: vale nova tentativa.
+            raise TransientServiceError(
                 "embedding provider returned an unexpected vector count."
             )
         content_hash = hash_content(raw_content)

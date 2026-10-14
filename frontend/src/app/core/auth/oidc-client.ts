@@ -36,6 +36,9 @@ export const PENDING_LOGIN_KEY = "nexus.oidc.pending";
 
 export class OidcError extends Error {}
 
+/** Keycloak inalcançável ou com falha própria (5xx): vale tentar de novo, a sessão ainda pode estar válida. */
+export class OidcUnavailableError extends OidcError {}
+
 /** Authorization Code com PKCE contra o Keycloak (RF-40, RF-46). */
 export class OidcClient {
   constructor(
@@ -149,10 +152,11 @@ export class OidcClient {
         body: new URLSearchParams(form).toString()
       });
     } catch {
-      throw new OidcError("Não foi possível falar com o Keycloak.");
+      throw new OidcUnavailableError("Não foi possível falar com o Keycloak.");
     }
     if (!response.ok) {
-      throw new OidcError(`O Keycloak recusou o pedido de token (HTTP ${response.status}).`);
+      const message = `O Keycloak recusou o pedido de token (HTTP ${response.status}).`;
+      throw response.status >= 500 ? new OidcUnavailableError(message) : new OidcError(message);
     }
     const body = (await response.json()) as TokenResponse;
     if (typeof body.access_token !== "string" || typeof body.expires_in !== "number") {

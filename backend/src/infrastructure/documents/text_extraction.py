@@ -7,6 +7,29 @@ import tempfile
 from pathlib import Path
 from typing import Callable
 
+from src.domain import TransientServiceError
+
+# Ferramenta externa que trava nao pode prender o worker (fix-10).
+TOOL_TIMEOUT_SECONDS = 120
+
+
+def _run_tool(
+    command: list[str], *, timeout: int = TOOL_TIMEOUT_SECONDS
+) -> subprocess.CompletedProcess[str]:
+    """Executa a ferramenta com limite de tempo; o estouro e falha passageira."""
+    try:
+        return subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise TransientServiceError(
+            f"{command[0]} did not finish within {timeout} seconds."
+        ) from exc
+
 _SUPPORTED_CONTENT_TYPES_BY_SUFFIX = {
     ".txt": {"text/plain"},
     ".md": {"text/markdown", "text/plain"},
@@ -136,12 +159,7 @@ def _extract_doc_text(raw_content: bytes) -> str:
 def _run_antiword(source_file: Path, _: Path) -> str | None:
     if shutil.which("antiword") is None:
         return None
-    completed = subprocess.run(
-        ["antiword", str(source_file)],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    completed = _run_tool(["antiword", str(source_file)])
     if completed.returncode != 0:
         return None
     return completed.stdout
@@ -150,12 +168,7 @@ def _run_antiword(source_file: Path, _: Path) -> str | None:
 def _run_catdoc(source_file: Path, _: Path) -> str | None:
     if shutil.which("catdoc") is None:
         return None
-    completed = subprocess.run(
-        ["catdoc", str(source_file)],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    completed = _run_tool(["catdoc", str(source_file)])
     if completed.returncode != 0:
         return None
     return completed.stdout
@@ -165,19 +178,19 @@ def _run_libreoffice_convert(source_file: Path, temp_dir: Path) -> str | None:
     libreoffice_cmd = shutil.which("soffice") or shutil.which("libreoffice")
     if libreoffice_cmd is None:
         return None
-    completed = subprocess.run(
+    # Perfil proprio: evita travar em um perfil compartilhado ou bloqueado.
+    profile = (temp_dir / "lo-profile").resolve().as_uri()
+    completed = _run_tool(
         [
             libreoffice_cmd,
+            f"-env:UserInstallation={profile}",
             "--headless",
             "--convert-to",
             "txt:Text",
             "--outdir",
             str(temp_dir),
             str(source_file),
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
+        ]
     )
     if completed.returncode != 0:
         return None

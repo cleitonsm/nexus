@@ -4,7 +4,12 @@ import io
 import re
 from typing import Callable, Iterator, Protocol
 
-from src.domain import BlockType, DocumentBlock, ExtractedDocument
+from src.domain import (
+    BlockType,
+    DocumentBlock,
+    ExtractedDocument,
+    UnreadableDocumentError,
+)
 
 from .text_extraction import (
     _extract_doc_text,
@@ -245,7 +250,9 @@ def _read_pdf_pages(
         pages = [(page.extract_text() or "") for page in reader.pages]
     except PyPdfError as exc:
         # Arquivo corrompido: nenhuma nova tentativa o tornaria legivel (C1).
-        raise ValueError(f"could not read the PDF file: {exc}") from exc
+        raise UnreadableDocumentError(
+            f"could not read the PDF file: {exc}"
+        ) from exc
     if ocr is None:
         return pages
     # Pagina digitalizada: so imagem, nenhum caractere na camada de texto.

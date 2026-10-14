@@ -5,6 +5,14 @@ class DomainValidationError(ValueError):
     """Raised when domain invariants are violated."""
 
 
+class UnreadableDocumentError(ValueError):
+    """O arquivo nao pode ser lido; repetir nao resolve (C1)."""
+
+
+class TransientServiceError(RuntimeError):
+    """Falha passageira de um servico ou ferramenta; vale tentar de novo."""
+
+
 class IndexOutdatedError(Exception):
     """A base do assistente precisa ser reindexada antes de ser usada."""
 

@@ -30,6 +30,7 @@ from src.application.services import (
     record_sparse_parameters,
 )
 from src.domain import (
+    TransientServiceError,
     AuditAction,
     AuditResource,
     CollectionName,
@@ -156,6 +157,8 @@ def _definitive_reason(error: Exception) -> str | None:
         return OUTDATED_INDEX_REASON
     if isinstance(error, FileNotFoundError):
         return MISSING_ORIGINAL_REASON
+    if isinstance(error, TransientServiceError):
+        return None  # fix-11: falha passageira, mesmo que seja ValueError
     if isinstance(error, (ValueError, DomainValidationError)):
         return UNREADABLE_DOCUMENT_REASON
     return None

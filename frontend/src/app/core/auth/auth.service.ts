@@ -3,10 +3,14 @@ import { Store } from "@ngrx/store";
 
 import { authActions } from "../../store/auth.actions";
 import { AuthConfig, TokenSet } from "./auth.models";
-import { OidcClient, safeReturnUrl } from "./oidc-client";
+import { OidcClient, OidcUnavailableError, safeReturnUrl } from "./oidc-client";
 
 /** Renova o token este tempo antes de expirar. */
 const REFRESH_MARGIN_MS = 30_000;
+/** Esperas entre as tentativas de renovação quando o Keycloak não responde. */
+const REFRESH_RETRY_DELAYS_MS = [1_000, 3_000];
+/** Nova tentativa em segundo plano depois que as esperas acabam. */
+const REFRESH_BACKGROUND_RETRY_MS = 30_000;
 /** Um token com menos que isto de validade e renovado antes de ser usado. */
 const MIN_VALIDITY_MS = 10_000;
 const CONFIG_URL = "/config.json";
@@ -115,20 +119,35 @@ export class AuthService {
       this.expire();
       return null;
     }
-    try {
-      this.setTokens(await this.client.refresh(refreshToken));
-      return this.tokens?.accessToken ?? null;
-    } catch {
-      this.expire();
-      return null;
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        this.setTokens(await this.client.refresh(refreshToken));
+        return this.tokens?.accessToken ?? null;
+      } catch (error) {
+        if (!(error instanceof OidcUnavailableError)) {
+          // O Keycloak recusou o refresh token (expirado ou revogado): sessão encerrada.
+          this.expire();
+          return null;
+        }
+        const delay = REFRESH_RETRY_DELAYS_MS[attempt];
+        if (delay === undefined) {
+          // Rede ou Keycloak fora do ar: não derruba a sessão; tenta de novo adiante.
+          this.scheduleRefresh(REFRESH_BACKGROUND_RETRY_MS);
+          return null;
+        }
+        await new Promise<void>((resolve) => setTimeout(resolve, delay));
+      }
     }
+  }
+
+  private scheduleRefresh(delay: number): void {
+    this.cancelTimer();
+    this.refreshTimer = setTimeout(() => void this.refresh(), delay);
   }
 
   private setTokens(tokens: TokenSet): void {
     this.tokens = tokens;
-    this.cancelTimer();
-    const delay = Math.max(tokens.expiresAt - Date.now() - REFRESH_MARGIN_MS, 0);
-    this.refreshTimer = setTimeout(() => void this.refresh(), delay);
+    this.scheduleRefresh(Math.max(tokens.expiresAt - Date.now() - REFRESH_MARGIN_MS, 0));
   }
 
   private clear(): void {

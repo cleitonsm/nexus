@@ -219,3 +219,15 @@ fix: |
   handlers globais por tipo de erro com envelope unico {detail, code}; nao ecoar texto de excecao do upstream.
 verification: testes de integracao existentes de rotas + novos casos de 403/404 equivalentes
 ```
+
+## Andamento (2026-10-14)
+
+| Item | Situação |
+|------|----------|
+| fix-1, 2, 3, 4 | Feitos (SPEC-007). |
+| fix-6, fix-9, fix-12 (imagens) | Feitos (SPEC-006, E6). |
+| fix-10 | Feito: `_run_tool` com limite de 120 s nos extratores `.doc`, perfil próprio do LibreOffice, estouro no OCR tratado como falha passageira. **Fora**: limite de páginas/memória (muda o que o produto aceita; decisão do autor). |
+| fix-11 | Feito: `UnreadableDocumentError` (definitiva) e `TransientServiceError` (nova tentativa); contagem de vetores errada e estouro de ferramenta agora são repetidos. |
+| fix-12 (refresh) | Feito: só resposta 4xx do Keycloak encerra a sessão; rede ou 5xx repete (1 s, 3 s) e depois tenta a cada 30 s sem derrubar o usuário. Spec novo em `oidc-client.spec.ts`, não executado. |
+| fix-5, 7, 8, 13 | Pendentes: mexem em SQLAlchemy/PostgreSQL e migração, sem como validar na nuvem. Fazer com o Docker (fix-7 passo 1 e fix-13 primeiro). |
+| fix-14 | Pendente: o envelope único de erro muda o contrato com o frontend; decidir o formato antes. |

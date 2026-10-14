@@ -14,6 +14,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from src.domain import TransientServiceError, UnreadableDocumentError
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_OCR_LANGUAGES = "por+eng"
@@ -98,6 +100,15 @@ class TesseractPdfOcr:
                 capture_output=True,
                 timeout=self._timeout,
             )
+        except subprocess.TimeoutExpired as exc:
+            logger.warning(
+                "ocr.command_timeout",
+                extra={"command": command[0], "timeout": self._timeout},
+            )
+            # Pagina pesada ou maquina ocupada: uma nova tentativa pode passar.
+            raise TransientServiceError(
+                f"{command[0]} did not finish within {self._timeout} seconds."
+            ) from exc
         except subprocess.CalledProcessError as exc:
             stderr = exc.stderr.decode("utf-8", errors="replace").strip()
             logger.warning(
@@ -105,4 +116,6 @@ class TesseractPdfOcr:
                 extra={"command": command[0], "stderr": stderr[-500:]},
             )
             # Pagina ilegivel ou idioma ausente: repetir nao resolve (C1).
-            raise ValueError(f"{command[0]} failed: {stderr[-200:]}") from exc
+            raise UnreadableDocumentError(
+                f"{command[0]} failed: {stderr[-200:]}"
+            ) from exc
