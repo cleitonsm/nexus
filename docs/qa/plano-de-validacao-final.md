@@ -77,8 +77,15 @@ reexecução definida na seção 9.
 > **Andamento em 2026-10-14**: já existem o cliente `nexus-tests` (V-D2), `scripts/perf/` (corpus,
 > upload, indexação, TTFT e relatório), `env_snapshot.sh`, `run-all.sh`/`.ps1` e o CT-04
 > (`test_evaluation_command.py`, não executado). A escrita do CT-04 revelou que o comando de
-> avaliação não iniciava desde a Fase 5 (corrigido). Seguem por escrever: CT-39, CT-40, CT-49 a
-> CT-57, FE-02 a FE-07, `retrieval_latency.py` e `reindex_under_load.py`.
+> avaliação não iniciava desde a Fase 5 (corrigido). **Em 2026-10-14 foram escritos, sem executar**
+> (sem Docker, navegador nem registro npm onde foram escritos): CT-39, CT-40, CT-49 a CT-57
+> (`backend/tests/integration/`, `scripts/validation/`), `retrieval_latency.py`,
+> `reindex_under_load.py`, FE-02, FE-03 e FE-05 (specs do Vitest), FE-04 (specs existentes mais a
+> parte com DOM real no Playwright) e o E1 do FE-07 (`frontend/e2e/`). FE-06 segue a decisão V-D3b
+> (coberto pelo E2E) e E2 a E11 do FE-07 seguem os roteiros manuais. O conjunto `nexus-acesso` do
+> CT-56 está em `backend/tests/evaluation/datasets/nexus-acesso/`. A primeira execução de cada item
+> deve ser tratada como validação do próprio teste: ajustes de seletor, nome de serviço ou formato
+> são esperados.
 
 | Casos | Existe? | Onde |
 |-------|---------|------|

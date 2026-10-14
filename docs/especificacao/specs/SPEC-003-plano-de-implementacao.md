@@ -62,7 +62,7 @@ Ainda em aberto:
 
 | # | Decisão | Observação |
 |---|---------|------------|
-| D5 | Calibração de D4 | Só diante do resultado do CT-22. A nota mínima 0,5 é provisória: é o ponto neutro da sigmoide, não um valor medido. |
+| D5 | Calibração de D4 | Só diante do resultado do CT-22 (`scripts\calibrate.ps1` mostra, por nota, quanto do piloto responde e quanto recusa; a escolha é do autor). A nota mínima 0,5 é provisória: é o ponto neutro da sigmoide, não um valor medido. |
 
 ## 2. Comportamentos revisados pelo autor
 

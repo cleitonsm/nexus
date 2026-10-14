@@ -179,15 +179,15 @@ Atualizado em 2026-10-08.
 | CT-18, CT-19 | Implementados, ainda não executados (exigem o Qdrant e os modelos); a parte que não depende deles está em `backend/tests/unit/test_retrieval_components.py` | `backend/tests/integration/test_hybrid_search.py` |
 | CT-20 | Implementado, ainda não executado (exige FastAPI e PostgreSQL) | `backend/tests/integration/test_chat_citations.py` |
 | CT-21 | Implementado, ainda não executado (o Vitest não pôde ser instalado onde o código foi escrito) | `frontend/src/app/store/nexus.reducer.spec.ts` |
-| CT-22 | Depende da avaliação do piloto no ambiente Docker | `backend/tests/evaluation/` |
+| CT-22 | Ferramenta de calibração pronta e testada (`scripts\calibrate.ps1`, sem LLM; `test_calibrate_relevance.py`); a execução no Docker e a escolha da nota mínima dependem do autor | `backend/tests/evaluation/`, `backend/src/cli/calibrate_relevance.py` |
 | CT-23, CT-24, CT-25 | Implementados e executados com sucesso | `backend/tests/unit/test_token_verifier.py`, `backend/tests/unit/test_access_control.py` |
 | CT-26, CT-27, CT-29, CT-30 | Implementados, ainda não executados (exigem FastAPI); os contratos equivalentes, com dublês, rodam em `test_access_control.py` | `backend/tests/integration/test_access_control_api.py` |
 | CT-28, CT-31 | Implementados, ainda não executados (exigem o Qdrant e o PostgreSQL) | `backend/tests/integration/test_access_control_storage.py` |
 | CT-32 | Implementado; a lógica foi executada com um substituto local do Vitest, e a execução com o Vitest real está pendente | `frontend/src/app/core/auth/access.spec.ts` |
 | CT-33 a CT-36 | Implementados e executados com sucesso | `backend/tests/unit/test_document_lifecycle.py` |
 | CT-37, CT-38 | Implementados, ainda não executados (exigem o PostgreSQL e o Qdrant) | `backend/tests/integration/test_document_lifecycle_storage.py` |
-| CT-39 | Parte unitária executada com o Tesseract `eng`; falta o teste no container com `por` | `backend/tests/unit/test_ocr_extraction.py` |
-| CT-40 | Rotas cobertas com repositórios em memória, ainda não executadas; falta medir os 2 segundos | `backend/tests/integration/test_api_routes.py` |
+| CT-39 | Parte unitária executada com o Tesseract `eng`; teste no container com `por` escrito, ainda não executado | `backend/tests/unit/test_ocr_extraction.py`, `backend/tests/integration/test_ocr_container.py` |
+| CT-40 | Rotas cobertas com repositórios em memória, ainda não executadas; medição dos 2 segundos escrita, ainda não executada | `backend/tests/integration/test_api_routes.py`, `backend/tests/integration/test_upload_latency.py` |
 | CT-41, CT-42, CT-43 | Implementados e executados com sucesso | `backend/tests/unit/test_operations.py`, `backend/tests/unit/test_feedback.py` |
 | CT-44, CT-45 | Implementados, ainda não executados (exigem FastAPI e o ambiente Docker) | `backend/tests/integration/test_operations_api.py`, `backend/tests/integration/test_chat_citations.py` |
 | CT-46 | Implementado e executado com sucesso (sem Docker; também no CI) | `backend/tests/integration/test_sensitive_data_leak.py` |
@@ -205,7 +205,7 @@ Atualizado em 2026-10-08.
 | CT-77 | A executar no Docker, depois de reconstruir as imagens | — |
 | CT-04 | Escrito, ainda não executado (exige PostgreSQL e Qdrant) | `backend/tests/integration/test_evaluation_command.py` |
 | Ferramentas de medição e orquestração | Implementadas e testadas sem Docker | `scripts/perf/`, `scripts/validation/run-all.sh`, `backend/tests/unit/test_perf_tools.py`, `backend/tests/unit/test_validation_runner.py` |
-| CT-39, CT-40, CT-49 a CT-57 | Não implementados; definidos no [plano de validação final](../qa/plano-de-validacao-final.md) | — |
+| CT-49 a CT-57 | Escritos em 2026-10-14, **ainda não executados** (exigem o Docker): migrações, fluxo completo, isolamento, Keycloak real, resiliência do worker, rede isolada, Nginx, varredura de vazamento e conferência PostgreSQL × Qdrant. Definidos no [plano de validação final](../qa/plano-de-validacao-final.md) | `backend/tests/integration/test_migrations.py`, `test_full_stack_flow.py`, `test_assistant_isolation.py`, `test_keycloak_real.py`, `test_nginx_proxy.py`, `test_consistency_check.py`; `scripts/validation/worker_resilience.sh`, `offline_check.sh`, `leakage_scan.py` |
 
 Os testes de integração da Fase 4 não sobem o Keycloak: usam o verificador de token real com
 tokens assinados por uma chave gerada no próprio teste.
