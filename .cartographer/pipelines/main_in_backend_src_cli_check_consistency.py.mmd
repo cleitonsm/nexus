@@ -1,0 +1,37 @@
+flowchart LR
+  backend_src_application_dto_access_dto_py_CurrentU["from_user<br/><small>backend/src/application/dto/access_dto.py:17</small>"]
+  backend_src_application_services_access_control_py["audit<br/><small>backend/src/application/services/access_control.py:78</small>"]
+  backend_src_application_services_access_control_py["record<br/><small>backend/src/application/services/access_control.py:36</small>"]
+  backend_src_application_use_cases_audit_and_sessio["execute<br/><small>backend/src/application/use_cases/audit_and_session.py:40</small>"]
+  backend_src_application_use_cases_check_consistenc["CheckIndexConsistencyUseCase<br/><small>backend/src/application/use_cases/check_consistency.py:82</small>"]
+  backend_src_cli_check_consistency_py__parse["_parse<br/><small>backend/src/cli/check_consistency.py:42</small>"]
+  backend_src_cli_check_consistency_py_main["main<br/><small>backend/src/cli/check_consistency.py:99</small>"]
+  backend_src_cli_check_consistency_py_report_events["report_events<br/><small>backend/src/cli/check_consistency.py:51</small>"]
+  backend_src_domain_audit_py_AuditEvent["AuditEvent<br/><small>backend/src/domain/audit.py:61</small>"]
+  backend_src_domain_interfaces_py_AuditLogRepositor["append<br/><small>backend/src/domain/interfaces.py:572</small>"]
+  backend_src_infrastructure_database_repositories_p["PostgresAssistantRepository<br/><small>backend/src/infrastructure/database/repositories.py:48</small>"]
+  backend_src_infrastructure_database_repositories_p["PostgresDocumentRepository<br/><small>backend/src/infrastructure/database/repositories.py:215</small>"]
+  backend_src_infrastructure_database_repositories_p["PostgresReindexJobRepository<br/><small>backend/src/infrastructure/database/repositories.py:361</small>"]
+  backend_src_infrastructure_observability_structure["JsonLogFormatter<br/><small>backend/src/infrastructure/observability/structured_logging.py:50</small>"]
+  backend_src_infrastructure_observability_structure["_adopt_server_loggers<br/><small>backend/src/infrastructure/observability/structured_logging.py:88</small>"]
+  backend_src_infrastructure_observability_structure["configure_logging<br/><small>backend/src/infrastructure/observability/structured_logging.py:70</small>"]
+  backend_src_infrastructure_vector_store_qdrant_sto["QdrantVectorStoreGateway<br/><small>backend/src/infrastructure/vector_store/qdrant_store.py:34</small>"]
+  backend_src_cli_check_consistency_py_main:::entry
+  backend_src_application_services_access_control_py --> backend_src_application_services_access_control_py
+  backend_src_application_services_access_control_py --> backend_src_domain_audit_py_AuditEvent
+  backend_src_application_services_access_control_py --> backend_src_domain_interfaces_py_AuditLogRepositor
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_dto_access_dto_py_CurrentU
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_services_access_control_py
+  backend_src_cli_check_consistency_py_main --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_cli_check_consistency_py_main --> backend_src_application_use_cases_check_consistenc
+  backend_src_cli_check_consistency_py_main --> backend_src_cli_check_consistency_py__parse
+  backend_src_cli_check_consistency_py_main --> backend_src_cli_check_consistency_py_report_events
+  backend_src_cli_check_consistency_py_main --> backend_src_infrastructure_database_repositories_p
+  backend_src_cli_check_consistency_py_main --> backend_src_infrastructure_database_repositories_p
+  backend_src_cli_check_consistency_py_main --> backend_src_infrastructure_database_repositories_p
+  backend_src_cli_check_consistency_py_main --> backend_src_infrastructure_observability_structure
+  backend_src_cli_check_consistency_py_main --> backend_src_infrastructure_vector_store_qdrant_sto
+  backend_src_infrastructure_observability_structure --> backend_src_infrastructure_observability_structure
+  backend_src_infrastructure_observability_structure --> backend_src_infrastructure_observability_structure
+classDef entry fill:#fef3c7,stroke:#d97706,stroke-width:2px
+classDef external fill:#fee2e2,stroke:#991b1b,stroke-dasharray:3 3

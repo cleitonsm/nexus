@@ -1,0 +1,832 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Synthetic OpenAPI from cartographer",
+    "version": "synth",
+    "description": "Built from statically detected endpoints. Run the server and use --live-url for richer schemas."
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "",
+        "tags": [
+          "api"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/main.py::health",
+          "file": "backend/src/api/main.py",
+          "line": 91,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "metrics",
+        "summary": "",
+        "tags": [
+          "api"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/main.py::metrics",
+          "file": "backend/src/api/main.py",
+          "line": 101,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/infer": {
+      "post": {
+        "operationId": "infer_assistant",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/assistants.py::infer_assistant",
+          "file": "backend/src/api/routes/assistants.py",
+          "line": 107,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/{assistant_id}": {
+      "delete": {
+        "operationId": "delete_assistant",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/assistants.py::delete_assistant",
+          "file": "backend/src/api/routes/assistants.py",
+          "line": 136,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "assistant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/{assistant_id}/groups": {
+      "put": {
+        "operationId": "set_assistant_groups",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/assistants.py::set_assistant_groups",
+          "file": "backend/src/api/routes/assistants.py",
+          "line": 170,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "assistant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/{assistant_id}/conversations": {
+      "get": {
+        "operationId": "list_assistant_conversations",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/assistants.py::list_assistant_conversations",
+          "file": "backend/src/api/routes/assistants.py",
+          "line": 206,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "assistant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/{document_id}": {
+      "get": {
+        "operationId": "get_document",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/documents.py::get_document",
+          "file": "backend/src/api/routes/documents.py",
+          "line": 172,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_document",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/documents.py::delete_document",
+          "file": "backend/src/api/routes/documents.py",
+          "line": 188,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/{document_id}/content": {
+      "put": {
+        "operationId": "replace_document",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/documents.py::replace_document",
+          "file": "backend/src/api/routes/documents.py",
+          "line": 212,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/{document_id}/reprocess": {
+      "post": {
+        "operationId": "reprocess_document",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/documents.py::reprocess_document",
+          "file": "backend/src/api/routes/documents.py",
+          "line": 254,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/{document_id}/groups": {
+      "put": {
+        "operationId": "set_document_groups",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/documents.py::set_document_groups",
+          "file": "backend/src/api/routes/documents.py",
+          "line": 276,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api-key/status": {
+      "get": {
+        "operationId": "get_api_key_status",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/admin.py::get_api_key_status",
+          "file": "backend/src/api/routes/admin.py",
+          "line": 67,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api-key": {
+      "post": {
+        "operationId": "save_api_key",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/admin.py::save_api_key",
+          "file": "backend/src/api/routes/admin.py",
+          "line": 82,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api-key/test": {
+      "post": {
+        "operationId": "test_api_key",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/admin.py::test_api_key",
+          "file": "backend/src/api/routes/admin.py",
+          "line": 113,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/usage": {
+      "get": {
+        "operationId": "get_usage_report",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/admin.py::get_usage_report",
+          "file": "backend/src/api/routes/admin.py",
+          "line": 181,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/usage-limits": {
+      "get": {
+        "operationId": "get_usage_limits",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/admin.py::get_usage_limits",
+          "file": "backend/src/api/routes/admin.py",
+          "line": 224,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "operationId": "update_usage_limits",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/admin.py::update_usage_limits",
+          "file": "backend/src/api/routes/admin.py",
+          "line": 241,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/audit-events": {
+      "get": {
+        "operationId": "list_audit_events",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/admin.py::list_audit_events",
+          "file": "backend/src/api/routes/admin.py",
+          "line": 292,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "get_me",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/me.py::get_me",
+          "file": "backend/src/api/routes/me.py",
+          "line": 21,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/groups": {
+      "get": {
+        "operationId": "list_groups",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/me.py::list_groups",
+          "file": "backend/src/api/routes/me.py",
+          "line": 36,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/messages/{message_id}/feedback": {
+      "post": {
+        "operationId": "submit_feedback",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/feedback.py::submit_feedback",
+          "file": "backend/src/api/routes/feedback.py",
+          "line": 46,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/feedback": {
+      "get": {
+        "operationId": "list_feedback",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/feedback.py::list_feedback",
+          "file": "backend/src/api/routes/feedback.py",
+          "line": 85,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/feedback/{feedback_id}/review": {
+      "post": {
+        "operationId": "review_feedback",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/feedback.py::review_feedback",
+          "file": "backend/src/api/routes/feedback.py",
+          "line": 115,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "feedback_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/feedback/export": {
+      "get": {
+        "operationId": "export_feedback",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/feedback.py::export_feedback",
+          "file": "backend/src/api/routes/feedback.py",
+          "line": 145,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/reindex": {
+      "post": {
+        "operationId": "start_reindex",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/index.py::start_reindex",
+          "file": "backend/src/api/routes/index.py",
+          "line": 72,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/index-status": {
+      "get": {
+        "operationId": "get_index_status",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/index.py::get_index_status",
+          "file": "backend/src/api/routes/index.py",
+          "line": 108,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/{conversation_id}": {
+      "get": {
+        "operationId": "get_archived_conversation",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/conversations.py::get_archived_conversation",
+          "file": "backend/src/api/routes/conversations.py",
+          "line": 473,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "delete_archived_conversation",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/conversations.py::delete_archived_conversation",
+          "file": "backend/src/api/routes/conversations.py",
+          "line": 509,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/{conversation_id}/messages": {
+      "post": {
+        "operationId": "add_message",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/conversations.py::add_message",
+          "file": "backend/src/api/routes/conversations.py",
+          "line": 212,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/{conversation_id}/chat": {
+      "post": {
+        "operationId": "chat_with_assistant",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/conversations.py::chat_with_assistant",
+          "file": "backend/src/api/routes/conversations.py",
+          "line": 245,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/{conversation_id}/chat/stream": {
+      "post": {
+        "operationId": "chat_with_assistant_stream",
+        "summary": "",
+        "tags": [
+          "routes"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/src/api/routes/conversations.py::chat_with_assistant_stream",
+          "file": "backend/src/api/routes/conversations.py",
+          "line": 287,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/ping": {
+      "get": {
+        "operationId": "RequestContextTests.setUp",
+        "summary": "",
+        "tags": [
+          "integration"
+        ],
+        "x-cartographer": {
+          "handler_id": "backend/tests/integration/test_request_context.py::RequestContextTests.setUp",
+          "file": "backend/tests/integration/test_request_context.py",
+          "line": 21,
+          "framework": "rest"
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "x-cartographer": {
+    "synthetic": true,
+    "endpoint_count": 34,
+    "handler_index": {
+      "GET /health": "backend/src/api/main.py::health",
+      "GET /metrics": "backend/src/api/main.py::metrics",
+      "POST /infer": "backend/src/api/routes/assistants.py::infer_assistant",
+      "DELETE /{assistant_id}": "backend/src/api/routes/assistants.py::delete_assistant",
+      "PUT /{assistant_id}/groups": "backend/src/api/routes/assistants.py::set_assistant_groups",
+      "GET /{assistant_id}/conversations": "backend/src/api/routes/assistants.py::list_assistant_conversations",
+      "GET /{document_id}": "backend/src/api/routes/documents.py::get_document",
+      "DELETE /{document_id}": "backend/src/api/routes/documents.py::delete_document",
+      "PUT /{document_id}/content": "backend/src/api/routes/documents.py::replace_document",
+      "POST /{document_id}/reprocess": "backend/src/api/routes/documents.py::reprocess_document",
+      "PUT /{document_id}/groups": "backend/src/api/routes/documents.py::set_document_groups",
+      "GET /api-key/status": "backend/src/api/routes/admin.py::get_api_key_status",
+      "POST /api-key": "backend/src/api/routes/admin.py::save_api_key",
+      "POST /api-key/test": "backend/src/api/routes/admin.py::test_api_key",
+      "GET /usage": "backend/src/api/routes/admin.py::get_usage_report",
+      "GET /usage-limits": "backend/src/api/routes/admin.py::get_usage_limits",
+      "PUT /usage-limits": "backend/src/api/routes/admin.py::update_usage_limits",
+      "GET /audit-events": "backend/src/api/routes/admin.py::list_audit_events",
+      "GET /me": "backend/src/api/routes/me.py::get_me",
+      "GET /groups": "backend/src/api/routes/me.py::list_groups",
+      "POST /messages/{message_id}/feedback": "backend/src/api/routes/feedback.py::submit_feedback",
+      "GET /feedback": "backend/src/api/routes/feedback.py::list_feedback",
+      "POST /feedback/{feedback_id}/review": "backend/src/api/routes/feedback.py::review_feedback",
+      "GET /feedback/export": "backend/src/api/routes/feedback.py::export_feedback",
+      "POST /reindex": "backend/src/api/routes/index.py::start_reindex",
+      "GET /index-status": "backend/src/api/routes/index.py::get_index_status",
+      "GET /{conversation_id}": "backend/src/api/routes/conversations.py::get_archived_conversation",
+      "DELETE /{conversation_id}": "backend/src/api/routes/conversations.py::delete_archived_conversation",
+      "POST /{conversation_id}/messages": "backend/src/api/routes/conversations.py::add_message",
+      "POST /{conversation_id}/chat": "backend/src/api/routes/conversations.py::chat_with_assistant",
+      "POST /{conversation_id}/chat/stream": "backend/src/api/routes/conversations.py::chat_with_assistant_stream",
+      "GET /ping": "backend/tests/integration/test_request_context.py::RequestContextTests.setUp"
+    }
+  }
+}

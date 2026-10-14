@@ -1,0 +1,45 @@
+flowchart LR
+  backend_src_application_dto_access_dto_py_CurrentU["from_user<br/><small>backend/src/application/dto/access_dto.py:17</small>"]
+  backend_src_application_services_access_control_py["audit<br/><small>backend/src/application/services/access_control.py:78</small>"]
+  backend_src_application_services_access_control_py["AuditTrail<br/><small>backend/src/application/services/access_control.py:25</small>"]
+  backend_src_application_services_access_control_py["record<br/><small>backend/src/application/services/access_control.py:36</small>"]
+  backend_src_application_use_cases_audit_and_sessio["execute<br/><small>backend/src/application/use_cases/audit_and_session.py:40</small>"]
+  backend_src_application_use_cases_audit_and_sessio["PurgeAuditEventsInput<br/><small>backend/src/application/use_cases/audit_and_session.py:114</small>"]
+  backend_src_application_use_cases_audit_and_sessio["PurgeAuditEventsUseCase<br/><small>backend/src/application/use_cases/audit_and_session.py:124</small>"]
+  backend_src_cli_purge_audit_py_main["main<br/><small>backend/src/cli/purge_audit.py:32</small>"]
+  backend_src_domain_audit_py_AuditEvent["AuditEvent<br/><small>backend/src/domain/audit.py:61</small>"]
+  backend_src_domain_interfaces_py_AuditLogRepositor["append<br/><small>backend/src/domain/interfaces.py:572</small>"]
+  backend_src_infrastructure_composition_py__int_env["_int_env<br/><small>backend/src/infrastructure/composition.py:346</small>"]
+  backend_src_infrastructure_composition_py_audit_re["audit_retention_days<br/><small>backend/src/infrastructure/composition.py:228</small>"]
+  backend_src_infrastructure_database_alembic_versio["_has_column<br/><small>backend/src/infrastructure/database/alembic/versions/0001_baseline.py:127</small>"]
+  backend_src_infrastructure_database_alembic_versio["_timestamp<br/><small>backend/src/infrastructure/database/alembic/versions/0001_baseline.py:23</small>"]
+  backend_src_infrastructure_database_alembic_versio["upgrade<br/><small>backend/src/infrastructure/database/alembic/versions/0001_baseline.py:32</small>"]
+  backend_src_infrastructure_database_migrate_py_run["run_migrations<br/><small>backend/src/infrastructure/database/migrate.py:8</small>"]
+  backend_src_infrastructure_database_repositories_p["PostgresAuditLogRepository<br/><small>backend/src/infrastructure/database/repositories.py:519</small>"]
+  backend_src_infrastructure_database_repositories_p["PostgresAuditRetentionRepository<br/><small>backend/src/infrastructure/database/repositories.py:566</small>"]
+  backend_src_infrastructure_observability_structure["JsonLogFormatter<br/><small>backend/src/infrastructure/observability/structured_logging.py:50</small>"]
+  backend_src_infrastructure_observability_structure["_adopt_server_loggers<br/><small>backend/src/infrastructure/observability/structured_logging.py:88</small>"]
+  backend_src_infrastructure_observability_structure["configure_logging<br/><small>backend/src/infrastructure/observability/structured_logging.py:70</small>"]
+  backend_src_cli_purge_audit_py_main:::entry
+  backend_src_application_services_access_control_py --> backend_src_application_services_access_control_py
+  backend_src_application_services_access_control_py --> backend_src_domain_audit_py_AuditEvent
+  backend_src_application_services_access_control_py --> backend_src_domain_interfaces_py_AuditLogRepositor
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_dto_access_dto_py_CurrentU
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_services_access_control_py
+  backend_src_cli_purge_audit_py_main --> backend_src_application_services_access_control_py
+  backend_src_cli_purge_audit_py_main --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_cli_purge_audit_py_main --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_cli_purge_audit_py_main --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_cli_purge_audit_py_main --> backend_src_infrastructure_composition_py_audit_re
+  backend_src_cli_purge_audit_py_main --> backend_src_infrastructure_database_migrate_py_run
+  backend_src_cli_purge_audit_py_main --> backend_src_infrastructure_database_repositories_p
+  backend_src_cli_purge_audit_py_main --> backend_src_infrastructure_database_repositories_p
+  backend_src_cli_purge_audit_py_main --> backend_src_infrastructure_observability_structure
+  backend_src_infrastructure_composition_py_audit_re --> backend_src_infrastructure_composition_py__int_env
+  backend_src_infrastructure_database_alembic_versio --> backend_src_infrastructure_database_alembic_versio
+  backend_src_infrastructure_database_alembic_versio --> backend_src_infrastructure_database_alembic_versio
+  backend_src_infrastructure_database_migrate_py_run --> backend_src_infrastructure_database_alembic_versio
+  backend_src_infrastructure_observability_structure --> backend_src_infrastructure_observability_structure
+  backend_src_infrastructure_observability_structure --> backend_src_infrastructure_observability_structure
+classDef entry fill:#fef3c7,stroke:#d97706,stroke-width:2px
+classDef external fill:#fee2e2,stroke:#991b1b,stroke-dasharray:3 3

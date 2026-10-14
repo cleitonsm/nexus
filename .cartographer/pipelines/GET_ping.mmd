@@ -1,0 +1,65 @@
+flowchart LR
+  backend_src_api_middleware_py__record["_record<br/><small>backend/src/api/middleware.py:87</small>"]
+  backend_src_api_middleware_py__request_fields["_request_fields<br/><small>backend/src/api/middleware.py:109</small>"]
+  backend_src_api_middleware_py__route["_route<br/><small>backend/src/api/middleware.py:82</small>"]
+  backend_src_api_middleware_py_register_request_con["register_request_context<br/><small>backend/src/api/middleware.py:23</small>"]
+  backend_src_application_dto_access_dto_py_CurrentU["from_user<br/><small>backend/src/application/dto/access_dto.py:17</small>"]
+  backend_src_application_services_access_control_py["audit<br/><small>backend/src/application/services/access_control.py:78</small>"]
+  backend_src_application_services_access_control_py["record<br/><small>backend/src/application/services/access_control.py:36</small>"]
+  backend_src_application_use_cases_audit_and_sessio["execute<br/><small>backend/src/application/use_cases/audit_and_session.py:40</small>"]
+  backend_src_application_use_cases_manage_documents["DocumentRefInput<br/><small>backend/src/application/use_cases/manage_documents.py:28</small>"]
+  backend_src_application_use_cases_manage_documents["GetDocumentUseCase<br/><small>backend/src/application/use_cases/manage_documents.py:33</small>"]
+  backend_src_domain_audit_py_AuditEvent["AuditEvent<br/><small>backend/src/domain/audit.py:61</small>"]
+  backend_src_domain_interfaces_py_AuditLogRepositor["append<br/><small>backend/src/domain/interfaces.py:572</small>"]
+  backend_src_domain_observability_py_MetricsRecorde["increment<br/><small>backend/src/domain/observability.py:34</small>"]
+  backend_src_domain_observability_py_MetricsRecorde["observe<br/><small>backend/src/domain/observability.py:41</small>"]
+  backend_src_domain_observability_py_NoopMetrics["NoopMetrics<br/><small>backend/src/domain/observability.py:69</small>"]
+  backend_src_domain_observability_py_NoopTracer["NoopTracer<br/><small>backend/src/domain/observability.py:57</small>"]
+  backend_src_domain_observability_py_NoopTracer_spa["span<br/><small>backend/src/domain/observability.py:61</small>"]
+  backend_src_domain_observability_py_Span_set_attri["set_attribute<br/><small>backend/src/domain/observability.py:18</small>"]
+  backend_src_domain_observability_py__NoopSpan["_NoopSpan<br/><small>backend/src/domain/observability.py:49</small>"]
+  backend_src_infrastructure_observability_structure["JsonLogFormatter<br/><small>backend/src/infrastructure/observability/structured_logging.py:50</small>"]
+  backend_src_infrastructure_observability_structure["_adopt_server_loggers<br/><small>backend/src/infrastructure/observability/structured_logging.py:88</small>"]
+  backend_src_infrastructure_observability_structure["bind_request_id<br/><small>backend/src/infrastructure/observability/structured_logging.py:35</small>"]
+  backend_src_infrastructure_observability_structure["configure_logging<br/><small>backend/src/infrastructure/observability/structured_logging.py:70</small>"]
+  backend_src_infrastructure_observability_structure["get_request_id<br/><small>backend/src/infrastructure/observability/structured_logging.py:31</small>"]
+  backend_src_infrastructure_observability_structure["normalize_request_id<br/><small>backend/src/infrastructure/observability/structured_logging.py:43</small>"]
+  backend_src_infrastructure_observability_structure["reset_request_id<br/><small>backend/src/infrastructure/observability/structured_logging.py:39</small>"]
+  backend_tests_integration_test_request_context_py_["setUp<br/><small>backend/tests/integration/test_request_context.py:30</small>"]
+  backend_tests_integration_test_request_context_py_["_build_app<br/><small>backend/tests/integration/test_request_context.py:17</small>"]
+  backend_tests_unit_test_document_lifecycle_py_Life["get<br/><small>backend/tests/unit/test_document_lifecycle.py:269</small>"]
+  backend_tests_integration_test_request_context_py_:::entry
+  backend_src_api_middleware_py__record --> backend_src_api_middleware_py__route
+  backend_src_api_middleware_py__record --> backend_src_domain_observability_py_MetricsRecorde
+  backend_src_api_middleware_py__record --> backend_src_domain_observability_py_MetricsRecorde
+  backend_src_api_middleware_py__route --> backend_tests_unit_test_document_lifecycle_py_Life
+  backend_src_api_middleware_py_register_request_con --> backend_src_api_middleware_py__record
+  backend_src_api_middleware_py_register_request_con --> backend_src_api_middleware_py__request_fields
+  backend_src_api_middleware_py_register_request_con --> backend_src_api_middleware_py__route
+  backend_src_api_middleware_py_register_request_con --> backend_src_domain_observability_py_NoopMetrics
+  backend_src_api_middleware_py_register_request_con --> backend_src_domain_observability_py_NoopTracer
+  backend_src_api_middleware_py_register_request_con --> backend_src_domain_observability_py_NoopTracer_spa
+  backend_src_api_middleware_py_register_request_con --> backend_src_domain_observability_py_Span_set_attri
+  backend_src_api_middleware_py_register_request_con --> backend_src_infrastructure_observability_structure
+  backend_src_api_middleware_py_register_request_con --> backend_src_infrastructure_observability_structure
+  backend_src_api_middleware_py_register_request_con --> backend_src_infrastructure_observability_structure
+  backend_src_api_middleware_py_register_request_con --> backend_tests_unit_test_document_lifecycle_py_Life
+  backend_src_application_services_access_control_py --> backend_src_application_services_access_control_py
+  backend_src_application_services_access_control_py --> backend_src_domain_audit_py_AuditEvent
+  backend_src_application_services_access_control_py --> backend_src_domain_interfaces_py_AuditLogRepositor
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_dto_access_dto_py_CurrentU
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_services_access_control_py
+  backend_src_domain_observability_py_NoopTracer_spa --> backend_src_domain_observability_py__NoopSpan
+  backend_src_infrastructure_observability_structure --> backend_src_infrastructure_observability_structure
+  backend_src_infrastructure_observability_structure --> backend_src_infrastructure_observability_structure
+  backend_src_infrastructure_observability_structure --> backend_tests_unit_test_document_lifecycle_py_Life
+  backend_tests_integration_test_request_context_py_ --> backend_src_infrastructure_observability_structure
+  backend_tests_integration_test_request_context_py_ --> backend_tests_integration_test_request_context_py_
+  backend_tests_integration_test_request_context_py_ --> backend_src_api_middleware_py_register_request_con
+  backend_tests_integration_test_request_context_py_ --> backend_src_infrastructure_observability_structure
+  backend_tests_integration_test_request_context_py_ --> backend_tests_unit_test_document_lifecycle_py_Life
+  backend_tests_unit_test_document_lifecycle_py_Life --> backend_src_application_use_cases_audit_and_sessio
+  backend_tests_unit_test_document_lifecycle_py_Life --> backend_src_application_use_cases_manage_documents
+  backend_tests_unit_test_document_lifecycle_py_Life --> backend_src_application_use_cases_manage_documents
+classDef entry fill:#fef3c7,stroke:#d97706,stroke-width:2px
+classDef external fill:#fee2e2,stroke:#991b1b,stroke-dasharray:3 3

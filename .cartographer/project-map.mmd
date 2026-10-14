@@ -1,0 +1,421 @@
+graph LR
+  n_frontend_src_main_ts["frontend/src/main.ts"]
+  n_frontend_src_app_app_component_ts["frontend/src/app/app.component.ts"]
+  n_frontend_src_main_ts --> n_frontend_src_app_app_component_ts
+  n_frontend_src_app_app_routes_ts["frontend/src/app/app.routes.ts"]
+  n_frontend_src_main_ts --> n_frontend_src_app_app_routes_ts
+  n_frontend_src_app_core_auth_auth_interceptor_ts["frontend/src/app/core/auth/auth.interceptor.ts"]
+  n_frontend_src_main_ts --> n_frontend_src_app_core_auth_auth_interceptor_ts
+  n_frontend_src_app_core_auth_auth_service_ts["frontend/src/app/core/auth/auth.service.ts"]
+  n_frontend_src_main_ts --> n_frontend_src_app_core_auth_auth_service_ts
+  n_frontend_src_app_store_auth_effects_ts["frontend/src/app/store/auth.effects.ts"]
+  n_frontend_src_main_ts --> n_frontend_src_app_store_auth_effects_ts
+  n_frontend_src_app_store_auth_reducer_ts["frontend/src/app/store/auth.reducer.ts"]
+  n_frontend_src_main_ts --> n_frontend_src_app_store_auth_reducer_ts
+  n_frontend_src_app_store_nexus_effects_ts["frontend/src/app/store/nexus.effects.ts"]
+  n_frontend_src_main_ts --> n_frontend_src_app_store_nexus_effects_ts
+  n_frontend_src_app_store_nexus_reducer_ts["frontend/src/app/store/nexus.reducer.ts"]
+  n_frontend_src_main_ts --> n_frontend_src_app_store_nexus_reducer_ts
+  n_frontend_src_app_core_auth_auth_guard_ts["frontend/src/app/core/auth/auth.guard.ts"]
+  n_frontend_src_app_app_routes_ts --> n_frontend_src_app_core_auth_auth_guard_ts
+  n_frontend_src_app_core_auth_auth_models_ts["frontend/src/app/core/auth/auth.models.ts"]
+  n_frontend_src_app_app_routes_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_pages_admin_page_component_ts["frontend/src/app/pages/admin-page.component.ts"]
+  n_frontend_src_app_app_routes_ts --> n_frontend_src_app_pages_admin_page_component_ts
+  n_frontend_src_app_pages_archived_conversations_page_component["frontend/src/app/pages/archived-conversations-page.component.ts"]
+  n_frontend_src_app_app_routes_ts --> n_frontend_src_app_pages_archived_conversations_page_component
+  n_frontend_src_app_pages_assistants_page_component_ts["frontend/src/app/pages/assistants-page.component.ts"]
+  n_frontend_src_app_app_routes_ts --> n_frontend_src_app_pages_assistants_page_component_ts
+  n_frontend_src_app_pages_audit_page_component_ts["frontend/src/app/pages/audit-page.component.ts"]
+  n_frontend_src_app_app_routes_ts --> n_frontend_src_app_pages_audit_page_component_ts
+  n_frontend_src_app_pages_chat_page_component_ts["frontend/src/app/pages/chat-page.component.ts"]
+  n_frontend_src_app_app_routes_ts --> n_frontend_src_app_pages_chat_page_component_ts
+  n_frontend_src_app_pages_feedback_page_component_ts["frontend/src/app/pages/feedback-page.component.ts"]
+  n_frontend_src_app_app_routes_ts --> n_frontend_src_app_pages_feedback_page_component_ts
+  n_frontend_src_app_pages_usage_page_component_ts["frontend/src/app/pages/usage-page.component.ts"]
+  n_frontend_src_app_app_routes_ts --> n_frontend_src_app_pages_usage_page_component_ts
+  n_frontend_src_app_shell_shell_component_ts["frontend/src/app/shell/shell.component.ts"]
+  n_frontend_src_app_app_routes_ts --> n_frontend_src_app_shell_shell_component_ts
+  n_frontend_src_app_app_component_ts --> n_frontend_src_app_core_auth_auth_service_ts
+  n_frontend_src_app_store_auth_selectors_ts["frontend/src/app/store/auth.selectors.ts"]
+  n_frontend_src_app_app_component_ts --> n_frontend_src_app_store_auth_selectors_ts
+  n_frontend_src_app_shared_pipes_markdown_pipe_spec_ts["frontend/src/app/shared/pipes/markdown.pipe.spec.ts"]
+  n_frontend_src_app_shared_pipes_markdown_pipe_ts["frontend/src/app/shared/pipes/markdown.pipe.ts"]
+  n_frontend_src_app_shared_pipes_markdown_pipe_spec_ts --> n_frontend_src_app_shared_pipes_markdown_pipe_ts
+  n_frontend_src_app_shared_chat_chat_stream_spec_ts["frontend/src/app/shared/chat/chat-stream.spec.ts"]
+  n_frontend_src_app_shared_chat_chat_stream_ts["frontend/src/app/shared/chat/chat-stream.ts"]
+  n_frontend_src_app_shared_chat_chat_stream_spec_ts --> n_frontend_src_app_shared_chat_chat_stream_ts
+  n_frontend_src_app_shared_models_nexus_models_ts["frontend/src/app/shared/models/nexus.models.ts"]
+  n_frontend_src_app_shared_chat_chat_stream_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_shared_documents_document_lifecycle_ts["frontend/src/app/shared/documents/document-lifecycle.ts"]
+  n_frontend_src_app_shared_chat_chat_stream_ts --> n_frontend_src_app_shared_documents_document_lifecycle_ts
+  n_frontend_src_app_shared_groups_group_selection_spec_ts["frontend/src/app/shared/groups/group-selection.spec.ts"]
+  n_frontend_src_app_shared_groups_group_selection_ts["frontend/src/app/shared/groups/group-selection.ts"]
+  n_frontend_src_app_shared_groups_group_selection_spec_ts --> n_frontend_src_app_shared_groups_group_selection_ts
+  n_frontend_src_app_shared_groups_group_picker_component_ts["frontend/src/app/shared/groups/group-picker.component.ts"]
+  n_frontend_src_app_shared_groups_group_picker_component_ts --> n_frontend_src_app_shared_groups_group_selection_ts
+  n_frontend_src_app_core_auth_access_ts["frontend/src/app/core/auth/access.ts"]
+  n_frontend_src_app_shared_groups_group_selection_ts --> n_frontend_src_app_core_auth_access_ts
+  n_frontend_src_app_shared_documents_index_status_spec_ts["frontend/src/app/shared/documents/index-status.spec.ts"]
+  n_frontend_src_app_shared_documents_index_status_spec_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_shared_documents_index_status_ts["frontend/src/app/shared/documents/index-status.ts"]
+  n_frontend_src_app_shared_documents_index_status_spec_ts --> n_frontend_src_app_shared_documents_index_status_ts
+  n_frontend_src_app_shared_documents_document_lifecycle_spec_ts["frontend/src/app/shared/documents/document-lifecycle.spec.ts"]
+  n_frontend_src_app_shared_documents_document_lifecycle_spec_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_shared_documents_document_lifecycle_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_shared_documents_index_status_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_store_auth_actions_ts["frontend/src/app/store/auth.actions.ts"]
+  n_frontend_src_app_shell_shell_component_ts --> n_frontend_src_app_store_auth_actions_ts
+  n_frontend_src_app_shell_shell_component_ts --> n_frontend_src_app_store_auth_selectors_ts
+  n_frontend_src_app_store_nexus_actions_ts["frontend/src/app/store/nexus.actions.ts"]
+  n_frontend_src_app_shell_shell_component_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_store_nexus_selectors_ts["frontend/src/app/store/nexus.selectors.ts"]
+  n_frontend_src_app_store_nexus_selectors_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_store_nexus_selectors_ts --> n_frontend_src_app_store_nexus_reducer_ts
+  n_frontend_src_app_store_auth_actions_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_store_auth_effects_ts --> n_frontend_src_app_core_auth_access_ts
+  n_frontend_src_app_store_auth_effects_ts --> n_frontend_src_app_core_auth_auth_service_ts
+  n_frontend_src_app_core_services_nexus_api_service_ts["frontend/src/app/core/services/nexus-api.service.ts"]
+  n_frontend_src_app_store_auth_effects_ts --> n_frontend_src_app_core_services_nexus_api_service_ts
+  n_frontend_src_app_store_auth_effects_ts --> n_frontend_src_app_store_auth_actions_ts
+  n_frontend_src_app_store_auth_effects_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_store_nexus_effects_ts --> n_frontend_src_app_core_services_nexus_api_service_ts
+  n_frontend_src_app_store_nexus_effects_ts --> n_frontend_src_app_shared_chat_chat_stream_ts
+  n_frontend_src_app_store_nexus_effects_ts --> n_frontend_src_app_shared_documents_index_status_ts
+  n_frontend_src_app_store_nexus_effects_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_store_nexus_effects_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_store_nexus_effects_ts --> n_frontend_src_app_store_nexus_selectors_ts
+  n_frontend_src_app_store_auth_reducer_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_store_auth_reducer_ts --> n_frontend_src_app_store_auth_actions_ts
+  n_frontend_src_app_store_nexus_reducer_spec_ts["frontend/src/app/store/nexus.reducer.spec.ts"]
+  n_frontend_src_app_store_nexus_reducer_spec_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_store_nexus_reducer_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_store_auth_selectors_ts --> n_frontend_src_app_core_auth_access_ts
+  n_frontend_src_app_store_auth_selectors_ts --> n_frontend_src_app_store_auth_reducer_ts
+  n_frontend_src_app_store_auth_reducer_spec_ts["frontend/src/app/store/auth.reducer.spec.ts"]
+  n_frontend_src_app_store_auth_reducer_spec_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_store_auth_reducer_spec_ts --> n_frontend_src_app_store_auth_actions_ts
+  n_frontend_src_app_store_auth_reducer_spec_ts --> n_frontend_src_app_store_auth_reducer_ts
+  n_frontend_src_app_core_auth_auth_guard_ts --> n_frontend_src_app_store_auth_selectors_ts
+  n_frontend_src_app_core_auth_auth_guard_ts --> n_frontend_src_app_core_auth_access_ts
+  n_frontend_src_app_core_auth_auth_guard_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_core_auth_auth_guard_ts --> n_frontend_src_app_core_auth_auth_service_ts
+  n_frontend_src_app_core_auth_auth_interceptor_ts --> n_frontend_src_app_core_auth_auth_service_ts
+  n_frontend_src_app_core_auth_access_spec_ts["frontend/src/app/core/auth/access.spec.ts"]
+  n_frontend_src_app_core_auth_access_spec_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_core_auth_oidc_client_ts["frontend/src/app/core/auth/oidc-client.ts"]
+  n_frontend_src_app_core_auth_oidc_client_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_core_auth_pkce_ts["frontend/src/app/core/auth/pkce.ts"]
+  n_frontend_src_app_core_auth_oidc_client_ts --> n_frontend_src_app_core_auth_pkce_ts
+  n_frontend_src_app_core_auth_http_auth_spec_ts["frontend/src/app/core/auth/http-auth.spec.ts"]
+  n_frontend_src_app_core_auth_http_auth_ts["frontend/src/app/core/auth/http-auth.ts"]
+  n_frontend_src_app_core_auth_http_auth_spec_ts --> n_frontend_src_app_core_auth_http_auth_ts
+  n_frontend_src_app_core_auth_access_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_core_auth_pkce_spec_ts["frontend/src/app/core/auth/pkce.spec.ts"]
+  n_frontend_src_app_core_auth_pkce_spec_ts --> n_frontend_src_app_core_auth_pkce_ts
+  n_frontend_src_app_core_auth_oidc_client_spec_ts["frontend/src/app/core/auth/oidc-client.spec.ts"]
+  n_frontend_src_app_core_auth_oidc_client_spec_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_core_auth_oidc_client_spec_ts --> n_frontend_src_app_core_auth_pkce_ts
+  n_frontend_src_app_core_auth_auth_service_ts --> n_frontend_src_app_store_auth_actions_ts
+  n_frontend_src_app_core_auth_auth_service_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_core_auth_auth_service_ts --> n_frontend_src_app_core_auth_oidc_client_ts
+  n_frontend_src_app_core_services_nexus_api_service_ts --> n_frontend_src_app_shared_chat_chat_stream_ts
+  n_frontend_src_app_core_services_nexus_api_service_ts --> n_frontend_src_app_core_auth_auth_models_ts
+  n_frontend_src_app_pages_feedback_page_component_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_pages_feedback_page_component_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_pages_archived_conversations_page_component --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_pages_archived_conversations_page_component --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_pages_usage_page_component_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_pages_usage_page_component_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_pages_chat_page_component_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_pages_chat_page_component_ts --> n_frontend_src_app_shared_pipes_markdown_pipe_ts
+  n_frontend_src_app_pages_chat_page_component_ts --> n_frontend_src_app_store_auth_selectors_ts
+  n_frontend_src_app_pages_chat_page_component_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_pages_audit_page_component_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_pages_audit_page_component_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_pages_assistants_page_component_ts --> n_frontend_src_app_core_auth_access_ts
+  n_frontend_src_app_pages_assistants_page_component_ts --> n_frontend_src_app_shared_documents_index_status_ts
+  n_frontend_src_app_pages_assistants_page_component_ts --> n_frontend_src_app_shared_groups_group_picker_component_ts
+  n_frontend_src_app_pages_assistants_page_component_ts --> n_frontend_src_app_shared_models_nexus_models_ts
+  n_frontend_src_app_pages_assistants_page_component_ts --> n_frontend_src_app_store_auth_selectors_ts
+  n_frontend_src_app_pages_assistants_page_component_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_frontend_src_app_pages_admin_page_component_ts --> n_frontend_src_app_store_nexus_actions_ts
+  n_backend_src_infrastructure_vector_store___init___py["backend/src/infrastructure/vector_store/__init__.py"]
+  n_backend_src_infrastructure_vector_store_qdrant_store_py["backend/src/infrastructure/vector_store/qdrant_store.py"]
+  n_backend_src_infrastructure_vector_store___init___py --> n_backend_src_infrastructure_vector_store_qdrant_store_py
+  n_backend_src_infrastructure_reranking___init___py["backend/src/infrastructure/reranking/__init__.py"]
+  n_backend_src_infrastructure_reranking_cross_encoder_reranker_["backend/src/infrastructure/reranking/cross_encoder_reranker.py"]
+  n_backend_src_infrastructure_reranking___init___py --> n_backend_src_infrastructure_reranking_cross_encoder_reranker_
+  n_backend_src_infrastructure_database_repositories_py["backend/src/infrastructure/database/repositories.py"]
+  n_backend_src_infrastructure_database_models_py["backend/src/infrastructure/database/models.py"]
+  n_backend_src_infrastructure_database_repositories_py --> n_backend_src_infrastructure_database_models_py
+  n_backend_src_infrastructure_database___init___py["backend/src/infrastructure/database/__init__.py"]
+  n_backend_src_infrastructure_database_base_py["backend/src/infrastructure/database/base.py"]
+  n_backend_src_infrastructure_database___init___py --> n_backend_src_infrastructure_database_base_py
+  n_backend_src_infrastructure_database_migrate_py["backend/src/infrastructure/database/migrate.py"]
+  n_backend_src_infrastructure_database___init___py --> n_backend_src_infrastructure_database_migrate_py
+  n_backend_src_infrastructure_database___init___py --> n_backend_src_infrastructure_database_models_py
+  n_backend_src_infrastructure_database_operations_repositories_["backend/src/infrastructure/database/operations_repositories.py"]
+  n_backend_src_infrastructure_database___init___py --> n_backend_src_infrastructure_database_operations_repositories_
+  n_backend_src_infrastructure_database___init___py --> n_backend_src_infrastructure_database_repositories_py
+  n_backend_src_infrastructure_database_session_py["backend/src/infrastructure/database/session.py"]
+  n_backend_src_infrastructure_database___init___py --> n_backend_src_infrastructure_database_session_py
+  n_backend_src_infrastructure_database_operations_repositories_ --> n_backend_src_infrastructure_database_models_py
+  n_backend_src_infrastructure_database_models_py --> n_backend_src_infrastructure_database_base_py
+  n_backend_src_infrastructure_evaluation___init___py["backend/src/infrastructure/evaluation/__init__.py"]
+  n_backend_src_infrastructure_evaluation_dataset_loader_py["backend/src/infrastructure/evaluation/dataset_loader.py"]
+  n_backend_src_infrastructure_evaluation___init___py --> n_backend_src_infrastructure_evaluation_dataset_loader_py
+  n_backend_src_infrastructure_evaluation_llm_answer_judge_py["backend/src/infrastructure/evaluation/llm_answer_judge.py"]
+  n_backend_src_infrastructure_evaluation___init___py --> n_backend_src_infrastructure_evaluation_llm_answer_judge_py
+  n_backend_src_infrastructure_evaluation_report_store_py["backend/src/infrastructure/evaluation/report_store.py"]
+  n_backend_src_infrastructure_evaluation___init___py --> n_backend_src_infrastructure_evaluation_report_store_py
+  n_backend_src_infrastructure_auth___init___py["backend/src/infrastructure/auth/__init__.py"]
+  n_backend_src_infrastructure_auth_keycloak_group_directory_py["backend/src/infrastructure/auth/keycloak_group_directory.py"]
+  n_backend_src_infrastructure_auth___init___py --> n_backend_src_infrastructure_auth_keycloak_group_directory_py
+  n_backend_src_infrastructure_auth_keycloak_token_verifier_py["backend/src/infrastructure/auth/keycloak_token_verifier.py"]
+  n_backend_src_infrastructure_auth___init___py --> n_backend_src_infrastructure_auth_keycloak_token_verifier_py
+  n_backend_src_infrastructure_observability_tracing_py["backend/src/infrastructure/observability/tracing.py"]
+  n_backend_src_infrastructure_observability_structured_logging_["backend/src/infrastructure/observability/structured_logging.py"]
+  n_backend_src_infrastructure_observability_tracing_py --> n_backend_src_infrastructure_observability_structured_logging_
+  n_backend_src_infrastructure_observability___init___py["backend/src/infrastructure/observability/__init__.py"]
+  n_backend_src_infrastructure_observability_instrumented_py["backend/src/infrastructure/observability/instrumented.py"]
+  n_backend_src_infrastructure_observability___init___py --> n_backend_src_infrastructure_observability_instrumented_py
+  n_backend_src_infrastructure_observability_metrics_py["backend/src/infrastructure/observability/metrics.py"]
+  n_backend_src_infrastructure_observability___init___py --> n_backend_src_infrastructure_observability_metrics_py
+  n_backend_src_infrastructure_observability___init___py --> n_backend_src_infrastructure_observability_structured_logging_
+  n_backend_src_infrastructure_observability___init___py --> n_backend_src_infrastructure_observability_tracing_py
+  n_backend_src_infrastructure_llm___init___py["backend/src/infrastructure/llm/__init__.py"]
+  n_backend_src_infrastructure_llm_fake_llm_py["backend/src/infrastructure/llm/fake_llm.py"]
+  n_backend_src_infrastructure_llm___init___py --> n_backend_src_infrastructure_llm_fake_llm_py
+  n_backend_src_infrastructure_llm_http_chat_llm_py["backend/src/infrastructure/llm/http_chat_llm.py"]
+  n_backend_src_infrastructure_llm___init___py --> n_backend_src_infrastructure_llm_http_chat_llm_py
+  n_backend_src_infrastructure_secrets___init___py["backend/src/infrastructure/secrets/__init__.py"]
+  n_backend_src_infrastructure_secrets_cipher_py["backend/src/infrastructure/secrets/cipher.py"]
+  n_backend_src_infrastructure_secrets___init___py --> n_backend_src_infrastructure_secrets_cipher_py
+  n_backend_src_infrastructure_storage___init___py["backend/src/infrastructure/storage/__init__.py"]
+  n_backend_src_infrastructure_storage_local_file_storage_py["backend/src/infrastructure/storage/local_file_storage.py"]
+  n_backend_src_infrastructure_storage___init___py --> n_backend_src_infrastructure_storage_local_file_storage_py
+  n_backend_src_infrastructure_chunking___init___py["backend/src/infrastructure/chunking/__init__.py"]
+  n_backend_src_infrastructure_chunking_sentences_py["backend/src/infrastructure/chunking/sentences.py"]
+  n_backend_src_infrastructure_chunking___init___py --> n_backend_src_infrastructure_chunking_sentences_py
+  n_backend_src_infrastructure_chunking_structural_chunker_py["backend/src/infrastructure/chunking/structural_chunker.py"]
+  n_backend_src_infrastructure_chunking___init___py --> n_backend_src_infrastructure_chunking_structural_chunker_py
+  n_backend_src_infrastructure_chunking_structural_chunker_py --> n_backend_src_infrastructure_chunking_sentences_py
+  n_backend_src_infrastructure_documents_extractor_py["backend/src/infrastructure/documents/extractor.py"]
+  n_backend_src_infrastructure_documents_structured_extraction_p["backend/src/infrastructure/documents/structured_extraction.py"]
+  n_backend_src_infrastructure_documents_extractor_py --> n_backend_src_infrastructure_documents_structured_extraction_p
+  n_backend_src_infrastructure_documents_text_extraction_py["backend/src/infrastructure/documents/text_extraction.py"]
+  n_backend_src_infrastructure_documents_extractor_py --> n_backend_src_infrastructure_documents_text_extraction_py
+  n_backend_src_infrastructure_documents___init___py["backend/src/infrastructure/documents/__init__.py"]
+  n_backend_src_infrastructure_documents___init___py --> n_backend_src_infrastructure_documents_extractor_py
+  n_backend_src_infrastructure_documents_ocr_py["backend/src/infrastructure/documents/ocr.py"]
+  n_backend_src_infrastructure_documents___init___py --> n_backend_src_infrastructure_documents_ocr_py
+  n_backend_src_infrastructure_documents___init___py --> n_backend_src_infrastructure_documents_structured_extraction_p
+  n_backend_src_infrastructure_documents___init___py --> n_backend_src_infrastructure_documents_text_extraction_py
+  n_backend_src_infrastructure_documents_structured_extraction_p --> n_backend_src_infrastructure_documents_text_extraction_py
+  n_backend_src_infrastructure_embeddings___init___py["backend/src/infrastructure/embeddings/__init__.py"]
+  n_backend_src_infrastructure_embeddings_bm25_sparse_embedding_["backend/src/infrastructure/embeddings/bm25_sparse_embedding.py"]
+  n_backend_src_infrastructure_embeddings___init___py --> n_backend_src_infrastructure_embeddings_bm25_sparse_embedding_
+  n_backend_src_infrastructure_embeddings_local_embedding_py["backend/src/infrastructure/embeddings/local_embedding.py"]
+  n_backend_src_infrastructure_embeddings___init___py --> n_backend_src_infrastructure_embeddings_local_embedding_py
+  n_backend_src_infrastructure_embeddings_sentence_transformer_e["backend/src/infrastructure/embeddings/sentence_transformer_embedding.py"]
+  n_backend_src_infrastructure_embeddings___init___py --> n_backend_src_infrastructure_embeddings_sentence_transformer_e
+  n_backend_src_api_schemas___init___py["backend/src/api/schemas/__init__.py"]
+  n_backend_src_domain_access_py["backend/src/domain/access.py"]
+  n_backend_src_api_schemas___init___py --> n_backend_src_domain_access_py
+  n_backend_src_api_routes_admin_py["backend/src/api/routes/admin.py"]
+  n_backend_src_api_schemas___init___py --> n_backend_src_api_routes_admin_py
+  n_backend_src_api_routes_assistants_py["backend/src/api/routes/assistants.py"]
+  n_backend_src_api_schemas___init___py --> n_backend_src_api_routes_assistants_py
+  n_backend_src_api_routes_conversations_py["backend/src/api/routes/conversations.py"]
+  n_backend_src_api_schemas___init___py --> n_backend_src_api_routes_conversations_py
+  n_backend_src_api_routes_index_py["backend/src/api/routes/index.py"]
+  n_backend_src_api_schemas___init___py --> n_backend_src_api_routes_index_py
+  n_backend_src_api_schemas_operations_py["backend/src/api/schemas/operations.py"]
+  n_backend_src_api_schemas___init___py --> n_backend_src_api_schemas_operations_py
+  n_backend_src_api_routes___init___py["backend/src/api/routes/__init__.py"]
+  n_backend_src_api_routes___init___py --> n_backend_src_api_routes_admin_py
+  n_backend_src_api_routes___init___py --> n_backend_src_api_routes_assistants_py
+  n_backend_src_api_routes___init___py --> n_backend_src_api_routes_conversations_py
+  n_backend_src_api_routes___init___py --> n_backend_src_api_routes_conversations_py
+  n_backend_src_api_routes_documents_py["backend/src/api/routes/documents.py"]
+  n_backend_src_api_routes___init___py --> n_backend_src_api_routes_documents_py
+  n_backend_src_api_routes___init___py --> n_backend_src_api_routes_documents_py
+  n_backend_src_domain_feedback_py["backend/src/domain/feedback.py"]
+  n_backend_src_api_routes___init___py --> n_backend_src_domain_feedback_py
+  n_backend_src_api_routes___init___py --> n_backend_src_api_routes_index_py
+  n_backend_src_api_routes_me_py["backend/src/api/routes/me.py"]
+  n_backend_src_api_routes___init___py --> n_backend_src_api_routes_me_py
+  n_backend_src_application_dto___init___py["backend/src/application/dto/__init__.py"]
+  n_backend_src_application_dto_access_dto_py["backend/src/application/dto/access_dto.py"]
+  n_backend_src_application_dto___init___py --> n_backend_src_application_dto_access_dto_py
+  n_backend_src_application_dto_assistant_dto_py["backend/src/application/dto/assistant_dto.py"]
+  n_backend_src_application_dto___init___py --> n_backend_src_application_dto_assistant_dto_py
+  n_backend_src_application_dto_conversation_dto_py["backend/src/application/dto/conversation_dto.py"]
+  n_backend_src_application_dto___init___py --> n_backend_src_application_dto_conversation_dto_py
+  n_backend_src_application_dto_evaluation_dto_py["backend/src/application/dto/evaluation_dto.py"]
+  n_backend_src_application_dto___init___py --> n_backend_src_application_dto_evaluation_dto_py
+  n_backend_src_application_dto_index_dto_py["backend/src/application/dto/index_dto.py"]
+  n_backend_src_application_dto___init___py --> n_backend_src_application_dto_index_dto_py
+  n_backend_src_application_dto_operations_dto_py["backend/src/application/dto/operations_dto.py"]
+  n_backend_src_application_dto___init___py --> n_backend_src_application_dto_operations_dto_py
+  n_backend_src_application_services___init___py["backend/src/application/services/__init__.py"]
+  n_backend_src_application_services_access_control_py["backend/src/application/services/access_control.py"]
+  n_backend_src_application_services___init___py --> n_backend_src_application_services_access_control_py
+  n_backend_src_application_services_document_indexing_py["backend/src/application/services/document_indexing.py"]
+  n_backend_src_application_services___init___py --> n_backend_src_application_services_document_indexing_py
+  n_backend_src_application_services_grounded_answer_py["backend/src/application/services/grounded_answer.py"]
+  n_backend_src_application_services___init___py --> n_backend_src_application_services_grounded_answer_py
+  n_backend_src_application_services_ingestion_py["backend/src/application/services/ingestion.py"]
+  n_backend_src_application_services___init___py --> n_backend_src_application_services_ingestion_py
+  n_backend_src_application_services_index_state_py["backend/src/application/services/index_state.py"]
+  n_backend_src_application_services___init___py --> n_backend_src_application_services_index_state_py
+  n_backend_src_application_services_retrieval_py["backend/src/application/services/retrieval.py"]
+  n_backend_src_application_services___init___py --> n_backend_src_application_services_retrieval_py
+  n_backend_src_domain_usage_py["backend/src/domain/usage.py"]
+  n_backend_src_application_services___init___py --> n_backend_src_domain_usage_py
+  n_backend_src_application_use_cases_ingest_document_py["backend/src/application/use_cases/ingest_document.py"]
+  n_backend_src_application_use_cases_manage_assistant_access_py["backend/src/application/use_cases/manage_assistant_access.py"]
+  n_backend_src_application_use_cases_ingest_document_py --> n_backend_src_application_use_cases_manage_assistant_access_py
+  n_backend_src_application_use_cases___init___py["backend/src/application/use_cases/__init__.py"]
+  n_backend_src_application_use_cases_audit_and_session_py["backend/src/application/use_cases/audit_and_session.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_audit_and_session_py
+  n_backend_src_application_use_cases_chat_with_assistant_py["backend/src/application/use_cases/chat_with_assistant.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_chat_with_assistant_py
+  n_backend_src_application_use_cases_compare_evaluation_reports["backend/src/application/use_cases/compare_evaluation_reports.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_compare_evaluation_reports
+  n_backend_src_application_use_cases_create_assistant_py["backend/src/application/use_cases/create_assistant.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_create_assistant_py
+  n_backend_src_application_use_cases_evaluate_assistant_py["backend/src/application/use_cases/evaluate_assistant.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_evaluate_assistant_py
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_ingest_document_py
+  n_backend_src_application_use_cases_infer_assistant_py["backend/src/application/use_cases/infer_assistant.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_infer_assistant_py
+  n_backend_src_application_use_cases_list_assistants_py["backend/src/application/use_cases/list_assistants.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_list_assistants_py
+  n_backend_src_application_use_cases_list_conversations_py["backend/src/application/use_cases/list_conversations.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_list_conversations_py
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_manage_assistant_access_py
+  n_backend_src_application_use_cases_manage_documents_py["backend/src/application/use_cases/manage_documents.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_manage_documents_py
+  n_backend_src_application_use_cases_manage_conversation_py["backend/src/application/use_cases/manage_conversation.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_manage_conversation_py
+  n_backend_src_application_use_cases_manage_api_key_py["backend/src/application/use_cases/manage_api_key.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_manage_api_key_py
+  n_backend_src_application_use_cases_manage_feedback_py["backend/src/application/use_cases/manage_feedback.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_manage_feedback_py
+  n_backend_src_application_use_cases_manage_usage_py["backend/src/application/use_cases/manage_usage.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_manage_usage_py
+  n_backend_src_application_use_cases_process_ingestion_py["backend/src/application/use_cases/process_ingestion.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_process_ingestion_py
+  n_backend_src_application_use_cases_register_conversation_py["backend/src/application/use_cases/register_conversation.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_register_conversation_py
+  n_backend_src_application_use_cases_check_consistency_py["backend/src/application/use_cases/check_consistency.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_check_consistency_py
+  n_backend_src_application_use_cases_manage_archived_conversati["backend/src/application/use_cases/manage_archived_conversations.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_manage_archived_conversati
+  n_backend_src_application_use_cases_list_groups_py["backend/src/application/use_cases/list_groups.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_list_groups_py
+  n_backend_src_application_use_cases_reindex_assistant_py["backend/src/application/use_cases/reindex_assistant.py"]
+  n_backend_src_application_use_cases___init___py --> n_backend_src_application_use_cases_reindex_assistant_py
+  n_backend_src_application_use_cases_manage_archived_conversati --> n_backend_src_application_use_cases_chat_with_assistant_py
+  n_backend_src_application_use_cases_manage_documents_py --> n_backend_src_application_use_cases_manage_assistant_access_py
+  n_backend_src_application_use_cases_manage_conversation_py --> n_backend_src_application_use_cases_chat_with_assistant_py
+  n_backend_src_domain_evaluation_py["backend/src/domain/evaluation.py"]
+  n_backend_src_domain_errors_py["backend/src/domain/errors.py"]
+  n_backend_src_domain_evaluation_py --> n_backend_src_domain_errors_py
+  n_backend_src_domain_value_objects_py["backend/src/domain/value_objects.py"]
+  n_backend_src_domain_evaluation_py --> n_backend_src_domain_value_objects_py
+  n_backend_src_domain_usage_py --> n_backend_src_domain_errors_py
+  n_backend_src_domain_access_py --> n_backend_src_domain_errors_py
+  n_backend_src_domain___init___py["backend/src/domain/__init__.py"]
+  n_backend_src_domain___init___py --> n_backend_src_domain_access_py
+  n_backend_src_domain_audit_py["backend/src/domain/audit.py"]
+  n_backend_src_domain___init___py --> n_backend_src_domain_audit_py
+  n_backend_src_domain_chunking_py["backend/src/domain/chunking.py"]
+  n_backend_src_domain___init___py --> n_backend_src_domain_chunking_py
+  n_backend_src_domain_citations_py["backend/src/domain/citations.py"]
+  n_backend_src_domain___init___py --> n_backend_src_domain_citations_py
+  n_backend_src_domain_entities_py["backend/src/domain/entities.py"]
+  n_backend_src_domain___init___py --> n_backend_src_domain_entities_py
+  n_backend_src_domain___init___py --> n_backend_src_domain_errors_py
+  n_backend_src_domain___init___py --> n_backend_src_domain_evaluation_py
+  n_backend_src_domain___init___py --> n_backend_src_domain_feedback_py
+  n_backend_src_domain_interfaces_py["backend/src/domain/interfaces.py"]
+  n_backend_src_domain___init___py --> n_backend_src_domain_interfaces_py
+  n_backend_src_domain_observability_py["backend/src/domain/observability.py"]
+  n_backend_src_domain___init___py --> n_backend_src_domain_observability_py
+  n_backend_src_domain_prompt_injection_py["backend/src/domain/prompt_injection.py"]
+  n_backend_src_domain___init___py --> n_backend_src_domain_prompt_injection_py
+  n_backend_src_domain___init___py --> n_backend_src_domain_usage_py
+  n_backend_src_domain___init___py --> n_backend_src_domain_value_objects_py
+  n_backend_src_domain_interfaces_py --> n_backend_src_domain_access_py
+  n_backend_src_domain_interfaces_py --> n_backend_src_domain_audit_py
+  n_backend_src_domain_interfaces_py --> n_backend_src_domain_chunking_py
+  n_backend_src_domain_interfaces_py --> n_backend_src_domain_citations_py
+  n_backend_src_domain_interfaces_py --> n_backend_src_domain_errors_py
+  n_backend_src_domain_interfaces_py --> n_backend_src_domain_feedback_py
+  n_backend_src_domain_interfaces_py --> n_backend_src_domain_usage_py
+  n_backend_src_domain_interfaces_py --> n_backend_src_domain_entities_py
+  n_backend_src_domain_interfaces_py --> n_backend_src_domain_value_objects_py
+  n_backend_src_domain_chunking_py --> n_backend_src_domain_errors_py
+  n_backend_src_domain_entities_py --> n_backend_src_domain_citations_py
+  n_backend_src_domain_entities_py --> n_backend_src_domain_errors_py
+  n_backend_src_domain_entities_py --> n_backend_src_domain_value_objects_py
+  n_backend_src_domain_citations_py --> n_backend_src_domain_errors_py
+  n_backend_src_domain_citations_py --> n_backend_src_domain_value_objects_py
+  n_backend_src_domain_value_objects_py --> n_backend_src_domain_errors_py
+  n_backend_src_domain_feedback_py --> n_backend_src_domain_errors_py
+  n_backend_src_domain_feedback_py --> n_backend_src_domain_evaluation_py
+  n_backend_src_domain_audit_py --> n_backend_src_domain_errors_py
+  n_backend_tests_integration_test_operations_api_py["backend/tests/integration/test_operations_api.py"]
+  n_backend_tests_integration_access_support_py["backend/tests/integration/access_support.py"]
+  n_backend_tests_integration_test_operations_api_py --> n_backend_tests_integration_access_support_py
+  n_backend_tests_integration_test_chat_citations_py["backend/tests/integration/test_chat_citations.py"]
+  n_backend_tests_integration_test_chat_citations_py --> n_backend_tests_integration_access_support_py
+  n_backend_tests_integration_test_api_routes_py["backend/tests/integration/test_api_routes.py"]
+  n_backend_tests_integration_test_api_routes_py --> n_backend_tests_integration_access_support_py
+  n_backend_tests_integration_test_access_control_api_py["backend/tests/integration/test_access_control_api.py"]
+  n_backend_tests_integration_test_access_control_api_py --> n_backend_tests_integration_access_support_py
+  n_backend_tests_unit_test_retrieval_components_py["backend/tests/unit/test_retrieval_components.py"]
+  n_backend_tests_unit_chat_doubles_py["backend/tests/unit/chat_doubles.py"]
+  n_backend_tests_unit_test_retrieval_components_py --> n_backend_tests_unit_chat_doubles_py
+  n_backend_tests_unit_test_feedback_py["backend/tests/unit/test_feedback.py"]
+  n_backend_tests_unit_access_doubles_py["backend/tests/unit/access_doubles.py"]
+  n_backend_tests_unit_test_feedback_py --> n_backend_tests_unit_access_doubles_py
+  n_backend_tests_unit_operations_doubles_py["backend/tests/unit/operations_doubles.py"]
+  n_backend_tests_unit_test_feedback_py --> n_backend_tests_unit_operations_doubles_py
+  n_backend_tests_unit_test_document_lifecycle_py["backend/tests/unit/test_document_lifecycle.py"]
+  n_backend_tests_unit_test_document_lifecycle_py --> n_backend_tests_unit_access_doubles_py
+  n_backend_tests_unit_test_indexing_py["backend/tests/unit/test_indexing.py"]
+  n_backend_tests_unit_test_document_lifecycle_py --> n_backend_tests_unit_test_indexing_py
+  n_backend_tests_unit_test_sparse_parameters_py["backend/tests/unit/test_sparse_parameters.py"]
+  n_backend_tests_unit_test_sparse_parameters_py --> n_backend_tests_unit_test_indexing_py
+  n_backend_tests_unit_test_sparse_parameters_py --> n_backend_tests_unit_test_indexing_py
+  n_backend_tests_unit_test_operations_py["backend/tests/unit/test_operations.py"]
+  n_backend_tests_unit_test_operations_py --> n_backend_tests_unit_access_doubles_py
+  n_backend_tests_unit_test_operations_py --> n_backend_tests_unit_chat_doubles_py
+  n_backend_tests_unit_test_operations_py --> n_backend_tests_unit_operations_doubles_py
+  n_backend_tests_unit_test_chat_flow_py["backend/tests/unit/test_chat_flow.py"]
+  n_backend_tests_unit_test_operations_py --> n_backend_tests_unit_test_chat_flow_py
+  n_backend_tests_unit_test_ocr_extraction_py["backend/tests/unit/test_ocr_extraction.py"]
+  n_backend_tests_unit_test_ocr_extraction_py --> n_backend_tests_unit_test_indexing_py
+  n_backend_tests_unit_test_indexing_py --> n_backend_tests_unit_access_doubles_py
+  n_backend_tests_unit_ingestion_doubles_py["backend/tests/unit/ingestion_doubles.py"]
+  n_backend_tests_unit_test_indexing_py --> n_backend_tests_unit_ingestion_doubles_py
+  n_backend_tests_unit_test_group_directory_py["backend/tests/unit/test_group_directory.py"]
+  n_backend_tests_unit_test_group_directory_py --> n_backend_tests_unit_access_doubles_py
+  n_backend_tests_unit_test_evaluation_py["backend/tests/unit/test_evaluation.py"]
+  n_backend_tests_unit_test_evaluation_py --> n_backend_tests_unit_chat_doubles_py
+  n_backend_tests_unit_test_index_consistency_py["backend/tests/unit/test_index_consistency.py"]
+  n_backend_tests_unit_test_index_consistency_py --> n_backend_tests_unit_test_indexing_py
+  n_backend_tests_unit_test_archived_conversations_py["backend/tests/unit/test_archived_conversations.py"]
+  n_backend_tests_unit_test_archived_conversations_py --> n_backend_tests_unit_access_doubles_py
+  n_backend_tests_unit_test_chat_flow_py --> n_backend_tests_unit_access_doubles_py
+  n_backend_tests_unit_test_chat_flow_py --> n_backend_tests_unit_chat_doubles_py
+  n_backend_tests_unit_test_access_control_py["backend/tests/unit/test_access_control.py"]
+  n_backend_tests_unit_test_access_control_py --> n_backend_tests_unit_access_doubles_py
+  n_backend_tests_unit_test_access_control_py --> n_backend_tests_unit_chat_doubles_py
+  n_backend_tests_unit_test_access_control_py --> n_backend_tests_unit_ingestion_doubles_py
+  n_backend_tests_unit_test_use_cases_py["backend/tests/unit/test_use_cases.py"]
+  n_backend_tests_unit_test_use_cases_py --> n_backend_tests_unit_access_doubles_py

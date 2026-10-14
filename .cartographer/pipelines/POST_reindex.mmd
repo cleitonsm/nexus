@@ -1,0 +1,31 @@
+flowchart LR
+  backend_src_api_routes_index_py__existing_assistan["_existing_assistant_id<br/><small>backend/src/api/routes/index.py:49</small>"]
+  backend_src_api_routes_index_py__job_response["_job_response<br/><small>backend/src/api/routes/index.py:68</small>"]
+  backend_src_api_routes_index_py_start_reindex["start_reindex<br/><small>backend/src/api/routes/index.py:77</small>"]
+  backend_src_api_schemas_index_py_ReindexJobRespons["ReindexJobResponse<br/><small>backend/src/api/schemas/index.py:8</small>"]
+  backend_src_application_dto_access_dto_py_CurrentU["from_user<br/><small>backend/src/application/dto/access_dto.py:17</small>"]
+  backend_src_application_services_access_control_py["audit<br/><small>backend/src/application/services/access_control.py:78</small>"]
+  backend_src_application_services_access_control_py["record<br/><small>backend/src/application/services/access_control.py:36</small>"]
+  backend_src_application_use_cases_audit_and_sessio["execute<br/><small>backend/src/application/use_cases/audit_and_session.py:40</small>"]
+  backend_src_application_use_cases_reindex_assistan["StartReindexInput<br/><small>backend/src/application/use_cases/reindex_assistant.py:61</small>"]
+  backend_src_application_use_cases_reindex_assistan["StartReindexUseCase<br/><small>backend/src/application/use_cases/reindex_assistant.py:66</small>"]
+  backend_src_domain_audit_py_AuditEvent["AuditEvent<br/><small>backend/src/domain/audit.py:61</small>"]
+  backend_src_domain_interfaces_py_AssistantReposito["get_by_id<br/><small>backend/src/domain/interfaces.py:44</small>"]
+  backend_src_domain_interfaces_py_AuditLogRepositor["append<br/><small>backend/src/domain/interfaces.py:572</small>"]
+  backend_src_domain_value_objects_py_AssistantId["AssistantId<br/><small>backend/src/domain/value_objects.py:18</small>"]
+  backend_src_api_routes_index_py_start_reindex:::entry
+  backend_src_api_routes_index_py__existing_assistan --> backend_src_domain_interfaces_py_AssistantReposito
+  backend_src_api_routes_index_py__existing_assistan --> backend_src_domain_value_objects_py_AssistantId
+  backend_src_api_routes_index_py__job_response --> backend_src_api_schemas_index_py_ReindexJobRespons
+  backend_src_api_routes_index_py_start_reindex --> backend_src_api_routes_index_py__existing_assistan
+  backend_src_api_routes_index_py_start_reindex --> backend_src_api_routes_index_py__job_response
+  backend_src_api_routes_index_py_start_reindex --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_api_routes_index_py_start_reindex --> backend_src_application_use_cases_reindex_assistan
+  backend_src_api_routes_index_py_start_reindex --> backend_src_application_use_cases_reindex_assistan
+  backend_src_application_services_access_control_py --> backend_src_application_services_access_control_py
+  backend_src_application_services_access_control_py --> backend_src_domain_audit_py_AuditEvent
+  backend_src_application_services_access_control_py --> backend_src_domain_interfaces_py_AuditLogRepositor
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_dto_access_dto_py_CurrentU
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_services_access_control_py
+classDef entry fill:#fef3c7,stroke:#d97706,stroke-width:2px
+classDef external fill:#fee2e2,stroke:#991b1b,stroke-dasharray:3 3

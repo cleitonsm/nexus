@@ -1,0 +1,30 @@
+flowchart LR
+  backend_src_api_routes_admin_py__limits["_limits<br/><small>backend/src/api/routes/admin.py:270</small>"]
+  backend_src_api_routes_admin_py_get_usage_limits["get_usage_limits<br/><small>backend/src/api/routes/admin.py:225</small>"]
+  backend_src_api_schemas_operations_py_UsageLimitsR["UsageLimitsResponse<br/><small>backend/src/api/schemas/operations.py:90</small>"]
+  backend_src_application_dto_access_dto_py_CurrentU["from_user<br/><small>backend/src/application/dto/access_dto.py:17</small>"]
+  backend_src_application_services_access_control_py["audit<br/><small>backend/src/application/services/access_control.py:78</small>"]
+  backend_src_application_services_access_control_py["record<br/><small>backend/src/application/services/access_control.py:36</small>"]
+  backend_src_application_use_cases_audit_and_sessio["execute<br/><small>backend/src/application/use_cases/audit_and_session.py:40</small>"]
+  backend_src_application_use_cases_manage_documents["DocumentRefInput<br/><small>backend/src/application/use_cases/manage_documents.py:28</small>"]
+  backend_src_application_use_cases_manage_documents["GetDocumentUseCase<br/><small>backend/src/application/use_cases/manage_documents.py:33</small>"]
+  backend_src_application_use_cases_manage_usage_py_["GetUsageLimitsUseCase<br/><small>backend/src/application/use_cases/manage_usage.py:98</small>"]
+  backend_src_domain_audit_py_AuditEvent["AuditEvent<br/><small>backend/src/domain/audit.py:61</small>"]
+  backend_src_domain_interfaces_py_AuditLogRepositor["append<br/><small>backend/src/domain/interfaces.py:572</small>"]
+  backend_tests_unit_test_document_lifecycle_py_Life["get<br/><small>backend/tests/unit/test_document_lifecycle.py:269</small>"]
+  backend_src_api_routes_admin_py_get_usage_limits:::entry
+  backend_src_api_routes_admin_py__limits --> backend_src_api_schemas_operations_py_UsageLimitsR
+  backend_src_api_routes_admin_py_get_usage_limits --> backend_src_api_routes_admin_py__limits
+  backend_src_api_routes_admin_py_get_usage_limits --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_api_routes_admin_py_get_usage_limits --> backend_src_application_use_cases_manage_usage_py_
+  backend_src_api_routes_admin_py_get_usage_limits --> backend_tests_unit_test_document_lifecycle_py_Life
+  backend_src_application_services_access_control_py --> backend_src_application_services_access_control_py
+  backend_src_application_services_access_control_py --> backend_src_domain_audit_py_AuditEvent
+  backend_src_application_services_access_control_py --> backend_src_domain_interfaces_py_AuditLogRepositor
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_dto_access_dto_py_CurrentU
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_services_access_control_py
+  backend_tests_unit_test_document_lifecycle_py_Life --> backend_src_application_use_cases_audit_and_sessio
+  backend_tests_unit_test_document_lifecycle_py_Life --> backend_src_application_use_cases_manage_documents
+  backend_tests_unit_test_document_lifecycle_py_Life --> backend_src_application_use_cases_manage_documents
+classDef entry fill:#fef3c7,stroke:#d97706,stroke-width:2px
+classDef external fill:#fee2e2,stroke:#991b1b,stroke-dasharray:3 3
