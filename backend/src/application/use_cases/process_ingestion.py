@@ -42,6 +42,7 @@ from src.domain import (
     IndexParametersRepository,
     IngestionJob,
     IngestionJobQueue,
+    JobOwnershipLostError,
     ReindexInProgressError,
     ReindexJobRepository,
     VectorStoreGateway,
@@ -239,8 +240,23 @@ class ProcessNextIngestionJobUseCase:
             )
             logger.info("ingestion.job.document_gone", extra=_log_extra(job, document))
             return None
+        except JobOwnershipLostError:
+            # Outra tentativa e dona do job: nao grava nada nem limpa trechos.
+            logger.warning("ingestion.job.ownership_lost", extra=_log_extra(job, document))
+            return None
         except Exception as exc:  # noqa: BLE001 - toda falha vira estado
-            return self._failures.handle(job, document, exc)
+            try:
+                return self._failures.handle(job, document, exc)
+            except JobOwnershipLostError:
+                logger.warning(
+                    "ingestion.job.ownership_lost", extra=_log_extra(job, document)
+                )
+                return None
+
+    def _hold_reservation(self, job: IngestionJob) -> None:
+        """Renova a reserva; sem ela, outro worker pode estar processando."""
+        if not self._queue.renew(job, self._clock()):
+            raise JobOwnershipLostError(job.id)
 
     def _index(self, job: IngestionJob, document: Document) -> ProcessingOutcome:
         collection = self._writable_collection(document)
@@ -254,12 +270,14 @@ class ProcessNextIngestionJobUseCase:
             allowed_groups=self._access.permissions.get_document_groups(document.id),
             active=False,
         )
+        self._hold_reservation(job)
         # Restos de uma tentativa interrompida (inclusive com mais trechos).
         self._vector_store.delete_by_document(collection, document.id)
         self._vector_store.upsert_chunks(collection_name=collection, chunks=chunks)
 
         previous = self._previous_version(document)
         self._ensure_still_wanted(document)
+        self._hold_reservation(job)
         self._vector_store.set_document_active(collection, document.id, True)
         if previous is not None:
             self._vector_store.delete_by_document(collection, previous.id)

@@ -32,6 +32,7 @@ from src.domain import (
     EmbeddingGateway,
     IndexParametersRepository,
     IngestionInProgressError,
+    JobOwnershipLostError,
     MetricsRecorder,
     ReindexInProgressError,
     ReindexJob,
@@ -175,6 +176,7 @@ class RunReindexUseCase:
             if state.current == target:
                 raise RuntimeError("target collection is already in use.")
             reindexed = self._build_target(job, target)
+            self._require_lease(job, len(reindexed))
             self._swap_alias(state, target)
             swapped = True
             for document in reindexed:
@@ -183,6 +185,15 @@ class RunReindexUseCase:
                 total=job.total_documents,
                 processed=len(reindexed),
             ).succeed()
+        except JobOwnershipLostError:
+            # SPEC-007 fix-3: outro worker e dono; nao troca alias, descarta
+            # collection nem grava o job.
+            logger.warning(
+                "reindex.ownership_lost",
+                extra={"assistant_id": job.assistant_id.value, "job_id": job.id},
+            )
+            current = self._reindex_job_repository.get_by_id(job.id)
+            return ReindexJobDTO.from_entity(current or job)
         except Exception as exc:  # noqa: BLE001 - registra qualquer falha
             logger.exception(
                 "reindex.failed",
@@ -191,7 +202,28 @@ class RunReindexUseCase:
             if not swapped:
                 self._discard(target)
             job = job.fail(f"{type(exc).__name__}: {exc}")
-        return ReindexJobDTO.from_entity(self._reindex_job_repository.save(job))
+        return ReindexJobDTO.from_entity(self._save_final(job))
+
+    def _save_final(self, job: ReindexJob) -> ReindexJob:
+        if self._lease is None:
+            return self._reindex_job_repository.save(job)
+        if not self._reindex_job_repository.save_if_owner(job, job.attempts):
+            logger.warning("reindex.ownership_lost", extra={"job_id": job.id})
+            return self._reindex_job_repository.get_by_id(job.id) or job
+        return job
+
+    def _require_lease(self, job: ReindexJob, processed: int) -> None:
+        """Renova a reserva; ``JobOwnershipLostError`` se outro worker a tomou."""
+        if self._lease is None:
+            return
+        renewed = self._reindex_job_repository.renew_lease(
+            job.id,
+            job.attempts,
+            lease_expires_at=self._clock() + self._lease,
+            processed_documents=processed,
+        )
+        if not renewed:
+            raise JobOwnershipLostError(job.id)
 
     def _build_target(
         self,
@@ -219,6 +251,7 @@ class RunReindexUseCase:
         groups = self._permission_repository.list_document_groups(job.assistant_id)
         reindexed: list[Document] = []
         for document in documents:
+            self._require_lease(job, len(reindexed))
             reindexed.append(
                 self._reindex_document(
                     document,
@@ -226,13 +259,14 @@ class RunReindexUseCase:
                     groups.get(document.id.value, frozenset()),
                 )
             )
-            progress = job.with_progress(
-                total=job.total_documents,
-                processed=len(reindexed),
-            )
-            if self._lease is not None:
-                progress = progress.renew(self._clock(), self._lease)
-            self._reindex_job_repository.save(progress)
+            if self._lease is None:
+                self._reindex_job_repository.save(
+                    job.with_progress(
+                        total=job.total_documents, processed=len(reindexed)
+                    )
+                )
+            else:
+                self._require_lease(job, len(reindexed))
         expected = sum(document.chunk_count for document in reindexed)
         stored = self._vector_store_gateway.count_points(target)
         if stored != expected:

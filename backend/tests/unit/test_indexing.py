@@ -262,6 +262,36 @@ class InMemoryReindexJobRepository:
         self.items[claimed.id] = claimed
         return claimed
 
+    def _owner(self, job_id: str, attempts: int) -> ReindexJob | None:
+        current = self.items.get(job_id)
+        if current is None or not current.is_running or current.attempts != attempts:
+            return None
+        return current
+
+    def renew_lease(
+        self,
+        job_id: str,
+        attempts: int,
+        *,
+        lease_expires_at: datetime,
+        processed_documents: int,
+    ) -> bool:
+        current = self._owner(job_id, attempts)
+        if current is None:
+            return False
+        self.items[job_id] = replace(
+            current,
+            lease_expires_at=lease_expires_at,
+            processed_documents=processed_documents,
+        )
+        return True
+
+    def save_if_owner(self, job: ReindexJob, attempts: int) -> bool:
+        if self._owner(job.id, attempts) is None:
+            return False
+        self.items[job.id] = job
+        return True
+
 
 class Scenario:
     """Monta os casos de uso sobre os mesmos dubles."""
@@ -767,15 +797,15 @@ class ProcessNextReindexJobTestCase(IndexingTestCase):
         started = self.scenario.start_reindex()
         leases: list = []
         jobs = self.scenario.jobs
-        original_save = jobs.save
+        original_renew = jobs.renew_lease
 
-        def spy(job):
-            leases.append(job.lease_expires_at)
-            return original_save(job)
+        def spy(job_id, attempts, **kwargs):
+            leases.append(kwargs["lease_expires_at"])
+            return original_renew(job_id, attempts, **kwargs)
 
-        jobs.save = spy
+        jobs.renew_lease = spy
         self._worker().execute()
-        self.assertTrue(any(lease is not None for lease in leases[:-1]))
+        self.assertGreaterEqual(len(leases), 2)
         self.assertIsNone(jobs.items[started.id].lease_expires_at)
 
     def test_attempts_exhausted_fail_the_job_and_discard_the_partial(self) -> None:

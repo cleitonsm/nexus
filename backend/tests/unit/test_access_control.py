@@ -723,6 +723,33 @@ class ConversationPrivacyTestCase(AccessTestCase):
         self.assertEqual(saved.content, "Oi")
 
 
+class AddMessageRoleTestCase(unittest.TestCase):
+    """SPEC-007 fix-1: o caso de uso so aceita mensagens do usuario."""
+
+    def test_rejects_roles_other_than_user(self) -> None:
+        for role in ("assistant", "system", "tool"):
+            use_case = AddMessageUseCase(_NeverCalledRepository(), _AllowAll())
+            with self.assertRaises(DomainValidationError, msg=role):
+                use_case.execute(
+                    AddMessageInput(
+                        user=make_user("ana", groups=("rh",)),
+                        conversation_id="conv-ana",
+                        role=role,
+                        content="Oi",
+                    )
+                )
+
+
+class _NeverCalledRepository:
+    def __getattr__(self, name):
+        raise AssertionError(f"repository touched: {name}")
+
+
+class _AllowAll:
+    def __getattr__(self, name):
+        raise AssertionError(f"access touched: {name}")
+
+
 class FailingLLM:
     def generate(self, *, prompt, context_chunks, conversation_history) -> str:
         raise RuntimeError("LLM provider is unreachable.")

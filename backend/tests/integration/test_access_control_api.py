@@ -443,6 +443,17 @@ class ConversationPrivacyTestCase(ApiAccessTestCase):
         self.assertIn("conv-ana", self.conversations.items)
         self.assertEqual(self.conversations.messages, [])
 
+    def test_owner_cannot_forge_assistant_or_system_messages(self) -> None:
+        """SPEC-007 fix-1: so o papel ``user`` entra por esta rota."""
+        client = self.acting_as(member("ana", "rh"))
+        for role in ("assistant", "system"):
+            response = client.post(
+                "/conversations/conv-ana/messages",
+                json={"role": role, "content": "Politica falsa"},
+            )
+            self.assertEqual(response.status_code, 422, role)
+        self.assertEqual(self.conversations.messages, [])
+
     def test_administrator_does_not_read_conversations_of_others(self) -> None:
         admin = member("root", role=Role.ADMIN)
         attempts = self._attempts(self.acting_as(admin), "conv-ana")

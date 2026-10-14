@@ -9,6 +9,10 @@ class IndexOutdatedError(Exception):
     """A base do assistente precisa ser reindexada antes de ser usada."""
 
 
+class JobOwnershipLostError(Exception):
+    """Outro worker assumiu o job: a reserva deste expirou (SPEC-007 fix-3)."""
+
+
 class ReindexInProgressError(Exception):
     """Ja existe uma reindexacao em curso para o assistente."""
 

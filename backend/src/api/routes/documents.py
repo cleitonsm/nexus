@@ -12,6 +12,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Request,
     Response,
     UploadFile,
     status,
@@ -31,6 +32,7 @@ from src.api.dependencies import (
     get_vector_store_gateway,
 )
 from src.api.schemas import DocumentAccessResponse, GroupsRequest
+from src.api.uploads import parse_content_length, read_upload_limited
 from src.application.dto import DocumentAccessDTO
 from src.application.services import AccessControl, DocumentIndexer
 from src.application.use_cases import (
@@ -89,6 +91,7 @@ logger = logging.getLogger(__name__)
 )
 async def ingest_document(
     assistant_id: str,
+    request: Request,
     file: UploadFile = File(...),
     metadata: str | None = Form(default=None),
     groups: str | None = Form(default=None),
@@ -108,12 +111,18 @@ async def ingest_document(
     assistente (RN-26), com o documento existente no corpo.
     """
     assistant_ref = _assistant_ref(assistant_id)
-    if assistant_repository.get_by_id(assistant_ref) is None:
+    assistant = await run_in_threadpool(assistant_repository.get_by_id, assistant_ref)
+    if assistant is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="assistant not found",
         )
-    file_bytes = await file.read()
+    with _translate_errors():
+        file_bytes = await read_upload_limited(
+            file,
+            max_file_bytes,
+            content_length=parse_content_length(request.headers.get("content-length")),
+        )
     logger.info(
         "document.upload.received",
         extra={
@@ -216,6 +225,7 @@ def delete_document(
 )
 async def replace_document(
     document_id: str,
+    request: Request,
     file: UploadFile = File(...),
     user: AuthenticatedUser = Depends(get_current_user),
     access_control: AccessControl = Depends(get_access_control),
@@ -227,7 +237,12 @@ async def replace_document(
     max_file_bytes: int = Depends(get_max_file_bytes),
 ) -> DocumentAccessResponse:
     """RF-51, RN-28: a nova versao fica pendente; a atual responde ate o fim."""
-    file_bytes = await file.read()
+    with _translate_errors():
+        file_bytes = await read_upload_limited(
+            file,
+            max_file_bytes,
+            content_length=parse_content_length(request.headers.get("content-length")),
+        )
     use_case = ReplaceDocumentUseCase(
         document_repository=document_repository,
         vector_store_gateway=vector_store_gateway,

@@ -82,6 +82,14 @@ class IngestionJobQueue(Protocol):
         """
         ...
 
+    def renew(self, job: IngestionJob, now: datetime) -> bool:
+        """Estende a reserva do job; ``False`` se este worker deixou de ser o dono.
+
+        Dono = mesmo ``id``, mesmo numero de tentativa e ainda ``processando``
+        (SPEC-007 fix-3). Atomico no armazenamento.
+        """
+        ...
+
     def list_expired(self, reserved_before: datetime) -> list[IngestionJob]:
         """Jobs em processamento reservados antes do instante informado."""
         ...
@@ -92,7 +100,10 @@ class IngestionJobQueue(Protocol):
         document: Document,
         replaced: Document | None = None,
     ) -> None:
-        """Conclui o job e grava o documento (e a versao substituida) juntos."""
+        """Conclui o job e grava o documento (e a versao substituida) juntos.
+
+        Levanta ``JobOwnershipLostError`` se o job ja pertence a outra tentativa.
+        """
         ...
 
     def retry(self, job: IngestionJob, document: Document) -> None:
@@ -119,6 +130,21 @@ class ReindexJobRepository(Protocol):
         """PC-D4: reserva o job em curso mais antigo sem prazo valido.
 
         Concorrencia segura entre workers (``FOR UPDATE SKIP LOCKED``)."""
+        ...
+
+    def renew_lease(
+        self,
+        job_id: str,
+        attempts: int,
+        *,
+        lease_expires_at: datetime,
+        processed_documents: int,
+    ) -> bool:
+        """Renova a reserva e o progresso so se o job segue com esta tentativa."""
+        ...
+
+    def save_if_owner(self, job: ReindexJob, attempts: int) -> bool:
+        """Grava o resultado final so se o job segue com esta tentativa."""
         ...
 
 

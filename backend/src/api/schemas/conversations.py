@@ -29,9 +29,13 @@ class ConversationHistoryResponse(BaseModel):
 
 
 class MessageRoleRequest(StrEnum):
+    """Papeis aceitos de fora: so ``user`` (SPEC-007 fix-1).
+
+    ``assistant`` e ``system`` sao gerados pelo servidor; aceitar de fora
+    permitiria forjar resposta do assistente no historico.
+    """
+
     USER = "user"
-    ASSISTANT = "assistant"
-    SYSTEM = "system"
 
 
 class AddMessageRequest(BaseModel):

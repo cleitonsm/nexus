@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from src.domain import (
@@ -9,6 +10,7 @@ from src.domain import (
     DocumentStatus,
     IngestionJob,
     IngestionJobStatus,
+    JobOwnershipLostError,
 )
 
 
@@ -65,6 +67,20 @@ class InMemoryIngestionJobQueue:
         self.jobs[reserved.id] = reserved
         return reserved
 
+    def _owns(self, job: IngestionJob) -> bool:
+        current = self.jobs.get(job.id)
+        return (
+            current is not None
+            and current.attempts == job.attempts
+            and current.status is IngestionJobStatus.PROCESSING
+        )
+
+    def renew(self, job: IngestionJob, now: datetime) -> bool:
+        if not self._owns(job):
+            return False
+        self.jobs[job.id] = replace(self.jobs[job.id], reserved_at=now)
+        return True
+
     def list_expired(self, reserved_before: datetime) -> list[IngestionJob]:
         return [
             job
@@ -80,16 +96,23 @@ class InMemoryIngestionJobQueue:
         document: Document,
         replaced: Document | None = None,
     ) -> None:
+        self._require_owner(job)
         self.jobs[job.id] = job
         self.documents.save(document)
         if replaced is not None:
             self.documents.save(replaced)
 
+    def _require_owner(self, job: IngestionJob) -> None:
+        if not self._owns(job):
+            raise JobOwnershipLostError(job.id)
+
     def retry(self, job: IngestionJob, document: Document) -> None:
+        self._require_owner(job)
         self.jobs[job.id] = job
         self.documents.save(document)
 
     def fail(self, job: IngestionJob, document: Document) -> None:
+        self._require_owner(job)
         self.jobs[job.id] = job
         self.documents.save(document)
 

@@ -56,6 +56,10 @@ from src.infrastructure.database import (
     SessionLocal,
 )
 from src.infrastructure.observability import configure_logging
+from src.infrastructure.security import (
+    InsecureConfigurationError,
+    check_deployment_secrets,
+)
 from src.infrastructure.vector_store import QdrantVectorStoreGateway
 
 EXIT_OK = 0
@@ -170,6 +174,11 @@ def run_iteration(adapters: WorkerAdapters, was_paused: bool) -> tuple[bool, boo
 
 def main() -> int:
     configure_logging(level=os.getenv("LOG_LEVEL", "INFO"))
+    try:
+        check_deployment_secrets(os.environ)
+    except InsecureConfigurationError as exc:
+        logger.error("ingestion.worker.insecure", extra={"problem": str(exc)})
+        return EXIT_INVALID_CONFIGURATION
     try:
         adapters = WorkerAdapters(
             vector_store=QdrantVectorStoreGateway(

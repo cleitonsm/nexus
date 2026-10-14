@@ -17,6 +17,7 @@ from src.domain import (
     Conversation,
     ConversationId,
     Document,
+    DomainValidationError,
     ConversationRepository,
     DocumentId,
     DocumentRepository,
@@ -130,6 +131,10 @@ class AddMessageUseCase:
         self._access = access_control
 
     def execute(self, data: AddMessageInput) -> MessageDTO:
+        if data.role != MessageRole.USER.value:
+            raise DomainValidationError(
+                "only messages with role 'user' can be added directly."
+            )
         conversation = load_owned_conversation(
             self._repository,
             self._access,

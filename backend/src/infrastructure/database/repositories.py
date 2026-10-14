@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, or_, select, text
+from sqlalchemy import delete, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -26,6 +26,7 @@ from src.domain import (
     IngestionJobStatus,
     MessageId,
     MessageRole,
+    JobOwnershipLostError,
     ReindexInProgressError,
     ReindexJob,
     ReindexStatus,
@@ -316,6 +317,16 @@ class PostgresIngestionJobQueue:
         self._session.commit()
         return job
 
+    def renew(self, job: IngestionJob, now: datetime) -> bool:
+        """UPDATE condicional: so o dono (id, tentativa, processando) renova."""
+        result = self._session.execute(
+            update(IngestionJobModel)
+            .where(*_ingestion_owner(job))
+            .values(reserved_at=now)
+        )
+        self._session.commit()
+        return result.rowcount == 1
+
     def list_expired(self, reserved_before: datetime) -> list[IngestionJob]:
         stmt = select(IngestionJobModel).where(
             IngestionJobModel.status == IngestionJobStatus.PROCESSING.value,
@@ -345,9 +356,16 @@ class PostgresIngestionJobQueue:
 
     def _write(self, job: IngestionJob, documents: list[Document]) -> None:
         try:
-            model = self._session.get(IngestionJobModel, job.id)
-            if model is not None:
-                _apply_job(model, job)
+            # Gravacao condicionada ao dono: se outra tentativa assumiu o job,
+            # nada e gravado (SPEC-007 fix-3).
+            result = self._session.execute(
+                update(IngestionJobModel)
+                .where(*_ingestion_owner(job))
+                .values(**_job_values(job))
+            )
+            if result.rowcount != 1:
+                self._session.rollback()
+                raise JobOwnershipLostError(job.id)
             for document in documents:
                 # Documento excluido durante o processamento nao volta (C4).
                 if self._session.get(DocumentModel, document.id.value) is not None:
@@ -419,6 +437,43 @@ class PostgresReindexJobRepository:
             _reindex_job_to_entity(item)
             for item in self._session.scalars(stmt).all()
         ]
+
+    def renew_lease(
+        self,
+        job_id: str,
+        attempts: int,
+        *,
+        lease_expires_at: datetime,
+        processed_documents: int,
+    ) -> bool:
+        result = self._session.execute(
+            update(ReindexJobModel)
+            .where(*_reindex_owner(job_id, attempts))
+            .values(
+                lease_expires_at=lease_expires_at,
+                processed_documents=processed_documents,
+            )
+        )
+        self._session.commit()
+        return result.rowcount == 1
+
+    def save_if_owner(self, job: ReindexJob, attempts: int) -> bool:
+        result = self._session.execute(
+            update(ReindexJobModel)
+            .where(*_reindex_owner(job.id, attempts))
+            .values(
+                target_collection=job.target_collection,
+                status=job.status.value,
+                total_documents=job.total_documents,
+                processed_documents=job.processed_documents,
+                error=job.error,
+                finished_at=job.finished_at,
+                attempts=job.attempts,
+                lease_expires_at=job.lease_expires_at,
+            )
+        )
+        self._session.commit()
+        return result.rowcount == 1
 
     def claim_next(self, now: datetime, lease: timedelta) -> ReindexJob | None:
         """PC-D4: reserva com ``FOR UPDATE SKIP LOCKED``, como a fila de ingestao."""
@@ -737,6 +792,34 @@ def _write_document(session: Session, document: Document) -> DocumentModel:
     )
     model.uploaded_by = document.uploaded_by
     return model
+
+
+def _reindex_owner(job_id: str, attempts: int) -> tuple:
+    return (
+        ReindexJobModel.id == job_id,
+        ReindexJobModel.attempts == attempts,
+        ReindexJobModel.status == ReindexStatus.RUNNING.value,
+    )
+
+
+def _ingestion_owner(job: IngestionJob) -> tuple:
+    return (
+        IngestionJobModel.id == job.id,
+        IngestionJobModel.attempts == job.attempts,
+        IngestionJobModel.status == IngestionJobStatus.PROCESSING.value,
+    )
+
+
+def _job_values(job: IngestionJob) -> dict[str, object]:
+    return {
+        "document_id": job.document_id.value,
+        "kind": job.kind.value,
+        "status": job.status.value,
+        "attempts": job.attempts,
+        "available_at": job.available_at,
+        "reserved_at": job.reserved_at,
+        "last_error": job.last_error,
+    }
 
 
 def _apply_job(model: IngestionJobModel, job: IngestionJob) -> None:

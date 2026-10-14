@@ -42,6 +42,7 @@ from src.infrastructure.database import (
     run_migrations,
 )
 from src.infrastructure.observability import configure_logging
+from src.infrastructure.security import check_deployment_secrets, local_only_warning
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,11 @@ configure_logging(level=os.getenv("LOG_LEVEL", "INFO"))
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # SPEC-007 fix-4: segredo padrao so no ambiente local.
+    check_deployment_secrets(os.environ)
+    warning = local_only_warning(os.environ)
+    if warning:
+        logger.warning("security.local_only", extra={"detail": warning})
     # As migracoes sao aplicadas antes de a API aceitar requisicoes (ADR 0011).
     run_migrations()
     # PC-D4: reindexacao interrompida e retomada pelo worker, nao encerrada aqui.
