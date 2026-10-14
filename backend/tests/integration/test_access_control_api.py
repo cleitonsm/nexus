@@ -292,7 +292,8 @@ class UnauthenticatedTestCase(unittest.TestCase):
     def _protected_routes(self) -> list[tuple[str, str]]:
         routes = []
         for route in self.app.routes:
-            if not isinstance(route, APIRoute) or route.path == "/health":
+            # /health e /metrics sao publicos por projeto (SPEC-006 D2).
+            if not isinstance(route, APIRoute) or route.path in ("/health", "/metrics"):
                 continue
             path = re.sub(r"\{[^}]+\}", "x", route.path)
             routes.extend((method, path) for method in sorted(route.methods))
@@ -305,7 +306,10 @@ class UnauthenticatedTestCase(unittest.TestCase):
             with self.subTest(route=f"{method} {path}"):
                 response = self.client.request(method, path)
                 self.assertEqual(response.status_code, 401)
-                self.assertEqual(response.json(), {"detail": "authentication required"})
+                self.assertEqual(
+                    response.json(),
+                    {"detail": "authentication required", "code": "unauthenticated"},
+                )
                 self.assertEqual(response.headers["www-authenticate"], "Bearer")
 
     def test_health_needs_no_token(self) -> None:
@@ -328,7 +332,8 @@ class UnauthenticatedTestCase(unittest.TestCase):
                     response = self.client.request(method, path, headers=bearer(token))
                     self.assertEqual(response.status_code, 401)
                     self.assertEqual(
-                        response.json(), {"detail": "invalid or expired token"}
+                        response.json(),
+                        {"detail": "invalid or expired token", "code": "unauthenticated"},
                     )
 
     def test_other_authorization_schemes_are_rejected(self) -> None:

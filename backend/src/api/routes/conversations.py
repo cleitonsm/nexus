@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextvars
+import itertools
 import json
 import logging
 from collections.abc import Iterator
@@ -328,9 +329,17 @@ def chat_with_assistant_stream(
         metrics=metrics,
     )
     try:
-        events = use_case.start_stream(_chat_input(user, conversation_id, payload))
+        events = _in_one_context(
+            use_case.start_stream(_chat_input(user, conversation_id, payload))
+        )
+        # A recuperacao dos trechos roda antes do primeiro evento: puxa-lo aqui
+        # faz o indice incompativel (409) ou a falha do LLM virarem status HTTP,
+        # e nao um 200 com evento de erro.
+        first = next(events, None)
     except (ConversationNotFoundError, IndexOutdatedError, ValueError, RuntimeError) as exc:
         raise _chat_error(exc) from exc
+    if first is not None:
+        events = itertools.chain([first], events)
     return StreamingResponse(
         _server_sent_events(events, session),
         media_type="text/event-stream",
@@ -400,7 +409,7 @@ def _server_sent_events(
     session: Session,
 ) -> Iterator[str]:
     try:
-        for event in _in_one_context(events):
+        for event in events:
             if event.kind == "done" and event.result is not None:
                 data = jsonable_encoder(_chat_response(event.result))
             else:
