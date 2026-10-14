@@ -74,6 +74,12 @@ reexecução definida na seção 9.
 
 ### 4.1 Inventário atual
 
+> **Andamento em 2026-10-14**: já existem o cliente `nexus-tests` (V-D2), `scripts/perf/` (corpus,
+> upload, indexação, TTFT e relatório), `env_snapshot.sh`, `run-all.sh`/`.ps1` e o CT-04
+> (`test_evaluation_command.py`, não executado). A escrita do CT-04 revelou que o comando de
+> avaliação não iniciava desde a Fase 5 (corrigido). Seguem por escrever: CT-39, CT-40, CT-49 a
+> CT-57, FE-02 a FE-07, `retrieval_latency.py` e `reindex_under_load.py`.
+
 | Casos | Existe? | Onde |
 |-------|---------|------|
 | CT-05, CT-07, CT-10, CT-11, CT-12, CT-18, CT-19, CT-20 | Sim, nunca executados no Docker | `backend/tests/integration/` |

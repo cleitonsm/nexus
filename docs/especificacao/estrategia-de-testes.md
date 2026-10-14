@@ -112,6 +112,16 @@ infraestrutura e poucos roteiros ponta a ponta.
 | CT-47 | Integração | Restauração de backup em ambiente limpo recupera dados e buscas | RF-63, RNF-28 |
 | CT-48 | Integração contínua | Avaliação com regressão simulada faz o pipeline falhar | RF-62 |
 
+### SPEC-007 — Endurecimento
+
+| ID | Nível | Descrição | Verifica |
+|----|-------|-----------|----------|
+| CT-58 | Unitário e integração | `POST /messages` recusa os papéis `assistant` e `system` (422) | RF-64 |
+| CT-59 | Unitário | Upload lido em blocos: 413 pelo `Content-Length` e pelo fluxo, sem carregar o arquivo inteiro | RF-65 |
+| CT-60 | Unitário e integração | Dois workers: quem perdeu a reserva não renova, não grava nem altera o alias; reserva renovada impede a devolução à fila | RF-66 |
+| CT-61 | Unitário | Segredo ausente ou padrão fora de `APP_ENV=local` impede a partida, sem citar o valor | RF-67 |
+| CT-62 | Unitário | O comando de avaliação envia e processa os documentos do piloto; falha de indexação é reportada | CT-04 |
+
 ---
 
 ## Testes de Segurança Recorrentes
@@ -168,7 +178,12 @@ Atualizado em 2026-10-08.
 | CT-46 | Implementado e executado com sucesso (sem Docker; também no CI) | `backend/tests/integration/test_sensitive_data_leak.py` |
 | CT-47 | Roteiro implementado, ainda não executado (exige o Docker); os scripts de backup e restauração passam no ensaio com PostgreSQL real e Qdrant simulado | `scripts/validation/backup-restore.sh`, `backend/tests/validation/restored_search.py`, `scripts/validation/backup-scripts-check.sh` |
 | CT-48 | Comparação executada como teste unitário; o roteiro com o código de saída real exige o Docker | `backend/tests/unit/test_regression_gate.py`, `scripts/validation/regression-gate.sh` |
-| CT-49 a CT-57 | Não implementados; definidos no [plano de validação final](../qa/plano-de-validacao-final.md) | — |
+| CT-58, CT-59, CT-61, CT-62 | Implementados e executados com sucesso | `test_access_control.py`, `test_upload_reading.py`, `test_deployment_safety.py`, `test_evaluation_seeding.py` |
+| CT-58 (rota) | Implementado, ainda não executado (exige FastAPI) | `backend/tests/integration/test_access_control_api.py` |
+| CT-60 | Dois workers simulados executados com sucesso; os `UPDATE` condicionais no PostgreSQL estão escritos e ainda não executados | `backend/tests/unit/test_job_ownership.py`, `backend/tests/integration/test_job_ownership_storage.py` |
+| CT-04 | Escrito, ainda não executado (exige PostgreSQL e Qdrant) | `backend/tests/integration/test_evaluation_command.py` |
+| Ferramentas de medição e orquestração | Implementadas e testadas sem Docker | `scripts/perf/`, `scripts/validation/run-all.sh`, `backend/tests/unit/test_perf_tools.py`, `backend/tests/unit/test_validation_runner.py` |
+| CT-39, CT-40, CT-49 a CT-57 | Não implementados; definidos no [plano de validação final](../qa/plano-de-validacao-final.md) | — |
 
 Os testes de integração da Fase 4 não sobem o Keycloak: usam o verificador de token real com
 tokens assinados por uma chave gerada no próprio teste.
