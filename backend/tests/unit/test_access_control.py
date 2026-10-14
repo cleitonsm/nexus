@@ -10,7 +10,7 @@ import unittest
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
-from access_doubles import AccessFixture, admin, curator, make_user
+from access_doubles import AccessFixture, StaticGroupDirectory, admin, curator, make_user
 from chat_doubles import (
     ScriptedLLM,
     ScriptedVectorStore,
@@ -27,6 +27,7 @@ from src.application.services import (
     AuditTrail,
     DocumentIndexer,
     GroundedAnswerGenerator,
+    UnknownGroupsError,
 )
 from src.application.use_cases import (
     AddMessageInput,
@@ -893,6 +894,7 @@ class DocumentManagementTestCase(AccessTestCase):
         user: AuthenticatedUser,
         document_id: str = "doc-1",
         groups: tuple[str, ...] = (),
+        directory: StaticGroupDirectory | None = None,
     ):
         """Envio seguido do processamento pelo worker."""
         queue = InMemoryIngestionJobQueue(self.documents, self.jobs)
@@ -905,6 +907,7 @@ class DocumentManagementTestCase(AccessTestCase):
             job_queue=queue,
             max_file_bytes=1024,
             access_control=self.access.control,
+            group_directory=directory,
         ).execute(
             IngestDocumentInput(
                 user=user,
@@ -926,12 +929,19 @@ class DocumentManagementTestCase(AccessTestCase):
         ).execute()
         return result
 
-    def _restrict(self, user: AuthenticatedUser, *groups: str, document_id: str = "doc-1"):
+    def _restrict(
+        self,
+        user: AuthenticatedUser,
+        *groups: str,
+        document_id: str = "doc-1",
+        directory: StaticGroupDirectory | None = None,
+    ):
         return SetDocumentGroupsUseCase(
             document_repository=self.documents,
             vector_store_gateway=self.vector_store,
             reindex_job_repository=self.jobs,
             access_control=self.access.control,
+            group_directory=directory,
         ).execute(
             SetDocumentGroupsInput(user=user, document_id=document_id, groups=groups)
         )
@@ -972,6 +982,54 @@ class DocumentManagementTestCase(AccessTestCase):
         self.assertEqual(self.documents.items, {})
         self.assertEqual(self.storage.files, {})
         self.assertEqual(self.vector_store.collections, {})
+
+    def test_upload_with_an_unknown_group_is_rejected_before_any_write(self) -> None:
+        """CT-74 (SPEC-009): "Sem restricao" nao e um grupo do Keycloak."""
+        directory = StaticGroupDirectory("rh", "diretoria")
+        with self.assertRaises(UnknownGroupsError) as raised:
+            self._ingest(self.rh_curator, groups=("Sem restrição",), directory=directory)
+        self.assertEqual(raised.exception.groups, ["Sem restrição"])
+        self.assertEqual(self.documents.items, {})
+        self.assertEqual(self.storage.files, {})
+        self.assertEqual(self.vector_store.collections, {})
+        self.assertNotIn(AuditAction.DOCUMENT_UPLOADED, self.access.audit.actions())
+
+    def test_upload_with_known_groups_is_accepted(self) -> None:
+        """CT-75"""
+        directory = StaticGroupDirectory("rh", "diretoria")
+        result = self._ingest(self.rh_curator, groups=("/diretoria", "rh"), directory=directory)
+        self.assertEqual(result.groups, ("diretoria", "rh"))
+
+    def test_upload_without_groups_does_not_consult_the_directory(self) -> None:
+        """CT-75"""
+        directory = StaticGroupDirectory("rh")
+        self._ingest(self.rh_curator, directory=directory)
+        self.assertEqual(directory.calls, 0)
+
+    def test_restriction_to_an_unknown_group_changes_nothing(self) -> None:
+        """CT-74"""
+        self.documents.add("doc-1")
+        directory = StaticGroupDirectory("rh")
+        with self.assertRaises(UnknownGroupsError):
+            self._restrict(self.rh_curator, "inventado", directory=directory)
+        self.assertEqual(self._stored_groups(), frozenset())
+        self.assertEqual(self.vector_store.group_updates, [])
+        self.assertNotIn(AuditAction.DOCUMENT_GROUPS_CHANGED, self.access.audit.actions())
+
+    def test_restriction_is_accepted_when_the_directory_is_unavailable(self) -> None:
+        """CT-75 (D3)"""
+        self.documents.add("doc-1")
+        directory = StaticGroupDirectory(available=False)
+        result = self._restrict(self.rh_curator, "rh", directory=directory)
+        self.assertEqual(result.groups, ("rh",))
+
+    def test_clearing_the_restriction_never_consults_the_directory(self) -> None:
+        """CT-75"""
+        self.documents.add("doc-1")
+        self.access.restrict_document("doc-1", "diretoria")
+        directory = StaticGroupDirectory(available=False)
+        self.assertEqual(self._restrict(self.admin, directory=directory).groups, ())
+        self.assertEqual(directory.calls, 0)
 
     def test_common_user_and_foreign_curator_cannot_upload(self) -> None:
         for user in (self.rh_user, curator("eva", "financeiro")):

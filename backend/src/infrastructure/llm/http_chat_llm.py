@@ -4,7 +4,8 @@ import json
 import logging
 import re
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from http.client import HTTPException
 from typing import Any
 from urllib import error, request
 from urllib.parse import urlparse
@@ -28,6 +29,12 @@ class LLMProviderError(RuntimeError):
 
 
 logger = logging.getLogger(__name__)
+
+# SPEC-009 D2: tres tentativas no total, com espera de 1 s e de 3 s. So falhas
+# passageiras do provedor ou da rede se repetem; erro do pedido (400, 401, 403,
+# 404) volta na hora.
+RETRY_DELAYS_SECONDS: tuple[float, ...] = (1.0, 3.0)
+RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 
 BASE_SYSTEM_TEXT = (
     "Voce e um assistente de suporte do Nexus. "
@@ -90,6 +97,8 @@ class HttpChatCompletionsLLM(LLMGateway):
         model: str,
         api_key: str,
         timeout_seconds: float = 30.0,
+        retry_delays: tuple[float, ...] = RETRY_DELAYS_SECONDS,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         if not api_url.strip():
             raise LLMConfigurationError("LLM_API_URL must not be empty.")
@@ -103,6 +112,8 @@ class HttpChatCompletionsLLM(LLMGateway):
         self._model = model
         self._api_key = api_key
         self._timeout_seconds = timeout_seconds
+        self._retry_delays = retry_delays
+        self._sleep = sleep
 
     @property
     def model(self) -> str:
@@ -259,23 +270,56 @@ class HttpChatCompletionsLLM(LLMGateway):
             },
             method="POST",
         )
-        try:
-            return request.urlopen(http_request, timeout=self._timeout_seconds)
-        except error.HTTPError as exc:
-            details = exc.read().decode("utf-8", errors="ignore")
-            logger.warning(
-                "llm.request.rejected",
-                extra={"status_code": exc.code, "llm_model": self._model},
-            )
-            raise LLMProviderError(
-                f"LLM provider rejected request: {exc.code} {details[:500]}"
-            ) from exc
-        except error.URLError as exc:
-            logger.warning(
-                "llm.request.unreachable",
-                extra={"reason": str(exc.reason), "llm_model": self._model},
-            )
-            raise LLMProviderError("LLM provider is unreachable.") from exc
+        attempts = len(self._retry_delays) + 1
+        for attempt in range(1, attempts + 1):
+            try:
+                return request.urlopen(http_request, timeout=self._timeout_seconds)
+            except error.HTTPError as exc:
+                details = exc.read().decode("utf-8", errors="ignore")
+                logger.warning(
+                    "llm.request.rejected",
+                    extra={
+                        "status_code": exc.code,
+                        "llm_model": self._model,
+                        "attempt": attempt,
+                    },
+                )
+                if exc.code in RETRYABLE_STATUS_CODES and attempt < attempts:
+                    self._wait_before_retry(attempt, str(exc.code))
+                    continue
+                raise LLMProviderError(
+                    f"LLM provider rejected request: {exc.code} {details[:500]}"
+                ) from exc
+            except (error.URLError, ConnectionError, HTTPException) as exc:
+                # ``RemoteDisconnected`` e afins saem do urllib sem o embrulho
+                # de ``URLError``; para o cliente tambem e provedor inalcancavel.
+                logger.warning(
+                    "llm.request.unreachable",
+                    extra={
+                        "reason": str(getattr(exc, "reason", None) or type(exc).__name__),
+                        "llm_model": self._model,
+                        "attempt": attempt,
+                    },
+                )
+                if attempt < attempts:
+                    self._wait_before_retry(attempt, "unreachable")
+                    continue
+                raise LLMProviderError("LLM provider is unreachable.") from exc
+        raise LLMProviderError("LLM provider is unreachable.")
+
+    def _wait_before_retry(self, attempt: int, reason: str) -> None:
+        delay = self._retry_delays[attempt - 1]
+        logger.info(
+            "llm.request.retrying",
+            extra={
+                "attempt": attempt,
+                "next_attempt": attempt + 1,
+                "reason": reason,
+                "delay_seconds": delay,
+                "llm_model": self._model,
+            },
+        )
+        self._sleep(delay)
 
 
 def parse_usage(raw: object) -> TokenUsage:

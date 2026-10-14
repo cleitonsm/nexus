@@ -14,6 +14,7 @@ from src.api.dependencies import (
     get_document_repository,
     get_embedding_gateway,
     get_file_storage,
+    get_group_directory,
     get_ingestion_job_queue,
     get_max_file_bytes,
     get_reindex_job_repository,
@@ -41,6 +42,7 @@ from src.domain import (
     DocumentId,
     DocumentMetadata,
     DocumentStatus,
+    GroupDirectoryUnavailableError,
     IngestionJob,
     IngestionJobStatus,
     ReindexJob,
@@ -194,6 +196,19 @@ class WordTokenCounter:
 
     def count(self, text: str) -> int:
         return len(text.split()) + 2
+
+
+class _StaticGroupDirectory:
+    """Lista de grupos do Keycloak fixa; ``available=False`` simula Keycloak fora."""
+
+    def __init__(self, *names: str) -> None:
+        self.names = list(names)
+        self.available = True
+
+    def list_groups(self) -> list[str]:
+        if not self.available:
+            raise GroupDirectoryUnavailableError("keycloak indisponivel.")
+        return list(self.names)
 
 
 def _fake_document_indexer() -> DocumentIndexer:
@@ -455,6 +470,9 @@ class ApiRoutesTestCase(unittest.TestCase):
         overrides[get_document_indexer] = _fake_document_indexer
         overrides[get_embedding_gateway] = FakeEmbeddingGateway
         overrides[get_max_file_bytes] = lambda: max_file_bytes
+        # SPEC-009: os grupos do envio sao conferidos contra a lista do Keycloak.
+        self.group_directory = _StaticGroupDirectory("diretoria", "rh")
+        overrides[get_group_directory] = lambda: self.group_directory
         self.queue = InMemoryJobQueue(document_repository)
         overrides[get_ingestion_job_queue] = lambda: self.queue
         self.worker = ProcessNextIngestionJobUseCase(
@@ -540,6 +558,38 @@ class ApiRoutesTestCase(unittest.TestCase):
             frozenset({"diretoria", "rh"}),
         )
         self.assertEqual(invalid.status_code, 422)
+        self.assertEqual(len(document_repository.items), 1)
+
+    def test_ingest_document_endpoint_rejects_groups_unknown_to_keycloak(self) -> None:
+        """CT-76 (SPEC-009): "Sem restricao" nao e grupo; nada e gravado."""
+        document_repository, vector_store = self._override_indexing()
+
+        with TestClient(self.app) as client:
+            response = client.post(
+                "/assistants/assistant-1/documents",
+                files={"file": ("manual.txt", b"Conteudo principal", "text/plain")},
+                data={"groups": '["Sem restri\u00e7\u00e3o"]'},
+            )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertIn("Sem restri", response.json()["detail"])
+        self.assertEqual(document_repository.items, {})
+        self.assertEqual(vector_store.upserts, [])
+
+    def test_ingest_document_endpoint_accepts_any_group_while_keycloak_is_down(self) -> None:
+        """CT-75 (D3): sem a lista de grupos a validacao e ignorada."""
+        document_repository, _ = self._override_indexing()
+        self.group_directory.available = False
+
+        with TestClient(self.app) as client:
+            response = client.post(
+                "/assistants/assistant-1/documents",
+                files={"file": ("manual.txt", b"Conteudo principal", "text/plain")},
+                data={"groups": '["qualquer"]'},
+            )
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()["groups"], ["qualquer"])
         self.assertEqual(len(document_repository.items), 1)
 
     def test_duplicate_upload_reports_the_existing_document(self) -> None:

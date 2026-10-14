@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from src.application.dto import DocumentAccessDTO
-from src.application.services import AccessControl
+from src.application.services import AccessControl, ensure_known_groups
 from src.domain import (
     AssistantId,
     AssistantRepository,
@@ -15,6 +15,7 @@ from src.domain import (
     CollectionName,
     DocumentId,
     DocumentRepository,
+    GroupDirectory,
     ReindexInProgressError,
     ReindexJobRepository,
     VectorStoreGateway,
@@ -169,11 +170,13 @@ class SetDocumentGroupsUseCase:
         vector_store_gateway: VectorStoreGateway,
         reindex_job_repository: ReindexJobRepository,
         access_control: AccessControl,
+        group_directory: GroupDirectory | None = None,
     ) -> None:
         self._document_repository = document_repository
         self._vector_store_gateway = vector_store_gateway
         self._reindex_job_repository = reindex_job_repository
         self._access = access_control
+        self._group_directory = group_directory
 
     def execute(self, data: SetDocumentGroupsInput) -> DocumentAccessDTO:
         document_id = DocumentId(data.document_id)
@@ -191,6 +194,8 @@ class SetDocumentGroupsUseCase:
                 "a reindex is in progress for this assistant."
             )
         groups = normalize_groups(data.groups)
+        # RF-74: grupo desconhecido esconderia o documento de todos.
+        ensure_known_groups(groups, self._group_directory)
         permissions = self._access.permissions
         before = permissions.get_document_groups(document_id)
         permissions.set_document_groups(document_id, groups)

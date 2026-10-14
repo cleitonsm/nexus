@@ -9,6 +9,7 @@ from src.domain import (
     AuditQuery,
     AuthenticatedUser,
     DocumentId,
+    GroupDirectoryUnavailableError,
     Role,
 )
 
@@ -34,6 +35,21 @@ def admin(user_id: str = "admin-1") -> AuthenticatedUser:
 
 def curator(user_id: str = "curator-1", *groups: str) -> AuthenticatedUser:
     return make_user(user_id, roles=(Role.CURATOR,), groups=groups)
+
+
+class StaticGroupDirectory:
+    """Lista de grupos do Keycloak (PC-D6) fixa, ou fora do ar (SPEC-009)."""
+
+    def __init__(self, *names: str, available: bool = True) -> None:
+        self.names = list(names)
+        self.available = available
+        self.calls = 0
+
+    def list_groups(self) -> list[str]:
+        self.calls += 1
+        if not self.available:
+            raise GroupDirectoryUnavailableError("keycloak indisponivel.")
+        return list(self.names)
 
 
 class InMemoryPermissionRepository:

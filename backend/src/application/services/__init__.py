@@ -1,5 +1,6 @@
 from .access_control import AccessControl, AuditTrail
 from .document_indexing import PIPELINE_VERSION, DocumentIndexer
+from .group_validation import UnknownGroupsError, ensure_known_groups
 from .grounded_answer import (
     CITATION_INSTRUCTION,
     DEFAULT_ANSWER_INSTRUCTION,
@@ -56,8 +57,10 @@ __all__ = [
     "ingestion_paused",
     "RetrievalSettings",
     "UsageGovernance",
+    "UnknownGroupsError",
     "UsageSettings",
     "build_answer_instruction",
+    "ensure_known_groups",
     "build_answer_prompt",
     "fit_context",
     "SparseParametersCheck",

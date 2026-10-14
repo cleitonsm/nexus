@@ -26,6 +26,7 @@ from src.api.dependencies import (
     get_document_indexer,
     get_document_repository,
     get_file_storage,
+    get_group_directory,
     get_ingestion_job_queue,
     get_max_file_bytes,
     get_reindex_job_repository,
@@ -60,6 +61,7 @@ from src.domain import (
     DocumentRepository,
     DomainValidationError,
     DuplicateDocumentError,
+    GroupDirectory,
     IndexOutdatedError,
     IngestionJobQueue,
     InvalidDocumentStateError,
@@ -104,6 +106,7 @@ async def ingest_document(
     file_storage: DocumentFileStorage = Depends(get_file_storage),
     job_queue: IngestionJobQueue = Depends(get_ingestion_job_queue),
     max_file_bytes: int = Depends(get_max_file_bytes),
+    group_directory: GroupDirectory = Depends(get_group_directory),
 ) -> DocumentAccessResponse:
     """RF-48: guarda o original e enfileira; o worker indexa em segundo plano.
 
@@ -139,6 +142,7 @@ async def ingest_document(
         job_queue=job_queue,
         max_file_bytes=max_file_bytes,
         access_control=access_control,
+        group_directory=group_directory,
     )
     with _translate_errors():
         result = await run_in_threadpool(
@@ -299,6 +303,7 @@ def set_document_groups(
     reindex_job_repository: ReindexJobRepository = Depends(
         get_reindex_job_repository
     ),
+    group_directory: GroupDirectory = Depends(get_group_directory),
 ) -> DocumentAccessResponse:
     """RF-43: restringe o documento a grupos; lista vazia remove a restricao."""
     use_case = SetDocumentGroupsUseCase(
@@ -306,6 +311,7 @@ def set_document_groups(
         vector_store_gateway=vector_store_gateway,
         reindex_job_repository=reindex_job_repository,
         access_control=access_control,
+        group_directory=group_directory,
     )
     with _translate_errors():
         result = use_case.execute(

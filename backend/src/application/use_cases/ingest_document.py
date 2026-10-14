@@ -15,6 +15,7 @@ from src.application.services import (
     PIPELINE_VERSION,
     AccessControl,
     DocumentIndexer,
+    ensure_known_groups,
     is_index_outdated,
     read_index_state,
 )
@@ -31,6 +32,7 @@ from src.domain import (
     DocumentRepository,
     DocumentStatus,
     DuplicateDocumentError,
+    GroupDirectory,
     IndexOutdatedError,
     IngestionJob,
     IngestionJobKind,
@@ -217,6 +219,7 @@ class IngestDocumentUseCase:
         job_queue: IngestionJobQueue,
         max_file_bytes: int,
         access_control: AccessControl,
+        group_directory: GroupDirectory | None = None,
     ) -> None:
         self._intake = _DocumentIntake(
             document_repository=document_repository,
@@ -228,6 +231,7 @@ class IngestDocumentUseCase:
             access_control=access_control,
         )
         self._access = access_control
+        self._group_directory = group_directory
 
     def execute(self, data: IngestDocumentInput) -> DocumentAccessDTO:
         """RN-21: envia quem gerencia documentos do assistente."""
@@ -238,6 +242,8 @@ class IngestDocumentUseCase:
         upload = _Upload(data.source_name, data.raw_content, data.content_type)
         content_hash = self._intake.validate(assistant_id, upload)
         groups = normalize_groups(data.groups)
+        # RF-74: grupo desconhecido esconderia o documento de todos.
+        ensure_known_groups(groups, self._group_directory)
         document = self._intake.register(
             Document(
                 id=DocumentId(data.document_id or str(uuid4())),
