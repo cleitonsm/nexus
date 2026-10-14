@@ -30,9 +30,11 @@ class ErrorCodesTest(unittest.TestCase):
             {"detail": "assistant not found", "code": "not_found"},
         )
 
-    def test_structured_detail_with_its_own_code_wins(self) -> None:
-        detail = {"detail": "Limite", "code": "usage_limit", "window": "minute"}
-        self.assertEqual(error_body(429, detail), detail)
+    def test_structured_detail_keeps_its_shape_and_its_own_code(self) -> None:
+        detail = {"code": "duplicate_document", "document_id": "d1"}
+        self.assertEqual(
+            error_body(409, detail), {"detail": detail, "code": "duplicate_document"}
+        )
 
     def test_structured_detail_without_code_is_kept_under_detail(self) -> None:
         body = error_body(409, {"document_id": "d1"})

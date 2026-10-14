@@ -194,7 +194,7 @@ class OperationsApiTestCase(unittest.TestCase):
         overrides = self.app.dependency_overrides
         overrides[get_usage_record_repository] = lambda: self.records
         overrides[get_usage_settings_repository] = lambda: self.settings
-        overrides[get_usage_settings] = UsageSettings
+        overrides[get_usage_settings] = lambda: UsageSettings()
         overrides[get_feedback_repository] = lambda: self.feedback
         overrides[get_conversation_repository] = lambda: self.conversations
         self.client = TestClient(self.app)

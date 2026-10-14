@@ -162,6 +162,11 @@ class InMemoryJobQueue:
                 return self.jobs[job.id]
         return None
 
+    def renew(self, job, now: datetime) -> bool:
+        # SPEC-007 fix-3: o worker renova a reserva a cada etapa.
+        self.jobs[job.id] = replace(self.jobs[job.id], reserved_at=now)
+        return True
+
     def list_expired(self, reserved_before: datetime) -> list[IngestionJob]:
         return []
 

@@ -30,7 +30,11 @@ def error_code(status_code: int) -> str:
 
 
 def error_body(status_code: int, detail: object) -> dict[str, object]:
-    """``{detail, code}``; um ``detail`` em forma de objeto com ``code`` vence."""
-    if isinstance(detail, dict) and "code" in detail:
-        return dict(detail)
+    """``{detail, code}``; o ``code`` do proprio ``detail`` (objeto) tem prioridade.
+
+    O ``detail`` nunca e achatado: quem le ``body["detail"]["document_id"]``
+    (409 de duplicado, RN-26) continua lendo igual.
+    """
+    if isinstance(detail, dict) and isinstance(detail.get("code"), str):
+        return {"detail": detail, "code": detail["code"]}
     return {"detail": detail, "code": error_code(status_code)}
