@@ -13,6 +13,9 @@ param(
     [int]$TimeoutMinutes = 15
 )
 $ErrorActionPreference = "Continue"
+# Acentos e caracteres do docker aparecem certos no console e nos arquivos.
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 Set-Location (Join-Path $PSScriptRoot "..\..")
 
 $stamp = Get-Date -Format "yyyy-MM-dd"
@@ -68,15 +71,15 @@ do {
     }
     $state = @{}
     foreach ($i in $items) { $state[$i.Service] = "$($i.State)/$($i.Health)" }
-    $pending = $expected | Where-Object {
+    $pending = @($expected | Where-Object {
         $s = $state[$_]
         -not $s -or -not ($s -like "running/healthy" -or ($_ -eq "worker" -and $s -like "running/*"))
-    }
-} while ($pending -and (Get-Date) -lt $deadline)
+    })
+} while ($pending.Count -gt 0 -and (Get-Date) -lt $deadline)
 $sw.Stop()
 $elapsed = [int]$sw.Elapsed.TotalSeconds
 $detail = ($expected | ForEach-Object { "$_=$($state[$_])" }) -join ", "
-Add-Result "Servicos saudaveis" (-not $pending) "$elapsed s ate saudavel; $detail"
+Add-Result "Servicos saudaveis" ($pending.Count -eq 0) "$elapsed s ate saudavel; $detail"
 
 # 4. Migracoes ----------------------------------------------------------------
 $alembic = docker compose exec -T backend alembic current 2>&1
@@ -85,10 +88,16 @@ Add-Result "alembic current (head)" (($alembic -join " ") -match "\(head\)") (($
 
 # 5. Dependencias -------------------------------------------------------------
 docker compose exec -T backend pip freeze 2>&1 | Set-Content -Encoding utf8 (Join-Path $out "03-pip-freeze.txt")
-$req = Get-Content "backend\requirements.txt" | Where-Object { $_ -match "==" } | ForEach-Object { $_.Trim().ToLower() }
-$frozen = Get-Content (Join-Path $out "03-pip-freeze.txt") | ForEach-Object { $_.Trim().ToLower() }
-$missing = $req | Where-Object { $frozen -notcontains $_ }
-Add-Result "requirements x pip freeze" (-not $missing) ("divergencias: " + (($missing | Select-Object -First 5) -join ", "))
+function Get-PackageKey([string]$line) {
+    # "psycopg[binary]==3.2.1" -> "psycopg==3.2.1"; "_" e "." valem "-" (PEP 503).
+    $name, $version = ($line.Trim().ToLower() -split "==", 2)
+    $name = ($name -replace "\[.*\]", "") -replace "[-_.]+", "-"
+    return "$name==$($version.Trim())"
+}
+$req = @(Get-Content "backend\requirements.txt" | Where-Object { $_ -match "==" } | ForEach-Object { Get-PackageKey $_ })
+$frozen = @(Get-Content (Join-Path $out "03-pip-freeze.txt") | Where-Object { $_ -match "==" } | ForEach-Object { Get-PackageKey $_ })
+$missing = @($req | Where-Object { $frozen -notcontains $_ })
+Add-Result "requirements x pip freeze" ($missing.Count -eq 0) ("divergencias: " + (($missing | Select-Object -First 5) -join ", "))
 
 # 6. Rotas basicas ------------------------------------------------------------
 function Get-Status([string]$url) {
@@ -112,10 +121,10 @@ foreach ($c in $checks) {
 # 7. Logs ---------------------------------------------------------------------
 docker compose logs --no-color --timestamps backend worker keycloak qdrant frontend *> (Join-Path $out "04-logs.txt")
 $logText = Get-Content (Join-Path $out "04-logs.txt")
-$tracebacks = ($logText | Select-String -Pattern "Traceback|CRITICAL|\"level\": \"ERROR\"").Count
-$compat = $logText | Select-String -Pattern "incompatib|version.*(client|server)|qdrant_client.*warn" | Select-Object -First 3
+$tracebacks = @($logText | Select-String -Pattern "Traceback|CRITICAL|\"level\": \"ERROR\"").Count
+$compat = @($logText | Select-String -Pattern "incompatib|version.*(client|server)|qdrant_client.*warn" | Select-Object -First 3)
 Add-Result "Erros nos logs" ($tracebacks -eq 0) "$tracebacks ocorrencias de Traceback/ERROR"
-Add-Result "Aviso de versao do Qdrant" ($null -eq $compat) ((($compat | ForEach-Object { $_.Line.Trim() }) -join " / ") + "")
+Add-Result "Aviso de versao do Qdrant" ($compat.Count -eq 0) ((($compat | ForEach-Object { $_.Line.Trim() }) -join " / ") + "")
 
 # 8. Checklist manual ---------------------------------------------------------
 @"
