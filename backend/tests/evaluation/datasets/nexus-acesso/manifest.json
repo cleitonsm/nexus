@@ -1,0 +1,35 @@
+{
+  "assistant_groups": ["rh", "financeiro", "diretoria"],
+  "documents": [
+    {
+      "file": "rh-politica-salarial.md",
+      "groups": ["rh"],
+      "marker": "ZEPHIR-RH-7731",
+      "question": "Qual é a faixa salarial do Analista Pleno e o reajuste extraordinário da equipe de atendimento?"
+    },
+    {
+      "file": "financeiro-orcamento.md",
+      "groups": ["financeiro"],
+      "marker": "QUASAR-FIN-4410",
+      "question": "Qual é o teto de despesa do projeto Aurora e a reserva de contingência do financeiro?"
+    },
+    {
+      "file": "diretoria-estrategia.md",
+      "groups": ["diretoria"],
+      "marker": "NIMBUS-DIR-9052",
+      "question": "Quando está prevista a aquisição da empresa Horizonte?"
+    },
+    {
+      "file": "comunicado-geral.md",
+      "groups": [],
+      "marker": "LUMEN-PUB-1200",
+      "question": "Que horas abre e fecha o estacionamento da matriz?"
+    }
+  ],
+  "users": {
+    "usuario.rh": ["rh"],
+    "curadora.rh": ["rh"],
+    "usuario.financeiro": ["financeiro"],
+    "diretora": ["rh", "diretoria"]
+  }
+}
