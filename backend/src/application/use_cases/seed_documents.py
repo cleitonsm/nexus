@@ -23,7 +23,7 @@ def seed_documents(
     upload: Callable[[str, bytes], object],
     process_pending: Callable[[], object | None],
 ) -> int:
-    """Envia os ``*.md`` dos diretorios, processa a fila e confere o resultado.
+    """Envia os ``*.md`` e ``*.docx`` dos diretorios, processa a fila e confere o resultado.
 
     ``upload(nome, conteudo)`` devolve o documento pendente (``id`` e
     ``source_name``); ``process_pending()`` devolve um resultado enquanto houver
@@ -32,7 +32,9 @@ def seed_documents(
     sent = [
         upload(path.name, path.read_bytes())
         for directory in directories
-        for path in sorted(Path(directory).glob("*.md"))
+        for path in sorted(
+            [*Path(directory).glob("*.md"), *Path(directory).glob("*.docx")]
+        )
     ]
     outcomes = []
     while (outcome := process_pending()) is not None:

@@ -17,6 +17,14 @@ from .compare_evaluation_reports import (
     CompareEvaluationReportsUseCase,
 )
 from .create_assistant import CreateAssistantInput, CreateAssistantUseCase
+from .calibrate_relevance import (
+    DEFAULT_THRESHOLDS,
+    CalibrateRelevanceInput,
+    CalibrateRelevanceUseCase,
+    CalibrationReport,
+    ItemScores,
+    ThresholdPoint,
+)
 from .evaluate_assistant import (
     EvaluateAssistantInput,
     EvaluateAssistantUseCase,
@@ -161,6 +169,12 @@ __all__ = [
     "DocumentNotFoundError",
     "DocumentRefInput",
     "DocumentTooLargeError",
+    "CalibrateRelevanceInput",
+    "CalibrateRelevanceUseCase",
+    "CalibrationReport",
+    "DEFAULT_THRESHOLDS",
+    "ItemScores",
+    "ThresholdPoint",
     "EvaluateAssistantInput",
     "EvaluateAssistantUseCase",
     "ExportFeedbackInput",

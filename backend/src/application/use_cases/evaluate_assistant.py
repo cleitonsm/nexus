@@ -11,12 +11,16 @@ from src.application.services import (
 from src.domain import (
     AnswerJudge,
     AssistantId,
+    ChatMessage,
     ContextChunk,
+    ConversationId,
     DocumentRepository,
     EvaluationItem,
     EvaluationItemResult,
     EvaluationMetrics,
     EvaluationReport,
+    MessageId,
+    MessageRole,
     SearchResult,
     TokenCounter,
     first_relevant_rank,
@@ -89,7 +93,7 @@ class EvaluateAssistantUseCase:
         source_names: dict[str, str],
         data: EvaluateAssistantInput,
     ) -> EvaluationItemResult:
-        ranked = self._retrieve(item.question, assistant_id, data)
+        ranked = self._retrieve(self._search_query(item), assistant_id, data)
         sources = tuple(
             source_names.get(hit.document_id.value, "")
             for hit in ranked[: data.k]
@@ -99,7 +103,7 @@ class EvaluateAssistantUseCase:
             self._token_counter,
             self._retriever.settings.context_token_budget,
         )
-        answer, fallback_used = self._answer(item.question, context)
+        answer, fallback_used = self._answer(item, context)
         return EvaluationItemResult(
             item_id=item.id,
             out_of_scope=item.out_of_scope,
@@ -112,6 +116,18 @@ class EvaluateAssistantUseCase:
             fallback_used=fallback_used,
             faithful=self._judge(item, answer, context),
             cited=self._cited(item, answer, fallback_used),
+        )
+
+    def _search_query(self, item: EvaluationItem) -> str:
+        """RF-36: pergunta de continuacao e reescrita com o historico do item.
+
+        Sem gerador (``--no-generation``) nao ha LLM para reescrever e a
+        pergunta segue como foi escrita.
+        """
+        if not item.history or self._answer_generator is None:
+            return item.question
+        return self._answer_generator.rewrite_question(
+            item.question, _history_messages(item)
         )
 
     @staticmethod
@@ -145,16 +161,16 @@ class EvaluateAssistantUseCase:
 
     def _answer(
         self,
-        question: str,
+        item: EvaluationItem,
         context: list[ContextChunk],
     ) -> tuple[str | None, bool | None]:
         """Reproduz a decisao de fallback do grafo do chat, sem persistir nada."""
         if self._answer_generator is None:
             return None, None
         grounded = self._answer_generator.answer(
-            question=question,
+            question=item.question,
             context_chunks=context,
-            history=[],
+            history=_history_messages(item),
         )
         if grounded is None:
             return None, True
@@ -173,6 +189,18 @@ class EvaluateAssistantUseCase:
             answer=answer,
             context_chunks=[chunk.text for chunk in context],
         )
+
+
+def _history_messages(item: EvaluationItem) -> list[ChatMessage]:
+    return [
+        ChatMessage(
+            id=MessageId(f"{item.id}-h{index}"),
+            conversation_id=ConversationId(f"eval-{item.id}"),
+            role=MessageRole(role),
+            content=content,
+        )
+        for index, (role, content) in enumerate(item.history, start=1)
+    ]
 
 
 def _summarize(

@@ -230,6 +230,29 @@ class DatasetLoaderTests(unittest.TestCase):
         items = JsonlEvaluationDatasetLoader(allow_unvalidated=True).load(path)
         self.assertFalse(items[0].is_validated)
 
+    def test_loads_history_for_follow_up_questions(self) -> None:
+        line = self._valid_line()
+        line["history"] = [
+            {"role": "user", "content": "Fale do reembolso."},
+            {"role": "assistant", "content": "O reembolso e pedido no sistema."},
+        ]
+        items = JsonlEvaluationDatasetLoader().load(self._write([line]))
+        self.assertEqual(
+            items[0].history,
+            (
+                ("user", "Fale do reembolso."),
+                ("assistant", "O reembolso e pedido no sistema."),
+            ),
+        )
+
+    def test_rejects_invalid_history(self) -> None:
+        for history in ("texto", [{"role": "system", "content": "x"}], [{"role": "user"}]):
+            with self.subTest(history=history):
+                line = self._valid_line()
+                line["history"] = history
+                with self.assertRaises(EvaluationDatasetError):
+                    JsonlEvaluationDatasetLoader().load(self._write([line]))
+
     def test_rejects_empty_dataset(self) -> None:
         path = self._write([""])
         with self.assertRaises(EvaluationDatasetError):
@@ -284,6 +307,46 @@ class EvaluateAssistantUseCaseTests(unittest.TestCase):
             vector_store.calls[0]["collection"], "assistant-assistant-1"
         )
         self.assertEqual(report.items[1]["first_relevant_rank"], 2)
+
+    def test_follow_up_question_is_rewritten_with_its_history(self) -> None:
+        llm = RecordingLLM("prazo de reembolso de viagem")
+        use_case, vector_store = self._use_case(results=[[_hit("d1")]], llm=llm)
+        item = EvaluationItem(
+            id="q1",
+            question="E o prazo?",
+            expected_answer="Dez dias.",
+            source_documents=("manual.md",),
+            validated_by="curador",
+            history=(
+                ("user", "Como pedir reembolso de viagem?"),
+                ("assistant", "Pelo sistema financeiro."),
+            ),
+        )
+        use_case.execute(EvaluateAssistantInput(assistant_id="assistant-1", items=(item,)))
+        rewrite = llm.calls[0]
+        self.assertIn("E o prazo?", rewrite["prompt"])
+        self.assertEqual(
+            [message.content for message in rewrite["conversation_history"]],
+            ["Como pedir reembolso de viagem?", "Pelo sistema financeiro."],
+        )
+        # A busca usa a pergunta reescrita, nao a original.
+        self.assertIsNotNone(vector_store.calls[0])
+
+    def test_follow_up_without_generator_is_searched_as_written(self) -> None:
+        use_case, vector_store = self._use_case(results=[[_hit("d1")]])
+        item = EvaluationItem(
+            id="q1",
+            question="E o prazo?",
+            expected_answer="Dez dias.",
+            source_documents=("manual.md",),
+            validated_by="curador",
+            history=(("user", "Como pedir reembolso?"),),
+        )
+        report = use_case.execute(
+            EvaluateAssistantInput(assistant_id="assistant-1", items=(item,))
+        )
+        self.assertEqual(report.metrics["recall_at_k"], 1.0)
+        self.assertEqual(len(vector_store.calls), 1)
 
     def test_search_requests_the_configured_number_of_candidates(self) -> None:
         use_case, vector_store = self._use_case(results=[[_hit("d1")]])

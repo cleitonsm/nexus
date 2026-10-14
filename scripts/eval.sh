@@ -16,6 +16,14 @@ fi
 
 GIT_COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 
+# O conjunto ampliado tem perguntas sobre documentos DOCX com tabelas
+# (backend/tests/evaluation/fixtures) e usa um assistente proprio, para nao
+# alterar a base do conjunto piloto.
+EXTRA=()
+if [ "$DATASET" = "nexus-docs-ampliado" ]; then
+  EXTRA=(--assistant-name "Nexus Docs Ampliado (avaliacao)" --seed-dir /app/evaluation/fixtures)
+fi
+
 docker compose run --rm --no-deps \
   -e GIT_COMMIT="$GIT_COMMIT" \
   -v ./backend/tests/evaluation:/app/evaluation \
@@ -25,4 +33,5 @@ docker compose run --rm --no-deps \
   --reports-dir /app/evaluation/reports \
   --seed-dir /app/seed/negocio \
   --seed-dir /app/seed/arquitetura \
+  "${EXTRA[@]}" \
   "$@"

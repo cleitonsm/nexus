@@ -22,8 +22,17 @@ class EvaluationItem:
     source_documents: tuple[str, ...] = ()
     out_of_scope: bool = False
     validated_by: str | None = None
+    # Turnos anteriores da conversa, ``(papel, texto)`` com papel ``user`` ou
+    # ``assistant``: a pergunta e reescrita com eles antes da busca (RF-36).
+    history: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
+        for role, content in self.history:
+            if role not in ("user", "assistant") or not content.strip():
+                raise DomainValidationError(
+                    "evaluation item history requires role user or assistant "
+                    "and non-empty content."
+                )
         if not self.id.strip():
             raise DomainValidationError("evaluation item id must not be empty.")
         if not self.question.strip():

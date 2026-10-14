@@ -44,6 +44,23 @@ class SeedDocumentsTestCase(IndexingTestCase):
         self.assertEqual({d.status for d in documents}, {DocumentStatus.INDEXED})
         self.assertTrue(all(d.chunk_count > 0 for d in documents))
 
+    def test_docx_files_are_uploaded_too(self) -> None:
+        (self.seed_dir / "tabela.docx").write_bytes(b"PK")
+        sent: list[str] = []
+        s = self.scenario
+
+        def upload(name, content):
+            sent.append(name)
+            return s.upload(source_name=name, document_id=name, raw_content=content)
+
+        try:
+            seed_documents(
+                [self.seed_dir], "a1", upload=upload, process_pending=lambda: None
+            )
+        except SeedDocumentsError:
+            pass  # a fila nao foi processada; so importa o que foi enviado
+        self.assertEqual(sent, ["a.md", "b.md", "tabela.docx"])
+
     def test_failed_document_is_reported(self) -> None:
         (self.seed_dir / "c.md").write_bytes(b"\xff\xfe\x00")
         s = self.scenario

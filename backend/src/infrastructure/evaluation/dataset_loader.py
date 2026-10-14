@@ -64,7 +64,21 @@ def _to_item(raw: dict[str, object]) -> EvaluationItem:
         source_documents=tuple(str(name) for name in sources),
         out_of_scope=raw.get("out_of_scope") is True,
         validated_by=_optional_text(raw.get("validated_by")),
+        history=_history(raw.get("history")),
     )
+
+
+def _history(raw: object) -> tuple[tuple[str, str], ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise ValueError("history deve ser uma lista de {role, content}.")
+    turns = []
+    for turn in raw:
+        if not isinstance(turn, dict):
+            raise ValueError("cada turno de history deve ser um objeto.")
+        turns.append((str(turn.get("role") or ""), str(turn.get("content") or "")))
+    return tuple(turns)
 
 
 def _optional_text(value: object) -> str | None:

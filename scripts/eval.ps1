@@ -11,6 +11,14 @@ if ($extra.Count -gt 0 -and -not "$($extra[0])".StartsWith("--")) {
     if ($extra.Count -gt 1) { $extra = $extra[1..($extra.Count - 1)] } else { $extra = @() }
 }
 
+# O conjunto ampliado tem perguntas sobre documentos DOCX com tabelas
+# (backend/tests/evaluation/fixtures) e usa um assistente proprio, para nao
+# alterar a base do conjunto piloto.
+$datasetArgs = @()
+if ($dataset -eq "nexus-docs-ampliado") {
+    $datasetArgs = @("--assistant-name", "Nexus Docs Ampliado (avaliacao)", "--seed-dir", "/app/evaluation/fixtures")
+}
+
 $commit = "unknown"
 try {
     $resolved = git rev-parse --short HEAD 2>$null
@@ -28,6 +36,7 @@ docker compose run --rm --no-deps `
     --reports-dir /app/evaluation/reports `
     --seed-dir /app/seed/negocio `
     --seed-dir /app/seed/arquitetura `
+    @datasetArgs `
     @extra
 
 exit $LASTEXITCODE

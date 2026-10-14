@@ -101,6 +101,10 @@ EVALUATION_USER = AuthenticatedUser(
     roles=frozenset({Role.ADMIN}),
 )
 
+_DOCX_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
+
 logger = logging.getLogger("nexus.evaluation")
 
 
@@ -302,7 +306,11 @@ def _seed_documents(
                 assistant_id=assistant_id.value,
                 source_name=name,
                 raw_content=content,
-                content_type="text/markdown",
+                content_type=(
+                    _DOCX_CONTENT_TYPE
+                    if name.lower().endswith(".docx")
+                    else "text/markdown"
+                ),
             )
         )
 
