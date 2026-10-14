@@ -9,7 +9,7 @@ services:
       - path: .env
         required: false
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     volumes:
       - backend_cache:/app/cache
       - documents_data:/app/data/documents
@@ -86,7 +86,7 @@ services:
       - path: .env
         required: false
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -140,7 +140,7 @@ services:
       # backend usa para ler a lista de grupos.
       NEXUS_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET:-nexus-backend-dev-secret}
     ports:
-      - "${KEYCLOAK_PORT:-8080}:8080"
+      - "127.0.0.1:${KEYCLOAK_PORT:-8080}:8080"
     volumes:
       - ./infra/keycloak/nexus-realm.json:/opt/keycloak/data/import/nexus-realm.json:ro
     healthcheck:
@@ -165,7 +165,7 @@ services:
     environment:
       - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY:-nexus-local}
     ports:
-      - "${QDRANT_PORT:-6333}:6333"
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
@@ -184,7 +184,7 @@ services:
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     ports:
-      - "${JAEGER_UI_PORT:-16686}:16686"
+      - "127.0.0.1:${JAEGER_UI_PORT:-16686}:16686"
     # Memoria limitada: os rastreamentos ficam so em memoria (risco R17).
     command: ["--memory.max-traces=20000"]
 
@@ -195,7 +195,7 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.retention.time=7d
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -211,7 +211,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: "false"
     ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
     volumes:
       - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro

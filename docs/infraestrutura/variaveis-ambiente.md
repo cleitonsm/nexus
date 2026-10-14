@@ -8,7 +8,7 @@
 
 ## Backend (Obrigatórias)
 
-- `APP_ENV`: ambiente de execucao (`local`, `dev`, `prod`).
+- `APP_ENV`: ambiente de execucao (`local`, `dev`, `prod`). Fora de `local`, API e worker nao iniciam se `NEXUS_SECRETS_KEY`, `QDRANT_API_KEY`, `POSTGRES_PASSWORD` ou `KEYCLOAK_BACKEND_CLIENT_SECRET` estiverem ausentes ou com o valor padrao (SPEC-007 fix-4). O Compose publica as portas (exceto o frontend) apenas em `127.0.0.1`; o realm de desenvolvimento mantem usuarios de teste e so serve para uso local.
 - `API_HOST`: host de bind da API no container (ex.: `0.0.0.0`).
 - `API_PORT`: porta de bind da API (ex.: `8000`).
 - `DATABASE_URL`: string de conexao PostgreSQL usada pelo backend.

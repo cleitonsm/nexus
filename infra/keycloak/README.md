@@ -10,6 +10,7 @@ arquivo fora do ambiente local. Segredos de ambientes reais ficam fora do reposi
 |------|-------|
 | Realm | `nexus` |
 | Cliente do frontend | `nexus-frontend`, público, Authorization Code com PKCE (S256) |
+| Cliente de testes `nexus-tests` | Público, só *direct access grants*, com os mesmos mapeadores de audiência e grupos do frontend. Serve ao CT-52, ao CT-56 e às medições (`scripts/perf`); existe apenas no realm de desenvolvimento (V-D2) e deve ser removido de qualquer realm exposto |
 | Cliente de serviço do backend | `nexus-backend`, confidencial, só *client credentials*; a conta de serviço tem apenas o papel `query-groups` do `realm-management`, para listar os grupos na tela (PC-D6). Segredo `${NEXUS_BACKEND_CLIENT_SECRET}`, vindo de `KEYCLOAK_BACKEND_CLIENT_SECRET` |
 | Audiência da API | `nexus-api`, incluída no token de acesso pelo mapeador `audiencia-nexus-api` |
 | Papéis de realm | `nexus-admin`, `nexus-curador`, `nexus-usuario` |

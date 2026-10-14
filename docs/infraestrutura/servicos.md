@@ -87,3 +87,10 @@ Detalhes em [observabilidade.md](observabilidade.md).
 Serviço `backup` (imagem `postgres:16-alpine` com `curl` e `jq`) que executa
 `scripts/backup.sh` ao subir e a cada 24 h, gravando em `BACKUP_PATH`. Procedimento de
 restauração em [backup-e-restauracao.md](backup-e-restauracao.md).
+
+## Portas publicadas
+
+O `compose.yaml` publica todas as portas, exceto a do frontend, apenas em `127.0.0.1` (SPEC-007
+fix-4): PostgreSQL, Qdrant, Keycloak, API, Jaeger, Prometheus e Grafana não ficam acessíveis pela
+rede. O frontend segue em todas as interfaces. Fora do ambiente local, a API e o worker recusam
+iniciar com segredos padrão (ver `docs/infraestrutura/variaveis-ambiente.md`).
