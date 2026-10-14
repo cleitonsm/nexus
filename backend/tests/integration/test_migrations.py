@@ -142,6 +142,65 @@ class MigrationTests(unittest.TestCase):
             {"assistants": 1, "documents": 1, "conversations": 1, "messages": 1},
         )
 
+    def test_0008_keeps_audit_rows_append_only_and_makes_details_jsonb(self) -> None:
+        """fix-13: json -> jsonb nao pode abrir brecha na trilha (RN-25)."""
+        self._alembic("upgrade", "0007_reindex_in_worker")
+        with self.engine.begin() as connection:
+            connection.execute(
+                sa.text(
+                    "INSERT INTO audit_events (id, occurred_at, user_id, action, "
+                    "resource_type, details) VALUES ('e1', now(), 'u1', "
+                    "'access.denied', 'assistant', '{\"assistant_id\": \"a1\"}')"
+                )
+            )
+        self._alembic("upgrade", "head")
+        with self.engine.connect() as connection:
+            column = connection.execute(
+                sa.text(
+                    "SELECT data_type FROM information_schema.columns "
+                    "WHERE table_name = 'audit_events' AND column_name = 'details'"
+                )
+            ).scalar_one()
+            found = connection.execute(
+                sa.text(
+                    "SELECT id FROM audit_events "
+                    "WHERE details ->> 'assistant_id' = 'a1'"
+                )
+            ).scalar_one()
+        self.assertEqual(column, "jsonb")
+        self.assertEqual(found, "e1")
+        with self.engine.connect() as connection:
+            with self.assertRaises(sa.exc.DBAPIError):
+                connection.execute(sa.text("UPDATE audit_events SET user_id = 'x'"))
+        # Volta e sobe de novo: os dados e a protecao sobrevivem aos dois sentidos.
+        self._alembic("downgrade", "0007_reindex_in_worker")
+        self._alembic("upgrade", "head")
+        with self.engine.connect() as connection:
+            self.assertEqual(
+                connection.execute(
+                    sa.text("SELECT count(*) FROM audit_events")
+                ).scalar_one(),
+                1,
+            )
+            with self.assertRaises(sa.exc.DBAPIError):
+                connection.execute(sa.text("DELETE FROM audit_events"))
+
+    def test_0008_rejects_an_unknown_status(self) -> None:
+        self._alembic("upgrade", "head")
+        with self.engine.begin() as connection:
+            connection.execute(
+                sa.text("INSERT INTO assistants (id, name) VALUES ('a1', 'Piloto')")
+            )
+        with self.engine.connect() as connection:
+            with self.assertRaises(sa.exc.IntegrityError):
+                connection.execute(
+                    sa.text(
+                        "INSERT INTO documents (id, assistant_id, source_name, "
+                        "content_hash, status) VALUES "
+                        "('d1', 'a1', 'x.md', 'h', 'invalido')"
+                    )
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

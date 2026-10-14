@@ -153,3 +153,56 @@ em `.github/workflows` (se houver); o resultado do CI é o que indica falha de a
 - Valor final de `RELEVANCE_MIN_SCORE` (passo 7).
 - Validação de cada item do conjunto ampliado (passo 8, RN-15).
 - Quais itens do backlog do Cartographer implementar (recomendação no relatório desta sessão).
+
+## 10. Lote do Cartographer: migração 0008, rotas e frontend
+
+Rode na ordem. Os passos 1 a 3 mexem no banco de desenvolvimento; o passo 1 guarda uma cópia.
+
+```powershell
+# 1) Cópia do banco e "foto" da trilha de auditoria
+docker compose exec postgres pg_dump -U nexus -Fc nexus -f /tmp/pre0008.dump
+docker compose cp postgres:/tmp/pre0008.dump .\pre0008.dump
+docker compose exec postgres psql -U nexus -d nexus -c "SELECT count(*), md5(string_agg(id, ',' ORDER BY id)) FROM audit_events;"
+
+# 2) Teste da migração em banco descartável (não toca no seu banco)
+$run = 'docker compose run --rm --no-deps -e PYTHONPATH=/app:/app/integration ' +
+       '-v ./backend/tests/integration:/app/integration:ro ' +
+       '-v ./backend/tests/evaluation:/app/evaluation ' +
+       '-v ./scripts:/app/scripts:ro backend'
+Invoke-Expression "$run sh -c 'cd /app/integration && python -m unittest -v test_migrations'"
+
+# 3) Migração no banco de desenvolvimento (com API e worker parados)
+docker compose stop backend worker
+$py = "from alembic import command; from alembic.config import Config; " +
+      "from src.infrastructure.database.migrate import _SCRIPT_LOCATION as L; " +
+      "c = Config(); c.set_main_option('script_location', str(L)); "
+docker compose run --rm --no-deps backend python -c ($py + "command.upgrade(c, 'head')")
+docker compose run --rm --no-deps backend python -c ($py + "command.check(c)")
+docker compose exec postgres psql -U nexus -d nexus -c "SELECT count(*), md5(string_agg(id, ',' ORDER BY id)) FROM audit_events;"
+docker compose exec postgres psql -U nexus -d nexus -c "SELECT data_type FROM information_schema.columns WHERE table_name='audit_events' AND column_name='details';"
+docker compose exec postgres psql -U nexus -d nexus -c "SELECT tgname FROM pg_trigger WHERE tgrelid='audit_events'::regclass AND NOT tgisinternal;"
+docker compose exec postgres psql -U nexus -d nexus -c "BEGIN; UPDATE audit_events SET user_id = user_id; ROLLBACK;"
+
+# 4) Volta e sobe de novo (opcional, prova o downgrade no seu banco)
+docker compose run --rm --no-deps backend python -c ($py + "command.downgrade(c, '0007_reindex_in_worker')")
+docker compose run --rm --no-deps backend python -c ($py + "command.upgrade(c, 'head')")
+
+# 5) Sobe a pilha e roda os testes de integração das rotas
+docker compose build backend worker
+docker compose up -d
+Invoke-Expression "$run sh -c 'cd /app/integration && python -m unittest -v test_api_routes test_access_control_api test_access_control_storage test_document_lifecycle_storage test_operations_api test_chat_citations test_assistant_isolation'"
+
+# 6) Frontend
+cd frontend; npm ci; npm test; cd ..
+```
+
+O que esperar:
+
+- Passo 1 e 3: a contagem e o `md5` iguais antes e depois; `details` como `jsonb`; os triggers
+  `audit_events_no_change` e `audit_events_no_truncate` presentes; o `UPDATE` do final falha com
+  `audit_events is append-only`.
+- `command.check`: sem saída = sem diferença. Se acusar o índice `ix_audit_events_assistant_id`, é falso
+  positivo do Alembic com índices de expressão (ele não os compara); me mande a saída para eu confirmar.
+- Se algo der errado depois do passo 3: `docker compose exec -T postgres pg_restore -U nexus -d nexus --clean --if-exists /tmp/pre0008.dump`.
+- Rotas: mudaram o `404` para `403` quando um usuário comum acessa assistente inexistente; um teste que
+  esperava `404` para usuário comum precisa ser ajustado (os que li usam administrador).
