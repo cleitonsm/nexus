@@ -111,7 +111,18 @@ class EvaluateAssistantUseCase:
             ),
             fallback_used=fallback_used,
             faithful=self._judge(item, answer, context),
+            cited=self._cited(item, answer, fallback_used),
         )
+
+    @staticmethod
+    def _cited(
+        item: EvaluationItem,
+        answer: str | None,
+        fallback_used: bool | None,
+    ) -> bool | None:
+        if fallback_used is None or item.out_of_scope:
+            return None
+        return answer is not None
 
     def _retrieve(
         self,
@@ -180,6 +191,9 @@ def _summarize(
         mrr=mean_reciprocal_rank(ranks),
         faithfulness=_ratio(judged),
         fallback_accuracy=_ratio(fallbacks),
+        citation_coverage=_ratio(
+            [item.cited for item in results if item.cited is not None]
+        ),
     )
 
 

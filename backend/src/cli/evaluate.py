@@ -24,6 +24,9 @@ from src.application.use_cases import (
     GetGlobalApiKeyValueUseCase,
     IngestDocumentInput,
     IngestDocumentUseCase,
+    ProcessNextIngestionJobUseCase,
+    SeedDocumentsError,
+    seed_documents,
 )
 from src.application.services import (
     PIPELINE_VERSION,
@@ -53,6 +56,7 @@ from src.infrastructure.composition import (
     build_reranker_gateway,
     build_sparse_embedding_gateway,
     build_token_counter,
+    default_sparse_encoding_parameters,
     max_file_bytes,
     reranker_model_name,
     retrieval_settings,
@@ -62,6 +66,8 @@ from src.infrastructure.database import (
     PostgresAssistantRepository,
     PostgresAuditLogRepository,
     PostgresDocumentRepository,
+    PostgresIndexParametersRepository,
+    PostgresIngestionJobQueue,
     PostgresReindexJobRepository,
     PostgresSecretSettingsRepository,
     SessionLocal,
@@ -81,6 +87,7 @@ from src.infrastructure.vector_store import QdrantVectorStoreGateway
 EXIT_OK = 0
 EXIT_REGRESSION = 1
 EXIT_INVALID_DATASET = 2
+EXIT_SEED_FAILED = 3
 
 DEFAULT_LLM_MODEL = "gpt-4o-mini"
 DEFAULT_LLM_API_URL = "https://api.openai.com/v1/chat/completions"
@@ -154,20 +161,41 @@ def _run(
         vector_store_gateway,
         embedding_gateway,
     )
-    _seed_documents(
-        args.seed_dir,
-        assistant_id,
-        IngestDocumentUseCase(
+    indexer = build_document_indexer()
+    storage = build_file_storage()
+    queue = PostgresIngestionJobQueue(session=session)
+    reindex_jobs = PostgresReindexJobRepository(session=session)
+    try:
+        _seed_documents(
+            args.seed_dir,
+            assistant_id,
+            ingest=IngestDocumentUseCase(
+                document_repository=document_repository,
+                vector_store_gateway=vector_store_gateway,
+                document_indexer=indexer,
+                file_storage=storage,
+                job_queue=queue,
+                max_file_bytes=max_file_bytes(),
+                access_control=access_control,
+            ),
+            process_next=ProcessNextIngestionJobUseCase(
+                job_queue=queue,
+                document_repository=document_repository,
+                vector_store_gateway=vector_store_gateway,
+                document_indexer=indexer,
+                file_storage=storage,
+                reindex_job_repository=reindex_jobs,
+                access_control=access_control,
+                index_parameters=PostgresIndexParametersRepository(
+                    session=session,
+                    assumed_when_missing=default_sparse_encoding_parameters(),
+                ),
+            ),
             document_repository=document_repository,
-            vector_store_gateway=vector_store_gateway,
-            document_indexer=build_document_indexer(),
-            file_storage=build_file_storage(),
-            reindex_job_repository=PostgresReindexJobRepository(session=session),
-            max_file_bytes=max_file_bytes(),
-            access_control=access_control,
-        ),
-        document_repository,
-    )
+        )
+    except SeedDocumentsError as exc:
+        logger.error("evaluation.seed.failed", extra={"problem": str(exc)})
+        return EXIT_SEED_FAILED
 
     llm_gateway = None if args.no_generation else _build_llm_gateway(session)
     settings = retrieval_settings()
@@ -257,27 +285,33 @@ def _discard_outdated_index(
 def _seed_documents(
     seed_directories: list[Path],
     assistant_id: AssistantId,
+    *,
     ingest: IngestDocumentUseCase,
+    process_next: ProcessNextIngestionJobUseCase,
     document_repository: PostgresDocumentRepository,
 ) -> None:
     """Indexa os documentos do piloto apenas quando a base esta vazia."""
     if document_repository.list_by_assistant(assistant_id):
         return
-    for directory in seed_directories:
-        for path in sorted(directory.glob("*.md")):
-            result = ingest.execute(
-                IngestDocumentInput(
-                    user=EVALUATION_USER,
-                    assistant_id=assistant_id.value,
-                    source_name=path.name,
-                    raw_content=path.read_bytes(),
-                    content_type="text/markdown",
-                )
+
+    def upload(name: str, content: bytes):
+        return ingest.execute(
+            IngestDocumentInput(
+                user=EVALUATION_USER,
+                assistant_id=assistant_id.value,
+                source_name=name,
+                raw_content=content,
+                content_type="text/markdown",
             )
-            logger.info(
-                "evaluation.document.seeded",
-                extra={"source_name": path.name, "chunks": result.chunk_count},
-            )
+        )
+
+    indexed = seed_documents(
+        seed_directories,
+        assistant_id.value,
+        upload=upload,
+        process_pending=process_next.execute,
+    )
+    logger.info("evaluation.documents.seeded", extra={"documents": indexed})
 
 
 def _build_llm_gateway(session: Session) -> LLMGateway | None:

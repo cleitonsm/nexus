@@ -398,6 +398,27 @@ class EvaluateAssistantUseCaseTests(unittest.TestCase):
         self.assertEqual(judge.calls, 2)
         self.assertEqual(report.metrics["faithfulness"], 0.5)
 
+    def test_citation_coverage_counts_answered_in_scope_items(self) -> None:
+        """E7: cobertura de citacoes = respostas com citacao valida / dentro do escopo."""
+        use_case, _ = self._use_case(
+            results=[[_hit("d1")], [_hit("d1")], [], [_hit("d1")]],
+            llm=RecordingLLM(),
+        )
+        report = use_case.execute(
+            EvaluateAssistantInput(
+                assistant_id="assistant-1",
+                items=(
+                    _in_scope("q1", "manual.md"),
+                    _in_scope("q2", "manual.md"),
+                    _in_scope("q3", "manual.md"),
+                    _out_of_scope("o1"),
+                ),
+            )
+        )
+        self.assertAlmostEqual(report.metrics["citation_coverage"], 2 / 3)
+        cited = {item["item_id"]: item["cited"] for item in report.items}
+        self.assertEqual(cited, {"q1": True, "q2": True, "q3": False, "o1": None})
+
     def test_retrieval_only_run_leaves_generation_metrics_empty(self) -> None:
         use_case, _ = self._use_case(results=[[_hit("d1")], [_hit("d1")]])
         report = use_case.execute(
@@ -408,6 +429,7 @@ class EvaluateAssistantUseCaseTests(unittest.TestCase):
         )
         self.assertIsNone(report.metrics["faithfulness"])
         self.assertIsNone(report.metrics["fallback_accuracy"])
+        self.assertIsNone(report.metrics["citation_coverage"])
         self.assertEqual(report.metrics["recall_at_k"], 1.0)
 
     def test_report_carries_parameters_and_validation_flag(self) -> None:

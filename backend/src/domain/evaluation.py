@@ -54,6 +54,9 @@ class EvaluationItemResult:
     first_relevant_rank: int | None
     fallback_used: bool | None
     faithful: bool | None
+    # Resposta aceita com ao menos uma citacao valida (RN-18); ``None`` sem
+    # geracao ou fora do escopo.
+    cited: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +65,9 @@ class EvaluationMetrics:
     mrr: float
     faithfulness: float | None
     fallback_accuracy: float | None
+    # Dentro do escopo: respostas com citacao valida / perguntas respondidas ou
+    # recusadas. ``None`` quando a execucao nao gera respostas.
+    citation_coverage: float | None = None
 
 
 @dataclass(frozen=True, slots=True)

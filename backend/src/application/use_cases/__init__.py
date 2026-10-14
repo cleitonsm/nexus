@@ -89,6 +89,7 @@ from .manage_usage import (
     UpdateUsageLimitsInput,
     UpdateUsageLimitsUseCase,
 )
+from .seed_documents import SeedDocumentsError, seed_documents
 from .process_ingestion import (
     ProcessingOutcome,
     ProcessNextIngestionJobUseCase,
@@ -188,6 +189,8 @@ __all__ = [
     "MessageNotFoundError",
     "ProcessNextIngestionJobUseCase",
     "ProcessingOutcome",
+    "SeedDocumentsError",
+    "seed_documents",
     "PurgeAuditEventsInput",
     "PurgeAuditEventsResult",
     "PurgeAuditEventsUseCase",

@@ -90,6 +90,7 @@ Sem chave de LLM configurada, a geração é ignorada automaticamente.
 | `mrr` | Média do inverso da posição do primeiro trecho correto |
 | `faithfulness` | Proporção de respostas sustentadas pelo contexto, julgadas pelo LLM configurado |
 | `fallback_accuracy` | Proporção de perguntas fora de escopo que resultaram em fallback |
+| `citation_coverage` | Proporção das perguntas dentro do escopo respondidas com ao menos uma citação válida (RN-18); vazio sem geração |
 
 ## Código de saída
 
@@ -98,6 +99,7 @@ Sem chave de LLM configurada, a geração é ignorada automaticamente.
 | 0 | Avaliação concluída, sem regressão |
 | 1 | Alguma métrica caiu além da tolerância em relação ao relatório anterior |
 | 2 | Conjunto de referência inválido |
+| 3 | Algum documento do piloto não chegou a `indexado` (ver o log `evaluation.seed.failed`) |
 
 ## Limitações conhecidas
 
