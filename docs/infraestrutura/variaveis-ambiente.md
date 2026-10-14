@@ -14,10 +14,11 @@
 - `DATABASE_URL`: string de conexao PostgreSQL usada pelo backend.
 - `QDRANT_URL`: URL do servico Qdrant no Compose.
 - `EMBEDDING_MODEL_NAME`: modelo de embedding local (padrao recomendado: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`).
-- `LLM_PROVIDER`: provedor de geracao de resposta.
-- `LLM_MODEL`: modelo de geracao de resposta.
+- `LLM_PROVIDER`: informativa; o provedor efetivo e inferido de `LLM_API_URL` (SPEC-008).
+- `LLM_MODEL`: modelo de geracao de resposta. **Padrao do ambiente**: a tela de administracao (SPEC-008) o substitui, sem reiniciar servicos.
 - `NEXUS_SECRETS_KEY`: chave-mestra usada para criptografar segredos persistidos (ex.: API key global).
-- `LLM_API_URL`: endpoint HTTP do provedor de LLM (padrao: API compatível com OpenAI `/chat/completions`).
+- `LLM_API_URL`: endpoint HTTP do provedor de LLM (padrao: API compatível com OpenAI `/chat/completions`). **Padrao do ambiente**: a tela de administracao o substitui. Presets: OpenAI `https://api.openai.com/v1/chat/completions`; Gemini `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`.
+- Precos do custo estimado (`LLM_PRICE_*`) continuam so no ambiente; ao trocar de modelo, ajuste-os (SPEC-008 D6).
 
 ## Frontend
 

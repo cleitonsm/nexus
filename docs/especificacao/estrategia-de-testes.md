@@ -121,6 +121,14 @@ infraestrutura e poucos roteiros ponta a ponta.
 | CT-60 | Unitário e integração | Dois workers: quem perdeu a reserva não renova, não grava nem altera o alias; reserva renovada impede a devolução à fila | RF-66 |
 | CT-61 | Unitário | Segredo ausente ou padrão fora de `APP_ENV=local` impede a partida, sem citar o valor | RF-67 |
 | CT-62 | Unitário | O comando de avaliação envia e processa os documentos do piloto; falha de indexação é reportada | CT-04 |
+| CT-63 | Unitário | `LLMConnection` aceita presets e URL personalizada válida; recusa modelo vazio, com espaço ou longo, URL sem `https`, com usuário/senha, parâmetros ou fragmento | RF-69 |
+| CT-64 | Unitário | Resolução: sem valor gravado vale o ambiente (provedor inferido pela URL); o gravado vence | RF-68, RF-70 |
+| CT-65 | Unitário | Consulta e alteração exigem administrador; a negativa é auditada | RF-71 |
+| CT-66 | Unitário | A alteração grava, audita anterior e novo sem a chave e vale na resolução seguinte | RF-69, RF-71 |
+| CT-67 | Unitário | Preset fixa a URL do provedor mesmo que o cliente envie outra; `http` só no ambiente local | RF-69 |
+| CT-68 | Integração | `GET` e `PUT /admin/llm-settings`: 200, 422 e 403 | RF-68, RF-69, RF-71 |
+| CT-69 | Vitest | Reducer e seletor da conexão (carregada, salva, erro) | RF-72 |
+| CT-70 | Manual | Gemini real: "Testar LLM" responde `ok` com a chave de teste do autor | RF-70 |
 
 ---
 
@@ -181,6 +189,10 @@ Atualizado em 2026-10-08.
 | CT-58, CT-59, CT-61, CT-62 | Implementados e executados com sucesso | `test_access_control.py`, `test_upload_reading.py`, `test_deployment_safety.py`, `test_evaluation_seeding.py` |
 | CT-58 (rota) | Implementado, ainda não executado (exige FastAPI) | `backend/tests/integration/test_access_control_api.py` |
 | CT-60 | Dois workers simulados executados com sucesso; os `UPDATE` condicionais no PostgreSQL estão escritos e ainda não executados | `backend/tests/unit/test_job_ownership.py`, `backend/tests/integration/test_job_ownership_storage.py` |
+| CT-63 a CT-67 | Implementados e executados com sucesso | `backend/tests/unit/test_llm_connection.py` |
+| CT-68 | Escrito, ainda não executado (exige FastAPI) | `backend/tests/integration/test_access_control_api.py` (`LLMSettingsApiTestCase`) |
+| CT-69 | Escrito, ainda não executado (sem npm na nuvem) | `frontend/src/app/store/nexus.reducer.spec.ts` |
+| CT-70 | A executar no Docker, com a chave do autor | — |
 | CT-04 | Escrito, ainda não executado (exige PostgreSQL e Qdrant) | `backend/tests/integration/test_evaluation_command.py` |
 | Ferramentas de medição e orquestração | Implementadas e testadas sem Docker | `scripts/perf/`, `scripts/validation/run-all.sh`, `backend/tests/unit/test_perf_tools.py`, `backend/tests/unit/test_validation_runner.py` |
 | CT-39, CT-40, CT-49 a CT-57 | Não implementados; definidos no [plano de validação final](../qa/plano-de-validacao-final.md) | — |
