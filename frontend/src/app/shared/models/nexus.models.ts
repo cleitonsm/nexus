@@ -137,6 +137,26 @@ export interface ApiKeyStatus {
   configured: boolean;
 }
 
+/** Provedor do LLM (SPEC-008 D1); ``custom`` aceita URL digitada. */
+export type LlmProvider = "openai" | "gemini" | "custom";
+
+/** Conexao efetiva com o LLM e a origem do valor (SPEC-008 RF-68). */
+export interface LlmSettings {
+  provider: LlmProvider;
+  model: string;
+  api_url: string;
+  /** "ambiente" vem do .env; "configurado", da tela. */
+  source: "ambiente" | "configurado";
+  /** URL fixa de cada provedor predefinido. */
+  provider_urls: Record<string, string>;
+}
+
+export interface LlmSettingsInput {
+  provider: LlmProvider;
+  model: string;
+  api_url: string | null;
+}
+
 export interface ApiKeyTestResult {
   ok: boolean;
   model: string;

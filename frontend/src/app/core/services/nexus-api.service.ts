@@ -5,6 +5,8 @@ import { Observable, filter, mergeMap } from "rxjs";
 import {
   ApiKeyTestResult,
   ApiKeyStatus,
+  LlmSettings,
+  LlmSettingsInput,
   Assistant,
   AuditEvent,
   AuditFilters,
@@ -299,6 +301,14 @@ export class NexusApiService {
 
   saveApiKey(payload: SaveApiKeyPayload): Observable<ApiKeyStatus> {
     return this.http.post<ApiKeyStatus>(`${this.baseUrl}/admin/api-key`, payload);
+  }
+
+  getLlmSettings(): Observable<LlmSettings> {
+    return this.http.get<LlmSettings>(`${this.baseUrl}/admin/llm-settings`);
+  }
+
+  saveLlmSettings(input: LlmSettingsInput): Observable<LlmSettings> {
+    return this.http.put<LlmSettings>(`${this.baseUrl}/admin/llm-settings`, input);
   }
 
   testApiKey(): Observable<ApiKeyTestResult> {

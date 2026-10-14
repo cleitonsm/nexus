@@ -8,6 +8,7 @@ import {
   Conversation,
   DocumentAccess,
   IndexStatus,
+  LlmSettings,
   MessageFeedback
 } from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
@@ -26,7 +27,8 @@ import {
   selectAuditEvents,
   selectCurrentChatStream,
   selectCurrentCitationsByMessage,
-  selectCurrentMessages
+  selectCurrentMessages,
+  selectLlmSettings
 } from "./nexus.selectors";
 
 const assistantConversation = (
@@ -818,5 +820,62 @@ describe("chat stream cancellation (SPEC-006 D13)", () => {
     expect(state.chatStream).toBeNull();
     expect(state.loading.sendChat).toBe(false);
     expect(state.error).toBeNull();
+  });
+});
+
+describe("LLM connection (SPEC-008, CT-69)", () => {
+  const openai: LlmSettings = {
+    provider: "openai",
+    model: "gpt-4o-mini",
+    api_url: "https://api.openai.com/v1/chat/completions",
+    source: "ambiente",
+    provider_urls: {
+      openai: "https://api.openai.com/v1/chat/completions",
+      gemini: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    }
+  };
+
+  it("stores the effective connection once loaded", () => {
+    let state = nexusReducer(initialNexusState, nexusActions.loadLlmSettings());
+    expect(state.loading.llmSettings).toBe(true);
+    state = nexusReducer(state, nexusActions.loadLlmSettingsSuccess({ settings: openai }));
+    expect(state.loading.llmSettings).toBe(false);
+    expect(selectLlmSettings.projector(state)).toEqual(openai);
+  });
+
+  it("saves, drops the previous key test and announces that it applies to the next question", () => {
+    let state = nexusReducer(
+      { ...initialNexusState, apiKeyTestResult: { ok: true, model: "gpt-4o-mini", message: "ok", response_preview: "OK" } },
+      nexusActions.saveLlmSettings({
+        input: { provider: "gemini", model: "gemini-flash", api_url: null }
+      })
+    );
+    expect(state.loading.saveLlmSettings).toBe(true);
+    expect(state.error).toBeNull();
+    state = nexusReducer(
+      state,
+      nexusActions.saveLlmSettingsSuccess({
+        settings: { ...openai, provider: "gemini", model: "gemini-flash", source: "configurado" }
+      })
+    );
+    expect(state.loading.saveLlmSettings).toBe(false);
+    expect(state.llmSettings?.source).toBe("configurado");
+    expect(state.apiKeyTestResult).toBeNull();
+    expect(state.notice).toContain("próxima pergunta");
+  });
+
+  it("keeps the loaded connection and shows the server message when saving fails", () => {
+    const loaded = nexusReducer(initialNexusState, nexusActions.loadLlmSettingsSuccess({ settings: openai }));
+    const saving = nexusReducer(
+      loaded,
+      nexusActions.saveLlmSettings({ input: { provider: "custom", model: "m", api_url: "http://x" } })
+    );
+    const failed = nexusReducer(
+      saving,
+      nexusActions.saveLlmSettingsFailure({ error: "api_url must use https." })
+    );
+    expect(failed.loading.saveLlmSettings).toBe(false);
+    expect(failed.llmSettings).toEqual(openai);
+    expect(failed.error).toBe("api_url must use https.");
   });
 });

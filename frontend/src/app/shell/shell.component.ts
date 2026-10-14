@@ -1,11 +1,12 @@
 import { CommonModule } from "@angular/common";
-import { Component, computed, inject, signal } from "@angular/core";
+import { Component, computed, effect, inject, signal } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
 import { Store } from "@ngrx/store";
 
 import { authActions } from "../store/auth.actions";
 import { selectMenu, selectSessionUser } from "../store/auth.selectors";
+import { LlmProvider } from "../shared/models/nexus.models";
 import { nexusActions } from "../store/nexus.actions";
 import {
   selectActiveAssistantConversations,
@@ -16,7 +17,9 @@ import {
   selectCreateAssistantModalOpen,
   selectCurrentConversationId,
   selectError,
-  selectLoadingState
+  selectLlmSettings,
+  selectLoadingState,
+  selectNotice
 } from "../store/nexus.selectors";
 
 @Component({
@@ -37,6 +40,8 @@ export class ShellComponent {
   protected readonly error = this.store.selectSignal(selectError);
   protected readonly apiKeyStatus = this.store.selectSignal(selectApiKeyStatus);
   protected readonly apiKeyTestResult = this.store.selectSignal(selectApiKeyTestResult);
+  protected readonly llmSettings = this.store.selectSignal(selectLlmSettings);
+  protected readonly notice = this.store.selectSignal(selectNotice);
   protected readonly createAssistantModalOpen = this.store.selectSignal(
     selectCreateAssistantModalOpen
   );
@@ -69,12 +74,38 @@ export class ShellComponent {
     apiKey: ["", [Validators.required]]
   });
 
+  /** SPEC-008: provedor, modelo e URL do LLM (a URL so vale para ``custom``). */
+  protected readonly llmForm = this.formBuilder.nonNullable.group({
+    provider: ["openai" as LlmProvider, [Validators.required]],
+    model: ["", [Validators.required, Validators.maxLength(200), Validators.pattern(/^\S+$/)]],
+    apiUrl: [""]
+  });
+
+  protected readonly llmProviders: { value: LlmProvider; label: string }[] = [
+    { value: "openai", label: "OpenAI" },
+    { value: "gemini", label: "Gemini (Google)" },
+    { value: "custom", label: "Personalizado (compatível com OpenAI)" }
+  ];
+
   private selectedAssistantFiles: File[] = [];
 
   constructor() {
     // A situacao da chave do LLM e pedida pelo efeito da sessao, so para
     // administradores.
     this.store.dispatch(nexusActions.loadAssistants());
+
+    // SPEC-008: preenche o formulario com a conexao efetiva do LLM sempre que
+    // ela chega do servidor.
+    effect(() => {
+      const settings = this.llmSettings();
+      if (settings) {
+        this.llmForm.reset({
+          provider: settings.provider,
+          model: settings.model,
+          apiUrl: settings.provider === "custom" ? settings.api_url : ""
+        });
+      }
+    });
   }
 
   protected logout(): void {
@@ -124,6 +155,7 @@ export class ShellComponent {
       return;
     }
     this.adminModalOpen.set(true);
+    this.store.dispatch(nexusActions.loadLlmSettings());
   }
 
   protected closeAdminModal(): void {
@@ -223,6 +255,41 @@ export class ShellComponent {
       })
     );
     this.apiKeyForm.reset({ apiKey: "" });
+  }
+
+  protected isCustomProvider(): boolean {
+    return this.llmForm.controls.provider.value === "custom";
+  }
+
+  /** URL que sera usada: a do provedor predefinido ou a digitada. */
+  protected llmEndpointPreview(): string {
+    const provider = this.llmForm.controls.provider.value;
+    if (provider === "custom") {
+      return this.llmForm.controls.apiUrl.value.trim();
+    }
+    return this.llmSettings()?.provider_urls?.[provider] ?? "";
+  }
+
+  protected saveLlmSettings(): void {
+    const { provider, model, apiUrl } = this.llmForm.getRawValue();
+    const needsUrl = provider === "custom";
+    if (
+      this.llmForm.invalid ||
+      (needsUrl && !apiUrl.trim()) ||
+      this.loading().saveLlmSettings
+    ) {
+      this.llmForm.markAllAsTouched();
+      return;
+    }
+    this.store.dispatch(
+      nexusActions.saveLlmSettings({
+        input: {
+          provider,
+          model: model.trim(),
+          api_url: needsUrl ? apiUrl.trim() : null
+        }
+      })
+    );
   }
 
   protected testApiKey(): void {

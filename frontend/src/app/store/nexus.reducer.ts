@@ -3,6 +3,7 @@ import { createReducer, on } from "@ngrx/store";
 import {
   ApiKeyTestResult,
   ApiKeyStatus,
+  LlmSettings,
   Assistant,
   AuditEvent,
   ChatMessage,
@@ -42,6 +43,7 @@ export interface NexusState {
   inferAssistantError: string | null;
   apiKeyStatus: ApiKeyStatus | null;
   apiKeyTestResult: ApiKeyTestResult | null;
+  llmSettings: LlmSettings | null;
   /** Resposta em streaming em andamento (RF-58). */
   chatStream: ChatStreamState | null;
   /** Avaliacao enviada nesta sessao, por mensagem (RF-61). */
@@ -63,6 +65,8 @@ export interface NexusState {
     inferAssistant: boolean;
     apiKeyStatus: boolean;
     saveApiKey: boolean;
+    llmSettings: boolean;
+    saveLlmSettings: boolean;
     testApiKey: boolean;
     assistantGroups: boolean;
     documentAccess: boolean;
@@ -107,6 +111,7 @@ export const initialNexusState: NexusState = {
   inferAssistantError: null,
   apiKeyStatus: null,
   apiKeyTestResult: null,
+  llmSettings: null,
   chatStream: null,
   feedbackByMessage: {},
   curatorFeedback: [],
@@ -124,6 +129,8 @@ export const initialNexusState: NexusState = {
     inferAssistant: false,
     apiKeyStatus: false,
     saveApiKey: false,
+    llmSettings: false,
+    saveLlmSettings: false,
     testApiKey: false,
     assistantGroups: false,
     documentAccess: false,
@@ -627,6 +634,39 @@ export const nexusReducer = createReducer(
   on(nexusActions.saveApiKeyFailure, (state, { error }) => ({
     ...state,
     loading: { ...state.loading, saveApiKey: false },
+    error
+  })),
+  on(nexusActions.loadLlmSettings, (state) => ({
+    ...state,
+    loading: { ...state.loading, llmSettings: true }
+  })),
+  on(nexusActions.loadLlmSettingsSuccess, (state, { settings }) => ({
+    ...state,
+    llmSettings: settings,
+    loading: { ...state.loading, llmSettings: false }
+  })),
+  on(nexusActions.loadLlmSettingsFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, llmSettings: false },
+    error
+  })),
+  on(nexusActions.saveLlmSettings, (state) => ({
+    ...state,
+    loading: { ...state.loading, saveLlmSettings: true },
+    error: null,
+    notice: null
+  })),
+  on(nexusActions.saveLlmSettingsSuccess, (state, { settings }) => ({
+    ...state,
+    llmSettings: settings,
+    // O teste anterior era de outra conexao.
+    apiKeyTestResult: null,
+    loading: { ...state.loading, saveLlmSettings: false },
+    notice: "Conexão gravada; vale a partir da próxima pergunta e do próximo teste."
+  })),
+  on(nexusActions.saveLlmSettingsFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, saveLlmSettings: false },
     error
   })),
   on(nexusActions.testApiKey, (state) => ({
