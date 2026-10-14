@@ -41,3 +41,14 @@ Procedimento em `docs/infraestrutura/backup-e-restauracao.md`.
 - `regression-gate.sh`: CT-48, em que uma regressão simulada faz a avaliação falhar.
 - `backup-scripts-check.sh`: ensaio de `backup.sh` e `restore.sh` com PostgreSQL real e Qdrant
   simulado (`fake_qdrant.py`, `backup-fixture.sql`); roda no CI.
+- `env_snapshot.sh`: registra commit, máquina, Docker, imagens e parâmetros (V0).
+- `run-all.sh` / `run-all.ps1`: orquestram V0 a V8 na ordem, param na primeira falha e gravam
+  `docs/qa/relatorios/<data>/resumo.md`. Opções `--dry-run`, `--from Vn`, `--only Vn`, `--keep-env`.
+  Saem com 3 quando há itens pendentes (V5 é manual).
+
+## Medição (scripts/perf)
+
+Só biblioteca padrão. `corpus.py` (corpus sintético determinístico), `upload_latency.py` (RNF-17),
+`indexing_time.py` (RNF-02), `ttft.py` (RNF-01) e `report.py` (p50, p95, p99, máximo, erros e
+veredito). Cada cenário grava um CSV; `report.py ARQ.csv:LIMITE:all|p95` consolida. Ainda faltam
+`retrieval_latency.py` e `reindex_under_load.py` (RNF-03, RNF-16 e RNF-18).
