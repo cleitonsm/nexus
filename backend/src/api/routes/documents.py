@@ -32,6 +32,7 @@ from src.api.dependencies import (
     get_reindex_job_repository,
     get_vector_store_gateway,
 )
+from src.api.lookup import assistant_not_found
 from src.api.schemas import DocumentAccessResponse, GroupsRequest
 from src.api.uploads import parse_content_length, read_upload_limited
 from src.application.dto import DocumentAccessDTO
@@ -116,9 +117,8 @@ async def ingest_document(
     assistant_ref = _assistant_ref(assistant_id)
     assistant = await run_in_threadpool(assistant_repository.get_by_id, assistant_ref)
     if assistant is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="assistant not found",
+        raise assistant_not_found(
+            user, access_control, assistant_ref, "document.upload"
         )
     with _translate_errors():
         file_bytes = await read_upload_limited(

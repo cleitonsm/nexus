@@ -232,6 +232,14 @@ class Conversation:
     # autenticacao: ficam arquivadas, fora das listas dos usuarios; so o
     # administrador as lista, le e exclui (decisao PC-D5).
     owner_user_id: str | None = None
+    # Preenchido nas listagens, que nao carregam as mensagens (fix-8).
+    message_total: int | None = None
+
+    @property
+    def message_count(self) -> int:
+        if self.message_total is not None:
+            return self.message_total
+        return len(self.messages)
 
     @property
     def is_archived(self) -> bool:

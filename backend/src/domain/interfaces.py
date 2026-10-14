@@ -51,6 +51,10 @@ class AssistantRepository(Protocol):
 class DocumentRepository(Protocol):
     def save(self, document: Document) -> Document: ...
 
+    def save_many(self, documents: list[Document]) -> None:
+        """Grava todos os documentos em uma unica transacao (tudo ou nada)."""
+        ...
+
     def get_by_id(self, document_id: DocumentId) -> Document | None: ...
 
     def list_by_assistant(

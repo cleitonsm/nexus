@@ -6,6 +6,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     JSON,
+    CheckConstraint,
     BigInteger,
     Boolean,
     DateTime,
@@ -18,6 +19,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -40,13 +42,16 @@ class AssistantModel(Base):
         nullable=False,
     )
 
+    # passive_deletes: o ON DELETE CASCADE do banco apaga os filhos (fix-13).
     conversations: Mapped[list[ConversationModel]] = relationship(
         back_populates="assistant",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     documents: Mapped[list[DocumentModel]] = relationship(
         back_populates="assistant",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 
@@ -55,6 +60,11 @@ class DocumentModel(Base):
     __table_args__ = (
         # RN-26: busca do mesmo conteudo no assistente a cada envio.
         Index("ix_documents_assistant_hash", "assistant_id", "content_hash"),
+        Index("ix_documents_replaces_document_id", "replaces_document_id"),
+        CheckConstraint(
+            "status IN ('pendente', 'processando', 'indexado', 'falhou', 'substituido')",
+            name="ck_documents_status",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -133,6 +143,10 @@ class IngestionJobModel(Base):
     __tablename__ = "ingestion_jobs"
     __table_args__ = (
         Index("ix_ingestion_jobs_status_available", "status", "available_at"),
+        CheckConstraint(
+            "status IN ('pendente', 'processando', 'concluido', 'falhou')",
+            name="ck_ingestion_jobs_status",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -168,6 +182,15 @@ class IngestionJobModel(Base):
 
 class ConversationModel(Base):
     __tablename__ = "conversations"
+    __table_args__ = (
+        # Listagem do usuario: filtra por dono e assistente, ordena por data.
+        Index(
+            "ix_conversations_owner_assistant_updated",
+            "owner_user_id",
+            "assistant_id",
+            "updated_at",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     assistant_id: Mapped[str] = mapped_column(
@@ -201,11 +224,15 @@ class ConversationModel(Base):
         back_populates="conversation",
         order_by="MessageModel.created_at",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 
 class MessageModel(Base):
     __tablename__ = "messages"
+    __table_args__ = (
+        Index("ix_messages_conversation_created", "conversation_id", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     conversation_id: Mapped[str] = mapped_column(
@@ -258,6 +285,10 @@ class ReindexJobModel(Base):
             "assistant_id",
             unique=True,
             postgresql_where=text("status = 'running'"),
+        ),
+        CheckConstraint(
+            "status IN ('running', 'succeeded', 'failed')",
+            name="ck_reindex_jobs_status",
         ),
     )
 
@@ -335,6 +366,10 @@ class AuditEventModel(Base):
     """Trilha somente de inclusao (RN-25); o banco recusa UPDATE e DELETE."""
 
     __tablename__ = "audit_events"
+    __table_args__ = (
+        # Consulta da trilha por assistente (details->>'assistant_id').
+        Index("ix_audit_events_assistant_id", text("(details ->> 'assistant_id')")),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     occurred_at: Mapped[datetime] = mapped_column(
@@ -346,7 +381,10 @@ class AuditEventModel(Base):
     action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     resource_type: Mapped[str] = mapped_column(String(32), nullable=False)
     resource_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    details: Mapped[dict[str, object]] = mapped_column(JSON(), nullable=False)
+    details: Mapped[dict[str, object]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"),
+        nullable=False,
+    )
 
 
 class UsageRecordModel(Base):
@@ -357,6 +395,7 @@ class UsageRecordModel(Base):
         Index("ix_usage_records_user_occurred", "user_id", "occurred_at"),
         Index("ix_usage_records_occurred", "occurred_at"),
         Index("ix_usage_records_conversation", "conversation_id"),
+        Index("ix_usage_records_assistant", "assistant_id"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -405,6 +444,10 @@ class MessageFeedbackModel(Base):
             "message_id", "user_id", name="uq_message_feedback_message_user"
         ),
         Index("ix_message_feedback_assistant_status", "assistant_id", "status"),
+        CheckConstraint(
+            "status IN ('nao_aplicavel', 'pendente', 'validado', 'descartado')",
+            name="ck_message_feedback_status",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)

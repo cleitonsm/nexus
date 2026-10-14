@@ -205,6 +205,10 @@ class InMemoryDocumentRepository:
         self.items[document.id.value] = document
         return document
 
+    def save_many(self, documents: list[Document]) -> None:
+        for document in documents:
+            self.save(document)
+
     def get_by_id(self, document_id: DocumentId) -> Document | None:
         return self.items.get(document_id.value)
 

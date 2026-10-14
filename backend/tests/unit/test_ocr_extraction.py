@@ -98,6 +98,30 @@ class OcrRoutingTestCase(unittest.TestCase):
                 raw_content=_scanned_pdf("Politica de ferias"),
             )
 
+    def test_pdf_above_the_ocr_page_limit_is_rejected_before_any_ocr(self) -> None:
+        """fix-10: ``OCR_MAX_PAGES`` conta so paginas sem texto."""
+        ocr = FakeOcr()
+        ocr.max_pages = 0
+        with self.assertRaises(ValueError):
+            extract_supported_document(
+                filename="digitalizado.pdf",
+                content_type="application/pdf",
+                raw_content=_scanned_pdf("Politica de ferias"),
+                ocr=ocr,
+            )
+        self.assertEqual(ocr.pages, [])
+
+    def test_pdf_within_the_ocr_page_limit_is_read(self) -> None:
+        ocr = FakeOcr()
+        ocr.max_pages = 1
+        extract_supported_document(
+            filename="digitalizado.pdf",
+            content_type="application/pdf",
+            raw_content=_scanned_pdf("Politica de ferias"),
+            ocr=ocr,
+        )
+        self.assertEqual(ocr.pages, [1])
+
     def test_corrupted_pdf_is_a_definitive_error(self) -> None:
         """C1: ``ValueError`` leva o documento direto a ``falhou``."""
         with self.assertRaises(ValueError):

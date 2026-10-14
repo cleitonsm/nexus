@@ -32,6 +32,7 @@ from src.domain import (
 
 from src.infrastructure.observability.metrics import GaugeSample
 
+from .transactions import commit_or_rollback
 from .models import (
     AppSettingModel,
     IngestionJobModel,
@@ -70,7 +71,7 @@ class PostgresUsageRecordRepository:
                 occurred_at=record.occurred_at,
             )
         )
-        self._session.commit()
+        commit_or_rollback(self._session)
         return record
 
     def summarize_by_user(self, query: UsageQuery) -> list[UsageSummary]:
@@ -222,7 +223,7 @@ class PostgresUsageSettingsRepository:
             model.value = value
             model.updated_by = updated_by
             model.updated_at = now
-        self._session.commit()
+        commit_or_rollback(self._session)
         return limits
 
 
@@ -269,7 +270,7 @@ class PostgresLLMConnectionRepository:
             model.value = value
             model.updated_by = updated_by
             model.updated_at = now
-        self._session.commit()
+        commit_or_rollback(self._session)
         return connection
 
 
@@ -323,7 +324,7 @@ class PostgresIndexParametersRepository:
         else:
             model.value = parameters.as_dict()
             model.updated_at = now
-        self._session.commit()
+        commit_or_rollback(self._session)
 
 
 def _sparse_key(collection_name: CollectionName) -> str:
@@ -345,7 +346,7 @@ class PostgresFeedbackRepository:
             model = MessageFeedbackModel(id=feedback.id)
             self._session.add(model)
         _apply_feedback(model, feedback)
-        self._session.commit()
+        commit_or_rollback(self._session)
         return feedback
 
     def get_by_id(self, feedback_id: str) -> MessageFeedback | None:

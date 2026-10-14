@@ -19,6 +19,8 @@ from src.domain import TransientServiceError, UnreadableDocumentError
 logger = logging.getLogger(__name__)
 
 DEFAULT_OCR_LANGUAGES = "por+eng"
+# fix-10: PDF digitalizado grande demais prende o worker por horas.
+DEFAULT_OCR_MAX_PAGES = 200
 # Resolucao recomendada pela documentacao do Tesseract para texto impresso.
 _RENDER_DPI = 300
 _LANGUAGES = re.compile(r"^[A-Za-z_]+(?:\+[A-Za-z_]+)*$")
@@ -36,6 +38,7 @@ class TesseractPdfOcr:
         *,
         languages: str = DEFAULT_OCR_LANGUAGES,
         timeout_seconds: int = 180,
+        max_pages: int = DEFAULT_OCR_MAX_PAGES,
     ) -> None:
         if not _LANGUAGES.match(languages):
             raise ValueError(
@@ -43,8 +46,16 @@ class TesseractPdfOcr:
             )
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive.")
+        if max_pages <= 0:
+            raise ValueError("max_pages must be positive.")
         self._languages = languages
+        self._max_pages = max_pages
         self._timeout = timeout_seconds
+
+    @property
+    def max_pages(self) -> int:
+        """Maximo de paginas sem texto que o documento pode ter."""
+        return self._max_pages
 
     @property
     def languages(self) -> str:

@@ -137,8 +137,9 @@ def test_api_key(
         secret_cipher=secret_cipher,
     ).execute()
     if not api_key:
+        # Servico ainda nao configurado: indisponivel, nao entrada invalida.
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
                 "Global LLM API key is not configured. "
                 "Set it in /admin/api-key first."

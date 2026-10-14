@@ -34,6 +34,7 @@ from src.infrastructure.auth import (
 from src.infrastructure.chunking import StructuralDocumentChunker
 from src.infrastructure.documents import (
     DEFAULT_OCR_LANGUAGES,
+    DEFAULT_OCR_MAX_PAGES,
     SupportedDocumentExtractor,
     TesseractPdfOcr,
 )
@@ -181,7 +182,8 @@ def build_document_chunker() -> StructuralDocumentChunker:
 def build_ocr() -> TesseractPdfOcr:
     """RF-53, D2: Tesseract local; ``OCR_LANGUAGES`` no formato ``por+eng``."""
     return TesseractPdfOcr(
-        languages=_text_env("OCR_LANGUAGES", DEFAULT_OCR_LANGUAGES)
+        languages=_text_env("OCR_LANGUAGES", DEFAULT_OCR_LANGUAGES),
+        max_pages=_int_env("OCR_MAX_PAGES", DEFAULT_OCR_MAX_PAGES),
     )
 
 

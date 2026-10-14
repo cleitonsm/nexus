@@ -256,6 +256,12 @@ def _read_pdf_pages(
     if ocr is None:
         return pages
     # Pagina digitalizada: so imagem, nenhum caractere na camada de texto.
+    limit = getattr(ocr, "max_pages", None)
+    scanned = sum(1 for text in pages if not text.strip())
+    if limit is not None and scanned > limit:
+        raise UnreadableDocumentError(
+            f"the PDF has {scanned} pages without text; the OCR limit is {limit}."
+        )
     return [
         text if text.strip() else ocr.recognize_page(raw_content, number)
         for number, text in enumerate(pages, start=1)

@@ -179,8 +179,8 @@ class RunReindexUseCase:
             self._require_lease(job, len(reindexed))
             self._swap_alias(state, target)
             swapped = True
-            for document in reindexed:
-                self._document_repository.save(document)
+            # fix-5: tudo ou nada, para o banco nao ficar a meio caminho do alias.
+            self._document_repository.save_many(reindexed)
             job = job.with_progress(
                 total=job.total_documents,
                 processed=len(reindexed),

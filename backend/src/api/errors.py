@@ -3,7 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from .error_codes import error_body
 
 from src.domain import (
     AccessDeniedError,
@@ -14,13 +19,33 @@ from src.domain import (
 
 
 def register_error_handlers(app: FastAPI) -> None:
-    """Recusa de acesso decidida por um caso de uso vira 403 (RN-21)."""
+    """Recusa de acesso decidida por um caso de uso vira 403 (RN-21).
+
+    Todo erro sai como ``{detail, code}`` (fix-14).
+    """
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=jsonable_encoder(error_body(exc.status_code, exc.detail)),
+            headers=getattr(exc, "headers", None),
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=jsonable_encoder(
+                error_body(status.HTTP_422_UNPROCESSABLE_ENTITY, exc.errors())
+            ),
+        )
 
     @app.exception_handler(AccessDeniedError)
     async def access_denied(_: Request, exc: AccessDeniedError) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_403_FORBIDDEN,
-            content={"detail": str(exc)},
+            content=error_body(status.HTTP_403_FORBIDDEN, str(exc)),
         )
 
     @app.exception_handler(GroupDirectoryUnavailableError)
@@ -29,7 +54,9 @@ def register_error_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"detail": "group directory unavailable"},
+            content=error_body(
+                status.HTTP_503_SERVICE_UNAVAILABLE, "group directory unavailable"
+            ),
         )
 
     @app.exception_handler(UsageLimitExceededError)
@@ -40,7 +67,7 @@ def register_error_handlers(app: FastAPI) -> None:
     async def feedback_state(_: Request, exc: InvalidFeedbackStateError) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
-            content={"detail": str(exc)},
+            content=error_body(status.HTTP_409_CONFLICT, str(exc)),
         )
 
 

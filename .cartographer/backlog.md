@@ -231,3 +231,16 @@ verification: testes de integracao existentes de rotas + novos casos de 403/404 
 | fix-12 (refresh) | Feito: só resposta 4xx do Keycloak encerra a sessão; rede ou 5xx repete (1 s, 3 s) e depois tenta a cada 30 s sem derrubar o usuário. Spec novo em `oidc-client.spec.ts`, não executado. |
 | fix-5, 7, 8, 13 | Pendentes: mexem em SQLAlchemy/PostgreSQL e migração, sem como validar na nuvem. Fazer com o Docker (fix-7 passo 1 e fix-13 primeiro). |
 | fix-14 | Pendente: o envelope único de erro muda o contrato com o frontend; decidir o formato antes. |
+
+## Andamento (2026-10-14, segunda leva)
+
+Decisões do autor: erro HTTP `{detail, code}`; limite de OCR de 200 páginas (`OCR_MAX_PAGES`); fix-7 só o passo 1.
+
+| Item | Situação |
+|------|----------|
+| fix-10 (páginas) | Feito: `OCR_MAX_PAGES=200` conta só páginas sem texto; acima disso o documento falha como ilegível, antes de qualquer OCR. |
+| fix-7 (passo 1) | Feito: `commit_or_rollback` em todos os repositórios (`database/transactions.py`). Unit of Work fica fora. |
+| fix-5 | Feito em parte: `DocumentRepository.save_many` grava todos os documentos do reindex em uma transação. Não criei o estado "swap feito, banco fora de sincronia": se a gravação falhar o job termina como falhou. |
+| fix-8 | Feito em parte: listagens de conversas (`list_by_assistant`, `list_archived`) não carregam mais as mensagens (contagem por subconsulta). Sem paginação/cursor. |
+| fix-13 | Feito, **não executado**: migração `0008_indexes_and_constraints` (4 índices, `audit_events.details` em JSONB com índice de expressão, CHECK de status em 4 tabelas) e `passive_deletes`. Validar com `alembic upgrade head`, `alembic check` e o downgrade. |
+| fix-14 | Feito, **não executado** (sem FastAPI na nuvem): todo erro sai como `{detail, code}` (`api/errors.py`, `api/error_codes.py`); assistente inexistente responde 403 a quem não pode usá-lo (404 só para administrador), nas rotas de criar conversa, enviar documento e índice; falha do LLM no chat não repete o texto do provedor; LLM sem chave no teste do admin passa de 422 a 503. O teste de chave do administrador continua mostrando a causa (é diagnóstico, só administrador). |

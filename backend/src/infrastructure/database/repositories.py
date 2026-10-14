@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, or_, select, text, update
+from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, lazyload, selectinload
 
 from src.domain import (
     Assistant,
@@ -32,6 +32,7 @@ from src.domain import (
     ReindexStatus,
 )
 
+from .transactions import commit_or_rollback
 from .models import (
     AssistantGroupModel,
     AssistantModel,
@@ -65,7 +66,7 @@ class PostgresAssistantRepository:
             model.name = assistant.name.value
             model.description = assistant.description
             model.initial_prompt = assistant.initial_prompt
-        self._session.commit()
+        commit_or_rollback(self._session)
         self._session.refresh(model)
         return _assistant_to_entity(model)
 
@@ -89,7 +90,7 @@ class PostgresAssistantRepository:
         if model is None:
             return False
         self._session.delete(model)
-        self._session.commit()
+        commit_or_rollback(self._session)
         return True
 
 
@@ -115,7 +116,7 @@ class PostgresConversationRepository:
             model.updated_at = conversation.updated_at
             if conversation.name is not None:
                 model.name = conversation.name
-        self._session.commit()
+        commit_or_rollback(self._session)
         return self.get_by_id(conversation.id) or conversation
 
     def get_by_id(
@@ -138,31 +139,40 @@ class PostgresConversationRepository:
         owner_user_id: str,
     ) -> list[Conversation]:
         """RN-24: o filtro pelo dono faz parte da consulta."""
-        stmt = (
-            select(ConversationModel)
-            .where(
-                ConversationModel.assistant_id == assistant_id.value,
-                ConversationModel.owner_user_id == owner_user_id,
-            )
-            .options(selectinload(ConversationModel.messages))
-            .order_by(ConversationModel.updated_at.desc())
+        return self._summaries(
+            ConversationModel.assistant_id == assistant_id.value,
+            ConversationModel.owner_user_id == owner_user_id,
         )
-        return [
-            _conversation_to_entity(model)
-            for model in self._session.scalars(stmt).all()
-        ]
 
     def list_archived(self) -> list[Conversation]:
         """PC-D5: conversas sem dono, anteriores a autenticacao."""
+        return self._summaries(ConversationModel.owner_user_id.is_(None))
+
+    def _summaries(self, *conditions: object) -> list[Conversation]:
+        """fix-8: so as colunas da conversa e a contagem; sem carregar mensagens."""
+        count = (
+            select(func.count(MessageModel.id))
+            .where(MessageModel.conversation_id == ConversationModel.id)
+            .correlate(ConversationModel)
+            .scalar_subquery()
+        )
         stmt = (
-            select(ConversationModel)
-            .where(ConversationModel.owner_user_id.is_(None))
-            .options(selectinload(ConversationModel.messages))
+            select(ConversationModel, count.label("message_total"))
+            .where(*conditions)
+            .options(lazyload(ConversationModel.messages))
             .order_by(ConversationModel.updated_at.desc())
         )
         return [
-            _conversation_to_entity(model)
-            for model in self._session.scalars(stmt).all()
+            Conversation(
+                id=ConversationId(model.id),
+                assistant_id=AssistantId(model.assistant_id),
+                name=model.name,
+                created_at=model.created_at,
+                updated_at=model.updated_at,
+                owner_user_id=model.owner_user_id,
+                message_total=total,
+            )
+            for model, total in self._session.execute(stmt).all()
         ]
 
     def save_message(self, message: ChatMessage) -> ChatMessage:
@@ -183,7 +193,7 @@ class PostgresConversationRepository:
             if conversation.name is None and message.role == MessageRole.USER:
                 raw = message.content.strip()
                 conversation.name = raw[:97] + "..." if len(raw) > 100 else raw
-        self._session.commit()
+        commit_or_rollback(self._session)
         return _message_to_entity(model)
 
     def list_messages(
@@ -205,7 +215,7 @@ class PostgresConversationRepository:
         if model is None:
             return False
         self._session.delete(model)
-        self._session.commit()
+        commit_or_rollback(self._session)
         return True
 
     def get_message(self, message_id: str) -> ChatMessage | None:
@@ -219,9 +229,15 @@ class PostgresDocumentRepository:
 
     def save(self, document: Document) -> Document:
         model = _write_document(self._session, document)
-        self._session.commit()
+        commit_or_rollback(self._session)
         self._session.refresh(model)
         return _document_to_entity(model)
+
+    def save_many(self, documents: list[Document]) -> None:
+        """fix-5: uma transacao so; falha no meio nao deixa gravacao parcial."""
+        for document in documents:
+            _write_document(self._session, document)
+        commit_or_rollback(self._session)
 
     def get_by_id(self, document_id: DocumentId) -> Document | None:
         model = self._session.get(DocumentModel, document_id.value)
@@ -265,7 +281,7 @@ class PostgresDocumentRepository:
         if model is None:
             return False
         self._session.delete(model)
-        self._session.commit()
+        commit_or_rollback(self._session)
         return True
 
 
@@ -284,7 +300,7 @@ class PostgresIngestionJobQueue:
         model = IngestionJobModel(id=job.id, created_at=job.created_at)
         _apply_job(model, job)
         self._session.add(model)
-        self._session.commit()
+        commit_or_rollback(self._session)
         return job
 
     def reserve_next(self, now: datetime) -> IngestionJob | None:
@@ -314,7 +330,7 @@ class PostgresIngestionJobQueue:
             return None
         job = _ingestion_job_to_entity(model).reserve(now)
         _apply_job(model, job)
-        self._session.commit()
+        commit_or_rollback(self._session)
         return job
 
     def renew(self, job: IngestionJob, now: datetime) -> bool:
@@ -324,7 +340,7 @@ class PostgresIngestionJobQueue:
             .where(*_ingestion_owner(job))
             .values(reserved_at=now)
         )
-        self._session.commit()
+        commit_or_rollback(self._session)
         return result.rowcount == 1
 
     def list_expired(self, reserved_before: datetime) -> list[IngestionJob]:
@@ -370,7 +386,7 @@ class PostgresIngestionJobQueue:
                 # Documento excluido durante o processamento nao volta (C4).
                 if self._session.get(DocumentModel, document.id.value) is not None:
                     _write_document(self._session, document)
-            self._session.commit()
+            commit_or_rollback(self._session)
         except Exception:
             self._session.rollback()
             raise
@@ -398,7 +414,7 @@ class PostgresReindexJobRepository:
         model.attempts = job.attempts
         model.lease_expires_at = job.lease_expires_at
         try:
-            self._session.commit()
+            commit_or_rollback(self._session)
         except IntegrityError as exc:
             self._session.rollback()
             raise ReindexInProgressError(
@@ -454,7 +470,7 @@ class PostgresReindexJobRepository:
                 processed_documents=processed_documents,
             )
         )
-        self._session.commit()
+        commit_or_rollback(self._session)
         return result.rowcount == 1
 
     def save_if_owner(self, job: ReindexJob, attempts: int) -> bool:
@@ -472,7 +488,7 @@ class PostgresReindexJobRepository:
                 lease_expires_at=job.lease_expires_at,
             )
         )
-        self._session.commit()
+        commit_or_rollback(self._session)
         return result.rowcount == 1
 
     def claim_next(self, now: datetime, lease: timedelta) -> ReindexJob | None:
@@ -497,7 +513,7 @@ class PostgresReindexJobRepository:
         job = _reindex_job_to_entity(model).claim(now, lease)
         model.attempts = job.attempts
         model.lease_expires_at = job.lease_expires_at
-        self._session.commit()
+        commit_or_rollback(self._session)
         self._session.refresh(model)
         return _reindex_job_to_entity(model)
 
@@ -535,7 +551,7 @@ class PostgresAssistantPermissionRepository:
             AssistantGroupModel(assistant_id=assistant_id.value, group_name=group)
             for group in sorted(groups)
         )
-        self._session.commit()
+        commit_or_rollback(self._session)
 
     def get_document_groups(self, document_id: DocumentId) -> frozenset[str]:
         stmt = select(DocumentGroupModel.group_name).where(
@@ -568,7 +584,7 @@ class PostgresAssistantPermissionRepository:
             DocumentGroupModel(document_id=document_id.value, group_name=group)
             for group in sorted(groups)
         )
-        self._session.commit()
+        commit_or_rollback(self._session)
 
 
 class PostgresAuditLogRepository:
@@ -589,7 +605,7 @@ class PostgresAuditLogRepository:
                 details=dict(event.details),
             )
         )
-        self._session.commit()
+        commit_or_rollback(self._session)
         return event
 
     def list_events(self, query: AuditQuery) -> list[AuditEvent]:
@@ -636,7 +652,7 @@ class PostgresAuditRetentionRepository:
             result = self._session.execute(
                 delete(AuditEventModel).where(AuditEventModel.occurred_at < cutoff)
             )
-            self._session.commit()
+            commit_or_rollback(self._session)
         except Exception:
             self._session.rollback()
             raise
@@ -666,7 +682,7 @@ class PostgresSecretSettingsRepository:
         else:
             model.encrypted_value = encrypted_value
             model.updated_at = now
-        self._session.commit()
+        commit_or_rollback(self._session)
 
     def get_encrypted_value(self, *, key_name: str) -> str | None:
         model = self._session.get(SecretSettingModel, key_name)

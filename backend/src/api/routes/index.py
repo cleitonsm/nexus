@@ -15,6 +15,7 @@ from src.api.dependencies import (
     get_sparse_encoding_parameters,
     get_vector_store_gateway,
 )
+from src.api.lookup import assistant_not_found
 from src.api.schemas import IndexStatusResponse, ReindexJobResponse
 from src.application.dto import ReindexJobDTO
 from src.application.services import AccessControl
@@ -49,6 +50,9 @@ router = APIRouter(
 def _existing_assistant_id(
     assistant_id: str,
     assistant_repository: AssistantRepository,
+    user: AuthenticatedUser,
+    access_control: AccessControl,
+    attempted: str,
 ) -> AssistantId:
     try:
         assistant_ref = AssistantId(assistant_id)
@@ -58,10 +62,7 @@ def _existing_assistant_id(
             detail=str(exc),
         ) from exc
     if assistant_repository.get_by_id(assistant_ref) is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="assistant not found",
-        )
+        raise assistant_not_found(user, access_control, assistant_ref, attempted)
     return assistant_ref
 
 
@@ -86,7 +87,9 @@ def start_reindex(
     ),
 ) -> ReindexJobResponse:
     """PC-D4: so registra o pedido; o worker executa a reindexacao."""
-    assistant_ref = _existing_assistant_id(assistant_id, assistant_repository)
+    assistant_ref = _existing_assistant_id(
+        assistant_id, assistant_repository, user, access_control, "index.reindex"
+    )
     use_case = StartReindexUseCase(
         document_repository=document_repository,
         vector_store_gateway=vector_store_gateway,
@@ -124,7 +127,9 @@ def get_index_status(
         get_sparse_encoding_parameters
     ),
 ) -> IndexStatusResponse:
-    assistant_ref = _existing_assistant_id(assistant_id, assistant_repository)
+    assistant_ref = _existing_assistant_id(
+        assistant_id, assistant_repository, user, access_control, "index.status"
+    )
     result = GetIndexStatusUseCase(
         document_repository=document_repository,
         vector_store_gateway=vector_store_gateway,

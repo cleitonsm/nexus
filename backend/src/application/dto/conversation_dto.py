@@ -23,7 +23,7 @@ class ConversationDTO:
             name=conversation.name,
             created_at=conversation.created_at,
             updated_at=conversation.updated_at,
-            message_count=len(conversation.messages),
+            message_count=conversation.message_count,
         )
 
 

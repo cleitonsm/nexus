@@ -25,6 +25,7 @@ from src.api.dependencies import (
     get_tracer,
     get_usage_governance,
 )
+from src.api.lookup import assistant_not_found
 from src.api.schemas import (
     AddMessageRequest,
     ChatRequest,
@@ -123,9 +124,8 @@ def create_conversation(
 
     assistant = assistant_repository.get_by_id(assistant_id)
     if assistant is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="assistant not found",
+        raise assistant_not_found(
+            user, access_control, assistant_id, "conversation.create"
         )
 
     use_case = RegisterConversationUseCase(conversation_repository, access_control)
@@ -365,7 +365,12 @@ def _chat_error(exc: Exception) -> HTTPException:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         )
-    return HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+    # Nao repete o texto da excecao do provedor ao usuario (fix-14).
+    logger.warning("chat.upstream_failed", exc_info=exc)
+    return HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail="Falha na comunicação com o LLM.",
+    )
 
 
 def _in_one_context(events: Iterator[ChatStreamEvent]) -> Iterator[ChatStreamEvent]:
