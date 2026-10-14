@@ -83,8 +83,55 @@ Vetores de modelos diferentes não são comparáveis. Execute a reindexação do
 
 ### Respostas Sempre em Fallback
 
-A nota mínima de relevância pode estar alta demais. Ajuste `RELEVANCE_MIN_SCORE` com base na
-avaliação, nunca por tentativa isolada.
+Leia o log do chat antes de mexer em qualquer valor:
+
+```powershell
+docker compose logs backend --since 10m | Select-String "chat\.(retrieval|rerank|context|answer|fallback)"
+```
+
+| No log | Causa | O que fazer |
+|--------|-------|-------------|
+| `chat.retrieval.finished` com `candidates: 0` | Nenhum trecho passa nos filtros da busca: o documento não está indexado, está inativo, ou o usuário não tem nenhum dos grupos de `allowed_groups` | Conferir o estado do documento e os grupos (veja abaixo) |
+| Candidatos maiores que 0 e `top_score` abaixo de `RELEVANCE_MIN_SCORE`, com `context_chunks: 0` | A nota mínima de relevância pode estar alta demais | Ajustar `RELEVANCE_MIN_SCORE` com base na avaliação, nunca por tentativa isolada (CT-22) |
+| `context_chunks` maior que 0 e depois `chat.answer.rejected` (`no_valid_citation`) | O modelo respondeu sem o marcador `[n]` de nenhum trecho enviado (RN-18) | Revisar a instrução de citação, com decisão do autor |
+
+Para ver o que há no Qdrant (a chave é `QDRANT_API_KEY`, padrão `nexus-local`; no PowerShell
+passe o corpo por `|` e `--data-binary "@-"` em vez de aspas dentro do `-d`):
+
+```powershell
+$k = "nexus-local"; $c = "assistant-<id>-v2"; $u = "http://localhost:6333/collections/$c/points"
+'{"limit":1,"with_payload":["allowed_groups","active","document_id"],"with_vector":false}' | curl.exe -s -H "api-key: $k" -H "Content-Type: application/json" -X POST "$u/scroll" --data-binary "@-"
+```
+
+Um `allowed_groups` com texto como `["Sem restrição"]` é um **grupo** com esse nome, e ninguém o tem:
+o documento fica invisível. Documento sem restrição tem a lista vazia. Limpe os grupos do documento
+na tela de assistentes (não edite o Qdrant à mão: o banco ficaria divergente). Desde a SPEC-009,
+o envio recusa grupos que não existem no Keycloak.
+
+### `/api/groups` Responde 503
+
+A lista de grupos vem do cliente de serviço `nexus-backend` do Keycloak (PC-D6). O 503 significa que
+o backend não conseguiu o token desse cliente ou ler os grupos. A causa usual é um realm importado
+antes de 2026-10-08, que não tem o cliente, porque a importação não sobrescreve um realm existente.
+Confirme com `docker compose logs backend --since 15m | Select-String "group directory"`. Para
+recriar o realm (apaga só o banco `keycloak`: usuários e grupos criados à mão se perdem):
+
+```powershell
+docker compose stop keycloak
+docker compose exec postgres psql -U nexus -d postgres -c "DROP DATABASE keycloak;"
+docker compose exec postgres psql -U nexus -d postgres -c "CREATE DATABASE keycloak;"
+docker compose up -d keycloak
+```
+
+Enquanto o 503 durar, a tela volta ao campo de texto livre e a validação de grupos do envio é
+ignorada (e registrada em log).
+
+### Teste do LLM Responde 502 ou 503 do Provedor
+
+`401` do provedor: a chave não é do provedor escolhido na tela de administração (provedor, modelo
+e URL são configuráveis desde a SPEC-008; a chave é a mesma para todos). `503` com "high demand"
+(Gemini) ou `429`: falha passageira do provedor; o cliente já repete até três vezes (SPEC-009) e o
+erro só chega à tela depois da última tentativa. Tente de novo ou troque o modelo.
 
 ### Respostas sem Trecho de um Documento Indexado (PostgreSQL e Qdrant Divergentes)
 

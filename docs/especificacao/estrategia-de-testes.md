@@ -129,6 +129,13 @@ infraestrutura e poucos roteiros ponta a ponta.
 | CT-68 | Integração | `GET` e `PUT /admin/llm-settings`: 200, 422 e 403 | RF-68, RF-69, RF-71 |
 | CT-69 | Vitest | Reducer e seletor da conexão (carregada, salva, erro) | RF-72 |
 | CT-70 | Manual | Gemini real: "Testar LLM" responde `ok` com a chave de teste do autor | RF-70 |
+| CT-71 | Unitário | O cliente do LLM repete em 503, 429 e falha de conexão e entrega na tentativa seguinte, esperando 1 s e 3 s | RF-73 |
+| CT-72 | Unitário | Não repete em 400, 401, 403 e 404; esgotadas as três tentativas devolve o erro atual | RF-73 |
+| CT-73 | Unitário | O streaming repete só a abertura da conexão; depois que o provedor respondeu não repete | RF-73 |
+| CT-74 | Unitário | Grupo desconhecido recusado no envio e na restrição do documento, com os nomes recusados; nada é gravado | RF-74 |
+| CT-75 | Unitário e integração | Grupo existente (com e sem barra inicial) aceito; lista vazia não consulta o Keycloak; Keycloak indisponível aceita e registra aviso | RF-74 |
+| CT-76 | Integração | A rota de envio responde 422 para grupo desconhecido, sem gravar | RF-74 |
+| CT-77 | Manual | Subida com `qdrant-client` 1.11.3 sem o aviso de versão; indexação e busca híbrida funcionam | SPEC-009 D1 |
 
 ---
 
@@ -193,6 +200,9 @@ Atualizado em 2026-10-08.
 | CT-68 | Escrito, ainda não executado (exige FastAPI) | `backend/tests/integration/test_access_control_api.py` (`LLMSettingsApiTestCase`) |
 | CT-69 | Escrito, ainda não executado (sem npm na nuvem) | `frontend/src/app/store/nexus.reducer.spec.ts` |
 | CT-70 | A executar no Docker, com a chave do autor | — |
+| CT-71 a CT-75 | Implementados e executados com sucesso (621 testes unitários no total) | `backend/tests/unit/test_llm_retry.py`, `test_group_validation.py`, `test_access_control.py` |
+| CT-75 e CT-76 (rota) | Escritos, ainda não executados (exigem FastAPI) | `backend/tests/integration/test_api_routes.py` |
+| CT-77 | A executar no Docker, depois de reconstruir as imagens | — |
 | CT-04 | Escrito, ainda não executado (exige PostgreSQL e Qdrant) | `backend/tests/integration/test_evaluation_command.py` |
 | Ferramentas de medição e orquestração | Implementadas e testadas sem Docker | `scripts/perf/`, `scripts/validation/run-all.sh`, `backend/tests/unit/test_perf_tools.py`, `backend/tests/unit/test_validation_runner.py` |
 | CT-39, CT-40, CT-49 a CT-57 | Não implementados; definidos no [plano de validação final](../qa/plano-de-validacao-final.md) | — |

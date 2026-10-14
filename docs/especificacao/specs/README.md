@@ -20,6 +20,7 @@ testes são escritos antes da implementação.
 | SPEC-20261007-006 | 6 — Operação e governança | [`SPEC-006-operacao-e-governanca.md`](SPEC-006-operacao-e-governanca.md) | Aprovada; código entregue, validação no Docker pendente | RF-56 a RF-63 |
 | SPEC-20261014-007 | Endurecimento (fix-1 a fix-4 do cartographer) | [`SPEC-007-endurecimento.md`](SPEC-007-endurecimento.md) | Aprovada; código entregue, validação no Docker pendente | RF-64 a RF-67 |
 | SPEC-20261014-008 | Configuração do LLM na administração (provedor, modelo e URL) | [`SPEC-008-configuracao-do-llm.md`](SPEC-008-configuracao-do-llm.md) | Aprovada; código entregue, validação no Docker pendente | RF-68 a RF-72 |
+| SPEC-20261014-009 | Robustez do LLM (novas tentativas), grupos de documentos validados no Keycloak e cliente Qdrant 1.11.3 | [`SPEC-009-robustez-llm-grupos-qdrant.md`](SPEC-009-robustez-llm-grupos-qdrant.md) | Aprovada; código entregue, validação no Docker pendente | RF-73, RF-74 |
 
 ## Status possíveis
 
