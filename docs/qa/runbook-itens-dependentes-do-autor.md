@@ -125,6 +125,9 @@ quanto das **fora do escopo** termina em fallback, mais os itens problemáticos.
 registre em `.env` (`RELEVANCE_MIN_SCORE=...`), depois `docker compose up -d backend worker`. Com o
 conjunto de 27 itens (5 fora do escopo) a curva é grossa; refaça com o ampliado (passo 8).
 
+**Decisão registrada (2026-10-16): `RELEVANCE_MIN_SCORE=0,10`** (82% dentro do escopo respondidas, 100% fora
+do escopo em fallback, margem de 2,3× sobre a maior nota fora do escopo, 0,044). Já está no `.env.example`.
+
 ## 8. Conjunto ampliado (82 itens, 55 rascunhos)
 
 ```powershell
@@ -206,3 +209,48 @@ O que esperar:
 - Se algo der errado depois do passo 3: `docker compose exec -T postgres pg_restore -U nexus -d nexus --clean --if-exists /tmp/pre0008.dump`.
 - Rotas: mudaram o `404` para `403` quando um usuário comum acessa assistente inexistente; um teste que
   esperava `404` para usuário comum precisa ser ajustado (os que li usam administrador).
+
+## 11. Fechamento: o que falta para 100% (2026-10-16)
+
+O que já passou no Docker está no [registro da rodada](relatorios/2026-10-16-rodada-integracao/LEIAME.md).
+Rode na ordem; cada passo diz o que esperar. `$run` é o definido no passo 2 da seção 10.
+
+```powershell
+# 1) Commit das correções da rodada. Confira o git status: não inclua pre0008.dump nem relatórios gerados em
+#    backend/tests/evaluation/reports/ (adicione por caminho se aparecerem em 'backend' ou 'scripts')
+git status
+git -c core.autocrlf=true add backend/tests backend/src scripts
+git -c core.autocrlf=true commit -m "test: corrige testes de integracao e reaplica a guarda da auditoria (0009)"
+# 2) Regressão completa da integração: tudo deve passar (os que dependem de Keycloak/Qdrant precisam do 'docker compose up -d')
+docker compose up -d
+docker compose ps        # keycloak, backend, postgres e qdrant em 'healthy'
+Invoke-Expression "$run sh -c 'cd /app/integration && python -m unittest -v test_api_routes test_access_control_api test_job_ownership_storage test_evaluation_command test_hybrid_search test_chat_citations test_qdrant_alias test_access_control_storage test_document_lifecycle_storage test_operations_api test_sensitive_data_leak test_request_context'"
+Invoke-Expression "$run sh -c 'cd /app/integration && python -m unittest -v test_migrations test_keycloak_real test_full_stack_flow test_assistant_isolation test_consistency_check test_ocr_container test_upload_latency'"
+# 3) Nginx (CT-55): rode pelo host (o serviço frontend publica a porta 4200)
+$env:NGINX_URL = "http://localhost:4200"
+python backend\tests\integration\test_nginx_proxy.py
+```
+
+`skipped` não é aprovação: se algum teste aparecer como pulado, procure o motivo antes de seguir.
+
+Depois, as seções já descritas acima, nesta ordem: **5** (CT-53, CT-54 e CT-56), **6** (Playwright, opcional
+para o fechamento; FE-06 e FE-07 dependem dele), **7** (calibração e decisão do `RELEVANCE_MIN_SCORE`) e
+**8** (validação dos 55 itens pelo curador).
+
+Com tudo isso verde e o conjunto validado, congele o candidato:
+
+```powershell
+git status                                        # árvore limpa
+git -c core.autocrlf=true tag validacao-final-rc1
+git push origin feat/rag-enterprise
+git push origin validacao-final-rc1
+scripts\validation\run-all.ps1 -DryRun            # confere o roteiro sem executar
+scripts\validation\run-all.ps1                    # campanha V0 a V8 (LLM: 600 a 900 chamadas; aprove o custo antes)
+```
+
+A campanha grava `docs/qa/relatorios/<data>/`. Traga essa pasta: com ela eu monto o `RESUMO.md` (matriz
+requisito → caso → evidência → resultado), mudo SPEC-001 a SPEC-006 para `Implementada`, registro a linha de
+base oficial e fecho a documentação (seção 8 do plano de validação e E10 do plano de conclusão).
+
+Se algum passo falhar, traga a saída: cada falha gera um novo commit e um novo candidato (`rc2`), conforme a
+seção 9 do plano de validação.

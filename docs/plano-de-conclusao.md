@@ -265,7 +265,7 @@ refeito ao fim da semana 1.
 |-------|----------|------|------------|
 | E0 | Concluída, exceto apagar branches | 2026-10-08 | Push até `8518f7b`. O primeiro CI no GitHub passou no backend e na infraestrutura e falhou no frontend: faltava `@tailwindcss/typography` no `package-lock.json` (corrigido em `ea66f5d`, lock gerado pelo npm no GitHub Actions). Falta o autor apagar `feat/rag-enterprise-fase-1` e `chore/sync-lock` no GitHub (o proxy da sessão não permite) |
 | E1 | Roteiro pronto | 2026-10-08 | `scripts/validation/quick-check.ps1` grava as evidências em `docs/qa/relatorios/<data>-e1/`; falta o autor executar |
-| E2 | Pendente | — | — |
+| E2 | Concluída | 2026-10-16 | O teste rápido (2026-10-14) e a rodada de integração no Docker (2026-10-15/16) geraram as correções de [SPEC-007](especificacao/specs/SPEC-007-endurecimento.md), SPEC-008, SPEC-009 e as de teste e de migração listadas no [registro da rodada](qa/relatorios/2026-10-16-rodada-integracao/LEIAME.md) |
 | E3 | Concluída | 2026-10-08 | PC-D1 a PC-D7 decididas; C1–C11 (SPEC-006) e C9–C16 (SPEC-005) aprovados; skill `desenvolvedor-nexus` atualizada nas duas cópias |
 | E4 | Em andamento | 2026-10-08 | PC-D1 (`NEXUS_FRONTEND_URL` no realm, checagem no CI) e PC-D2 (parâmetros do BM25 registrados por collection; aviso no painel novo "Índice de busca" da tela de assistentes, que também permite reindexar, no log e na métrica; 12 testes unitários do backend e specs do frontend) entregues. A compatibilidade do Qdrant foi decidida (cliente 1.11.3, SPEC-009) e falta conferir no Docker (CT-77) |
 | E5 | Concluída | 2026-10-08 | PC-D4 entregue: a API só registra o pedido; o worker reserva `reindex_jobs` com `SKIP LOCKED` e prazo renovado por documento (migração `0007`), retoma do zero após interrupção e falha depois de `INGESTION_MAX_ATTEMPTS`; 7 testes unitários e 3 de integração (PostgreSQL). PC-D3 entregue: `python -m src.cli.check_consistency` (só lê; códigos de saída 0, 1 e 2; 10 testes unitários em `test_index_consistency.py`). PC-D5 entregue: tela "Conversas arquivadas" do administrador (`/admin/archived`; listar, ler e excluir, com auditoria; SPEC-004 D3 ajustada; 6 testes unitários e specs do frontend). PC-D6 entregue: `GET /groups` lê os grupos pelo cliente de serviço `nexus-backend` (só `query-groups`; 503 sem ele) e a tela de assistentes usa um seletor que volta ao texto livre sem a lista; 7 testes unitários e specs do frontend |
@@ -273,11 +273,28 @@ refeito ao fim da semana 1.
 | E6b | Concluída (código) | 2026-10-14 | SPEC-007: fix-1 a fix-4 do backlog do Cartographer (papel da mensagem, upload com teto de memória, dono do job de ingestão e de reindexação, segredos padrão fora do ambiente local e portas em 127.0.0.1). Comando de avaliação corrigido (estava quebrado desde a Fase 5, ver E7). 562 testes unitários passam; os `UPDATE` condicionais no PostgreSQL ainda não foram executados |
 | E6c | Concluída (código) | 2026-10-14 | SPEC-008: o teste rápido no Docker mostrou que a chave do Gemini era enviada à OpenAI; a tela de Administração passa a configurar provedor (OpenAI, Gemini, Personalizado), modelo e URL, gravados em `app_settings` (sem migração) e usados pelo chat, pelo teste da chave, pelo consumo e pelo comando de avaliação. 600 testes unitários passam; rotas (CT-68), specs do frontend (CT-69) e o teste com o Gemini real (CT-70) ainda não foram executados |
 | E6d | Concluída (código) | 2026-10-14 | SPEC-009: o teste no Docker mostrou três pontos. O cliente do LLM repete em falha passageira (3 tentativas, 1 s e 3 s; só 429/5xx e falha de conexão), e a queda de conexão deixou de escapar como erro cru. Grupos informados no envio ou na restrição de um documento precisam existir no Keycloak (422; com o Keycloak fora do ar a validação é ignorada e registrada). `qdrant-client` fixado em 1.11.3, a série do servidor (decisão de compatibilidade do E4). 621 testes unitários passam; rota de envio (CT-75/76) e o aviso de versão (CT-77) ainda não foram executados |
-| E7 | Parte A parcial (sem Docker) | 2026-10-14 | Entregues: cliente `nexus-tests` no realm de desenvolvimento, `vitest.config.ts` (FE-01, não executado: sem npm), `scripts/perf/` (corpus, upload, indexação, TTFT, relatório; testados com servidor HTTP falso), `env_snapshot.sh`, `run-all.sh`/`.ps1`, métrica `citation_coverage`, CT-04 escrito e correção do comando de avaliação. Faltam: CT-39, CT-40, CT-49 a CT-57 (exigem Docker para escrever com confiança), FE-02 a FE-07, `retrieval_latency.py` e `reindex_under_load.py` |
-| EP | Pendente | — | 27 itens validados |
+| E6e | Concluída | 2026-10-16 | Rodada de validação no Docker: backlog do Cartographer validado (migração `0008`, rotas `{detail, code}`, stream com status HTTP, refresh resiliente) e a migração `0009` (reaplica a guarda da auditoria em bancos criados com a `0004` antiga). Achado de produto: `RELEVANCE_MIN_SCORE=0,5` descarta trechos corretos para perguntas curtas (nota 0,19 medida); decisão do autor pendente |
+| E7 | Parte A escrita; executada em parte | 2026-10-16 | Escrita toda (CT-04, CT-39, CT-40, CT-49 a CT-57, FE-01 a FE-05, E1 do FE-07, `scripts/perf/*`, `scripts/validation/*`). **Executados no Docker em 2026-10-15/16:** CT-39 (OCR em português), CT-40 (upload de 25 MB), CT-50 (fluxo completo), CT-51 (isolamento), CT-57 (conferência), `alembic upgrade/check/downgrade` e `npm test` (149 testes). **A executar:** CT-52 (`test_keycloak_real`), CT-55 (Nginx), `test_migrations`, CT-53/54/56, FE-06/FE-07 (Playwright), `retrieval_latency.py` e `reindex_under_load.py`. Ver a seção 11 do [runbook](qa/runbook-itens-dependentes-do-autor.md) |
+| EP | Em andamento | 2026-10-16 | `nexus-docs` (27 itens validados), `nexus-docs-ampliado` (82 itens; **55 rascunhos aguardam o curador**, `validate_items.py`) e `nexus-acesso` (CT-56) existem. A calibração do `RELEVANCE_MIN_SCORE` foi feita sobre os 27 itens (decisão: 0,10); falta a validação do curador (RN-15) e refazê-la no ampliado |
 | E8 | Pendente | — | — |
 | E9 | Pendente | — | — |
 | E10 | Pendente | — | — |
+
+### 8.1 Situação dos critérios de conclusão (2026-10-16)
+
+| Critério da seção 2 | Situação | O que falta |
+|---|---|---|
+| Campanha V0 a V8 aprovada sobre `validacao-final-rcN`, com push | Não iniciada | Fechar a seção 11 do runbook, etiquetar `validacao-final-rc1`, `git push` com a etiqueta e rodar `scripts\validation\run-all.ps1` |
+| `RESUMO.md` ligando RF-24 a RF-63 e RNF-01 a RNF-33 a caso, evidência e resultado | Não iniciado | Gerado pelo orquestrador na campanha; a matriz é completada com as evidências |
+| Sete metas comprovadas (recall@5 ≥ 0,80, fidelidade ≥ 0,90, fallback ≥ 90%, 100% com fonte, zero vazamento, upload ≤ 2 s, 100% rastreáveis) | Parcial | Upload ≤ 2 s passou no CT-40 (arquivos de 25,3 MB). Demais dependem de V6 (LLM) e da recalibração no conjunto ampliado (nota mínima decidida: 0,10) |
+| Seis critérios de aceite ligados a uma evidência | Não iniciado | Na campanha |
+| SPEC-001 a SPEC-006 com status `Implementada` | Código entregue; aguardam a campanha | Mudar o status ao aprovar a campanha |
+| Linha de base oficial em `backend/tests/evaluation/reports/` | Não registrada | Depende da validação do curador e da recalibração no ampliado |
+| Documentação atualizada (seção 6) e skill | Skill atualizada (E3); C4 e riscos do ciclo 2 pendentes | E10 |
+| Limitações aceitas registradas com justificativa | Registradas no README (seção "Limitações conhecidas") | Repetir no `RESUMO.md` |
+
+Itens que dependem só do autor: validar os 55 rascunhos com o curador,
+executar o que a seção 11 do runbook lista e aprovar o custo de LLM da campanha (600 a 900 chamadas).
 
 ## 9. Riscos do plano
 

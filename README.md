@@ -246,6 +246,18 @@ A documentação desta evolução foi gerada com apoio de IA generativa. O autor
 
 ---
 
+## Limitações conhecidas
+
+Aceitas na conclusão da evolução (decisão PC-D7), cada uma com o motivo:
+
+- **Tabelas em PDF** saem como texto corrido; extrair a estrutura exigiria uma dependência nova e foi adiado (D11 da SPEC-005). Tabelas de DOCX são preservadas.
+- **Limite de uso e registro de consumo não são atômicos** (C2): duas perguntas simultâneas no limite podem passar. O erro é de uma pergunta e não compromete segurança.
+- **`/metrics` fica na porta 8000, aberto no ambiente local** (C9), por desenho: a porta só escuta em `127.0.0.1`. Em outro ambiente, restrinja no proxy.
+- **Backup só local** (D5 da SPEC-006): a cópia diária fica no volume do Docker. Replicar para fora do host é responsabilidade de quem opera.
+- **Sem tela de versões substituídas** (D5 da SPEC-005): só a versão vigente do documento é consultável.
+- **Nota mínima de relevância** (`RELEVANCE_MIN_SCORE`): o valor 0,10 foi calibrado com 27 itens do piloto (82% das perguntas dentro do escopo respondidas; 100% das fora do escopo em fallback). A amostra fora do escopo é pequena; refaça com `scripts\calibrate.ps1` sobre o conjunto ampliado validado e com dados reais.
+- **Validação de grupos** depende do cliente de serviço `nexus-backend` no Keycloak; sem ele a API aceita o grupo e registra um aviso.
+
 ## Documentação
 
 | Documento | Descrição |
