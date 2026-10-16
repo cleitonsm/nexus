@@ -9,10 +9,12 @@ acento recupera o trecho. Exige a pilha no ar, o Tesseract com o idioma
 from __future__ import annotations
 
 import io
+import json
+import os
 import unittest
 from uuid import uuid4
 
-from stack_support import Api, FakeLLMServer, stack_available, token_for
+from stack_support import Api, FakeLLMServer, call, stack_available, token_for
 
 LINES = [
     "Politica de reembolso de despesas de viagem",
@@ -22,10 +24,44 @@ LINES = [
 ]
 
 
-def _scanned_pdf() -> bytes:
-    from PIL import Image, ImageDraw, ImageFont
+FONT_CANDIDATES = (
+    os.getenv("OCR_TEST_FONT", ""),
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+    "DejaVuSans.ttf",
+    "LiberationSans-Regular.ttf",
+)
+ACCENTED = "ãçéúáóêí"
 
-    font = ImageFont.load_default(size=44)
+
+def _accented_font(size: int):
+    """Fonte TrueType que desenha os acentos.
+
+    A fonte embutida do Pillow nao tem esses glifos: cada um sai como o
+    quadrado de glifo ausente, que o Tesseract le como ``X`` ou ``k``.
+    """
+    from PIL import ImageFont
+
+    for candidate in FONT_CANDIDATES:
+        if not candidate:
+            continue
+        try:
+            font = ImageFont.truetype(candidate, size)
+        except OSError:
+            continue
+        missing = bytes(font.getmask("\ue000"))
+        if all(bytes(font.getmask(char)) != missing for char in ACCENTED):
+            return font
+    raise RuntimeError(
+        "nenhuma fonte TrueType com acentos (defina OCR_TEST_FONT)"
+    )
+
+
+def _scanned_pdf() -> bytes:
+    from PIL import Image, ImageDraw
+
+    font = _accented_font(44)
     image = Image.new("RGB", (1654, 2339), "white")
     draw = ImageDraw.Draw(image)
     for row, line in enumerate(LINES):
@@ -33,6 +69,26 @@ def _scanned_pdf() -> bytes:
     buffer = io.BytesIO()
     image.save(buffer, "PDF", resolution=200)
     return buffer.getvalue()
+
+
+def _indexed_chunks(assistant_id: str) -> str:
+    """Trechos gravados no Qdrant, para diagnosticar uma recuperacao vazia."""
+    url = os.getenv("QDRANT_URL", "http://qdrant:6333").rstrip("/")
+    headers = {"Content-Type": "application/json"}
+    if os.getenv("QDRANT_API_KEY"):
+        headers["api-key"] = os.environ["QDRANT_API_KEY"]
+    try:
+        status, _, payload = call(
+            "POST",
+            f"{url}/collections/assistant-{assistant_id}/points/scroll",
+            headers=headers,
+            body=json.dumps(
+                {"limit": 20, "with_payload": True, "with_vector": False}
+            ).encode(),
+        )
+    except OSError as exc:
+        return f"Qdrant inacessivel: {exc}"
+    return f"Qdrant {status}: {payload.decode('utf-8', 'replace')[:3000]}"
 
 
 class OcrContainerTests(unittest.TestCase):
@@ -82,11 +138,24 @@ class OcrContainerTests(unittest.TestCase):
             status, answer = self.admin.json(
                 "POST",
                 f"/conversations/{conversation['id']}/chat",
-                payload={"question": "Qual o prazo da prestação de contas?"},
+                # Pergunta especifica: o teste cobre OCR, indexacao e recuperacao, nao a
+                # calibracao. Com a forma curta ("Qual o prazo da prestação de
+                # contas?") este trecho recebe ~0,19 do reranker e cai sob o
+                # RELEVANCE_MIN_SCORE de 0,5 (ver scripts/diagnostico_reranker.py).
+                payload={
+                    "question": (
+                        "Qual o prazo para a prestação de contas das despesas "
+                        "de viagem?"
+                    )
+                },
             )
             self.assertEqual(status, 201, answer)
         citations = answer["assistant_message"]["citations"]
-        self.assertTrue(citations, answer)
+        self.assertTrue(
+            citations,
+            f"{answer} | RELEVANCE_MIN_SCORE={os.getenv('RELEVANCE_MIN_SCORE')} | "
+            f"{_indexed_chunks(self.assistant_id)}",
+        )
         self.assertEqual(citations[0]["source_name"], "digitalizado.pdf")
         self.assertIn("úteis", " ".join(item["excerpt"] for item in citations))
 

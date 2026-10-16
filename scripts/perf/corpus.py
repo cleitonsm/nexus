@@ -128,6 +128,23 @@ def make_text_pdf(path: Path, target_bytes: int, seed: int) -> Path:
     return path
 
 
+def make_fitting(maker, path: Path, ceiling_bytes: int, seed: int) -> Path:
+    """Gera com ``maker`` um arquivo entre 95% e 100% de ``ceiling_bytes``.
+
+    ``make_text_pdf`` e ``make_docx`` passam do tamanho pedido (o envelope do
+    formato soma ao texto); aqui o alvo e recalibrado pelo tamanho obtido, para
+    quem precisa de um arquivo proximo do limite sem ultrapassa-lo.
+    """
+    target = int(ceiling_bytes * 0.9)  # o envelope costuma somar cerca de 10%
+    for _ in range(8):
+        maker(path, target, seed)
+        size = path.stat().st_size
+        if 0.95 * ceiling_bytes <= size <= ceiling_bytes:
+            return path
+        target = max(1000, int(target * 0.975 * ceiling_bytes / size))
+    raise RuntimeError(f"nao foi possivel ajustar {path.name} abaixo de {ceiling_bytes} bytes")
+
+
 def make_scanned_pdf(path: Path, pages: int, seed: int) -> Path:
     """PDF so de imagem (exige Pillow); simula documento digitalizado."""
     try:

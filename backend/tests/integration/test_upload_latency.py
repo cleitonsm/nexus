@@ -46,10 +46,16 @@ class UploadLatencyTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            # Perto do teto de 25 MiB, mas dentro dele: os geradores passam do
+            # tamanho pedido, entao o alvo e calibrado pelo tamanho obtido.
+            ceiling = 25 * corpus.MB - 256 * 1024
             files = [
-                (corpus.make_text_pdf(root / "a.pdf", 24 * corpus.MB, 11), "application/pdf"),
                 (
-                    corpus.make_docx(root / "b.docx", 24 * corpus.MB, 12),
+                    corpus.make_fitting(corpus.make_text_pdf, root / "a.pdf", ceiling, 11),
+                    "application/pdf",
+                ),
+                (
+                    corpus.make_fitting(corpus.make_docx, root / "b.docx", ceiling, 12),
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 ),
             ]

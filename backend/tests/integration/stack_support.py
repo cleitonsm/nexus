@@ -4,7 +4,7 @@ So biblioteca padrao. A API, o Keycloak e o LLM simulado sao acessados por
 HTTP; sem a pilha, ``stack_available`` devolve falso e os testes sao pulados.
 
 Variaveis: ``API_URL`` (padrao ``http://backend:8000``), ``KEYCLOAK_URL``
-(padrao ``http://keycloak:8080``), ``KEYCLOAK_REALM`` (``nexus``),
+(``TEST_KEYCLOAK_URL``, depois ``KEYCLOAK_INTERNAL_URL``, padrao ``http://keycloak:8080``), ``KEYCLOAK_REALM`` (``nexus``),
 ``NEXUS_TEST_PASSWORD`` (``nexus-dev``, a senha dos usuarios do realm de
 desenvolvimento). O cliente ``nexus-tests`` so existe nesse realm (V-D2).
 """
@@ -22,7 +22,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlencode, urlsplit
 
 API_URL = os.getenv("API_URL", "http://backend:8000").rstrip("/")
-KEYCLOAK_URL = os.getenv("KEYCLOAK_URL", "http://keycloak:8080").rstrip("/")
+# Dentro do Compose, ``KEYCLOAK_URL`` e o endereco do navegador (localhost) e
+# nao alcanca o Keycloak; o endereco entre containers e ``KEYCLOAK_INTERNAL_URL``.
+KEYCLOAK_URL = (
+    os.getenv("TEST_KEYCLOAK_URL")
+    or os.getenv("KEYCLOAK_INTERNAL_URL")
+    or "http://keycloak:8080"
+).rstrip("/")
 REALM = os.getenv("KEYCLOAK_REALM", "nexus")
 TEST_PASSWORD = os.getenv("NEXUS_TEST_PASSWORD", "nexus-dev")
 

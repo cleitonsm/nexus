@@ -26,6 +26,7 @@ from src.api.dependencies import (
 from src.api.routes import (
     admin_router,
     assistants_router,
+    document_access_router,
     documents_router,
     index_router,
 )
@@ -372,6 +373,7 @@ class ApiRoutesTestCase(unittest.TestCase):
         self.app = FastAPI()
         self.app.include_router(admin_router)
         self.app.include_router(assistants_router)
+        self.app.include_router(document_access_router)
         self.app.include_router(documents_router)
         self.app.include_router(index_router)
         self.app.dependency_overrides.clear()
@@ -493,8 +495,12 @@ class ApiRoutesTestCase(unittest.TestCase):
 
     def _run_worker(self) -> None:
         """Faz o papel do servico ``worker`` ate a fila esvaziar."""
-        while self.worker.execute() is not None:
-            pass
+        self.outcomes = []
+        while True:
+            outcome = self.worker.execute()
+            if outcome is None:
+                break
+            self.outcomes.append(outcome)
 
     def test_ingest_document_endpoint_accepts_text_file_and_metadata(self) -> None:
         """RF-48: responde 202 com o documento pendente; o worker indexa."""
@@ -519,7 +525,11 @@ class ApiRoutesTestCase(unittest.TestCase):
             self._run_worker()
             current = client.get(f"/documents/{payload['id']}")
 
-        self.assertEqual(current.status_code, 200)
+        self.assertEqual(
+            current.status_code,
+            200,
+            f"{current.text} | worker={self.outcomes} | jobs={self.queue.jobs}",
+        )
         self.assertEqual(current.json()["status"], "indexado")
         self.assertGreaterEqual(current.json()["chunk_count"], 1)
         self.assertIn("assistant-assistant-1-v1", vector_store.collections)
@@ -633,6 +643,12 @@ class ApiRoutesTestCase(unittest.TestCase):
             )
             self._run_worker()
             listed = client.get("/assistants/assistant-1/documents")
+            self.assertEqual(
+                replaced.status_code,
+                202,
+                f"PUT: {replaced.text} | reprocess: {reprocess_indexed.status_code} "
+                f"{reprocess_indexed.text} | worker={self.outcomes}",
+            )
             new_id = replaced.json()["id"]
             deleted = client.delete(f"/documents/{new_id}")
             after_delete = client.get(f"/documents/{new_id}")
@@ -663,7 +679,13 @@ class ApiRoutesTestCase(unittest.TestCase):
                 files={"file": ("vazio.txt", b"   ", "text/plain")},
             ).json()
             self._run_worker()
-            failed = client.get(f"/documents/{created['id']}").json()
+            failed_response = client.get(f"/documents/{created['id']}")
+            self.assertEqual(
+                failed_response.status_code,
+                200,
+                f"{failed_response.text} | worker={self.outcomes} | jobs={self.queue.jobs}",
+            )
+            failed = failed_response.json()
             again = client.post(f"/documents/{created['id']}/reprocess")
 
         self.assertEqual(failed["status"], "falhou")

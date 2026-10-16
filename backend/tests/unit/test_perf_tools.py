@@ -166,6 +166,15 @@ class CorpusTestCase(unittest.TestCase):
             self.assertNotEqual(a.read_bytes(), b.read_bytes())
             self.assertGreaterEqual(a.stat().st_size, 30_000)
 
+    def test_make_fitting_lands_between_95_percent_and_the_ceiling(self) -> None:
+        ceiling = 120_000
+        with tempfile.TemporaryDirectory() as tmp:
+            for maker, name in ((corpus.make_text_pdf, "f.pdf"), (corpus.make_docx, "f.docx")):
+                path = corpus.make_fitting(maker, Path(tmp) / name, ceiling, 5)
+                size = path.stat().st_size
+                self.assertLessEqual(size, ceiling, name)
+                self.assertGreaterEqual(size, 0.95 * ceiling, name)
+
     def test_generated_files_are_readable_by_the_real_extractor(self) -> None:
         from src.infrastructure.documents import SupportedDocumentExtractor
 
