@@ -30,6 +30,7 @@ services:
   postgres: { networks: !override [offline] }
   qdrant: { networks: !override [offline] }
   keycloak: { networks: !override [offline] }
+  keycloak-db-init: { networks: !override [offline] }
   backend:
     networks: !override [offline]
     environment: { HF_HUB_OFFLINE: "1", TRANSFORMERS_OFFLINE: "1" }

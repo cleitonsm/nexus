@@ -27,6 +27,7 @@ _SCROLL_PAGE = 1024
 # gravados antes da SPEC-005 nao tem o campo e contam como ativos.
 ACTIVE = "active"
 _NOT_FOUND = 404
+_CONFLICT = 409
 
 logger = logging.getLogger(__name__)
 
@@ -44,21 +45,28 @@ class QdrantVectorStoreGateway:
             raise ValueError("vector_size must be positive.")
         if self.collection_exists(collection_name):
             return
-        self._client.create_collection(
-            collection_name=collection_name.value,
-            vectors_config={
-                DENSE_VECTOR: models.VectorParams(
-                    size=vector_size,
-                    distance=models.Distance.COSINE,
-                )
-            },
-            # O IDF do BM25 e calculado pelo Qdrant sobre a collection.
-            sparse_vectors_config={
-                SPARSE_VECTOR: models.SparseVectorParams(
-                    modifier=models.Modifier.IDF,
-                )
-            },
-        )
+        try:
+            self._client.create_collection(
+                collection_name=collection_name.value,
+                vectors_config={
+                    DENSE_VECTOR: models.VectorParams(
+                        size=vector_size,
+                        distance=models.Distance.COSINE,
+                    )
+                },
+                # O IDF do BM25 e calculado pelo Qdrant sobre a collection.
+                sparse_vectors_config={
+                    SPARSE_VECTOR: models.SparseVectorParams(
+                        modifier=models.Modifier.IDF,
+                    )
+                },
+            )
+        except UnexpectedResponse as exc:
+            # Dois processos (worker e avaliacao, ou dois workers) podem criar a
+            # collection do mesmo assistente ao mesmo tempo: quem perde a corrida
+            # segue para os indices, que sao idempotentes.
+            if exc.status_code != _CONFLICT:
+                raise
         self._ensure_group_index(collection_name)
 
     def _ensure_group_index(self, collection_name: CollectionName) -> None:
