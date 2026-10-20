@@ -41,7 +41,8 @@ precisa identificar o usuário, limitar o conhecimento acessível a cada um e re
 - A indisponibilidade do Keycloak impede novos logins.
 - Desde 2026-10-08 (decisão PC-D6 do [plano de conclusão](../../plano-de-conclusao.md)) o backend
   também consulta o Keycloak para listar os grupos na tela, como o cliente de serviço
-  `nexus-backend`, cuja conta só tem o papel `query-groups`. Sem esse cliente ou com o Keycloak
+  `nexus-backend`, cuja conta tem os papéis `query-groups` e `view-users` (só leitura; o segundo desde
+  2026-10-20, SPEC-009 D5, porque sem ele o Keycloak devolve a lista vazia). Sem esse cliente ou com o Keycloak
   fora do ar, `GET /groups` responde 503 e a tela volta ao campo de texto; o login e a validação
   de tokens não dependem dele.
 - Uma falha no filtro de acesso expõe conteúdo entre grupos; por isso há testes de integração

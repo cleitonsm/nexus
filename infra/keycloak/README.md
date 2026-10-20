@@ -11,7 +11,7 @@ arquivo fora do ambiente local. Segredos de ambientes reais ficam fora do reposi
 | Realm | `nexus` |
 | Cliente do frontend | `nexus-frontend`, público, Authorization Code com PKCE (S256) |
 | Cliente de testes `nexus-tests` | Público, só *direct access grants*, com os mesmos mapeadores de audiência e grupos do frontend. Serve ao CT-52, ao CT-56 e às medições (`scripts/perf`); existe apenas no realm de desenvolvimento (V-D2) e deve ser removido de qualquer realm exposto |
-| Cliente de serviço do backend | `nexus-backend`, confidencial, só *client credentials*; a conta de serviço tem apenas o papel `query-groups` do `realm-management`, para listar os grupos na tela (PC-D6). Segredo `${NEXUS_BACKEND_CLIENT_SECRET}`, vindo de `KEYCLOAK_BACKEND_CLIENT_SECRET` |
+| Cliente de serviço do backend | `nexus-backend`, confidencial, só *client credentials*; a conta de serviço tem os papéis `query-groups` e `view-users` do `realm-management`, só leitura, para listar os grupos na tela e validá-los no envio (PC-D6; SPEC-009 D5: sem `view-users` o Keycloak devolve a lista vazia, e todo grupo é recusado com 422). Segredo `${NEXUS_BACKEND_CLIENT_SECRET}`, vindo de `KEYCLOAK_BACKEND_CLIENT_SECRET` |
 | Audiência da API | `nexus-api`, incluída no token de acesso pelo mapeador `audiencia-nexus-api` |
 | Papéis de realm | `nexus-admin`, `nexus-curador`, `nexus-usuario` |
 | Grupos | `rh`, `financeiro`, `diretoria`, publicados na claim `groups` (sem o caminho) |
@@ -53,5 +53,14 @@ Keycloak resolve pelo ambiente na importação (decisão PC-D1 do
 O mesmo vale para o cliente `nexus-backend` (PC-D6): num realm importado antes de 2026-10-08 ele
 não existe, e a tela de assistentes usa o campo de texto para os grupos. Para ativá-lo sem
 recriar o banco, crie no console um cliente confidencial `nexus-backend` só com *Service accounts
-roles*, dê à conta de serviço o papel `query-groups` do cliente `realm-management` e use o segredo
+roles*, dê à conta de serviço os papéis `query-groups` e `view-users` do cliente `realm-management` e use o segredo
 gerado em `KEYCLOAK_BACKEND_CLIENT_SECRET`. Fora do ambiente local, troque o segredo padrão.
+
+Num realm importado antes de 2026-10-20 a conta só tem `query-groups`. Para incluir `view-users` sem recriar o
+banco (PowerShell, credenciais de administrador do `.env`, padrão `admin`/`admin`):
+
+```powershell
+docker compose exec keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin --password admin
+docker compose exec keycloak /opt/keycloak/bin/kcadm.sh add-roles -r nexus --uusername service-account-nexus-backend --cclientid realm-management --rolename view-users
+docker compose restart backend worker   # descarta a lista vazia guardada por 60 s
+```
