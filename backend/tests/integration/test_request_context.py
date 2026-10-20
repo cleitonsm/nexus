@@ -70,7 +70,14 @@ class RequestContextTests(unittest.TestCase):
         events = [line["event"] for line in lines]
         self.assertIn("ping.handled", events)
         self.assertIn("http.request.finished", events)
-        self.assertEqual({line["request_id"] for line in lines}, {"req-1"})
+        # O TestClient usa httpx, que registra a chamada do lado do cliente,
+        # fora do contexto da requisicao; essas linhas nao sao do servidor.
+        server = [
+            line
+            for line in lines
+            if not str(line.get("logger", "")).startswith(("httpx", "httpcore"))
+        ]
+        self.assertEqual({line["request_id"] for line in server}, {"req-1"}, server)
 
     def test_request_id_does_not_leak_between_requests(self) -> None:
         self.client.get("/ping", headers={REQUEST_ID_HEADER: "first"})

@@ -43,17 +43,18 @@ class KeycloakRealTokenTests(unittest.TestCase):
         status, me = Api(self.token).json("GET", "/me")
         self.assertEqual(status, 200, me)
         self.assertIn("rh", {group.strip("/") for group in me["groups"]})
-        self.assertNotIn("admin", me["roles"])
+        self.assertNotIn("nexus-admin", me["roles"])
 
     def test_admin_role_reaches_policy(self) -> None:
         status, me = Api(token_for("admin.nexus")).json("GET", "/me")
         self.assertEqual(status, 200, me)
-        self.assertIn("admin", me["roles"])
+        # Papeis de realm do Keycloak (Role, RF-41), sem traducao na API.
+        self.assertIn("nexus-admin", me["roles"])
         status, _ = Api(self.token).json("GET", "/admin/llm-settings")
         self.assertEqual(status, 403)
 
     def test_tampered_payload_is_rejected(self) -> None:
-        forged = _forged(self.token, {"realm_access": {"roles": ["admin"]}})
+        forged = _forged(self.token, {"realm_access": {"roles": ["nexus-admin"]}})
         status, _ = Api(forged).json("GET", "/me")
         self.assertEqual(status, 401)
 

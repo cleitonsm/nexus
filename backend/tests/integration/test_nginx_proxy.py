@@ -86,7 +86,10 @@ class NginxProxyTests(unittest.TestCase):
         self.assertNotEqual(headers.get("content-encoding"), "gzip")
 
     def test_security_header_for_images(self) -> None:
-        _, headers = _call("GET", "/health")
+        # A CSP vale para a pagina do Angular, que e onde o navegador carrega
+        # imagens. /health e /config.json tem add_header proprio e, pela regra
+        # do Nginx, nao herdam o do bloco server (nem precisam: nao sao HTML).
+        _, headers = _call("GET", "/")
         self.assertIn("img-src 'self'", headers.get("content-security-policy", ""))
 
 

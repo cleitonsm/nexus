@@ -111,7 +111,8 @@ class QdrantAliasTestCase(unittest.TestCase):
         empty_results: list[int] = []
         stop = threading.Event()
 
-        def _search() -> None:
+        # Nome diferente do helper _search do modulo, que ele chama.
+        def _search_loop() -> None:
             while not stop.is_set():
                 try:
                     hits = _search(
@@ -122,7 +123,7 @@ class QdrantAliasTestCase(unittest.TestCase):
                 except BaseException as exc:  # noqa: BLE001
                     errors.append(exc)
 
-        threads = [threading.Thread(target=_search) for _ in range(SEARCH_THREADS)]
+        threads = [threading.Thread(target=_search_loop) for _ in range(SEARCH_THREADS)]
         for thread in threads:
             thread.start()
         try:

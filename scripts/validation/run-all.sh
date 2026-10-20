@@ -82,11 +82,14 @@ pending() {
 # pulou algum teste ("skipped" nao e aprovacao: o motivo precisa ser resolvido).
 run_strict() {
   local step="$1" label="$2"; shift 2
+  # A saida vai para o log enquanto roda (tee); a copia serve para procurar pulos.
   run "$step" "$label" bash -c '
-    out=$("$@" 2>&1); rc=$?
-    printf "%s\n" "$out"
+    copy=$(mktemp)
+    "$@" 2>&1 | tee "$copy"; rc=${PIPESTATUS[0]}
+    skipped=0; grep -qE "skipped=[1-9]" "$copy" && skipped=1
+    rm -f "$copy"
     [ "$rc" -eq 0 ] || exit "$rc"
-    if printf "%s\n" "$out" | grep -qE "skipped=[1-9]"; then
+    if [ "$skipped" -eq 1 ]; then
       echo "REPROVADO: ha testes pulados; resolva o motivo antes de aprovar a etapa"
       exit 1
     fi' _ "$@"
