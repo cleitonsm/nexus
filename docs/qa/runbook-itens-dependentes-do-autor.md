@@ -130,6 +130,8 @@ do escopo em fallback, margem de 2,3× sobre a maior nota fora do escopo, 0,044)
 
 ## 8. Conjunto ampliado (82 itens, 55 rascunhos)
 
+O curador revisa pela [ficha de revisão](revisao-curador-nexus-docs-ampliado.md) (2026-10-20): cada item com o trecho da fonte que o sustenta e a pré-checagem automática.
+
 ```powershell
 python backend\tests\evaluation\validate_items.py backend\tests\evaluation\datasets\nexus-docs-ampliado.jsonl --list
 # depois de revisar pergunta, resposta e fonte de cada item:
