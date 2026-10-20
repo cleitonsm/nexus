@@ -34,9 +34,9 @@ foi repetido isoladamente com o comando do runbook.
 | Caso | Resultado |
 |---|---|
 | CT-70 Gemini real | **aprovado**: na tela de Administração, provedor "Gemini (Google)", "Testar LLM" respondeu "Comunicacao com a LLM validada usando a API key armazenada. Modelo: gemini-4-argon \| Resposta: OK" |
-| CT-77 aviso de versão do Qdrant | **parcial**: nenhum `incompatible`/`client version` nos logs da V3 (o cliente 1.11.3 criado no container falaria com o servidor 1.11.3); 14 testes de busca híbrida e alias ok. Falta `docker compose logs backend worker` da subida. Observação: aparece `UserWarning: Api key is used with an insecure connection` (chave do Qdrant em HTTP dentro da rede do Compose), esperado no ambiente local |
+| CT-77 aviso de versão do Qdrant | **aprovado**: nenhum `incompatible`/`client version` nos logs da V3 nem em `docker compose logs backend worker` (conferido pelo autor); 14 testes de busca híbrida e alias ok. Observação: aparece `UserWarning: Api key is used with an insecure connection` (chave do Qdrant em HTTP dentro da rede do Compose), esperado no ambiente local |
 
 ## Ainda não executado
 
-CT-77 (logs de subida), CT-47/48 (V8), V7 (RNF-03/16/18), FE-06/FE-07 (Playwright),
+CT-47/48 (V8), V7 (RNF-03/16/18), FE-06/FE-07 (Playwright),
 o novo `GroupDirectoryRealTests` (roda na próxima V3) e a V6 (avaliação com LLM).

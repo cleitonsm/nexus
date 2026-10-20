@@ -187,6 +187,7 @@ teste for pulado.
 | Toda a pasta `backend/tests/integration` (145 testes, nenhum pulado): CT-04, CT-05 (com a API), CT-07 (tokenizador real), CT-10 a CT-12, CT-18 a CT-20, CT-26 a CT-31, CT-37, CT-38, CT-44, CT-45, CT-49 completo (`test_migrations`), CT-52, CT-55, CT-58 (rota), CT-60 no PostgreSQL, CT-68 e a pausa da ingestão (D10 da SPEC-006) | Docker, V3 de 2026-10-20 sobre `cc2e24a` | [registro](../qa/relatorios/2026-10-20/LEIAME.md) |
 | CT-56 (zero vazamento, todos os controles recuperaram o permitido) | Docker, 2026-10-20 sobre `675abc7`, com `view-users` no realm (SPEC-009 D5) | `docs/qa/relatorios/2026-10-20/ct56/leakage_scan.json` |
 | CT-70 (Gemini real: "Testar LLM" responde `OK` com a chave armazenada, modelo `gemini-4-argon`) | Manual, pelo autor, 2026-10-20 | `docs/qa/relatorios/2026-10-20/LEIAME.md` |
+| CT-77 (`qdrant-client` 1.11.3 sem aviso de versão; indexação e busca híbrida funcionam) | Docker, 2026-10-20: logs da V3 e da subida do backend e do worker sem `incompatible`/`client version`; 14 testes de busca híbrida e alias ok | `docs/qa/relatorios/2026-10-20/LEIAME.md` |
 
 ### Escritos, a executar (V3, V7 ou V8 da campanha, salvo indicação)
 
@@ -198,7 +199,6 @@ teste for pulado.
 | CT-13 e as metas de qualidade | V6, com LLM, depois da validação dos 55 itens do `nexus-docs-ampliado` e da nova calibração | `scripts/eval.sh` |
 | RNF-03, RNF-16, RNF-18 | V7 (100.000 trechos; RNF-18 exige `NEXUS_REINDEX_ASSISTANT_ID`) | `scripts/perf/retrieval_latency.py`, `reindex_under_load.py` |
 | RNF-01 (TTFT) | Fora do orquestrador, depois da V6 | `scripts/perf/ttft.py` |
-| CT-77 | Parcial: nos logs da V3 de 2026-10-20 (cliente 1.11.3 contra servidor 1.11.3) não há aviso de versão e os 14 testes de busca híbrida e alias passaram; falta conferir os logs de subida do backend e do worker | `docs/qa/relatorios/2026-10-20/LEIAME.md` |
 | FE-06, FE-07 | Exigem o Playwright, que não está no `package.json` | `frontend/e2e/` |
 
 Ferramentas de medição e orquestração: `scripts/perf/`, `scripts/validation/run-all.sh`, testadas sem Docker
