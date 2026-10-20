@@ -32,6 +32,19 @@ while [ "$#" -gt 0 ]; do
 done
 
 STEPS=(V0 V1 V2 V3 V4 V5 V6 V7 V8)
+# Python do host para os scripts de medicao. No Git for Windows, "python3" pode ser o atalho da
+# Microsoft Store, que nao executa nada; NEXUS_PYTHON escolhe outro.
+PY="${NEXUS_PYTHON:-}"
+if [ -z "$PY" ]; then
+  for candidate in python3 python; do
+    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys' >/dev/null 2>&1; then
+      PY="$candidate"; break
+    fi
+  done
+fi
+PY="${PY:-python3}"
+# Conjunto da V6 (secao 6.1 do plano de validacao: cerca de 80 itens validados).
+EVAL_DATASET="${NEXUS_EVAL_DATASET:-nexus-docs-ampliado}"
 OUT="${NEXUS_REPORT_DIR:-docs/qa/relatorios/$(date +%Y-%m-%d)}"
 BASE_URL="${NEXUS_BASE_URL:-http://localhost:8000}"
 FAILED=0
@@ -170,7 +183,16 @@ stage_v5() {
 }
 
 stage_v6() {
-  run V6 "avaliacao com geracao (metas de qualidade)" bash scripts/eval.sh
+  # V-D5: 3 execucoes completas com geracao. Sem a chave do LLM (o down -v da V0 apaga a
+  # cadastrada na tela) a avaliacao pularia a geracao so com um aviso: cada execucao confere.
+  local reports="backend/tests/evaluation/reports/$EVAL_DATASET" n
+  for n in 1 2 3; do
+    run V6 "avaliacao $n de 3 ($EVAL_DATASET)" bash -c \
+      'scripts/eval.sh "$1" && "$2" scripts/validation/check_eval_reports.py "$3" --runs 1 --only-generation' \
+      _ "$EVAL_DATASET" "$PY" "$reports" || return 1
+  done
+  run V6 "metas da secao 6.3 (recall, fidelidade, fallback, citacoes)" \
+    "$PY" scripts/validation/check_eval_reports.py "$reports" --runs 3
 }
 
 stage_v7() {
@@ -179,15 +201,15 @@ stage_v7() {
     return 0
   fi
   local perf="$OUT/07-desempenho" files="$OUT/corpus"
-  run V7 "corpus sintetico" python3 scripts/perf/corpus.py --out "$files" --upload-25mb --index-10mb --count 10 || return 1
-  run V7 "RNF-17 upload de 25 MB" python3 scripts/perf/upload_latency.py \
+  run V7 "corpus sintetico" "$PY" scripts/perf/corpus.py --out "$files" --upload-25mb --index-10mb --count 10 || return 1
+  run V7 "RNF-17 upload de 25 MB" "$PY" scripts/perf/upload_latency.py \
     --base-url "$BASE_URL" --assistant-id "${NEXUS_ASSISTANT_ID:-ID}" --files "$files" --out "$perf/upload.csv" || return 1
-  run V7 "RNF-02 tempo de indexacao" python3 scripts/perf/indexing_time.py \
+  run V7 "RNF-02 tempo de indexacao" "$PY" scripts/perf/indexing_time.py \
     --base-url "$BASE_URL" --assistant-id "${NEXUS_ASSISTANT_ID:-ID}" --files "$files" --out "$perf/indexacao.csv" || return 1
   # RNF-03 e RNF-16: 100.000 trechos (V-D9) gravados direto na collection perf-load.
   local chunks="${NEXUS_PERF_CHUNKS:-100000}" incontainer="/app/out/corpus/chunks.jsonl"
   local perfc="/app/out/07-desempenho"
-  run V7 "corpus de $chunks trechos" python3 scripts/perf/corpus.py --out "$files" --chunks "$chunks" || return 1
+  run V7 "corpus de $chunks trechos" "$PY" scripts/perf/corpus.py --out "$files" --chunks "$chunks" || return 1
   run V7 "carga dos trechos (perf-load)" "${BACKEND_RUN[@]}" \
     python /app/scripts/perf/retrieval_latency.py load --chunks "$incontainer" || return 1
   run V7 "RNF-03 busca densa" "${BACKEND_RUN[@]}" \
@@ -208,7 +230,7 @@ stage_v7() {
     pending V7 "RNF-18 busca durante a reindexacao" \
       "defina NEXUS_REINDEX_ASSISTANT_ID (assistente com a base enviada pela API); compare o p95 com o rnf16-u1 (+20%, V-D6)"
   fi
-  run V7 "consolidacao" python3 scripts/perf/report.py "${specs[@]}" --out "$OUT/07-desempenho.md"
+  run V7 "consolidacao" "$PY" scripts/perf/report.py "${specs[@]}" --out "$OUT/07-desempenho.md"
   pending V7 "RNF-01 TTFT" "ttft.py exige LLM real e um arquivo de perguntas; executar a parte, depois da V6"
 }
 
