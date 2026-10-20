@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,19 +13,34 @@ spec = importlib.util.spec_from_file_location("validate_items", ROOT / "validate
 validate_items = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(validate_items)
 
-DRAFT = ROOT / "datasets" / "nexus-docs-ampliado.jsonl"
+DATASET = ROOT / "datasets" / "nexus-docs-ampliado.jsonl"
+# Itens que eram rascunho de IA ate a validacao do curador (2026-10-20); os testes da
+# ferramenta recriam esse estado numa copia, sem depender do arquivo real.
+DRAFT_PREFIXES = ("te-", "co-", "tb-", "pl-")
+DRAFT_OUT_OF_SCOPE = {f"fora-{n:02d}" for n in range(6, 21)}
+
+
+def _is_draft(item: dict) -> bool:
+    return item["id"].startswith(DRAFT_PREFIXES) or item["id"] in DRAFT_OUT_OF_SCOPE
 
 
 class ValidateItemsTests(unittest.TestCase):
     def _copy(self) -> Path:
+        """Copia do conjunto com os 55 itens de volta ao estado de rascunho."""
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         path = Path(directory.name) / "dataset.jsonl"
-        path.write_text(DRAFT.read_text(encoding="utf-8"), encoding="utf-8")
+        lines = []
+        for item in validate_items.load(DATASET):
+            if _is_draft(item):
+                item.pop("validated_by", None)
+                item["origem"] = "rascunho IA; aguarda validacao do curador"
+            lines.append(json.dumps(item, ensure_ascii=False))
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return path
 
     def test_draft_dataset_meets_the_plan_composition(self) -> None:
-        items = validate_items.load(DRAFT)
+        items = validate_items.load(DATASET)
         inside = [item for item in items if not item["out_of_scope"]]
         self.assertGreaterEqual(len(items), 80)
         self.assertGreaterEqual(len(inside), 60)
@@ -45,12 +61,18 @@ class ValidateItemsTests(unittest.TestCase):
             )
             for path in directory.glob("*.*")
         }
-        for item in validate_items.load(DRAFT):
+        for item in validate_items.load(DATASET):
             for source in item.get("source_documents", []):
                 self.assertIn(source, names, f"{item['id']}: {source}")
 
+    def test_real_dataset_is_fully_validated(self) -> None:
+        """RN-15: validado pelo curador em 2026-10-20; nenhum item volta a rascunho."""
+        items = validate_items.load(DATASET)
+        self.assertEqual(validate_items.pending(items), [])
+        self.assertFalse([item["id"] for item in items if "origem" in item])
+
     def test_new_items_are_pending_and_original_ones_are_validated(self) -> None:
-        items = validate_items.load(DRAFT)
+        items = validate_items.load(self._copy())
         waiting = {item["id"] for item in validate_items.pending(items)}
         self.assertTrue(waiting)
         self.assertNotIn("neg-01", waiting)
@@ -88,9 +110,10 @@ class ValidateItemsTests(unittest.TestCase):
             JsonlEvaluationDatasetLoader,
         )
 
+        draft = self._copy()
         with self.assertRaises(EvaluationDatasetError):
-            JsonlEvaluationDatasetLoader().load(DRAFT)
-        items = JsonlEvaluationDatasetLoader(allow_unvalidated=True).load(DRAFT)
+            JsonlEvaluationDatasetLoader().load(draft)
+        items = JsonlEvaluationDatasetLoader(allow_unvalidated=True).load(draft)
         self.assertGreaterEqual(len(items), 80)
         self.assertTrue(any(item.history for item in items))
 
