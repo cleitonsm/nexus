@@ -1,0 +1,1 @@
+frontend/src/app/shared/pipes/markdown.pipe.spec.ts:21:    bypassSecurityTrustHtml: () => {

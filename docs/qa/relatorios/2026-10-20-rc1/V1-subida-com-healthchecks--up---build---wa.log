@@ -1,0 +1,209 @@
+ Image nexus-worker Building 
+ Image nexus-backend Building 
+ Image nexus-frontend Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.37kB 0.0s done
+#1 DONE 0.0s
+
+#2 [frontend internal] load build definition from frontend.Dockerfile
+#2 transferring dockerfile: 498B 0.0s done
+#2 DONE 0.1s
+
+#3 [worker internal] load build definition from backend.Dockerfile
+#3 transferring dockerfile: 1.15kB 0.0s done
+#3 DONE 0.1s
+
+#3 [backend internal] load build definition from backend.Dockerfile
+#3 DONE 0.1s
+
+#4 [worker internal] load metadata for docker.io/library/python:3.12-slim
+#4 DONE 0.1s
+
+#5 [worker internal] load .dockerignore
+#5 transferring context: 181B done
+#5 DONE 0.0s
+
+#6 [backend internal] load build context
+#6 transferring context: 18.38kB 0.0s done
+#6 DONE 0.0s
+
+#7 [worker 1/9] FROM docker.io/library/python:3.12-slim@sha256:9d3abd9fc11d06998ccdbdd93b4dd49b5ad7d67fcbbc11c016eb0eb2c2194891
+#7 resolve docker.io/library/python:3.12-slim@sha256:9d3abd9fc11d06998ccdbdd93b4dd49b5ad7d67fcbbc11c016eb0eb2c2194891
+#7 resolve docker.io/library/python:3.12-slim@sha256:9d3abd9fc11d06998ccdbdd93b4dd49b5ad7d67fcbbc11c016eb0eb2c2194891 0.0s done
+#7 DONE 0.1s
+
+#6 [worker internal] load build context
+#6 DONE 0.0s
+
+#8 [worker 2/9] WORKDIR /app
+#8 CACHED
+
+#9 [worker 4/9] RUN mkdir -p /app/cache /app/data/documents
+#9 CACHED
+
+#10 [worker 7/9] RUN pip install --no-cache-dir -r /app/requirements.txt
+#10 CACHED
+
+#11 [worker 5/9] RUN pip install --no-cache-dir torch==2.5.1     --index-url https://download.pytorch.org/whl/cpu
+#11 CACHED
+
+#12 [worker 6/9] COPY backend/requirements.txt /app/requirements.txt
+#12 CACHED
+
+#13 [worker 3/9] RUN apt-get update     && apt-get install -y --no-install-recommends         poppler-utils tesseract-ocr tesseract-ocr-por tesseract-ocr-eng     && rm -rf /var/lib/apt/lists/*
+#13 CACHED
+
+#14 [backend 8/9] COPY backend/alembic.ini /app/alembic.ini
+#14 CACHED
+
+#15 [backend 9/9] COPY backend/src /app/src
+#15 DONE 0.2s
+
+#16 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#16 ...
+
+#15 [backend 9/9] COPY backend/src /app/src
+#15 DONE 0.2s
+
+#17 [worker] exporting to image
+#17 exporting layers 0.2s done
+#17 exporting manifest sha256:a7858976d69a57d83fdddeef8a770cdc7308e4541f679c61574272390f8a5e10
+#17 exporting manifest sha256:a7858976d69a57d83fdddeef8a770cdc7308e4541f679c61574272390f8a5e10 0.1s done
+#17 exporting config sha256:e8a055484c05b41ba77c03842253ef4ab07ad6476d77e8a3f340bc7829309722 0.1s done
+#17 exporting attestation manifest sha256:114a91876e6f921fce9613e3a9c4c0d49729a2c83808251d2a10d25d8143255f 0.1s done
+#17 exporting manifest list sha256:9100807c5cdf05d98735e5dc1481eb94fc2adc14d0f9ad297a603a585b26d575
+#17 exporting manifest list sha256:9100807c5cdf05d98735e5dc1481eb94fc2adc14d0f9ad297a603a585b26d575 0.0s done
+#17 naming to docker.io/library/nexus-worker:latest done
+#17 unpacking to docker.io/library/nexus-worker:latest 0.1s done
+#17 DONE 0.8s
+
+#18 [backend] exporting to image
+#18 exporting layers 0.2s done
+#18 exporting manifest sha256:ecf27f1ccc07736ee84533a2acf4e52295cb4b5933a78586699b9130f7c42740 0.1s done
+#18 exporting config sha256:3ff5bb238bd6dc1a58d15f86b0bfc7d879f44dc908afec28f86c730c5a343a75 0.1s done
+#18 exporting attestation manifest sha256:3bfa29bd57751d53072a45395da40b9f502c53eb43a35c266a57fe8849c4fba4 0.1s done
+#18 exporting manifest list sha256:817b50e4ea42cfefbe041dc5f8b77e433d27010ec52fa677aa45b30998de96d7 0.0s done
+#18 naming to docker.io/library/nexus-backend:latest 0.0s done
+#18 unpacking to docker.io/library/nexus-backend:latest 0.1s done
+#18 DONE 0.8s
+
+#19 [frontend internal] load metadata for docker.io/library/node:22-alpine
+#19 ...
+
+#16 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#16 DONE 1.6s
+
+#5 [frontend internal] load .dockerignore
+#5 transferring context: 181B done
+#5 DONE 0.0s
+
+#19 [frontend internal] load metadata for docker.io/library/node:22-alpine
+#19 DONE 1.6s
+
+#20 [frontend internal] load build context
+#20 DONE 0.0s
+
+#21 [worker] resolving provenance for metadata file
+#21 DONE 0.1s
+
+#22 [backend] resolving provenance for metadata file
+#22 DONE 0.0s
+
+#23 [frontend build 1/6] FROM docker.io/library/node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402
+#23 resolve docker.io/library/node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 0.1s done
+#23 DONE 0.1s
+
+#24 [frontend stage-1 1/3] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#24 resolve docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#24 resolve docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 0.1s done
+#24 DONE 0.1s
+
+#20 [frontend internal] load build context
+#20 transferring context: 934.23kB 0.3s done
+#20 DONE 0.3s
+
+#25 [frontend build 2/6] WORKDIR /app
+#25 CACHED
+
+#26 [frontend build 3/6] COPY frontend/package.json frontend/package-lock.json* ./
+#26 CACHED
+
+#27 [frontend build 4/6] RUN npm install
+#27 CACHED
+
+#28 [frontend build 5/6] COPY frontend .
+#28 CACHED
+
+#29 [frontend build 6/6] RUN npm run build
+#29 CACHED
+
+#30 [frontend stage-1 2/3] COPY frontend/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+#30 CACHED
+
+#31 [frontend stage-1 3/3] COPY --from=build /app/dist /usr/share/nginx/html
+#31 CACHED
+
+#32 [frontend] exporting to image
+#32 exporting layers 0.0s done
+#32 exporting manifest sha256:499967357d31e5257af4748cfe364d1b016b41895d37b5c5cae67a1ce0dae9a2 done
+#32 exporting config sha256:4caf3ed754270d1700dde5ddfa21464050fd5bccde41920565de40a381977084 done
+#32 exporting attestation manifest sha256:7bc3448254fd4b504baeac8ab7ea54c8f9778164b4636cbe400d11573929e490 0.1s done
+#32 exporting manifest list sha256:b88fda32f07708e7b14d5890709b0e901233be53f1494ab8818bc7230194546e
+#32 exporting manifest list sha256:b88fda32f07708e7b14d5890709b0e901233be53f1494ab8818bc7230194546e 0.1s done
+#32 naming to docker.io/library/nexus-frontend:latest done
+#32 unpacking to docker.io/library/nexus-frontend:latest 0.0s done
+#32 DONE 0.3s
+
+#33 [frontend] resolving provenance for metadata file
+#33 DONE 0.0s
+ Image nexus-backend Built 
+ Image nexus-worker Built 
+ Image nexus-frontend Built 
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Recreate 
+ Container nexus-postgres-1 Recreated 
+ Container nexus-keycloak-db-init-1 Recreate 
+ Container nexus-keycloak-db-init-1 Recreated 
+ Container nexus-keycloak-1 Running 
+ Container nexus-backend-1 Recreate 
+ Container nexus-backend-1 Recreated 
+ Container nexus-frontend-1 Recreate 
+ Container nexus-worker-1 Recreate 
+ Container nexus-frontend-1 Recreated 
+ Container nexus-worker-1 Recreated 
+ Container nexus-postgres-1 Starting 
+ Container nexus-postgres-1 Started 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-backend-1 Starting 
+ Container nexus-backend-1 Started 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-frontend-1 Starting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-worker-1 Starting 
+ Container nexus-worker-1 Started 
+ Container nexus-frontend-1 Started 
+ Container nexus-frontend-1 Waiting 
+ Container nexus-worker-1 Waiting 
+ Container nexus-keycloak-1 Waiting 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-backend-1 Waiting 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-backend-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-1 Healthy 
+ Container nexus-worker-1 Healthy 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-frontend-1 Healthy 
