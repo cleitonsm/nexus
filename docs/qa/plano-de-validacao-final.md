@@ -310,7 +310,8 @@ Ver a seção 7.
 ### 6.2 Protocolo
 
 - Mesmo commit, mesmo `LLM_MODEL` (juiz igual, como na SPEC-001), mesmos parâmetros do reranker.
-- **3 execuções completas** de `scripts/eval.sh nexus-docs` (V-D5), para medir a variação do LLM.
+- **3 execuções completas** de `scripts/eval.sh nexus-docs-ampliado` (V-D5; o conjunto de cerca de 80 itens da seção 6.1, validado em 2026-10-20), para medir a variação do LLM. O orquestrador confere a geração em cada execução e as metas desta seção no fim (`scripts/validation/check_eval_reports.py`).
+- Modelo: `gemini-3.8-flash` (decisão PC-D8 do plano de conclusão, 2026-10-20), padrão do `.env.example`. O `down -v` da V0 apaga a chave cadastrada: rode V0 e V1, cadastre a chave na tela de Administração e continue com `run-all -From V2`.
 - Linha de base comparativa: executar também o commit `9dcf007` com o mesmo conjunto, para mostrar
   o ganho da evolução. Essa execução é informativa e não reprova a campanha.
 - **Calibração (CT-22)**: se uma meta falhar só por parâmetro, varrer no máximo:
@@ -421,7 +422,7 @@ Os defeitos ficam listados em `RESUMO.md`, com a correção e o commit.
 | V-D6 | Tolerância de degradação na reindexação (RNF-18) | p95 até +20%; até +50%; apenas zero erros | +20% e zero erros |
 | V-D7 | Tamanho do conjunto | 50; 80; 100 itens | 80 (60 dentro e 20 fora do escopo) |
 | V-D8 | Hardware de referência | Máquina do autor; outra | Máquina do autor, com recursos do Docker fixos e registrados |
-| V-D9 | Texto do corpus de 100.000 chunks | Sintético por modelo de frases; textos de domínio público em português | Domínio público, versionado por hash, sem entrar no Git |
+| V-D9 | Texto do corpus de 100.000 chunks | Sintético por modelo de frases; textos de domínio público em português | Domínio público, versionado por hash, sem entrar no Git. **Alterada pelo autor em 2026-10-20: sintético** (`scripts/perf/corpus.py`, semente fixa, reproduzível). A V7 mede latência, que depende do volume e do tamanho dos trechos, e o download do corpus público não cabe no ambiente da sessão |
 
 ## 11. Estimativa
 

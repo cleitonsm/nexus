@@ -247,8 +247,17 @@ git -c core.autocrlf=true tag validacao-final-rc1
 git push origin feat/rag-enterprise
 git push origin validacao-final-rc1
 scripts\validation\run-all.ps1 -DryRun            # confere o roteiro sem executar
-scripts\validation\run-all.ps1                    # campanha V0 a V8 (LLM: 600 a 900 chamadas; aprove o custo antes)
+scripts\validation\run-all.ps1 -Only V0           # ambiente limpo (down -v apaga a chave do LLM)
+scripts\validation\run-all.ps1 -Only V1           # sobe a pilha com o realm e o .env.example novos
+# Na tela de Administracao (admin.nexus): confira "Gemini (Google)" / gemini-3.8-flash, salve a chave
+# de um projeto com faturamento e clique em "Testar LLM" (deve responder OK).
+$env:NEXUS_ASSISTANT_ID = "<id de um assistente de teste>"          # V7: upload e indexacao
+$env:NEXUS_REINDEX_ASSISTANT_ID = "<id de assistente com base enviada pela API>"  # V7: RNF-18
+scripts\validation\run-all.ps1 -From V2            # V2 a V8 (custo aprovado: PC-D10)
 ```
+
+A V6 roda 3 vezes o `nexus-docs-ampliado` e reprova se alguma execução não tiver geração (chave
+ausente) ou se as metas da seção 6.3 do plano de validação não forem atingidas.
 
 A campanha grava `docs/qa/relatorios/<data>/`. Traga essa pasta: com ela eu monto o `RESUMO.md` (matriz
 requisito → caso → evidência → resultado), mudo SPEC-001 a SPEC-006 para `Implementada`, registro a linha de
