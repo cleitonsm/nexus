@@ -268,7 +268,8 @@
       "serviceAccountClientId": "nexus-backend",
       "clientRoles": {
         "realm-management": [
-          "query-groups"
+          "query-groups",
+          "view-users"
         ]
       }
     }

@@ -76,5 +76,29 @@ class KeycloakRealTokenTests(unittest.TestCase):
         self.assertEqual(call("GET", f"{API_URL}/me")[0], 401)
 
 
+class GroupDirectoryRealTests(unittest.TestCase):
+    """SPEC-009 D5: a lista de grupos vem do Keycloak real, nao vazia.
+
+    Com so ``query-groups`` a conta de servico recebia 200 e lista vazia, e todo
+    envio com grupo era recusado (achado do CT-56, 2026-10-20).
+    """
+
+    def setUp(self) -> None:
+        if not stack_available():
+            self.skipTest("pilha do Compose indisponivel")
+        try:
+            self.admin = Api(token_for("admin.nexus"))
+        except Exception:  # noqa: BLE001 - realm sem o cliente de testes
+            self.skipTest("Keycloak ou cliente nexus-tests indisponivel")
+
+    def test_groups_of_the_realm_are_listed(self) -> None:
+        status, groups = self.admin.json("GET", "/groups")
+        self.assertEqual(status, 200, groups)
+        self.assertTrue(
+            {"rh", "financeiro", "diretoria"} <= set(groups),
+            f"lista do Keycloak: {groups} (falta view-users na conta de servico?)",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

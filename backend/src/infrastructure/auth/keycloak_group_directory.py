@@ -1,8 +1,9 @@
 """Grupos do realm pela API de administracao do Keycloak (decisao PC-D6).
 
 O backend se autentica como o cliente de servico ``nexus-backend`` (fluxo
-client credentials), cuja conta de servico so tem o papel ``query-groups`` do
-``realm-management``: le a arvore de grupos e nada mais. Tudo com a biblioteca
+client credentials), cuja conta de servico tem os papeis ``query-groups`` e
+``view-users`` do ``realm-management`` (SPEC-009 D5): so leitura. Sem
+``view-users`` o Keycloak responde 200 com a lista vazia. Tudo com a biblioteca
 padrao, sem dependencia nova.
 """
 
