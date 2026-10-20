@@ -29,7 +29,14 @@ foi repetido isoladamente com o comando do runbook.
 | 7 | CT-56: `Connection refused` | o CT-54 religava a pilha sem esperar | `cc2e24a`: `up -d --wait` |
 | 8 | CT-56: `422 unknown groups: rh` | **defeito de produto**: com só `query-groups`, o Keycloak 26 lista os grupos vazios e todo envio com grupo era recusado | `db4e051`/`675abc7`: `view-users` na conta de serviço (SPEC-009 D5, decisão do autor); teste real `GroupDirectoryRealTests` |
 
+## Testes manuais (2026-10-20, tarde)
+
+| Caso | Resultado |
+|---|---|
+| CT-70 Gemini real | **aprovado**: na tela de Administração, provedor "Gemini (Google)", "Testar LLM" respondeu "Comunicacao com a LLM validada usando a API key armazenada. Modelo: gemini-4-argon \| Resposta: OK" |
+| CT-77 aviso de versão do Qdrant | **parcial**: nenhum `incompatible`/`client version` nos logs da V3 (o cliente 1.11.3 criado no container falaria com o servidor 1.11.3); 14 testes de busca híbrida e alias ok. Falta `docker compose logs backend worker` da subida. Observação: aparece `UserWarning: Api key is used with an insecure connection` (chave do Qdrant em HTTP dentro da rede do Compose), esperado no ambiente local |
+
 ## Ainda não executado
 
-CT-70 (Gemini real), CT-77 (aviso de versão do Qdrant), CT-47/48 (V8), V7 (RNF-03/16/18), FE-06/FE-07 (Playwright),
+CT-77 (logs de subida), CT-47/48 (V8), V7 (RNF-03/16/18), FE-06/FE-07 (Playwright),
 o novo `GroupDirectoryRealTests` (roda na próxima V3) e a V6 (avaliação com LLM).
