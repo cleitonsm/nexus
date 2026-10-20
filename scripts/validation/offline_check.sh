@@ -43,8 +43,11 @@ COMPOSE=(docker compose -f compose.yaml -f "$WORK/override.yaml")
 log() { echo "$*" | tee -a "$LOG"; }
 result=0
 
+# Volta a pilha a rede normal e so termina com ela saudavel: o item seguinte da
+# V3 (CT-56) usa a API logo em seguida ("Connection refused" em 2026-10-20).
 restore() {
-  docker compose up -d >> "$LOG" 2>&1
+  docker compose up -d --wait >> "$LOG" 2>&1 \
+    || echo "AVISO: a pilha nao ficou saudavel depois do CT-54" | tee -a "$LOG"
   rm -rf "$WORK"
 }
 trap restore EXIT
