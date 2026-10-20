@@ -184,28 +184,16 @@ teste for pulado.
 | CT-54 (operação sem internet, avaliação sem LLM e OCR) | Docker, 2026-10-19 | `scripts/validation/offline_check.sh` |
 | CT-21, CT-32, CT-69 e FE-01 a FE-05 | `npm test` no container `node:22`, 2026-10-16 (16 arquivos, 149 testes) | `frontend/src/**/*.spec.ts` |
 | CT-22 (curva no `nexus-docs`, 27 itens) | Docker, 2026-10-16; decisão `RELEVANCE_MIN_SCORE=0,10` | `backend/tests/evaluation/reports/nexus-docs/calibracao.json` |
+| Toda a pasta `backend/tests/integration` (145 testes, nenhum pulado): CT-04, CT-05 (com a API), CT-07 (tokenizador real), CT-10 a CT-12, CT-18 a CT-20, CT-26 a CT-31, CT-37, CT-38, CT-44, CT-45, CT-49 completo (`test_migrations`), CT-52, CT-55, CT-58 (rota), CT-60 no PostgreSQL, CT-68 e a pausa da ingestão (D10 da SPEC-006) | Docker, V3 de 2026-10-20 sobre `cc2e24a` | [registro](../qa/relatorios/2026-10-20/LEIAME.md) |
+| CT-56 (zero vazamento, todos os controles recuperaram o permitido) | Docker, 2026-10-20 sobre `675abc7`, com `view-users` no realm (SPEC-009 D5) | `docs/qa/relatorios/2026-10-20/ct56/leakage_scan.json` |
 
 ### Escritos, a executar (V3, V7 ou V8 da campanha, salvo indicação)
 
 | Casos | Observação | Onde |
 |-------|------------|------|
-| CT-04 | Exige PostgreSQL e Qdrant | `test_evaluation_command.py` |
-| CT-05 (com a API) | — | `test_request_context.py` |
-| CT-07 (tokenizador real), CT-10, CT-11 | Exigem o modelo | `test_semantic_embedding.py` |
-| CT-12 | Exige o Qdrant | `test_qdrant_alias.py` |
-| CT-18, CT-19 | Exigem o Qdrant e os modelos; a parte sem eles roda em `test_retrieval_components.py` | `test_hybrid_search.py` |
-| CT-20, CT-45 | — | `test_chat_citations.py` |
-| CT-26, CT-27, CT-29, CT-30, CT-58 (rota), CT-68 | Os contratos com dublês rodam nos unitários | `test_access_control_api.py` |
-| CT-37, CT-38 | — | `test_document_lifecycle_storage.py` |
-| CT-44 | — | `test_operations_api.py` |
-| CT-60 (`UPDATE` condicionais no PostgreSQL) | Dois workers simulados já passam nos unitários | `test_job_ownership_storage.py` |
-| D10 da SPEC-006 (pausa da ingestão) | — | `test_ingestion_pause_storage.py` |
-| CT-49 (completo) | — | `test_migrations.py` |
-| CT-52 | Exige o cliente `nexus-tests` no realm | `test_keycloak_real.py` |
-| CT-55 | Na V3 usa `http://frontend` pela rede do Compose; fora dela, `NGINX_URL` | `test_nginx_proxy.py` |
-| CT-56 | Roda no container (V3) | `scripts/validation/leakage_scan.py` |
 | CT-47 | V8; os scripts já passaram no ensaio com PostgreSQL real e Qdrant simulado | `scripts/validation/backup-restore.sh` |
 | CT-48 (roteiro com o código de saída real) | V8 | `scripts/validation/regression-gate.sh` |
+| Lista de grupos com o Keycloak real (SPEC-009 D5) | Escrito em 2026-10-20; roda na próxima V3 | `test_keycloak_real.GroupDirectoryRealTests` |
 | CT-13 e as metas de qualidade | V6, com LLM, depois da validação dos 55 itens do `nexus-docs-ampliado` e da nova calibração | `scripts/eval.sh` |
 | RNF-03, RNF-16, RNF-18 | V7 (100.000 trechos; RNF-18 exige `NEXUS_REINDEX_ASSISTANT_ID`) | `scripts/perf/retrieval_latency.py`, `reindex_under_load.py` |
 | RNF-01 (TTFT) | Fora do orquestrador, depois da V6 | `scripts/perf/ttft.py` |
