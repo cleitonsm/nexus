@@ -138,8 +138,9 @@ stage_v0() {
   run V0 "snapshot do ambiente" bash scripts/validation/env_snapshot.sh "$OUT/00-ambiente.md" || return 1
   run V0 "varredura de depuracao (agent log / 127.0.0.1:7657)" \
     bash -c '! git grep -nE "#region agent log|127\.0\.0\.1:7657" -- . ":(exclude)docs" ":(exclude)scripts/validation"' || return 1
+  # So o codigo da aplicacao; os *.spec.ts usam o nome em dubles do DomSanitizer.
   run V0 "varredura de bypassSecurityTrustHtml" \
-    bash -c '! git grep -n "bypassSecurityTrustHtml" -- frontend/src' || return 1
+    bash -c '! git grep -n "bypassSecurityTrustHtml" -- frontend/src ":(exclude)*.spec.ts"' || return 1
   run V0 ".env fora do Git" bash -c '! git ls-files --error-unmatch .env >/dev/null 2>&1' || return 1
   if [ "$KEEP_ENV" -eq 0 ]; then
     run V0 "ambiente limpo (down -v)" docker compose down -v || return 1
@@ -152,8 +153,11 @@ stage_v1() {
 }
 
 stage_v2() {
+  # /app e a pasta backend do repositorio; os testes que leem scripts/ e docs/ procuram a
+  # raiz do repositorio um nivel acima (/), onde as duas pastas sao montadas.
   run V2 "testes unitarios no container" docker compose run --rm --no-deps \
-    -v ./backend/tests:/app/tests backend python -m unittest discover -s tests/unit -v
+    -v ./backend/tests:/app/tests -v ./scripts:/scripts:ro -v ./docs:/docs:ro \
+    backend python -m unittest discover -s tests/unit -v
 }
 
 stage_v3() {
@@ -170,12 +174,26 @@ stage_v3() {
   fi
 }
 
+# npm do host ou, sem ele (o caso do Windows deste projeto), o container node:22, como na
+# rodada de 2026-10-16. NEXUS_NPM=docker forca o container.
+npm_frontend() {
+  if [ "${NEXUS_NPM:-}" != "docker" ] && command -v npm >/dev/null 2>&1; then
+    npm --prefix frontend "$@"
+  else
+    local dir="$PWD/frontend"
+    command -v cygpath >/dev/null 2>&1 && dir="$(cygpath -w "$dir")"
+    "${NEXUS_DOCKER:-docker}" run --rm -v "$dir:/app" -w /app node:22 npm "$@"
+  fi
+}
+
+npm_audit_record() { npm_frontend audit --omit=dev || true; }
+
 stage_v4() {
-  run V4 "npm ci" npm --prefix frontend ci || return 1
-  run V4 "npm test" npm --prefix frontend test || return 1
-  run V4 "build de producao" npm --prefix frontend run build -- --configuration production || return 1
+  run V4 "npm ci" npm_frontend ci || return 1
+  run V4 "npm test" npm_frontend test || return 1
+  run V4 "build de producao" npm_frontend run build -- --configuration production || return 1
   # Apenas para registro: o resultado do audit nao reprova a etapa (decisao registrada no relatorio).
-  run V4 "npm audit (registro)" bash -c 'npm --prefix frontend audit --omit=dev || true'
+  run V4 "npm audit (registro)" npm_audit_record
 }
 
 stage_v5() {

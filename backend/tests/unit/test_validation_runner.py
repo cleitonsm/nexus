@@ -70,9 +70,15 @@ class RunAllTestCase(unittest.TestCase):
         # V4 falha sem npm/rede no ambiente de teste ou passa se houver tudo;
         # para ser deterministico, forca um PATH sem npm.
         with tempfile.TemporaryDirectory() as tmp:
-            env = {**os.environ, "NEXUS_REPORT_DIR": tmp, "PATH": "/usr/bin:/bin"}
-            if shutil.which("npm", path="/usr/bin:/bin"):
-                self.skipTest("npm presente em /usr/bin")
+            # Sem npm no host a V4 usaria o container node:22; NEXUS_DOCKER inexistente
+            # garante a falha sem depender de Docker no ambiente do teste.
+            env = {
+                **os.environ,
+                "NEXUS_REPORT_DIR": tmp,
+                "PATH": "/usr/bin:/bin",
+                "NEXUS_NPM": "docker",
+                "NEXUS_DOCKER": "/nao/existe/docker",
+            }
             result = subprocess.run(
                 ["bash", str(SCRIPT), "--only", "V4"],
                 cwd=ROOT, env=env, capture_output=True, text=True, timeout=60,
