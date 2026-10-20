@@ -78,6 +78,36 @@ pending() {
   PENDING=1
 }
 
+# run_strict <etapa> <descricao> <comando...>: como run, mas reprova se o unittest
+# pulou algum teste ("skipped" nao e aprovacao: o motivo precisa ser resolvido).
+run_strict() {
+  local step="$1" label="$2"; shift 2
+  run "$step" "$label" bash -c '
+    out=$("$@" 2>&1); rc=$?
+    printf "%s\n" "$out"
+    [ "$rc" -eq 0 ] || exit "$rc"
+    if printf "%s\n" "$out" | grep -qE "skipped=[1-9]"; then
+      echo "REPROVADO: ha testes pulados; resolva o motivo antes de aprovar a etapa"
+      exit 1
+    fi' _ "$@"
+}
+
+# Pasta de relatorio vista pelo docker compose (relativa a raiz, como os outros volumes).
+case "$OUT" in
+  /*|[A-Za-z]:*) OUT_MOUNT="$OUT" ;;
+  *) OUT_MOUNT="./$OUT" ;;
+esac
+
+# Comando no container do backend com as montagens usadas na rodada de integracao
+# (docs/qa/relatorios/2026-10-16-rodada-integracao): testes, avaliacao, scripts e relatorio.
+BACKEND_RUN=(docker compose run --rm -e PYTHONPATH=/app:/app/integration
+  -v ./backend/tests:/app/tests
+  -v ./backend/tests/integration:/app/integration:ro
+  -v ./backend/tests/evaluation:/app/evaluation
+  -v ./scripts:/app/scripts:ro
+  -v "$OUT_MOUNT:/app/out"
+  backend)
+
 # run_script <etapa> <descricao> <arquivo> [args]: roda se o arquivo existir.
 run_script() {
   local step="$1" label="$2" file="$3"; shift 3
@@ -111,12 +141,14 @@ stage_v2() {
 }
 
 stage_v3() {
-  run V3 "testes de integracao do backend" docker compose run --rm \
-    -v ./backend/tests:/app/tests backend python -m unittest discover -s tests/integration -v || return 1
+  # Sem pulos: CT-40 exige /app/scripts; CT-55 usa http://frontend (rede do Compose).
+  run_strict V3 "testes de integracao do backend" "${BACKEND_RUN[@]}" \
+    sh -c 'cd /app/tests/integration && python -m unittest discover -s . -v' || return 1
   run_script V3 "CT-53 resiliencia do worker" scripts/validation/worker_resilience.sh || return 1
   run_script V3 "CT-54 operacao offline" scripts/validation/offline_check.sh || return 1
   if [ -f scripts/validation/leakage_scan.py ] || [ "$DRY_RUN" -eq 1 ]; then
-    run V3 "CT-56 varredura de vazamento" python3 scripts/validation/leakage_scan.py || return 1
+    run V3 "CT-56 varredura de vazamento" "${BACKEND_RUN[@]}" \
+      python /app/scripts/validation/leakage_scan.py --out /app/out/ct56 || return 1
   else
     pending V3 "CT-56 varredura de vazamento" "script ausente: scripts/validation/leakage_scan.py"
   fi
@@ -149,10 +181,32 @@ stage_v7() {
     --base-url "$BASE_URL" --assistant-id "${NEXUS_ASSISTANT_ID:-ID}" --files "$files" --out "$perf/upload.csv" || return 1
   run V7 "RNF-02 tempo de indexacao" python3 scripts/perf/indexing_time.py \
     --base-url "$BASE_URL" --assistant-id "${NEXUS_ASSISTANT_ID:-ID}" --files "$files" --out "$perf/indexacao.csv" || return 1
-  run V7 "consolidacao" python3 scripts/perf/report.py \
-    "$perf/upload.csv:2:all" "$perf/indexacao.csv:60:all" --out "$OUT/07-desempenho.md"
-  pending V7 "RNF-01/03/16/18 (TTFT, busca densa, busca hibrida, reindexacao sob carga)" \
-    "ttft.py exige LLM real e perguntas; retrieval_latency.py e reindex_under_load.py ainda nao escritos"
+  # RNF-03 e RNF-16: 100.000 trechos (V-D9) gravados direto na collection perf-load.
+  local chunks="${NEXUS_PERF_CHUNKS:-100000}" incontainer="/app/out/corpus/chunks.jsonl"
+  local perfc="/app/out/07-desempenho"
+  run V7 "corpus de $chunks trechos" python3 scripts/perf/corpus.py --out "$files" --chunks "$chunks" || return 1
+  run V7 "carga dos trechos (perf-load)" "${BACKEND_RUN[@]}" \
+    python /app/scripts/perf/retrieval_latency.py load --chunks "$incontainer" || return 1
+  run V7 "RNF-03 busca densa" "${BACKEND_RUN[@]}" \
+    python /app/scripts/perf/retrieval_latency.py dense --chunks "$incontainer" --out "$perfc/rnf03.csv" || return 1
+  run V7 "RNF-16 busca hibrida, 1 usuario" "${BACKEND_RUN[@]}" \
+    python /app/scripts/perf/retrieval_latency.py hybrid --chunks "$incontainer" --users 1 --out "$perfc/rnf16-u1.csv" || return 1
+  run V7 "RNF-16 busca hibrida, 5 usuarios" "${BACKEND_RUN[@]}" \
+    python /app/scripts/perf/retrieval_latency.py hybrid --chunks "$incontainer" --users 5 --out "$perfc/rnf16-u5.csv" || return 1
+  local specs=("$perf/upload.csv:2:all" "$perf/indexacao.csv:60:all" "$perf/rnf03.csv:2:all"
+    "$perf/rnf16-u1.csv:3:p95" "$perf/rnf16-u5.csv")
+  # RNF-18 exige um assistente cuja base foi enviada pela API (a reindexacao le os documentos).
+  if [ -n "${NEXUS_REINDEX_ASSISTANT_ID:-}" ] || [ "$DRY_RUN" -eq 1 ]; then
+    run V7 "RNF-18 busca durante a reindexacao" "${BACKEND_RUN[@]}" \
+      python /app/scripts/perf/reindex_under_load.py --assistant-id "${NEXUS_REINDEX_ASSISTANT_ID:-ID}" \
+      --chunks "$incontainer" --users 1 --out "$perfc/rnf18.csv" || return 1
+    specs+=("$perf/rnf18.csv")
+  else
+    pending V7 "RNF-18 busca durante a reindexacao" \
+      "defina NEXUS_REINDEX_ASSISTANT_ID (assistente com a base enviada pela API); compare o p95 com o rnf16-u1 (+20%, V-D6)"
+  fi
+  run V7 "consolidacao" python3 scripts/perf/report.py "${specs[@]}" --out "$OUT/07-desempenho.md"
+  pending V7 "RNF-01 TTFT" "ttft.py exige LLM real e um arquivo de perguntas; executar a parte, depois da V6"
 }
 
 stage_v8() {
