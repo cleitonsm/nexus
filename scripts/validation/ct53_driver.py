@@ -3,7 +3,9 @@
 Roda no container do backend, com ``backend/tests/integration`` montado em
 ``/app/integration`` e ``scripts`` em ``/app/scripts``. Subcomandos:
 
-* ``start``   cria um assistente, envia um PDF de ~10 MB e espera ``processando``;
+* ``start``   cria um assistente, envia um PDF de ``CT53_SIZE_MB`` (padrao 0,5 MB:
+              a indexacao precisa durar entre alguns segundos e ~60 s) e espera
+              ``processando``;
               imprime ``ASSISTANT=<id>`` e ``DOCUMENT=<id>``.
 * ``wait``    espera o documento chegar a ``indexado`` (``--timeout`` s) e
               roda a conferencia PostgreSQL x Qdrant do assistente.
@@ -14,6 +16,7 @@ Roda no container do backend, com ``backend/tests/integration`` montado em
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import tempfile
@@ -40,7 +43,8 @@ def start(seed: int) -> int:
         print(f"falha ao criar assistente: {status} {data}")
         return 2
     with tempfile.TemporaryDirectory() as directory:
-        pdf = corpus.make_text_pdf(Path(directory) / "job.pdf", 10 * corpus.MB, seed)
+        size = int(float(os.getenv("CT53_SIZE_MB", "0.5")) * corpus.MB)
+        pdf = corpus.make_text_pdf(Path(directory) / "job.pdf", size, seed)
         status, document = api.upload(
             data["id"], f"ct53-{seed}.pdf", pdf.read_bytes(), content_type="application/pdf"
         )

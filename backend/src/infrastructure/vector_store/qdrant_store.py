@@ -28,13 +28,21 @@ _SCROLL_PAGE = 1024
 ACTIVE = "active"
 _NOT_FOUND = 404
 _CONFLICT = 409
+# Um documento grande vira milhares de trechos: enviar em lotes evita estourar o
+# tempo limite de uma unica requisicao.
+_UPSERT_BATCH = 128
+_REQUEST_TIMEOUT_SECONDS = 60
 
 logger = logging.getLogger(__name__)
 
 
 class QdrantVectorStoreGateway:
     def __init__(self, *, url: str, api_key: str | None = None) -> None:
-        self._client = QdrantClient(url=url, api_key=api_key or None)
+        self._client = QdrantClient(
+            url=url,
+            api_key=api_key or None,
+            timeout=_REQUEST_TIMEOUT_SECONDS,
+        )
 
     def ensure_collection(
         self,
@@ -99,18 +107,19 @@ class QdrantVectorStoreGateway:
     ) -> None:
         if not chunks:
             return
-        self._client.upsert(
-            collection_name=collection_name.value,
-            points=[
-                models.PointStruct(
-                    id=str(uuid5(NAMESPACE_URL, chunk.id)),
-                    vector=_vectors(chunk),
-                    payload=_payload(chunk),
-                )
-                for chunk in chunks
-            ],
-            wait=True,
-        )
+        for start in range(0, len(chunks), _UPSERT_BATCH):
+            self._client.upsert(
+                collection_name=collection_name.value,
+                points=[
+                    models.PointStruct(
+                        id=str(uuid5(NAMESPACE_URL, chunk.id)),
+                        vector=_vectors(chunk),
+                        payload=_payload(chunk),
+                    )
+                    for chunk in chunks[start : start + _UPSERT_BATCH]
+                ],
+                wait=True,
+            )
 
     def hybrid_search(
         self,
