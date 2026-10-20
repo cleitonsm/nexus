@@ -19,15 +19,29 @@ $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $root
 
-$bash = (Get-Command bash -ErrorAction SilentlyContinue).Source
+# Prefere o bash do Git for Windows. O C:\Windows\System32\bash.exe e o lancador do WSL
+# e falha ("execvpe(/bin/bash) failed") quando nao ha distribuicao instalada.
+# NEXUS_BASH permite apontar outro bash.
+$bash = $env:NEXUS_BASH
 if (-not $bash) {
-    $candidate = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
-    if (Test-Path $candidate) { $bash = $candidate }
+    $candidates = @(
+        "$env:ProgramFiles\Git\bin\bash.exe",
+        "${env:ProgramFiles(x86)}\Git\bin\bash.exe",
+        "$env:LOCALAPPDATA\Programs\Git\bin\bash.exe"
+    )
+    $git = (Get-Command git -ErrorAction SilentlyContinue).Source
+    if ($git) { $candidates += (Join-Path (Split-Path (Split-Path $git)) "bin\bash.exe") }
+    $bash = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 }
 if (-not $bash) {
-    Write-Error "bash nao encontrado. Instale o Git for Windows ou use o WSL."
+    $found = (Get-Command bash -ErrorAction SilentlyContinue).Source
+    if ($found -and $found -notlike "*\System32\bash.exe") { $bash = $found }
+}
+if (-not $bash) {
+    Write-Error "bash do Git for Windows nao encontrado. Instale o Git for Windows ou defina NEXUS_BASH."
     exit 2
 }
+Write-Host "bash: $bash"
 
 $arguments = @("scripts/validation/run-all.sh")
 if ($DryRun) { $arguments += "--dry-run" }
