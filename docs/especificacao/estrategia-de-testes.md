@@ -162,56 +162,64 @@ Uma fase só é considerada concluída quando:
 
 ## Situação dos Casos de Teste
 
-Atualizado em 2026-10-08.
+Atualizado em 2026-10-20. "Executado no Docker" remete ao [registro da rodada de integração](../qa/relatorios/2026-10-16-rodada-integracao/LEIAME.md)
+(2026-10-15/16) ou aos logs de `docs/qa/relatorios/2026-10-19-*` e `2026-10-20-*`. Nada disso substitui a
+campanha V0 a V8: na V3 o orquestrador roda **toda** a pasta `backend/tests/integration` e reprova se algum
+teste for pulado.
 
-| Casos | Situação | Onde |
-|-------|----------|------|
-| CT-01, CT-02, CT-03 | Implementados e executados com sucesso | `backend/tests/unit/test_evaluation.py` |
-| CT-05 (formato e identificador) | Parte unitária implementada e executada com sucesso | `backend/tests/unit/test_structured_logging.py` |
-| CT-05 (com a API) | Implementado, ainda não executado | `backend/tests/integration/test_request_context.py` |
-| CT-04 | Depende da execução de `scripts/eval.sh` no ambiente Docker, ainda não realizada | `backend/tests/evaluation/` |
-| CT-06, CT-07 | Implementados e executados com sucesso, com contador de tokens dublê | `backend/tests/unit/test_structural_chunker.py` |
-| CT-08, CT-09 | Implementados e executados com sucesso | `backend/tests/unit/test_indexing.py` |
-| CT-07 (tokenizador real), CT-10, CT-11 | Implementados, ainda não executados (exigem o modelo) | `backend/tests/integration/test_semantic_embedding.py` |
-| CT-12 | Implementado, ainda não executado (exige o Qdrant) | `backend/tests/integration/test_qdrant_alias.py` |
-| CT-13 | Depende da avaliação do piloto no ambiente Docker | `backend/tests/evaluation/` |
-| CT-14, CT-15, CT-16, CT-17 | Implementados e executados com sucesso | `backend/tests/unit/test_chat_flow.py` |
-| CT-18, CT-19 | Implementados, ainda não executados (exigem o Qdrant e os modelos); a parte que não depende deles está em `backend/tests/unit/test_retrieval_components.py` | `backend/tests/integration/test_hybrid_search.py` |
-| CT-20 | Implementado, ainda não executado (exige FastAPI e PostgreSQL) | `backend/tests/integration/test_chat_citations.py` |
-| CT-21 | Implementado, ainda não executado (o Vitest não pôde ser instalado onde o código foi escrito) | `frontend/src/app/store/nexus.reducer.spec.ts` |
-| CT-22 | Ferramenta de calibração pronta e testada (`scripts\calibrate.ps1`, sem LLM; `test_calibrate_relevance.py`); a execução no Docker e a escolha da nota mínima dependem do autor | `backend/tests/evaluation/`, `backend/src/cli/calibrate_relevance.py` |
-| CT-23, CT-24, CT-25 | Implementados e executados com sucesso | `backend/tests/unit/test_token_verifier.py`, `backend/tests/unit/test_access_control.py` |
-| CT-26, CT-27, CT-29, CT-30 | Implementados, ainda não executados (exigem FastAPI); os contratos equivalentes, com dublês, rodam em `test_access_control.py` | `backend/tests/integration/test_access_control_api.py` |
-| CT-28, CT-31 | Implementados, ainda não executados (exigem o Qdrant e o PostgreSQL) | `backend/tests/integration/test_access_control_storage.py` |
-| CT-32 | Implementado; a lógica foi executada com um substituto local do Vitest, e a execução com o Vitest real está pendente | `frontend/src/app/core/auth/access.spec.ts` |
-| CT-33 a CT-36 | Implementados e executados com sucesso | `backend/tests/unit/test_document_lifecycle.py` |
-| CT-37, CT-38 | Implementados, ainda não executados (exigem o PostgreSQL e o Qdrant) | `backend/tests/integration/test_document_lifecycle_storage.py` |
-| CT-39 | Parte unitária executada com o Tesseract `eng`; teste no container com `por` escrito, ainda não executado | `backend/tests/unit/test_ocr_extraction.py`, `backend/tests/integration/test_ocr_container.py` |
-| CT-40 | Rotas cobertas com repositórios em memória, ainda não executadas; medição dos 2 segundos escrita, ainda não executada | `backend/tests/integration/test_api_routes.py`, `backend/tests/integration/test_upload_latency.py` |
-| CT-41, CT-42, CT-43 | Implementados e executados com sucesso | `backend/tests/unit/test_operations.py`, `backend/tests/unit/test_feedback.py` |
-| CT-44, CT-45 | Implementados, ainda não executados (exigem FastAPI e o ambiente Docker) | `backend/tests/integration/test_operations_api.py`, `backend/tests/integration/test_chat_citations.py` |
-| CT-46 | Implementado e executado com sucesso (sem Docker; também no CI) | `backend/tests/integration/test_sensitive_data_leak.py` |
-| CT-47 | Roteiro implementado, ainda não executado (exige o Docker); os scripts de backup e restauração passam no ensaio com PostgreSQL real e Qdrant simulado | `scripts/validation/backup-restore.sh`, `backend/tests/validation/restored_search.py`, `scripts/validation/backup-scripts-check.sh` |
-| CT-48 | Comparação executada como teste unitário; o roteiro com o código de saída real exige o Docker | `backend/tests/unit/test_regression_gate.py`, `scripts/validation/regression-gate.sh` |
-| CT-58, CT-59, CT-61, CT-62 | Implementados e executados com sucesso | `test_access_control.py`, `test_upload_reading.py`, `test_deployment_safety.py`, `test_evaluation_seeding.py` |
-| CT-58 (rota) | Implementado, ainda não executado (exige FastAPI) | `backend/tests/integration/test_access_control_api.py` |
-| CT-60 | Dois workers simulados executados com sucesso; os `UPDATE` condicionais no PostgreSQL estão escritos e ainda não executados | `backend/tests/unit/test_job_ownership.py`, `backend/tests/integration/test_job_ownership_storage.py` |
-| CT-63 a CT-67 | Implementados e executados com sucesso | `backend/tests/unit/test_llm_connection.py` |
-| CT-68 | Escrito, ainda não executado (exige FastAPI) | `backend/tests/integration/test_access_control_api.py` (`LLMSettingsApiTestCase`) |
-| CT-69 | Escrito, ainda não executado (sem npm na nuvem) | `frontend/src/app/store/nexus.reducer.spec.ts` |
-| CT-70 | A executar no Docker, com a chave do autor | — |
-| CT-71 a CT-75 | Implementados e executados com sucesso (621 testes unitários no total) | `backend/tests/unit/test_llm_retry.py`, `test_group_validation.py`, `test_access_control.py` |
-| CT-75 e CT-76 (rota) | Escritos, ainda não executados (exigem FastAPI) | `backend/tests/integration/test_api_routes.py` |
-| CT-77 | A executar no Docker, depois de reconstruir as imagens | — |
-| CT-04 | Escrito, ainda não executado (exige PostgreSQL e Qdrant) | `backend/tests/integration/test_evaluation_command.py` |
-| Ferramentas de medição e orquestração | Implementadas e testadas sem Docker | `scripts/perf/`, `scripts/validation/run-all.sh`, `backend/tests/unit/test_perf_tools.py`, `backend/tests/unit/test_validation_runner.py` |
-| CT-49 a CT-57 | Escritos em 2026-10-14, **ainda não executados** (exigem o Docker): migrações, fluxo completo, isolamento, Keycloak real, resiliência do worker, rede isolada, Nginx, varredura de vazamento e conferência PostgreSQL × Qdrant. Definidos no [plano de validação final](../qa/plano-de-validacao-final.md) | `backend/tests/integration/test_migrations.py`, `test_full_stack_flow.py`, `test_assistant_isolation.py`, `test_keycloak_real.py`, `test_nginx_proxy.py`, `test_consistency_check.py`; `scripts/validation/worker_resilience.sh`, `offline_check.sh`, `leakage_scan.py` |
+### Executados com sucesso
+
+| Casos | Onde rodou | Onde |
+|-------|------------|------|
+| CT-01 a CT-03, CT-05 (parte unitária), CT-06 a CT-09, CT-14 a CT-17, CT-23 a CT-25, CT-33 a CT-36, CT-41 a CT-43, CT-58, CT-59, CT-61 a CT-67, CT-71 a CT-75 | Unitários (662 testes, 1 pulado; 2026-10-20 sobre `95c49ff`) | `backend/tests/unit/` |
+| CT-46 | Sem Docker e no CI | `backend/tests/integration/test_sensitive_data_leak.py` |
+| CT-48 (comparação) | Unitário | `backend/tests/unit/test_regression_gate.py` |
+| CT-28, CT-31 e a purga de retenção (D6) | Docker, 2026-10-16 | `test_access_control_storage.py` |
+| CT-75 e CT-76 (rota) e as rotas de documentos | Docker, 2026-10-16 (14 testes) | `test_api_routes.py` |
+| CT-39 (OCR em português no container) | Docker, 2026-10-16 | `test_ocr_container.py` |
+| CT-40 (upload de ~25,3 MB em até 2 s) | Docker, 2026-10-16 | `test_upload_latency.py` |
+| CT-49 (parcial: `upgrade head`, `check`, downgrade e upgrade da `0008`, trilha de auditoria preservada) | Docker, 2026-10-16 | `alembic`; registro da rodada |
+| CT-50, CT-51, CT-57 | Docker, 2026-10-16 | `test_full_stack_flow.py`, `test_assistant_isolation.py`, `test_consistency_check.py` |
+| CT-53 (worker interrompido conclui ou retoma o job) | Docker, 2026-10-20, depois de `df8d445` e `95c49ff` (reprovado em 2026-10-19) | `scripts/validation/worker_resilience.sh`, `ct53_driver.py` |
+| CT-54 (operação sem internet, avaliação sem LLM e OCR) | Docker, 2026-10-19 | `scripts/validation/offline_check.sh` |
+| CT-21, CT-32, CT-69 e FE-01 a FE-05 | `npm test` no container `node:22`, 2026-10-16 (16 arquivos, 149 testes) | `frontend/src/**/*.spec.ts` |
+| CT-22 (curva no `nexus-docs`, 27 itens) | Docker, 2026-10-16; decisão `RELEVANCE_MIN_SCORE=0,10` | `backend/tests/evaluation/reports/nexus-docs/calibracao.json` |
+
+### Escritos, a executar (V3, V7 ou V8 da campanha, salvo indicação)
+
+| Casos | Observação | Onde |
+|-------|------------|------|
+| CT-04 | Exige PostgreSQL e Qdrant | `test_evaluation_command.py` |
+| CT-05 (com a API) | — | `test_request_context.py` |
+| CT-07 (tokenizador real), CT-10, CT-11 | Exigem o modelo | `test_semantic_embedding.py` |
+| CT-12 | Exige o Qdrant | `test_qdrant_alias.py` |
+| CT-18, CT-19 | Exigem o Qdrant e os modelos; a parte sem eles roda em `test_retrieval_components.py` | `test_hybrid_search.py` |
+| CT-20, CT-45 | — | `test_chat_citations.py` |
+| CT-26, CT-27, CT-29, CT-30, CT-58 (rota), CT-68 | Os contratos com dublês rodam nos unitários | `test_access_control_api.py` |
+| CT-37, CT-38 | — | `test_document_lifecycle_storage.py` |
+| CT-44 | — | `test_operations_api.py` |
+| CT-60 (`UPDATE` condicionais no PostgreSQL) | Dois workers simulados já passam nos unitários | `test_job_ownership_storage.py` |
+| D10 da SPEC-006 (pausa da ingestão) | — | `test_ingestion_pause_storage.py` |
+| CT-49 (completo) | — | `test_migrations.py` |
+| CT-52 | Exige o cliente `nexus-tests` no realm | `test_keycloak_real.py` |
+| CT-55 | Na V3 usa `http://frontend` pela rede do Compose; fora dela, `NGINX_URL` | `test_nginx_proxy.py` |
+| CT-56 | Roda no container (V3) | `scripts/validation/leakage_scan.py` |
+| CT-47 | V8; os scripts já passaram no ensaio com PostgreSQL real e Qdrant simulado | `scripts/validation/backup-restore.sh` |
+| CT-48 (roteiro com o código de saída real) | V8 | `scripts/validation/regression-gate.sh` |
+| CT-13 e as metas de qualidade | V6, com LLM, depois da validação dos 55 itens do `nexus-docs-ampliado` e da nova calibração | `scripts/eval.sh` |
+| RNF-03, RNF-16, RNF-18 | V7 (100.000 trechos; RNF-18 exige `NEXUS_REINDEX_ASSISTANT_ID`) | `scripts/perf/retrieval_latency.py`, `reindex_under_load.py` |
+| RNF-01 (TTFT) | Fora do orquestrador, depois da V6 | `scripts/perf/ttft.py` |
+| CT-70 | Gemini real, com a chave do autor | — |
+| CT-77 | Aviso de versão do Qdrant, depois de reconstruir as imagens | — |
+| FE-06, FE-07 | Exigem o Playwright, que não está no `package.json` | `frontend/e2e/` |
+
+Ferramentas de medição e orquestração: `scripts/perf/`, `scripts/validation/run-all.sh`, testadas sem Docker
+em `test_perf_tools.py` e `test_validation_runner.py`.
 
 Os testes de integração da Fase 4 não sobem o Keycloak: usam o verificador de token real com
 tokens assinados por uma chave gerada no próprio teste.
 
-A suíte unitária soma 497 testes: 372 até a Fase 4, 52 da Fase 5 e 73 da Fase 6. Ela foi executada
-fora do Docker, com
-o LangGraph substituído por um dublê local; a execução dentro do container ainda está pendente.
+A suíte unitária soma 662 testes (2026-10-20). Fora do Docker ela roda com o LangGraph substituído por um
+dublê local; dentro do container, na V2 da campanha.
 
 O projeto utiliza `unittest`, sem dependência adicional de framework de testes.
