@@ -80,5 +80,95 @@ class SeedDocumentsTestCase(IndexingTestCase):
         self.assertEqual(self._seed([]), 0)
 
 
+class SeedWithOtherWorkerTestCase(IndexingTestCase):
+    """V3 (2026-10-20): com o worker da pilha no ar, ele reserva parte dos jobs."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.seed_dir = Path(directory.name)
+        (self.seed_dir / "a.md").write_text("# A\n\nPolitica de ferias.\n", encoding="utf-8")
+        (self.seed_dir / "b.md").write_text("# B\n\nPolitica de home office.\n", encoding="utf-8")
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def _clock(self) -> float:
+        return self.now
+
+    def _sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+    def _seed(self, statuses, process_pending=lambda: None, wait_seconds=600):
+        s = self.scenario
+        return seed_documents(
+            [self.seed_dir],
+            "a1",
+            upload=lambda name, content: s.upload(
+                source_name=name, document_id=name, raw_content=content
+            ),
+            process_pending=process_pending,
+            current_status=statuses,
+            wait_seconds=wait_seconds,
+            poll_seconds=3,
+            clock=self._clock,
+            sleep=self._sleep,
+        )
+
+    def test_documents_indexed_by_another_worker_count(self) -> None:
+        reads = {"a.md": ["processando", "indexado"], "b.md": ["indexado"]}
+
+        def statuses(document_id: str) -> str:
+            values = reads[document_id]
+            return values.pop(0) if len(values) > 1 else values[0]
+
+        self.assertEqual(self._seed(statuses), 2)
+        self.assertEqual(self.sleeps, [3])
+
+    def test_mixed_local_and_other_worker(self) -> None:
+        s = self.scenario
+        processed: list[str] = []
+
+        def process_once():
+            if processed:
+                return None
+            outcome = s.process()
+            processed.append(outcome.document_id)
+            return outcome
+
+        def statuses(document_id: str) -> str:
+            # o primeiro foi processado aqui; o outro, pelo worker da pilha
+            return "indexado"
+
+        self.assertEqual(self._seed(statuses, process_pending=process_once), 2)
+        self.assertEqual(len(processed), 1)
+
+    def test_retry_that_becomes_available_is_processed_here(self) -> None:
+        s = self.scenario
+        rounds = {"n": 0}
+
+        def process_later():
+            rounds["n"] += 1
+            return s.process() if rounds["n"] >= 2 else None
+
+        self.assertEqual(self._seed(lambda _id: "pendente", process_pending=process_later), 2)
+
+    def test_failure_seen_in_the_database_is_reported(self) -> None:
+        def statuses(document_id: str) -> str:
+            return "falhou" if document_id == "b.md" else "indexado"
+
+        with self.assertRaises(SeedDocumentsError) as caught:
+            self._seed(statuses)
+        self.assertIn("b.md", str(caught.exception))
+        self.assertEqual(self.sleeps, [])
+
+    def test_gives_up_after_the_job_timeout(self) -> None:
+        with self.assertRaises(SeedDocumentsError) as caught:
+            self._seed(lambda _id: "processando", wait_seconds=9)
+        self.assertIn("fila nao processada por completo", str(caught.exception))
+        self.assertEqual(sum(self.sleeps), 9)
+
+
 if __name__ == "__main__":
     unittest.main()

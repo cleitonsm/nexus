@@ -80,3 +80,11 @@ montava `IngestDocumentUseCase` com um argumento que não existe mais (sem `job_
 corrigido, mediria uma base vazia, porque o envio só cria documentos pendentes. O comando agora
 envia e processa a fila com `seed_documents` (código de saída 3 se algum documento do piloto não
 chegar a `indexado`; CT-62) e a avaliação ganhou a métrica `citation_coverage`.
+
+**Ajuste de 2026-10-20 (V3 no Docker).** Com o worker da pilha no ar, que é a situação normal da V6, o worker
+reservava parte dos jobs do piloto e o comando terminava com código 3 ("fila não processada por completo"); a
+limpeza do teste ainda podia esbarrar num *deadlock* com o worker. Agora `seed_documents` processa os jobs
+disponíveis e acompanha pelo banco os documentos que outro worker reservou, até chegarem a `indexado` ou
+`falhou`, com o prazo do job de ingestão (`INGESTION_JOB_TIMEOUT_SECONDS`, 600 s, D7 da SPEC-005). A cada
+volta também processa as novas tentativas que ficarem disponíveis. O código de saída 3 continua valendo para
+documento `falhou` ou que não termina no prazo (CT-04, CT-62; `test_evaluation_seeding.py`).

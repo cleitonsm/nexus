@@ -42,6 +42,7 @@ from src.application.services import (
 from src.domain import (
     AssistantId,
     AuthenticatedUser,
+    DocumentId,
     DocumentRepository,
     EmbeddingGateway,
     EvaluationItem,
@@ -59,6 +60,7 @@ from src.infrastructure.composition import (
     build_sparse_embedding_gateway,
     build_token_counter,
     default_sparse_encoding_parameters,
+    ingestion_settings,
     max_file_bytes,
     reranker_model_name,
     retrieval_settings,
@@ -197,6 +199,7 @@ def _run(
                 ),
             ),
             document_repository=document_repository,
+            session=session,
         )
     except SeedDocumentsError as exc:
         logger.error("evaluation.seed.failed", extra={"problem": str(exc)})
@@ -294,8 +297,13 @@ def _seed_documents(
     ingest: IngestDocumentUseCase,
     process_next: ProcessNextIngestionJobUseCase,
     document_repository: PostgresDocumentRepository,
+    session: Session,
 ) -> None:
-    """Indexa os documentos do piloto apenas quando a base esta vazia."""
+    """Indexa os documentos do piloto apenas quando a base esta vazia.
+
+    Com o worker da pilha no ar, parte dos jobs pode ser dele: o estado desses
+    documentos e lido do banco ate o prazo do job de ingestao (D7).
+    """
     if document_repository.list_by_assistant(assistant_id):
         return
 
@@ -314,11 +322,18 @@ def _seed_documents(
             )
         )
 
+    def current_status(document_id: str) -> str | None:
+        session.expire_all()  # o worker grava em outra sessao
+        document = document_repository.get_by_id(DocumentId(document_id))
+        return document.status.value if document else None
+
     indexed = seed_documents(
         seed_directories,
         assistant_id.value,
         upload=upload,
         process_pending=process_next.execute,
+        current_status=current_status,
+        wait_seconds=ingestion_settings().job_timeout_seconds,
     )
     logger.info("evaluation.documents.seeded", extra={"documents": indexed})
 
