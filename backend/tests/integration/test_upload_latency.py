@@ -59,6 +59,13 @@ class UploadLatencyTests(unittest.TestCase):
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 ),
             ]
+            # Secao 7.1 do plano de validacao: requisicoes descartadas antes de medir.
+            # Em 2026-10-21 o primeiro envio da rodada, a frio, levou 3,17 s (o seguinte, ok).
+            for n in range(3):
+                status, body = self.admin.upload(
+                    self.assistant_id, f"aquecimento-{n}.md", f"# {uuid4().hex}\n".encode()
+                )
+                self.assertEqual(status, 202, body)
             for path, content_type in files:
                 with self.subTest(file=path.name):
                     content = path.read_bytes()

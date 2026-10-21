@@ -36,6 +36,19 @@ def upload(base_url: str, assistant_id: str, token: str, path: Path, request_id:
     return status, None
 
 
+def warm_up(base_url: str, assistant_id: str, token: str, count: int) -> None:
+    """Secao 7.1 do plano de validacao: requisicoes descartadas antes da medicao.
+
+    Arquivos Markdown pequenos e de conteudo unico (a duplicidade por hash responde 409):
+    aquecem conexoes, validacao do token e banco sem pesar na fila de ingestao.
+    """
+    for _ in range(count):
+        content = f"# Aquecimento\n\n{uuid.uuid4().hex}\n".encode()
+        body, content_type = multipart("file", f"aquecimento-{uuid.uuid4().hex[:8]}.md", content)
+        headers = {**api_headers(token), "Content-Type": content_type}
+        request("POST", f"{base_url}/assistants/{assistant_id}/documents", headers=headers, body=body)
+
+
 def measure(base_url: str, assistant_id: str, token: str, files: list[Path]) -> list[Sample]:
     samples = []
     for path in files:
@@ -51,11 +64,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--files", type=Path, required=True)
     parser.add_argument("--glob", default="upload-*")
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--warmup", type=int, default=10, help="envios descartados (secao 7.1)")
     args = parser.parse_args(argv)
     files = sorted(args.files.glob(args.glob))
     if not files:
         raise SystemExit("no files to upload.")
-    samples = measure(args.base_url.rstrip("/"), args.assistant_id, get_token(), files)
+    token = get_token()
+    warm_up(args.base_url.rstrip("/"), args.assistant_id, token, args.warmup)
+    samples = measure(args.base_url.rstrip("/"), args.assistant_id, token, files)
     write_samples(args.out, samples)
     return 0
 
