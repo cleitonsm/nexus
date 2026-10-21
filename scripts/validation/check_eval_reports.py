@@ -13,7 +13,8 @@ Le os ``--runs`` relatorios mais recentes (``*.json``, exceto ``calibracao.json`
 * recall@5 >= 0,80 em cada execucao (RNF-19);
 * fidelidade >= 0,90 na media e nenhuma execucao abaixo de 0,88 (RNF-20);
 * fallback fora do escopo >= 0,90 em cada execucao (RNF-21);
-* cobertura de citacoes = 100% em cada execucao (RF-37).
+* 100% das respostas geradas (sem fallback) com citacao em cada execucao (RF-37; a taxa de
+  resposta do escopo, ``citation_coverage``, e so informativa — decisao do autor, 2026-10-21).
 
 A regressao do MRR entre execucoes (RN-14) ja reprova a propria avaliacao (codigo 1).
 Codigo de saida: 0 metas atingidas; 1 meta nao atingida; 2 relatorio ausente ou sem geracao.
@@ -66,6 +67,21 @@ def invalid(reports: list[dict], runs: int, model: str | None = None) -> list[st
     return problems
 
 
+def generated_citation(report: dict) -> float | None:
+    """RF-37 (decisao do autor, 2026-10-21): entre as respostas GERADAS (sem fallback) do escopo,
+    a proporcao com citacao. O fallback nao e resposta gerada; ``citation_coverage`` do relatorio
+    conta o fallback como falta de citacao e mede, na pratica, a taxa de resposta (informativa).
+    """
+    generated = [
+        item
+        for item in report.get("items", [])
+        if not item.get("out_of_scope") and item.get("fallback_used") is False
+    ]
+    if not generated:
+        return None
+    return sum(1 for item in generated if item.get("cited")) / len(generated)
+
+
 def failures(reports: list[dict]) -> list[str]:
     problems = []
     faithfulness = []
@@ -73,7 +89,7 @@ def failures(reports: list[dict]) -> list[str]:
         name, metrics = report["_file"], report["metrics"]
         recall = metrics.get("recall_at_k") or 0.0
         fallback = metrics.get("fallback_accuracy")
-        citation = metrics.get("citation_coverage")
+        citation = generated_citation(report)
         faithfulness.append(metrics["faithfulness"])
         if recall < RECALL_MIN:
             problems.append(f"{name}: recall@5 {recall:.3f} < {RECALL_MIN}")
@@ -82,7 +98,7 @@ def failures(reports: list[dict]) -> list[str]:
         if fallback is None or fallback < FALLBACK_MIN:
             problems.append(f"{name}: fallback {fallback} < {FALLBACK_MIN}")
         if citation is None or citation < CITATION_MIN:
-            problems.append(f"{name}: cobertura de citacoes {citation} < {CITATION_MIN}")
+            problems.append(f"{name}: respostas geradas com citacao {citation} < {CITATION_MIN}")
     if faithfulness:
         mean = sum(faithfulness) / len(faithfulness)
         if mean < FAITHFULNESS_MEAN_MIN:
@@ -91,10 +107,14 @@ def failures(reports: list[dict]) -> list[str]:
 
 
 def table(reports: list[dict]) -> str:
-    lines = ["| Relatorio | recall@5 | MRR | fidelidade | fallback | citacoes |", "|---|---|---|---|---|---|"]
+    lines = [
+        "| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |",
+        "|---|---|---|---|---|---|---|",
+    ]
     for report in reports:
         m = report.get("metrics", {})
-        cells = [m.get(key) for key in ("recall_at_k", "mrr", "faithfulness", "fallback_accuracy", "citation_coverage")]
+        cells = [m.get(key) for key in ("recall_at_k", "mrr", "faithfulness", "fallback_accuracy")]
+        cells += [generated_citation(report), m.get("citation_coverage")]
         lines.append(
             f"| {report['_file']} | "
             + " | ".join("n/d" if value is None else f"{value:.3f}" for value in cells)
