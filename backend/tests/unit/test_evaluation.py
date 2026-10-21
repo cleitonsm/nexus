@@ -635,6 +635,15 @@ class ReportStoreTests(unittest.TestCase):
         self.assertIsNotNone(latest)
         self.assertEqual(latest["metrics"]["recall_at_k"], 0.8)
 
+    def test_latest_ignores_other_json_files_in_the_folder(self) -> None:
+        """A calibracao (CT-22) grava calibracao.json na mesma pasta dos relatorios."""
+        base = Path(tempfile.mkdtemp())
+        store = JsonEvaluationReportStore(base)
+        store.save("piloto", self._report(0.8), label="20261020-193609-a247ac1")
+        (base / "piloto" / "calibracao.json").write_text("{\"points\": []}", encoding="utf-8")
+        latest = store.load_latest("piloto")
+        self.assertEqual(latest["metrics"]["recall_at_k"], 0.8)
+
     def test_markdown_summary_lists_metrics_and_deltas(self) -> None:
         store = JsonEvaluationReportStore(Path(tempfile.mkdtemp()))
         path = store.save(

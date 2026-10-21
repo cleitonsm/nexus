@@ -23,9 +23,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
+REPORT_NAME = re.compile(r"^\d{8}-\d{6}-.+\.json$")
 RECALL_MIN = 0.80
 FAITHFULNESS_MEAN_MIN = 0.90
 FAITHFULNESS_RUN_MIN = 0.88
@@ -34,8 +36,9 @@ CITATION_MIN = 1.0
 
 
 def latest_reports(directory: Path, runs: int) -> list[dict]:
+    # So os relatorios (AAAAMMDD-HHMMSS-<commit>.json), como o JsonEvaluationReportStore.
     files = sorted(
-        (path for path in directory.glob("*.json") if path.name != "calibracao.json"),
+        (path for path in directory.glob("*.json") if REPORT_NAME.match(path.name)),
         key=lambda path: path.name,
     )
     return [json.loads(path.read_text(encoding="utf-8")) | {"_file": path.name} for path in files[-runs:]]

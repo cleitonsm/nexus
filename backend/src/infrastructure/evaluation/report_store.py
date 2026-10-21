@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
+
+# Relatorios gravados por ``save``: ``AAAAMMDD-HHMMSS-<commit>.json``. A mesma pasta guarda
+# outros JSON (``calibracao.json``, do CT-22), que nao sao relatorios e, em ordem
+# alfabetica, viriam depois deles (2026-10-21: a V6 comparou com a calibracao e parou).
+REPORT_NAME = re.compile(r"^\d{8}-\d{6}-.+\.json$")
 
 
 class JsonEvaluationReportStore:
@@ -14,7 +20,9 @@ class JsonEvaluationReportStore:
         directory = self._base_directory / dataset_name
         if not directory.is_dir():
             return None
-        reports = sorted(directory.glob("*.json"))
+        reports = sorted(
+            path for path in directory.glob("*.json") if REPORT_NAME.match(path.name)
+        )
         if not reports:
             return None
         return json.loads(reports[-1].read_text(encoding="utf-8"))
