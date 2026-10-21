@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -177,6 +178,65 @@ class LLMRetryTestCase(unittest.TestCase):
             self.assertEqual(server.requests, 1)
         self.assertEqual(sum(1 for chunk in chunks if chunk.text), 1)
         self.assertEqual(self.sleeps, [])
+
+
+class SlowServer:
+    """Aceita a conexao e demora a responder: tempo esgotado na leitura."""
+
+    def __init__(self, delay: float) -> None:
+        self.requests = 0
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self) -> None:  # noqa: N802
+                length = int(self.headers.get("Content-Length") or 0)
+                self.rfile.read(length)
+                outer.requests += 1
+                time.sleep(delay)
+                try:
+                    self.send_response(200)
+                    self.send_header("Content-Length", str(len(OK_BODY)))
+                    self.end_headers()
+                    self.wfile.write(OK_BODY)
+                except OSError:
+                    pass
+
+            def log_message(self, *_: object) -> None:
+                return
+
+        self._server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.url = f"http://127.0.0.1:{self._server.server_address[1]}/v1/chat/completions"
+        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+
+    def __enter__(self) -> "SlowServer":
+        self._thread.start()
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self._server.shutdown()
+        self._server.server_close()
+
+
+class LLMTimeoutTestCase(unittest.TestCase):
+    """V6 da rc6 (2026-10-21): o TimeoutError escapava cru do cliente."""
+
+    def test_read_timeout_becomes_provider_error_without_retry(self) -> None:
+        sleeps: list[float] = []
+        with SlowServer(delay=1.0) as server:
+            llm = HttpChatCompletionsLLM(
+                api_url=server.url,
+                model="gemini-flash",
+                api_key="chave-de-teste",
+                timeout_seconds=0.2,
+                sleep=sleeps.append,
+            )
+            with self.assertRaises(LLMProviderError) as caught:
+                llm.generate_with_usage(prompt="P", context_chunks=[], conversation_history=[])
+            self.assertIn("timed out", str(caught.exception))
+            self.assertEqual(server.requests, 1)  # D2: nao repete
+        self.assertEqual(sleeps, [])
+        # LLMProviderError e RuntimeError: o fallback da reescrita (grounded_answer) o trata.
+        self.assertIsInstance(caught.exception, RuntimeError)
 
 
 if __name__ == "__main__":

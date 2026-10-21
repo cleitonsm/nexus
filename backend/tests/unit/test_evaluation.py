@@ -332,6 +332,50 @@ class EvaluateAssistantUseCaseTests(unittest.TestCase):
         # A busca usa a pergunta reescrita, nao a original.
         self.assertIsNotNone(vector_store.calls[0])
 
+    def test_llm_failure_in_an_item_is_retried_once(self) -> None:
+        """Decisao do autor (2026-10-21): tempo esgotado no LLM repete o item uma vez."""
+        use_case, _ = self._use_case(results=[[_hit("d1")], [_hit("d1")]])
+        sleeps: list[float] = []
+        use_case._sleep = sleeps.append
+        original = use_case._evaluate_item
+        calls: list[str] = []
+
+        def flaky(item, *args):
+            calls.append(item.id)
+            if len(calls) == 1:
+                raise RuntimeError("LLM provider timed out.")
+            return original(item, *args)
+
+        use_case._evaluate_item = flaky
+        report = use_case.execute(
+            EvaluateAssistantInput(assistant_id="assistant-1", items=(_in_scope("q1", "manual.md"),))
+        )
+        self.assertEqual(calls, ["q1", "q1"])
+        self.assertEqual(sleeps, [5.0])
+        self.assertEqual(report.parameters["item_retries"], "q1")
+
+    def test_second_failure_of_the_same_item_stops_the_evaluation(self) -> None:
+        use_case, _ = self._use_case(results=[[_hit("d1")]])
+        use_case._sleep = lambda _seconds: None
+
+        def always(item, *args):
+            raise RuntimeError("LLM provider timed out.")
+
+        use_case._evaluate_item = always
+        with self.assertRaises(RuntimeError):
+            use_case.execute(
+                EvaluateAssistantInput(
+                    assistant_id="assistant-1", items=(_in_scope("q1", "manual.md"),)
+                )
+            )
+
+    def test_report_says_when_no_item_was_retried(self) -> None:
+        use_case, _ = self._use_case(results=[[_hit("d1")]])
+        report = use_case.execute(
+            EvaluateAssistantInput(assistant_id="assistant-1", items=(_in_scope("q1", "manual.md"),))
+        )
+        self.assertEqual(report.parameters["item_retries"], "nenhum")
+
     def test_follow_up_without_generator_is_searched_as_written(self) -> None:
         use_case, vector_store = self._use_case(results=[[_hit("d1")]])
         item = EvaluationItem(

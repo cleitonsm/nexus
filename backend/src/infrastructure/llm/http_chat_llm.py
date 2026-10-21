@@ -238,8 +238,23 @@ class HttpChatCompletionsLLM(LLMGateway):
         response = self._open(payload, context_chunks=context_chunks, stream=stream)
         try:
             return response.status, response.read().decode("utf-8")
+        except TimeoutError as exc:
+            raise self._timed_out(exc) from exc
         finally:
             response.close()
+
+    def _timed_out(self, exc: TimeoutError) -> LLMProviderError:
+        """SPEC-009 D2: tempo esgotado na leitura nao repete, mas nao escapa cru.
+
+        Antes, o ``TimeoutError`` passava pelo fallback da reescrita e pelas rotas
+        (que tratam ``RuntimeError``) e derrubava a avaliacao ou virava 500
+        (V6 da rc6, 2026-10-21).
+        """
+        logger.warning(
+            "llm.request.timeout",
+            extra={"llm_model": self._model, "timeout_seconds": self._timeout_seconds},
+        )
+        return LLMProviderError("LLM provider timed out.")
 
     def _open(
         self,
@@ -274,6 +289,9 @@ class HttpChatCompletionsLLM(LLMGateway):
         for attempt in range(1, attempts + 1):
             try:
                 return request.urlopen(http_request, timeout=self._timeout_seconds)
+            except TimeoutError as exc:
+                # Conectou, mas os cabecalhos nao chegaram no prazo (D2: sem nova tentativa).
+                raise self._timed_out(exc) from exc
             except error.HTTPError as exc:
                 details = exc.read().decode("utf-8", errors="ignore")
                 logger.warning(

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from src.application.dto import EvaluationReportDTO
@@ -29,6 +32,14 @@ from src.domain import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+# Decisao do autor (2026-10-21, V6 da rc6): uma falha do LLM num item (por exemplo, tempo
+# esgotado) repete o item uma vez, depois desta espera; a segunda falha interrompe a
+# avaliacao. So na avaliacao: o chat segue a D2 da SPEC-009.
+ITEM_RETRY_DELAY_SECONDS = 5.0
+
+
 @dataclass(frozen=True, slots=True)
 class EvaluateAssistantInput:
     assistant_id: str
@@ -53,7 +64,12 @@ class EvaluateAssistantUseCase:
         token_counter: TokenCounter,
         answer_generator: GroundedAnswerGenerator | None = None,
         answer_judge: AnswerJudge | None = None,
+        item_retry_delay_seconds: float = ITEM_RETRY_DELAY_SECONDS,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
+        self._item_retry_delay = item_retry_delay_seconds
+        self._sleep = sleep
+        self._retried: list[str] = []
         self._document_repository = document_repository
         self._retriever = context_retriever
         self._token_counter = token_counter
@@ -68,19 +84,45 @@ class EvaluateAssistantUseCase:
 
         assistant_id = AssistantId(data.assistant_id)
         source_names = self._source_names(assistant_id)
+        self._retried = []
         results = tuple(
-            self._evaluate_item(item, assistant_id, source_names, data)
+            self._evaluate_with_retry(item, assistant_id, source_names, data)
             for item in data.items
         )
+        parameters = dict(data.parameters)
+        parameters["item_retries"] = ", ".join(self._retried) or "nenhum"
         report = EvaluationReport(
             assistant_id=assistant_id,
             k=data.k,
             metrics=_summarize(results, data.k),
             item_results=results,
             validated=all(item.is_validated for item in data.items),
-            parameters=dict(data.parameters),
+            parameters=parameters,
         )
         return EvaluationReportDTO.from_report(report)
+
+    def _evaluate_with_retry(
+        self,
+        item: EvaluationItem,
+        assistant_id: AssistantId,
+        source_names: dict[str, str],
+        data: EvaluateAssistantInput,
+    ) -> EvaluationItemResult:
+        """Falha do provedor de LLM (RuntimeError) num item: repete uma vez."""
+        try:
+            return self._evaluate_item(item, assistant_id, source_names, data)
+        except RuntimeError as exc:
+            logger.warning(
+                "evaluation.item.retrying",
+                extra={
+                    "item_id": item.id,
+                    "error_type": type(exc).__name__,
+                    "delay_seconds": self._item_retry_delay,
+                },
+            )
+            self._retried.append(item.id)
+            self._sleep(self._item_retry_delay)
+            return self._evaluate_item(item, assistant_id, source_names, data)
 
     def _source_names(self, assistant_id: AssistantId) -> dict[str, str]:
         documents = self._document_repository.list_by_assistant(assistant_id)
