@@ -20,6 +20,7 @@ sys.path.insert(0, str(PERF))
 import common  # noqa: E402
 import corpus  # noqa: E402
 import indexing_time  # noqa: E402
+import reindex_under_load  # noqa: E402
 import report  # noqa: E402
 import ttft  # noqa: E402
 import upload_latency  # noqa: E402
@@ -198,6 +199,54 @@ class CorpusTestCase(unittest.TestCase):
             self.assertEqual(len(first.read_text().splitlines()), 50)
             with self.assertRaises(ValueError):
                 corpus.write_chunks(Path(tmp) / "c.jsonl", 100_001)
+
+
+class ReindexStartTestCase(unittest.TestCase):
+    """RNF-18 (ensaio de 2026-10-21): a API recusa (409) enquanto ha documentos na fila."""
+
+    def _patch(self, statuses: list[int]) -> list[str]:
+        calls: list[str] = []
+        original = reindex_under_load.request
+
+        def fake(method, url, *, headers=None, body=None, timeout=120.0):
+            calls.append(headers["Authorization"])
+            status = statuses.pop(0)
+            payload = b'{"id": "job-1"}' if status == 202 else b'{"code": "conflict"}'
+            return status, {}, payload
+
+        reindex_under_load.request = fake
+        self.addCleanup(lambda: setattr(reindex_under_load, "request", original))
+        return calls
+
+    def test_waits_while_documents_are_processing(self) -> None:
+        calls = self._patch([409, 409, 202])
+        tokens = iter(["t1", "t2", "t3"])
+        sleeps: list[float] = []
+        job = reindex_under_load.start_when_idle(
+            "http://api", "a1", wait_minutes=60, token_source=lambda: next(tokens),
+            sleep=sleeps.append, clock=lambda: 0.0,
+        )
+        self.assertEqual(job["id"], "job-1")
+        self.assertEqual(sleeps, [15.0, 15.0])
+        self.assertEqual(calls, ["Bearer t1", "Bearer t2", "Bearer t3"])  # token novo a cada vez
+
+    def test_gives_up_after_the_wait_limit(self) -> None:
+        self._patch([409, 409])
+        now = iter([0.0, 0.0, 3601.0])
+        with self.assertRaises(SystemExit):
+            reindex_under_load.start_when_idle(
+                "http://api", "a1", wait_minutes=60, token_source=lambda: "t",
+                sleep=lambda _s: None, clock=lambda: next(now),
+            )
+
+    def test_other_errors_are_not_retried(self) -> None:
+        calls = self._patch([403])
+        with self.assertRaises(SystemExit):
+            reindex_under_load.start_when_idle(
+                "http://api", "a1", wait_minutes=60, token_source=lambda: "t",
+                sleep=lambda _s: None, clock=lambda: 0.0,
+            )
+        self.assertEqual(len(calls), 1)
 
 
 if __name__ == "__main__":

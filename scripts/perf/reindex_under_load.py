@@ -32,15 +32,36 @@ except ImportError:  # pragma: no cover
 TERMINAL = ("succeeded", "failed")
 
 
-def start_reindex(base_url: str, assistant_id: str, token: str) -> dict:
-    status, _, body = request(
-        "POST",
-        f"{base_url}/assistants/{assistant_id}/reindex",
-        headers=api_headers(token),
-    )
-    if status != 202:
-        raise SystemExit(f"reindex did not start: {status} {body[:200]!r}")
-    return json.loads(body)
+def start_when_idle(
+    base_url: str,
+    assistant_id: str,
+    *,
+    wait_minutes: float,
+    poll_seconds: float = 15.0,
+    token_source=None,
+    sleep=time.sleep,
+    clock=time.monotonic,
+) -> dict:
+    """Pede a reindexacao quando o assistente nao tiver documentos em processamento.
+
+    A API recusa com 409 enquanto ha documentos na fila (regra do produto). Na V7 os
+    arquivos de 10 e 25 MB enviados pelas medicoes anteriores ainda estao sendo indexados
+    (ensaio de 2026-10-21): espera e tenta de novo, com token novo a cada tentativa.
+    """
+    token_source = token_source or get_token
+    deadline = clock() + wait_minutes * 60
+    while True:
+        status, _, body = request(
+            "POST",
+            f"{base_url}/assistants/{assistant_id}/reindex",
+            headers=api_headers(token_source()),
+        )
+        if status == 202:
+            return json.loads(body)
+        if status != 409 or clock() >= deadline:
+            raise SystemExit(f"reindex did not start: {status} {body[:200]!r}")
+        print("documentos ainda em processamento; nova tentativa em breve", flush=True)
+        sleep(poll_seconds)
 
 
 def job_state(base_url: str, assistant_id: str, token: str) -> str:
@@ -64,13 +85,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--users", type=int, default=1)
     parser.add_argument("--batch", type=int, default=20)
     parser.add_argument("--max-minutes", type=int, default=240)
+    parser.add_argument("--wait-minutes", type=float, default=60, help="espera da fila antes de reindexar")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
 
     base_url = args.base_url.rstrip("/")
-    token = get_token()
     queries = load_queries(args.chunks, args.batch)
-    start_reindex(base_url, args.assistant_id, token)
+    start_when_idle(base_url, args.assistant_id, wait_minutes=args.wait_minutes)
+    token = get_token()
     print("reindexacao iniciada; medindo consultas", flush=True)
 
     samples = []
@@ -78,6 +100,9 @@ def main(argv: list[str] | None = None) -> int:
     while time.monotonic() < deadline:
         samples.extend(measure_hybrid(args.assistant_id, queries, args.users))
         state = job_state(base_url, args.assistant_id, token)
+        if state == "http-401":  # o token expira numa reindexacao longa
+            token = get_token()
+            state = job_state(base_url, args.assistant_id, token)
         if state in TERMINAL:
             print(f"job terminou com estado '{state}'")
             break
