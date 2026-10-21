@@ -331,7 +331,7 @@ Ver a seção 7.
 | Ordenação | MRR | Registrado, sem meta; não pode regredir acima de 0,02 da execução anterior (RN-14) | Relatório da avaliação |
 | Respostas fiéis | Fidelidade | ≥ 0,90 na média, e nenhuma execução abaixo de 0,88 (RNF-20, CT-22) | Relatório da avaliação |
 | Não inventar | Fallback em perguntas fora do escopo | ≥ 90% (RNF-21, CT-22), sem chamada ao LLM | Relatório da avaliação e logs |
-| Resposta verificável | Respostas geradas com ≥ 1 fonte | 100% (RF-37). Se o relatório ainda não calcular, incluir a métrica "cobertura de citações" no comando de avaliação na Parte A | Relatório da avaliação |
+| Resposta verificável | Respostas geradas com ≥ 1 fonte | 100% (RF-37), contado **só entre as respostas geradas** (o fallback não é resposta gerada; decisão do autor em 2026-10-21, ensaio da V6). A `citation_coverage` do relatório conta o fallback do escopo como falta de citação e mede a taxa de resposta: fica registrada, sem meta | Relatório da avaliação (`scripts/validation/check_eval_reports.py`) |
 | Conhecimento protegido | Trechos restritos recuperados por não autorizados | Zero (CT-28, CT-56) | V3 |
 | Curadoria sem espera | Resposta do upload | ≤ 2 s (RNF-17, CT-40) | V7 |
 | Operação previsível | Respostas rastreáveis | 100% de uma amostra de 50 perguntas: cada `request_id` tem um span por nó do grafo e a chamada ao LLM (RNF-29, CT-44) | V7 e coletor |
