@@ -32,17 +32,6 @@ while [ "$#" -gt 0 ]; do
 done
 
 STEPS=(V0 V1 V2 V3 V4 V5 V6 V7 V8)
-# Python do host para os scripts de medicao. No Git for Windows, "python3" pode ser o atalho da
-# Microsoft Store, que nao executa nada; NEXUS_PYTHON escolhe outro.
-PY="${NEXUS_PYTHON:-}"
-if [ -z "$PY" ]; then
-  for candidate in python3 python; do
-    if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c 'import sys' >/dev/null 2>&1; then
-      PY="$candidate"; break
-    fi
-  done
-fi
-PY="${PY:-python3}"
 # Conjunto da V6 (secao 6.1 do plano de validacao: cerca de 80 itens validados).
 EVAL_DATASET="${NEXUS_EVAL_DATASET:-nexus-docs-ampliado}"
 OUT="${NEXUS_REPORT_DIR:-docs/qa/relatorios/$(date +%Y-%m-%d)}"
@@ -203,52 +192,56 @@ stage_v5() {
 stage_v6() {
   # V-D5: 3 execucoes completas com geracao. Sem a chave do LLM (o down -v da V0 apaga a
   # cadastrada na tela) a avaliacao pularia a geracao so com um aviso: cada execucao confere.
-  local reports="backend/tests/evaluation/reports/$EVAL_DATASET" n
+  # O verificador roda no container do backend (o Windows do autor nao precisa de Python).
+  local reports="/app/evaluation/reports/$EVAL_DATASET" n
   for n in 1 2 3; do
     run V6 "avaliacao $n de 3 ($EVAL_DATASET)" bash -c \
-      'scripts/eval.sh "$1" && "$2" scripts/validation/check_eval_reports.py "$3" --runs 1 --only-generation' \
-      _ "$EVAL_DATASET" "$PY" "$reports" || return 1
+      'scripts/eval.sh "$1" && shift && "$@" --runs 1 --only-generation' \
+      _ "$EVAL_DATASET" "${BACKEND_RUN[@]}" python /app/scripts/validation/check_eval_reports.py "$reports" || return 1
   done
   run V6 "metas da secao 6.3 (recall, fidelidade, fallback, citacoes)" \
-    "$PY" scripts/validation/check_eval_reports.py "$reports" --runs 3
+    "${BACKEND_RUN[@]}" python /app/scripts/validation/check_eval_reports.py "$reports" --runs 3
 }
 
 stage_v7() {
-  if [ "$DRY_RUN" -eq 0 ] && [ -z "${NEXUS_ASSISTANT_ID:-}" ]; then
-    pending V7 "desempenho" "defina NEXUS_ASSISTANT_ID (assistente de teste) e as credenciais"
-    return 0
-  fi
-  local perf="$OUT/07-desempenho" files="$OUT/corpus"
-  run V7 "corpus sintetico" "$PY" scripts/perf/corpus.py --out "$files" --upload-25mb --index-10mb --count 10 || return 1
-  run V7 "RNF-17 upload de 25 MB" "$PY" scripts/perf/upload_latency.py \
-    --base-url "$BASE_URL" --assistant-id "${NEXUS_ASSISTANT_ID:-ID}" --files "$files" --out "$perf/upload.csv" || return 1
-  run V7 "RNF-02 tempo de indexacao" "$PY" scripts/perf/indexing_time.py \
-    --base-url "$BASE_URL" --assistant-id "${NEXUS_ASSISTANT_ID:-ID}" --files "$files" --out "$perf/indexacao.csv" || return 1
-  # RNF-03 e RNF-16: 100.000 trechos (V-D9) gravados direto na collection perf-load.
-  local chunks="${NEXUS_PERF_CHUNKS:-100000}" incontainer="/app/out/corpus/chunks.jsonl"
-  local perfc="/app/out/07-desempenho"
-  run V7 "corpus de $chunks trechos" "$PY" scripts/perf/corpus.py --out "$files" --chunks "$chunks" || return 1
-  run V7 "carga dos trechos (perf-load)" "${BACKEND_RUN[@]}" \
-    python /app/scripts/perf/retrieval_latency.py load --chunks "$incontainer" || return 1
-  run V7 "RNF-03 busca densa" "${BACKEND_RUN[@]}" \
-    python /app/scripts/perf/retrieval_latency.py dense --chunks "$incontainer" --out "$perfc/rnf03.csv" || return 1
-  run V7 "RNF-16 busca hibrida, 1 usuario" "${BACKEND_RUN[@]}" \
-    python /app/scripts/perf/retrieval_latency.py hybrid --chunks "$incontainer" --users 1 --out "$perfc/rnf16-u1.csv" || return 1
-  run V7 "RNF-16 busca hibrida, 5 usuarios" "${BACKEND_RUN[@]}" \
-    python /app/scripts/perf/retrieval_latency.py hybrid --chunks "$incontainer" --users 5 --out "$perfc/rnf16-u5.csv" || return 1
-  local specs=("$perf/upload.csv:2:all" "$perf/indexacao.csv:60:all" "$perf/rnf03.csv:2:all"
-    "$perf/rnf16-u1.csv:3:p95" "$perf/rnf16-u5.csv")
-  # RNF-18 exige um assistente cuja base foi enviada pela API (a reindexacao le os documentos).
-  if [ -n "${NEXUS_REINDEX_ASSISTANT_ID:-}" ] || [ "$DRY_RUN" -eq 1 ]; then
-    run V7 "RNF-18 busca durante a reindexacao" "${BACKEND_RUN[@]}" \
-      python /app/scripts/perf/reindex_under_load.py --assistant-id "${NEXUS_REINDEX_ASSISTANT_ID:-ID}" \
-      --chunks "$incontainer" --users 1 --out "$perfc/rnf18.csv" || return 1
-    specs+=("$perf/rnf18.csv")
-  else
-    pending V7 "RNF-18 busca durante a reindexacao" \
-      "defina NEXUS_REINDEX_ASSISTANT_ID (assistente com a base enviada pela API); compare o p95 com o rnf16-u1 (+20%, V-D6)"
-  fi
-  run V7 "consolidacao" "$PY" scripts/perf/report.py "${specs[@]}" --out "$OUT/07-desempenho.md"
+  # Tudo no container do backend, na rede do Compose: o Windows do autor nao precisa de Python,
+  # a API e http://backend:8000 e o Keycloak e http://keycloak:8080 (o emissor do token continua
+  # sendo o KC_HOSTNAME). Usuario de teste: cliente nexus-tests do realm de desenvolvimento.
+  local perf="$OUT/07-desempenho" perfc="/app/out/07-desempenho" files="/app/out/corpus"
+  local chunks="${NEXUS_PERF_CHUNKS:-100000}" api="http://backend:8000" assistant
+  local run_perf=(docker compose run --rm -e PYTHONPATH=/app:/app/integration
+    -e NEXUS_TEST_USER="${NEXUS_TEST_USER:-admin.nexus}"
+    -e NEXUS_TEST_PASSWORD="${NEXUS_TEST_PASSWORD:-nexus-dev}"
+    -e KEYCLOAK_URL="${NEXUS_KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}"
+    -v ./scripts:/app/scripts:ro -v "$OUT_MOUNT:/app/out" backend)
+  run V7 "assistente de desempenho" "${run_perf[@]}" python /app/scripts/perf/ensure_assistant.py \
+    --base-url "$api" --out "$perfc/assistant-id.txt" || return 1
+  if [ "$DRY_RUN" -eq 1 ]; then assistant="ID"; else assistant="$(tr -d '\r\n' < "$perf/assistant-id.txt")"; fi
+  run V7 "corpus sintetico (arquivos)" "${run_perf[@]}" python /app/scripts/perf/corpus.py \
+    --out "$files" --upload-25mb --index-10mb --count 10 || return 1
+  run V7 "RNF-17 upload de 25 MB" "${run_perf[@]}" python /app/scripts/perf/upload_latency.py \
+    --base-url "$api" --assistant-id "$assistant" --files "$files" --out "$perfc/upload.csv" || return 1
+  run V7 "RNF-02 tempo de indexacao" "${run_perf[@]}" python /app/scripts/perf/indexing_time.py \
+    --base-url "$api" --assistant-id "$assistant" --files "$files" --out "$perfc/indexacao.csv" || return 1
+  # RNF-03 e RNF-16: 100.000 trechos sinteticos (PC-D9) gravados direto na collection perf-load.
+  run V7 "corpus de $chunks trechos" "${run_perf[@]}" python /app/scripts/perf/corpus.py \
+    --out "$files" --chunks "$chunks" || return 1
+  run V7 "carga dos trechos (perf-load)" "${run_perf[@]}" \
+    python /app/scripts/perf/retrieval_latency.py load --chunks "$files/chunks.jsonl" || return 1
+  run V7 "RNF-03 busca densa" "${run_perf[@]}" \
+    python /app/scripts/perf/retrieval_latency.py dense --chunks "$files/chunks.jsonl" --out "$perfc/rnf03.csv" || return 1
+  run V7 "RNF-16 busca hibrida, 1 usuario" "${run_perf[@]}" \
+    python /app/scripts/perf/retrieval_latency.py hybrid --chunks "$files/chunks.jsonl" --users 1 --out "$perfc/rnf16-u1.csv" || return 1
+  run V7 "RNF-16 busca hibrida, 5 usuarios" "${run_perf[@]}" \
+    python /app/scripts/perf/retrieval_latency.py hybrid --chunks "$files/chunks.jsonl" --users 5 --out "$perfc/rnf16-u5.csv" || return 1
+  # RNF-18: a reindexacao rele os documentos do banco, entao usa o assistente cuja base foi
+  # enviada pela API nos passos acima (os 100.000 trechos da perf-load nao tem documentos).
+  run V7 "RNF-18 busca durante a reindexacao" "${run_perf[@]}" \
+    python /app/scripts/perf/reindex_under_load.py --base-url "$api" --assistant-id "${NEXUS_REINDEX_ASSISTANT_ID:-$assistant}" \
+    --chunks "$files/chunks.jsonl" --users 1 --out "$perfc/rnf18.csv" || return 1
+  run V7 "consolidacao" "${run_perf[@]}" python /app/scripts/perf/report.py \
+    "$perfc/upload.csv:2:all" "$perfc/indexacao.csv:60:all" "$perfc/rnf03.csv:2:all" \
+    "$perfc/rnf16-u1.csv:3:p95" "$perfc/rnf16-u5.csv" "$perfc/rnf18.csv" --out "/app/out/07-desempenho.md"
   pending V7 "RNF-01 TTFT" "ttft.py exige LLM real e um arquivo de perguntas; executar a parte, depois da V6"
 }
 

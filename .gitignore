@@ -19,6 +19,8 @@ dist/
 *.log
 tmp/
 data/
+# Corpus sintetico da V7 (arquivos de 10 e 25 MB e 100.000 trechos): regeneravel pela semente.
+docs/qa/relatorios/*/corpus/
 
 # IDE
 .vscode/
