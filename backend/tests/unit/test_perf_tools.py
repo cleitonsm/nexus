@@ -249,5 +249,35 @@ class ReindexStartTestCase(unittest.TestCase):
         self.assertEqual(len(calls), 1)
 
 
+class PerfTokenAndCorpusTestCase(unittest.TestCase):
+    """Ensaio da V7 (2026-10-21): token vencido na espera e arquivos acima do limite."""
+
+    def test_token_source_renews_after_the_interval(self) -> None:
+        now = [0.0]
+        fetched = iter(["t1", "t2"])
+        source = common.TokenSource(fetch=lambda: next(fetched), refresh_seconds=60, clock=lambda: now[0])
+        self.assertEqual(source(), "t1")
+        now[0] = 59
+        self.assertEqual(source(), "t1")
+        now[0] = 61
+        self.assertEqual(source(), "t2")
+
+    def test_fixed_token_still_accepted(self) -> None:
+        self.assertEqual(common.as_token_source("abc")(), "abc")
+
+    def test_upload_files_stay_below_the_ceiling(self) -> None:
+        original = corpus.UPLOAD_CEILING
+        corpus.UPLOAD_CEILING = 300_000
+        self.addCleanup(lambda: setattr(corpus, "UPLOAD_CEILING", original))
+        with tempfile.TemporaryDirectory() as directory:
+            corpus.main(["--out", directory, "--upload-25mb"])
+            sizes = [path.stat().st_size for path in Path(directory).glob("upload-*")]
+        self.assertEqual(len(sizes), 2)
+        self.assertTrue(all(0.95 * 300_000 <= size <= 300_000 for size in sizes), sizes)
+
+    def test_real_ceiling_is_below_25_mib(self) -> None:
+        self.assertLess(corpus.UPLOAD_CEILING, 25 * 1024 * 1024)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -148,6 +148,32 @@ def timed(call) -> tuple[Sample, object]:
     return Sample(start_iso, now_iso(), elapsed, str(status), request_id), result
 
 
+class TokenSource:
+    """Token de acesso renovado a cada ``refresh_seconds``.
+
+    O token do Keycloak dura poucos minutos; uma medicao longa (indexacao de 10 MB,
+    reindexacao) passava a receber 401 e esperava ate o limite (ensaio da V7, 2026-10-21).
+    """
+
+    def __init__(self, fetch=None, refresh_seconds: float = 60.0, clock=time.monotonic) -> None:
+        self._fetch = fetch or get_token
+        self._refresh = refresh_seconds
+        self._clock = clock
+        self._token: str | None = None
+        self._at = 0.0
+
+    def __call__(self) -> str:
+        now = self._clock()
+        if self._token is None or now - self._at >= self._refresh:
+            self._token, self._at = self._fetch(), now
+        return self._token
+
+
+def as_token_source(token):
+    """Aceita o token fixo (testes) ou uma fonte que se renova."""
+    return token if callable(token) else (lambda: token)
+
+
 def api_headers(token: str, request_id: str | None = None) -> dict[str, str]:
     headers = {"Authorization": f"Bearer {token}"}
     if request_id:

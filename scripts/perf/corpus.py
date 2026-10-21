@@ -18,6 +18,8 @@ from pathlib import Path
 
 SEED = 20261014
 MB = 1024 * 1024
+# Limite de upload (25 MiB, D3 da SPEC-005) menos a folga do formulario multipart.
+UPLOAD_CEILING = 25 * MB - 256 * 1024
 WORDS = (
     "politica ferias beneficio reembolso contrato prazo acesso sistema "
     "relatorio cliente fornecedor auditoria seguranca treinamento projeto "
@@ -199,8 +201,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     for n in range(args.count):
         if args.upload_25mb:
-            make_text_pdf(args.out / f"upload-{n:02d}.pdf", 24 * MB, SEED + n)
-            make_docx(args.out / f"upload-{n:02d}.docx", 24 * MB, SEED + 1000 + n)
+            # Perto do teto de 25 MiB sem ultrapassa-lo: os geradores passam do tamanho
+            # pedido e a API respondia 413 (ensaio da V7, 2026-10-21; mesmo ajuste do CT-40).
+            make_fitting(make_text_pdf, args.out / f"upload-{n:02d}.pdf", UPLOAD_CEILING, SEED + n)
+            make_fitting(make_docx, args.out / f"upload-{n:02d}.docx", UPLOAD_CEILING, SEED + 1000 + n)
         if args.index_10mb:
             make_text_pdf(args.out / f"index-{n:02d}.pdf", 10 * MB, SEED + 2000 + n)
             make_docx(args.out / f"index-{n:02d}.docx", 10 * MB, SEED + 3000 + n)

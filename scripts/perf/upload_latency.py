@@ -12,9 +12,13 @@ import uuid
 from pathlib import Path
 
 try:
-    from common import Sample, api_headers, get_token, request, timed, write_samples
+    from common import (
+        Sample, TokenSource, api_headers, as_token_source, is_success, request, timed, write_samples,
+    )
 except ImportError:  # pragma: no cover
-    from scripts.perf.common import Sample, api_headers, get_token, request, timed, write_samples
+    from scripts.perf.common import (
+        Sample, TokenSource, api_headers, as_token_source, is_success, request, timed, write_samples,
+    )
 
 
 def multipart(field: str, filename: str, content: bytes) -> tuple[bytes, str]:
@@ -45,14 +49,16 @@ def warm_up(base_url: str, assistant_id: str, token: str, count: int) -> None:
     for _ in range(count):
         content = f"# Aquecimento\n\n{uuid.uuid4().hex}\n".encode()
         body, content_type = multipart("file", f"aquecimento-{uuid.uuid4().hex[:8]}.md", content)
-        headers = {**api_headers(token), "Content-Type": content_type}
+        headers = {**api_headers(token() if callable(token) else token), "Content-Type": content_type}
         request("POST", f"{base_url}/assistants/{assistant_id}/documents", headers=headers, body=body)
 
 
-def measure(base_url: str, assistant_id: str, token: str, files: list[Path]) -> list[Sample]:
+def measure(base_url: str, assistant_id: str, token, files: list[Path]) -> list[Sample]:
+    token_source = as_token_source(token)
     samples = []
     for path in files:
-        sample, _ = timed(lambda rid, p=path: upload(base_url, assistant_id, token, p, rid))
+        current = token_source()  # fora do tempo medido
+        sample, _ = timed(lambda rid, p=path, t=current: upload(base_url, assistant_id, t, p, rid))
         samples.append(sample)
     return samples
 
@@ -69,11 +75,14 @@ def main(argv: list[str] | None = None) -> int:
     files = sorted(args.files.glob(args.glob))
     if not files:
         raise SystemExit("no files to upload.")
-    token = get_token()
+    token = TokenSource()
     warm_up(args.base_url.rstrip("/"), args.assistant_id, token, args.warmup)
     samples = measure(args.base_url.rstrip("/"), args.assistant_id, token, files)
     write_samples(args.out, samples)
-    return 0
+    failed = [sample.status for sample in samples if not is_success(sample.status)]
+    if failed:
+        print(f"{len(failed)} de {len(samples)} envios falharam: {sorted(set(failed))}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
