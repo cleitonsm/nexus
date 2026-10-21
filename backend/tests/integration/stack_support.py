@@ -159,6 +159,27 @@ class Api:
         raise TimeoutError(f"document {document_id} did not finish indexing.")
 
 
+def preserve_llm_settings(test, api: "Api") -> None:
+    """Guarda a conexao do LLM da pilha e a restaura no fim do teste.
+
+    Os testes que apontam o chat para o ``FakeLLMServer`` alteram a configuracao
+    real da pilha (``app_settings``). Sem restaurar, a etapa seguinte da campanha
+    (V6, avaliacao com o LLM oficial) falava com o servidor simulado, que ja nao
+    existe (2026-10-21, candidato rc4).
+    """
+    status, original = api.json("GET", "/admin/llm-settings")
+    if status != 200:
+        raise RuntimeError(f"llm-settings: {status}")
+
+    def restore() -> None:
+        payload = {"provider": original["provider"], "model": original["model"]}
+        if original["provider"] == "custom":
+            payload["api_url"] = original["api_url"]
+        api.json("PUT", "/admin/llm-settings", payload=payload)
+
+    test.addCleanup(restore)
+
+
 class FakeLLMServer:
     """Servidor compativel com ``/chat/completions`` (sem streaming)."""
 

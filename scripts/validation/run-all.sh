@@ -34,6 +34,8 @@ done
 STEPS=(V0 V1 V2 V3 V4 V5 V6 V7 V8)
 # Conjunto da V6 (secao 6.1 do plano de validacao: cerca de 80 itens validados).
 EVAL_DATASET="${NEXUS_EVAL_DATASET:-nexus-docs-ampliado}"
+# Modelo oficial da V6 (PC-D8); a V6 reprova relatorio gerado com outro modelo.
+export EVAL_MODEL="${NEXUS_EVAL_MODEL:-gemini-3.8-flash}"
 OUT="${NEXUS_REPORT_DIR:-docs/qa/relatorios/$(date +%Y-%m-%d)}"
 BASE_URL="${NEXUS_BASE_URL:-http://localhost:8000}"
 FAILED=0
@@ -196,11 +198,11 @@ stage_v6() {
   local reports="/app/evaluation/reports/$EVAL_DATASET" n
   for n in 1 2 3; do
     run V6 "avaliacao $n de 3 ($EVAL_DATASET)" bash -c \
-      'scripts/eval.sh "$1" && shift && "$@" --runs 1 --only-generation' \
+      'scripts/eval.sh "$1" && shift && "$@" --runs 1 --only-generation --model "$EVAL_MODEL"' \
       _ "$EVAL_DATASET" "${BACKEND_RUN[@]}" python /app/scripts/validation/check_eval_reports.py "$reports" || return 1
   done
   run V6 "metas da secao 6.3 (recall, fidelidade, fallback, citacoes)" \
-    "${BACKEND_RUN[@]}" python /app/scripts/validation/check_eval_reports.py "$reports" --runs 3
+    "${BACKEND_RUN[@]}" python /app/scripts/validation/check_eval_reports.py "$reports" --runs 3 --model "$EVAL_MODEL"
 }
 
 stage_v7() {

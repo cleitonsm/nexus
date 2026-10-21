@@ -14,7 +14,14 @@ import os
 import unittest
 from uuid import uuid4
 
-from stack_support import Api, FakeLLMServer, call, stack_available, token_for
+from stack_support import (
+    Api,
+    FakeLLMServer,
+    call,
+    preserve_llm_settings,
+    stack_available,
+    token_for,
+)
 
 LINES = [
     "Politica de reembolso de despesas de viagem",
@@ -100,6 +107,7 @@ class OcrContainerTests(unittest.TestCase):
         except Exception as exc:  # noqa: BLE001 - sem Pillow ou fonte
             self.skipTest(f"nao foi possivel gerar o PDF digitalizado: {exc}")
         self.admin = Api(token_for("admin.nexus"))
+        preserve_llm_settings(self, self.admin)
         status, data = self.admin.json(
             "POST", "/assistants", payload={"name": f"CT-39 {uuid4().hex[:8]}"}
         )

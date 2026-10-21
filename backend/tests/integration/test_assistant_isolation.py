@@ -11,7 +11,14 @@ import os
 import unittest
 from uuid import uuid4
 
-from stack_support import Api, FakeLLMServer, call, stack_available, token_for
+from stack_support import (
+    Api,
+    FakeLLMServer,
+    call,
+    preserve_llm_settings,
+    stack_available,
+    token_for,
+)
 
 QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333").rstrip("/")
 QDRANT_HEADERS = {"api-key": os.getenv("QDRANT_API_KEY", "nexus-local")}
@@ -36,6 +43,7 @@ class AssistantIsolationTests(unittest.TestCase):
         if not stack_available():
             self.skipTest("pilha do Compose indisponivel")
         self.admin = Api(token_for("admin.nexus"))
+        preserve_llm_settings(self, self.admin)
         self.ids: list[str] = []
         self.addCleanup(self._cleanup)
 

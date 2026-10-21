@@ -7,6 +7,7 @@ Uso (biblioteca padrao):
 
 Le os ``--runs`` relatorios mais recentes (``*.json``, exceto ``calibracao.json``) e exige:
 
+* modelo do relatorio igual ao oficial (``--model``, decisao PC-D8);
 * conjunto validado pelo curador (``validated``) e geracao feita (fidelidade calculada); sem a
   chave do LLM a avaliacao pula a geracao so com um aviso, e isso nao pode passar por aprovacao;
 * recall@5 >= 0,80 em cada execucao (RNF-19);
@@ -40,7 +41,7 @@ def latest_reports(directory: Path, runs: int) -> list[dict]:
     return [json.loads(path.read_text(encoding="utf-8")) | {"_file": path.name} for path in files[-runs:]]
 
 
-def invalid(reports: list[dict], runs: int) -> list[str]:
+def invalid(reports: list[dict], runs: int, model: str | None = None) -> list[str]:
     problems = []
     if len(reports) < runs:
         problems.append(f"esperados {runs} relatorios, encontrados {len(reports)}")
@@ -52,6 +53,12 @@ def invalid(reports: list[dict], runs: int) -> list[str]:
             problems.append(
                 f"{name}: sem geracao (fidelidade ausente); cadastre a chave do LLM na tela de "
                 "Administracao e repita a V6"
+            )
+        used = report.get("parameters", {}).get("llm_model")
+        if model and used != model:
+            problems.append(
+                f"{name}: gerado com o modelo {used!r}, nao com o oficial {model!r} "
+                "(confira a conexao do LLM na tela de Administracao)"
             )
     return problems
 
@@ -98,10 +105,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("directory", type=Path)
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--only-generation", action="store_true", help="so confere se houve geracao")
+    parser.add_argument("--model", default=None, help="modelo oficial exigido (PC-D8)")
     args = parser.parse_args(argv)
     reports = latest_reports(args.directory, args.runs)
     print(table(reports))
-    problems = invalid(reports, args.runs)
+    problems = invalid(reports, args.runs, args.model)
     if problems:
         print("\n".join(["INVALIDO:"] + problems))
         return 2

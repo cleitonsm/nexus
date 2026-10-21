@@ -31,8 +31,14 @@ class CheckEvalReportsTestCase(unittest.TestCase):
         self.dir = Path(directory.name)
         (self.dir / "calibracao.json").write_text("{}", encoding="utf-8")
 
-    def _write(self, name: str, validated: bool = True, **metrics) -> None:
-        body = {"validated": validated, "metrics": {**GOOD, **metrics}}
+    def _write(
+        self, name: str, validated: bool = True, model: str = "gemini-3.8-flash", **metrics
+    ) -> None:
+        body = {
+            "validated": validated,
+            "metrics": {**GOOD, **metrics},
+            "parameters": {"llm_model": model},
+        }
         (self.dir / f"{name}.json").write_text(json.dumps(body), encoding="utf-8")
 
     def _run(self, *args: str) -> int:
@@ -72,6 +78,11 @@ class CheckEvalReportsTestCase(unittest.TestCase):
                     path.unlink()
                 self._write("20261020-000000-abc", **{metric: value})
                 self.assertEqual(self._run("--runs", "1"), 1)
+
+    def test_other_model_than_the_official_one_is_invalid(self) -> None:
+        self._write("20261021-000000-abc", model="modelo-simulado")
+        self.assertEqual(self._run("--runs", "1", "--model", "gemini-3.8-flash"), 2)
+        self.assertEqual(self._run("--runs", "1", "--only-generation"), 0)
 
     def test_calibration_file_is_ignored(self) -> None:
         self._write("20261020-000000-abc")
