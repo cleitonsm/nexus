@@ -9,7 +9,8 @@
 #
 # Variaveis para V7 (desempenho): NEXUS_ASSISTANT_ID, NEXUS_BASE_URL (padrao
 # http://localhost:8000), NEXUS_TEST_USER/NEXUS_TEST_PASSWORD (cliente nexus-tests)
-# ou NEXUS_TOKEN. V5 (ponta a ponta) e manual: o script registra como pendente.
+# ou NEXUS_TOKEN, NEXUS_PERF_CHUNKS (padrao 100000) e NEXUS_PERF_WAIT_MINUTES (espera
+# da fila antes da RNF-02, padrao 90). V5 (ponta a ponta) e manual: o script registra como pendente.
 set -uo pipefail
 
 cd "$(dirname "$0")/../.."
@@ -221,8 +222,17 @@ stage_v7() {
   if [ "$DRY_RUN" -eq 1 ]; then assistant="ID"; else assistant="$(tr -d '\r\n' < "$perf/assistant-id.txt")"; fi
   run V7 "corpus sintetico (arquivos)" "${run_perf[@]}" python /app/scripts/perf/corpus.py \
     --out "$files" --upload-25mb --index-10mb --count 10 || return 1
+  # RNF-17 com o worker pausado (decisao do autor, 2026-10-22): mede a resposta da API sem a
+  # disputa de CPU com a indexacao dos arquivos anteriores. A indexacao e medida na RNF-02,
+  # depois que a fila acumulada esvaziar (senao a RNF-02 conta a espera pela fila).
+  local upload_ok=0
+  run V7 "pausa do worker (RNF-17)" docker compose stop worker || return 1
   run V7 "RNF-17 upload de 25 MB" "${run_perf[@]}" python /app/scripts/perf/upload_latency.py \
-    --base-url "$api" --assistant-id "$assistant" --files "$files" --out "$perfc/upload.csv" || return 1
+    --base-url "$api" --assistant-id "$assistant" --files "$files" --out "$perfc/upload.csv" || upload_ok=1
+  run V7 "retomada do worker" docker compose up -d --wait worker || return 1
+  [ "$upload_ok" -eq 0 ] || return 1
+  run V7 "fila vazia antes da RNF-02" "${run_perf[@]}" python /app/scripts/perf/wait_idle.py \
+    --base-url "$api" --assistant-id "$assistant" --wait-minutes "${NEXUS_PERF_WAIT_MINUTES:-90}" || return 1
   run V7 "RNF-02 tempo de indexacao" "${run_perf[@]}" python /app/scripts/perf/indexing_time.py \
     --base-url "$api" --assistant-id "$assistant" --files "$files" --out "$perfc/indexacao.csv" || return 1
   # RNF-03 e RNF-16: 100.000 trechos sinteticos (PC-D9) gravados direto na collection perf-load.

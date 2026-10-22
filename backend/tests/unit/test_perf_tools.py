@@ -24,6 +24,7 @@ import reindex_under_load  # noqa: E402
 import report  # noqa: E402
 import ttft  # noqa: E402
 import upload_latency  # noqa: E402
+import wait_idle  # noqa: E402
 
 
 class FakeApi(http.server.BaseHTTPRequestHandler):
@@ -277,6 +278,44 @@ class PerfTokenAndCorpusTestCase(unittest.TestCase):
 
     def test_real_ceiling_is_below_25_mib(self) -> None:
         self.assertLess(corpus.UPLOAD_CEILING, 25 * 1024 * 1024)
+
+
+class WaitIdleTestCase(unittest.TestCase):
+    """RNF-17 com o worker pausado (2026-10-22): a RNF-02 so comeca com a fila vazia."""
+
+    def _patch(self, busy_counts: list[int]) -> list[str]:
+        calls: list[str] = []
+        original = wait_idle.request
+
+        def fake(method, url, *, headers=None, body=None, timeout=120.0):
+            calls.append(headers["Authorization"])
+            busy = busy_counts.pop(0)
+            items = [{"status": "pendente"}] * busy + [{"status": "indexado"}, {"status": "falhou"}]
+            return 200, {}, json.dumps(items).encode()
+
+        wait_idle.request = fake
+        self.addCleanup(lambda: setattr(wait_idle, "request", original))
+        return calls
+
+    def test_waits_until_no_document_is_pending(self) -> None:
+        calls = self._patch([3, 1, 0])
+        tokens = iter(["t1", "t2", "t3"])
+        sleeps: list[float] = []
+        wait_idle.wait_idle(
+            "http://api", "a1", wait_minutes=90, token_source=lambda: next(tokens),
+            sleep=sleeps.append, clock=lambda: 0.0,
+        )
+        self.assertEqual(sleeps, [15.0, 15.0])
+        self.assertEqual(calls, ["Bearer t1", "Bearer t2", "Bearer t3"])
+
+    def test_gives_up_after_the_wait_limit(self) -> None:
+        self._patch([2, 2])
+        now = iter([0.0, 0.0, 5401.0])
+        with self.assertRaises(SystemExit):
+            wait_idle.wait_idle(
+                "http://api", "a1", wait_minutes=90, token_source=lambda: "t",
+                sleep=lambda _s: None, clock=lambda: next(now),
+            )
 
 
 if __name__ == "__main__":

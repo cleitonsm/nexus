@@ -357,7 +357,7 @@ Ver a seção 7.
 
 | Req. | Cenário | Amostras | Métrica | Critério |
 |------|---------|----------|---------|----------|
-| RNF-17 / CT-40 | Upload de 25 MB (PDF e DOCX distintos), cliente dentro da rede do Compose e também pelo Nginx | 30 | Tempo até o 202 | **Todas** ≤ 2 s; p50 e p95 registrados |
+| RNF-17 / CT-40 | Upload de 25 MB (PDF e DOCX distintos), cliente dentro da rede do Compose e também pelo Nginx | 30 | Tempo até o 202, com o worker pausado durante a medição (decisão do autor, 2026-10-22: mede a resposta da API sem a disputa de CPU com a indexação, que a RNF-02 mede à parte, depois que a fila esvaziar) | **Todas** ≤ 2 s; p50 e p95 registrados |
 | RNF-02 | Documento de 10 MB: PDF com texto, DOCX e PDF digitalizado (OCR), um por vez, com a fila vazia | 10 por tipo | Do 202 até `indexado` | ≤ 60 s para PDF com texto e DOCX. Para OCR o resultado é registrado e, se exceder, vira decisão documentada (a spec não distingue OCR) |
 | RNF-02 (fila) | 20 documentos de 1 MB enviados de uma vez | 1 rodada | Vazão e tempo total | Informativo; nenhum documento duplicado ou perdido (RNF-27) |
 | RNF-03 | Busca densa top-k sobre 100.000 vetores | 200 consultas | Latência | < 2 s em todas |
