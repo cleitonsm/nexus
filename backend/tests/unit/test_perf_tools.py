@@ -21,6 +21,7 @@ import common  # noqa: E402
 import corpus  # noqa: E402
 import ensure_assistant  # noqa: E402
 import indexing_time  # noqa: E402
+import purge_documents  # noqa: E402
 import reindex_under_load  # noqa: E402
 import report  # noqa: E402
 import ttft  # noqa: E402
@@ -351,6 +352,68 @@ class EnsureAssistantTestCase(unittest.TestCase):
             calls,
             [("GET", "http://api/assistants"), ("DELETE", "http://api/assistants/old"),
              ("POST", "http://api/assistants")],
+        )
+
+
+class IllustratedCorpusTestCase(unittest.TestCase):
+    """RNF-02 (decisao do autor, 2026-10-22): 10 MB com texto fixo e o resto em imagens."""
+
+    def setUp(self) -> None:
+        original = corpus.INDEX_TEXT_CHARS
+        corpus.INDEX_TEXT_CHARS = 20_000
+        self.addCleanup(lambda: setattr(corpus, "INDEX_TEXT_CHARS", original))
+
+    def test_fills_the_ceiling_with_images_not_text(self) -> None:
+        ceiling = 3 * 1024 * 1024
+        with tempfile.TemporaryDirectory() as tmp:
+            for maker, name in ((corpus.make_text_pdf, "i.pdf"), (corpus.make_docx, "i.docx")):
+                path = corpus.make_illustrated(maker, Path(tmp) / name, ceiling, 7)
+                size = path.stat().st_size
+                self.assertLessEqual(size, ceiling, name)
+                self.assertGreaterEqual(size, 0.98 * ceiling, name)
+
+    def test_text_stays_fixed_and_readable(self) -> None:
+        from src.infrastructure.documents import SupportedDocumentExtractor
+
+        extractor = SupportedDocumentExtractor()
+        with tempfile.TemporaryDirectory() as tmp:
+            for maker, name in ((corpus.make_text_pdf, "i.pdf"), (corpus.make_docx, "i.docx")):
+                path = corpus.make_illustrated(maker, Path(tmp) / name, 2 * 1024 * 1024, 8)
+                document = extractor.extract(
+                    filename=path.name, content_type=None, raw_content=path.read_bytes()
+                )
+                text = " ".join(block.text for block in document.blocks)
+                self.assertGreater(len(text), 15_000, name)
+                self.assertLess(len(text), 40_000, name)
+
+    def test_generation_is_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            a = corpus.make_illustrated(corpus.make_docx, Path(tmp) / "a.docx", 2 * 1024 * 1024, 9)
+            first = a.read_bytes()
+            b = corpus.make_illustrated(corpus.make_docx, Path(tmp) / "b.docx", 2 * 1024 * 1024, 9)
+            self.assertEqual(first, b.read_bytes())
+
+
+class PurgeDocumentsTestCase(unittest.TestCase):
+    """RNF-17 (2026-10-22): os arquivos de 25 MB saem antes de o worker voltar."""
+
+    def test_deletes_every_document_of_the_assistant(self) -> None:
+        calls: list[tuple[str, str]] = []
+        original = purge_documents.request
+
+        def fake(method, url, *, headers=None, body=None, timeout=120.0):
+            calls.append((method, url))
+            if method == "GET":
+                return 200, {}, json.dumps([{"id": "d1"}, {"id": "d2"}]).encode()
+            return (404 if url.endswith("d2") else 204), {}, b""
+
+        purge_documents.request = fake
+        self.addCleanup(lambda: setattr(purge_documents, "request", original))
+        self.assertEqual(purge_documents.purge("http://api", "a1", "t"), 1)
+        self.assertEqual(
+            calls,
+            [("GET", "http://api/assistants/a1/documents"), ("DELETE", "http://api/documents/d1"),
+             ("DELETE", "http://api/documents/d2")],
         )
 
 

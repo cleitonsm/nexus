@@ -229,6 +229,9 @@ stage_v7() {
   run V7 "pausa do worker (RNF-17)" docker compose stop worker || return 1
   run V7 "RNF-17 upload de 25 MB" "${run_perf[@]}" python /app/scripts/perf/upload_latency.py \
     --base-url "$api" --assistant-id "$assistant" --files "$files" --out "$perfc/upload.csv" || upload_ok=1
+  # Os arquivos de 25 MB so medem a resposta do upload: saem antes de o worker voltar.
+  run V7 "documentos da RNF-17 apagados" "${run_perf[@]}" python /app/scripts/perf/purge_documents.py \
+    --base-url "$api" --assistant-id "$assistant" || upload_ok=1
   run V7 "retomada do worker" docker compose up -d --wait worker || return 1
   [ "$upload_ok" -eq 0 ] || return 1
   run V7 "fila vazia antes da RNF-02" "${run_perf[@]}" python /app/scripts/perf/wait_idle.py \

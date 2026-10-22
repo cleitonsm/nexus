@@ -4,6 +4,11 @@ Gera arquivos diferentes entre si (para nao cair na duplicidade por hash, D9):
 PDF com texto, DOCX e, se o Pillow estiver instalado, PDF digitalizado. Os
 trechos do corpus de busca (ate 100.000) saem como JSONL.
 
+Os documentos de 10 MB da RNF-02 tem texto fixo (``INDEX_TEXT_PAGES`` paginas) e o
+resto do tamanho em imagens, como um documento corporativo real (decisao do autor,
+2026-10-22). So texto, um DOCX de 10 MB compactado tinha dezenas de milhares de trechos
+e o de 25 MB passava do limite do job, voltando a fila sem fim (ensaio da V7).
+
 Uso: ``python corpus.py --out DIR --upload-25mb --index-10mb --chunks 100000``
 """
 
@@ -13,13 +18,22 @@ import argparse
 import io
 import json
 import random
+import struct
 import zipfile
+import zlib
 from pathlib import Path
 
 SEED = 20261014
 MB = 1024 * 1024
 # Limite de upload (25 MiB, D3 da SPEC-005) menos a folga do formulario multipart.
 UPLOAD_CEILING = 25 * MB - 256 * 1024
+INDEX_CEILING = 10 * MB
+# Texto dos documentos ilustrados: 300 paginas de 45 linhas de 100 caracteres.
+LINES_PER_PAGE = 45
+LINE_CHARS = 100
+INDEX_TEXT_PAGES = 300
+INDEX_TEXT_CHARS = INDEX_TEXT_PAGES * LINES_PER_PAGE * LINE_CHARS
+IMAGE_SIDE = 1024  # imagens em tons de cinza de 1024 x ate 1024 pixels (ate 1 MiB cada)
 WORDS = (
     "politica ferias beneficio reembolso contrato prazo acesso sistema "
     "relatorio cliente fornecedor auditoria seguranca treinamento projeto "
@@ -45,21 +59,57 @@ def paragraphs(seed: int, target_chars: int) -> list[str]:
     return out
 
 
-def _entry(name: str) -> zipfile.ZipInfo:
+def _entry(name: str, stored: bool = False) -> zipfile.ZipInfo:
     """Entrada do ZIP com data fixa: sem ela o DOCX carrega o horario da geracao e a
     mesma semente gera bytes diferentes (teste instavel na V2 da rc7, 2026-10-21)."""
     info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
-    info.compress_type = zipfile.ZIP_DEFLATED
+    info.compress_type = zipfile.ZIP_STORED if stored else zipfile.ZIP_DEFLATED
     return info
 
 
-def make_docx(path: Path, target_bytes: int, seed: int) -> Path:
-    """DOCX minimo valido; cresce em lotes ate o tamanho pedido."""
-    chars = max(1000, target_bytes)
+def image_blocks(seed: int, total_bytes: int) -> list[bytes]:
+    """Pixels em tons de cinza (ruido, que nao comprime) somando ``total_bytes``."""
+    rng = random.Random(seed)
+    blocks, left, full = [], max(0, total_bytes), IMAGE_SIDE * IMAGE_SIDE
+    while left >= IMAGE_SIDE:
+        size = min(full, left - left % IMAGE_SIDE)
+        blocks.append(rng.randbytes(size))
+        left -= size
+    return blocks
+
+
+def png(pixels: bytes) -> bytes:
+    """PNG valido em tons de cinza, sem compressao (o tamanho fica o dos pixels)."""
+    height = len(pixels) // IMAGE_SIDE
+    raw = b"".join(
+        b"\x00" + pixels[row * IMAGE_SIDE : (row + 1) * IMAGE_SIDE] for row in range(height)
+    )
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data)) + kind + data
+            + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+        )
+
+    header = struct.pack(">IIBBBBB", IMAGE_SIDE, height, 8, 0, 0, 0, 0)
+    return (
+        b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(raw, 0)) + chunk(b"IEND", b"")
+    )
+
+
+def make_docx(
+    path: Path, target_bytes: int, seed: int, *, text_chars: int | None = None,
+    images: list[bytes] = (),
+) -> Path:
+    """DOCX minimo valido. Sem ``text_chars`` o texto cresce em lotes ate o tamanho pedido;
+    com ele o texto e fixo e ``images`` (pixels de ``image_blocks``) entram como PNG."""
+    chars = text_chars or max(1000, target_bytes)
     while True:
         body = "".join(
             f"<w:p><w:r><w:t>{text}</w:t></w:r></w:p>" for text in paragraphs(seed, chars)
         )
+        body += "".join(_inline_image(n) for n in range(len(images)))
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
             archive.writestr(
@@ -67,8 +117,21 @@ def make_docx(path: Path, target_bytes: int, seed: int) -> Path:
                 '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
                 '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
                 '<Default Extension="xml" ContentType="application/xml"/>'
+                '<Default Extension="png" ContentType="image/png"/>'
                 '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
             )
+            if images:
+                archive.writestr(
+                    _entry("word/_rels/document.xml.rels"),
+                    '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                    + "".join(
+                        f'<Relationship Id="rIdImg{n}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image{n}.png"/>'
+                        for n in range(len(images))
+                    )
+                    + "</Relationships>",
+                )
+                for n, pixels in enumerate(images):
+                    archive.writestr(_entry(f"word/media/image{n}.png", stored=True), png(pixels))
             archive.writestr(
                 _entry("_rels/.rels"),
                 '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
@@ -76,11 +139,15 @@ def make_docx(path: Path, target_bytes: int, seed: int) -> Path:
             )
             archive.writestr(
                 _entry("word/document.xml"),
-                '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+                '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+                ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+                ' xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"'
+                ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
+                ' xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>'
                 + body
                 + "</w:body></w:document>",
             )
-        if buffer.tell() >= target_bytes:
+        if text_chars or buffer.tell() >= target_bytes:
             break
         chars = int(chars * max(1.1, target_bytes / max(buffer.tell(), 1)))
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -88,24 +155,59 @@ def make_docx(path: Path, target_bytes: int, seed: int) -> Path:
     return path
 
 
-def make_text_pdf(path: Path, target_bytes: int, seed: int) -> Path:
-    """PDF com texto (fonte padrao Helvetica), sem compressao, no tamanho pedido."""
+def _inline_image(n: int) -> str:
+    """Paragrafo com a imagem ``n`` (``rIdImg{n}``) exibida no corpo do DOCX."""
+    emu = 4 * 914400  # 4 polegadas
+    return (
+        f'<w:p><w:r><w:drawing><wp:inline><wp:extent cx="{emu}" cy="{emu}"/>'
+        f'<wp:docPr id="{n + 1}" name="Imagem {n + 1}"/>'
+        '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+        f'<pic:pic><pic:nvPicPr><pic:cNvPr id="{n + 1}" name="image{n}.png"/><pic:cNvPicPr/></pic:nvPicPr>'
+        f'<pic:blipFill><a:blip r:embed="rIdImg{n}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+        f'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{emu}" cy="{emu}"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>'
+        "</a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"
+    )
+
+
+def make_text_pdf(
+    path: Path, target_bytes: int, seed: int, *, text_chars: int | None = None,
+    images: list[bytes] = (),
+) -> Path:
+    """PDF com texto (fonte padrao Helvetica), sem compressao, no tamanho pedido. Com
+    ``text_chars`` o texto e fixo e ``images`` (de ``image_blocks``) vao uma por pagina;
+    toda pagina tem texto, entao nenhuma passa pelo OCR."""
     lines = [
-        text[i : i + 100]
-        for text in paragraphs(seed, target_bytes)
-        for i in range(0, len(text), 100)
+        text[i : i + LINE_CHARS]
+        for text in paragraphs(seed, text_chars or target_bytes)
+        for i in range(0, len(text), LINE_CHARS)
     ]
-    per_page = 45
+    per_page = LINES_PER_PAGE
     objects: list[bytes] = []
     page_ids = []
     font_id = 3
     next_id = 4
     chunks = [lines[i : i + per_page] for i in range(0, len(lines), per_page)]
-    for page_lines in chunks:
+    for index, page_lines in enumerate(chunks):
         stream = "BT /F1 9 Tf 40 800 Td 12 TL\n" + "".join(
             f"({line.replace(chr(92), '').replace('(', '').replace(')', '')}) '\n"
             for line in page_lines
         ) + "ET"
+        xobjects = ""
+        if index < len(images):
+            pixels = images[index]
+            height = len(pixels) // IMAGE_SIDE
+            image_id = next_id
+            next_id += 1
+            objects.append(
+                f"{image_id} 0 obj\n<< /Type /XObject /Subtype /Image /Width {IMAGE_SIDE} "
+                f"/Height {height} /ColorSpace /DeviceGray /BitsPerComponent 8 "
+                f"/Length {len(pixels)} >>\nstream\n".encode()
+                + pixels
+                + b"\nendstream\nendobj\n"
+            )
+            stream += "\nq 200 0 0 200 360 20 cm /Im0 Do Q"
+            xobjects = f" /XObject << /Im0 {image_id} 0 R >>"
         content_id, page_id = next_id, next_id + 1
         next_id += 2
         data = stream.encode("latin-1", "replace")
@@ -116,7 +218,7 @@ def make_text_pdf(path: Path, target_bytes: int, seed: int) -> Path:
         )
         objects.append(
             f"{page_id} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
-            f"/Contents {content_id} 0 R /Resources << /Font << /F1 {font_id} 0 R >> >> >>\nendobj\n".encode()
+            f"/Contents {content_id} 0 R /Resources << /Font << /F1 {font_id} 0 R >>{xobjects} >> >>\nendobj\n".encode()
         )
         page_ids.append(page_id)
     head = [
@@ -153,6 +255,19 @@ def make_fitting(maker, path: Path, ceiling_bytes: int, seed: int) -> Path:
             return path
         target = max(1000, int(target * 0.975 * ceiling_bytes / size))
     raise RuntimeError(f"nao foi possivel ajustar {path.name} abaixo de {ceiling_bytes} bytes")
+
+
+def make_illustrated(maker, path: Path, ceiling_bytes: int, seed: int) -> Path:
+    """RNF-02: ``INDEX_TEXT_CHARS`` de texto e imagens ate ficar entre 98% e 100% do teto."""
+    maker(path, 0, seed, text_chars=INDEX_TEXT_CHARS)
+    budget = ceiling_bytes - path.stat().st_size - 64 * 1024  # folga para os envelopes
+    for _ in range(4):
+        maker(path, 0, seed, text_chars=INDEX_TEXT_CHARS, images=image_blocks(seed, budget))
+        size = path.stat().st_size
+        if 0.98 * ceiling_bytes <= size <= ceiling_bytes:
+            return path
+        budget += ceiling_bytes - 32 * 1024 - size
+    raise RuntimeError(f"nao foi possivel ajustar {path.name} ao teto de {ceiling_bytes} bytes")
 
 
 def make_scanned_pdf(path: Path, pages: int, seed: int) -> Path:
@@ -195,7 +310,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--upload-25mb", action="store_true", help="PDF e DOCX de 24 MB")
-    parser.add_argument("--index-10mb", action="store_true", help="PDF e DOCX de 10 MB (+ digitalizado)")
+    parser.add_argument("--index-10mb", action="store_true", help="PDF e DOCX de 10 MB, texto e imagens (+ digitalizado)")
     parser.add_argument("--chunks", type=int, default=0)
     parser.add_argument("--count", type=int, default=1, help="arquivos por tipo")
     args = parser.parse_args(argv)
@@ -206,8 +321,8 @@ def main(argv: list[str] | None = None) -> int:
             make_fitting(make_text_pdf, args.out / f"upload-{n:02d}.pdf", UPLOAD_CEILING, SEED + n)
             make_fitting(make_docx, args.out / f"upload-{n:02d}.docx", UPLOAD_CEILING, SEED + 1000 + n)
         if args.index_10mb:
-            make_text_pdf(args.out / f"index-{n:02d}.pdf", 10 * MB, SEED + 2000 + n)
-            make_docx(args.out / f"index-{n:02d}.docx", 10 * MB, SEED + 3000 + n)
+            make_illustrated(make_text_pdf, args.out / f"index-{n:02d}.pdf", INDEX_CEILING, SEED + 2000 + n)
+            make_illustrated(make_docx, args.out / f"index-{n:02d}.docx", INDEX_CEILING, SEED + 3000 + n)
             make_scanned_pdf(args.out / f"scan-{n:02d}.pdf", 10, SEED + 4000 + n)
     if args.chunks:
         write_chunks(args.out / "chunks.jsonl", args.chunks)
