@@ -101,6 +101,21 @@ class PerfToolsTestCase(unittest.TestCase):
         self.assertIn(b'filename="upload-00.pdf"', FakeApi.uploads[0])
         self.assertEqual(len({s.request_id for s in samples}), 2)
 
+    def test_reading_the_file_is_not_part_of_the_upload_sample(self) -> None:
+        """Ensaio de 2026-10-22: a leitura pela pasta compartilhada gerava picos na RNF-17."""
+        (self.dir / "upload-00.pdf").write_bytes(b"%PDF-1.4 a")
+        original = upload_latency.prepare
+
+        def slow_prepare(path):
+            time.sleep(0.3)
+            return original(path)
+
+        upload_latency.prepare = slow_prepare
+        self.addCleanup(lambda: setattr(upload_latency, "prepare", original))
+        samples = upload_latency.measure(self.base, "a1", "token", [self.dir / "upload-00.pdf"])
+        self.assertEqual(samples[0].status, "202")
+        self.assertLess(samples[0].duration_s, 0.3)
+
     def test_indexing_time_waits_for_indexed_state(self) -> None:
         path = self.dir / "index-00.docx"
         path.write_bytes(b"x")

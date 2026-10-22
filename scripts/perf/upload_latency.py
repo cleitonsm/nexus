@@ -31,8 +31,18 @@ def multipart(field: str, filename: str, content: bytes) -> tuple[bytes, str]:
     return head + content + tail, f"multipart/form-data; boundary={boundary}"
 
 
-def upload(base_url: str, assistant_id: str, token: str, path: Path, request_id: str):
-    body, content_type = multipart("file", path.name, path.read_bytes())
+def prepare(path: Path) -> tuple[bytes, str]:
+    """Le o arquivo e monta o corpo multipart FORA do tempo medido.
+
+    No ensaio de 2026-10-22 a leitura de 25 MB pela pasta compartilhada do Windows
+    (bind mount do Docker Desktop) entrava na amostra e gerava picos de 3 a 18 s que
+    nao sao da API. A RNF-17 mede a resposta do servidor ao envio.
+    """
+    return multipart("file", path.name, path.read_bytes())
+
+
+def upload(base_url: str, assistant_id: str, token: str, path: Path, request_id: str, prepared=None):
+    body, content_type = prepared or prepare(path)
     headers = {**api_headers(token, request_id), "Content-Type": content_type}
     status, _, _ = request(
         "POST", f"{base_url}/assistants/{assistant_id}/documents", headers=headers, body=body
@@ -58,7 +68,10 @@ def measure(base_url: str, assistant_id: str, token, files: list[Path]) -> list[
     samples = []
     for path in files:
         current = token_source()  # fora do tempo medido
-        sample, _ = timed(lambda rid, p=path, t=current: upload(base_url, assistant_id, t, p, rid))
+        prepared = prepare(path)  # leitura do disco tambem fica fora
+        sample, _ = timed(
+            lambda rid, p=path, t=current, b=prepared: upload(base_url, assistant_id, t, p, rid, b)
+        )
         samples.append(sample)
     return samples
 

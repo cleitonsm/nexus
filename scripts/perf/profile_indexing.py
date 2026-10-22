@@ -3,7 +3,7 @@
 Diagnostico da RNF-02 (ensaio de 2026-10-22: 10 MB em 145 a 330 s). Roda no container
 do worker, com os mesmos adaptadores da ingestao (``build_document_indexer``):
 
-  docker compose run --rm -v ./scripts:/app/scripts:ro -v ./docs/qa/relatorios/<pasta>:/app/out \
+  MSYS_NO_PATHCONV=1 docker compose run --rm -v ./scripts:/app/scripts:ro -v ./docs/qa/relatorios/<pasta>:/app/out \
     worker python /app/scripts/perf/profile_indexing.py /app/out/corpus/index-00.pdf
 
 Mede extracao, fragmentacao, vetor denso e vetor esparso; nao grava no Qdrant.
@@ -14,8 +14,13 @@ from __future__ import annotations
 import argparse
 import os
 import statistics
+import sys
 import time
 from pathlib import Path
+
+# No container, o codigo do backend fica em /app (sem depender de PYTHONPATH).
+if Path("/app/src").is_dir() and "/app" not in sys.path:
+    sys.path.insert(0, "/app")
 
 
 def profile(path: Path) -> None:

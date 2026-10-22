@@ -34,8 +34,8 @@ def measure_one(
 ) -> Sample:
     token_source = as_token_source(token)
     request_id = new_request_id()
+    body, content_type = multipart("file", path.name, path.read_bytes())  # leitura fora do tempo
     start_iso, started = now_iso(), time.perf_counter()
-    body, content_type = multipart("file", path.name, path.read_bytes())
     status, _, payload = request(
         "POST",
         f"{base_url}/assistants/{assistant_id}/documents",
