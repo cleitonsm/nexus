@@ -19,6 +19,7 @@ sys.path.insert(0, str(PERF))
 
 import common  # noqa: E402
 import corpus  # noqa: E402
+import ensure_assistant  # noqa: E402
 import indexing_time  # noqa: E402
 import reindex_under_load  # noqa: E402
 import report  # noqa: E402
@@ -316,6 +317,41 @@ class WaitIdleTestCase(unittest.TestCase):
                 "http://api", "a1", wait_minutes=90, token_source=lambda: "t",
                 sleep=lambda _s: None, clock=lambda: next(now),
             )
+
+
+class EnsureAssistantTestCase(unittest.TestCase):
+    """V7 repetida (2026-10-22): a tela nao apaga assistentes; --fresh apaga pela API."""
+
+    def _patch(self) -> list[tuple[str, str]]:
+        calls: list[tuple[str, str]] = []
+        original = ensure_assistant.request
+        listing = json.dumps([{"id": "old", "name": "Desempenho V7"}, {"id": "x", "name": "Outro"}])
+
+        def fake(method, url, *, headers=None, body=None, timeout=120.0):
+            calls.append((method, url))
+            if method == "GET":
+                return 200, {}, listing.encode()
+            if method == "DELETE":
+                return 204, {}, b""
+            return 201, {}, b'{"id": "new"}'
+
+        ensure_assistant.request = fake
+        self.addCleanup(lambda: setattr(ensure_assistant, "request", original))
+        return calls
+
+    def test_reuses_the_existing_assistant_by_default(self) -> None:
+        calls = self._patch()
+        self.assertEqual(ensure_assistant.ensure("http://api", "Desempenho V7", "t"), "old")
+        self.assertEqual([method for method, _ in calls], ["GET"])
+
+    def test_fresh_deletes_the_old_one_and_creates_another(self) -> None:
+        calls = self._patch()
+        self.assertEqual(ensure_assistant.ensure("http://api", "Desempenho V7", "t", fresh=True), "new")
+        self.assertEqual(
+            calls,
+            [("GET", "http://api/assistants"), ("DELETE", "http://api/assistants/old"),
+             ("POST", "http://api/assistants")],
+        )
 
 
 if __name__ == "__main__":

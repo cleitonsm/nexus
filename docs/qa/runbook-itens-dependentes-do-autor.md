@@ -251,8 +251,8 @@ scripts\validation\run-all.ps1 -Only V0           # ambiente limpo (down -v apag
 scripts\validation\run-all.ps1 -Only V1           # sobe a pilha com o realm e o .env.example novos
 # Na tela de Administracao (admin.nexus): confira "Gemini (Google)" / gemini-3.8-flash, salve a chave
 # de um projeto com faturamento e clique em "Testar LLM" (deve responder OK).
-# A V7 cria (ou reaproveita) o assistente "Desempenho V7" pela API, com o usuario de teste
-# admin.nexus do realm de desenvolvimento; nao precisa de variavel.
+# A V7 recria o assistente "Desempenho V7" pela API a cada execucao (apaga o anterior, se houver),
+# com o usuario de teste admin.nexus do realm de desenvolvimento; nao precisa de variavel.
 scripts\validation\run-all.ps1 -From V2            # V2 a V8 (custo aprovado: PC-D10)
 ```
 

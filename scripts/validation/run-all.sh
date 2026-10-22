@@ -218,7 +218,7 @@ stage_v7() {
     -e KEYCLOAK_URL="${NEXUS_KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}"
     -v ./scripts:/app/scripts:ro -v "$OUT_MOUNT:/app/out" backend)
   run V7 "assistente de desempenho" "${run_perf[@]}" python /app/scripts/perf/ensure_assistant.py \
-    --base-url "$api" --out "$perfc/assistant-id.txt" || return 1
+    --base-url "$api" --out "$perfc/assistant-id.txt" --fresh || return 1
   if [ "$DRY_RUN" -eq 1 ]; then assistant="ID"; else assistant="$(tr -d '\r\n' < "$perf/assistant-id.txt")"; fi
   run V7 "corpus sintetico (arquivos)" "${run_perf[@]}" python /app/scripts/perf/corpus.py \
     --out "$files" --upload-25mb --index-10mb --count 10 || return 1
