@@ -1,10 +1,13 @@
 """Consolida os CSVs de medicao em p50, p95, p99, maximo e taxa de erro.
 
-Uso: ``python report.py ARQUIVO.csv[:LIMITE_S[:TIPO]] ... [--out 07-desempenho.md]``
+Uso: ``python report.py ARQUIVO.csv[:LIMITE_S[:TIPO[:DECISAO]]] ... [--out 07-desempenho.md]``
 
 ``LIMITE_S`` e o criterio em segundos; ``TIPO`` e ``all`` (todas as amostras
 devem cumprir, padrao) ou ``p95`` (so o percentil 95 deve cumprir). Sem limite o
-cenario e informativo. Saida com codigo 1 se algum criterio falhar.
+cenario e informativo. ``DECISAO`` (por exemplo ``PC-D11``) marca um criterio cuja
+reprovacao o autor aceitou como limitacao: continua medido e aparece como reprovado,
+com a decisao, mas nao muda o codigo de saida (erros de requisicao ainda reprovam).
+Saida com codigo 1 se algum criterio falhar.
 """
 
 from __future__ import annotations
@@ -32,6 +35,7 @@ class Summary:
     limit_s: float | None
     rule: str
     verdict: str
+    accepted: str | None = None
 
 
 def summarize(
@@ -39,6 +43,7 @@ def summarize(
     samples: list[Sample],
     limit_s: float | None = None,
     rule: str = "all",
+    accepted: str | None = None,
 ) -> Summary:
     if rule not in ("all", "p95"):
         raise ValueError("rule must be 'all' or 'p95'.")
@@ -53,6 +58,8 @@ def summarize(
     else:
         measured = maximum if rule == "all" else p95
         verdict = "aprovado" if measured <= limit_s and errors == 0 else "reprovado"
+        if verdict == "reprovado" and accepted and errors == 0:
+            verdict = f"reprovado (limitação aceita, {accepted})"
     return Summary(
         name=name,
         samples=len(samples),
@@ -64,6 +71,7 @@ def summarize(
         limit_s=limit_s,
         rule=rule,
         verdict=verdict,
+        accepted=accepted,
     )
 
 
@@ -86,11 +94,12 @@ def to_markdown(summaries: list[Summary]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def parse_spec(spec: str) -> tuple[Path, float | None, str]:
+def parse_spec(spec: str) -> tuple[Path, float | None, str, str | None]:
     path, *rest = spec.split(":")
     limit = float(rest[0]) if rest and rest[0] else None
-    rule = rest[1] if len(rest) > 1 else "all"
-    return Path(path), limit, rule
+    rule = rest[1] if len(rest) > 1 and rest[1] else "all"
+    accepted = rest[2] if len(rest) > 2 and rest[2] else None
+    return Path(path), limit, rule, accepted
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -100,8 +109,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     summaries = []
     for spec in args.specs:
-        path, limit, rule = parse_spec(spec)
-        summaries.append(summarize(path.stem, read_samples(path), limit, rule))
+        path, limit, rule, accepted = parse_spec(spec)
+        summaries.append(summarize(path.stem, read_samples(path), limit, rule, accepted))
     table = to_markdown(summaries)
     print(table)
     if args.out:

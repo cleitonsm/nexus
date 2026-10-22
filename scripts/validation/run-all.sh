@@ -255,7 +255,7 @@ stage_v7() {
     python /app/scripts/perf/reindex_under_load.py --base-url "$api" --assistant-id "${NEXUS_REINDEX_ASSISTANT_ID:-$assistant}" \
     --chunks "$files/chunks.jsonl" --users 1 --out "$perfc/rnf18.csv" || return 1
   run V7 "consolidacao" "${run_perf[@]}" python /app/scripts/perf/report.py \
-    "$perfc/upload.csv:2:all" "$perfc/indexacao.csv:60:all" "$perfc/rnf03.csv:2:all" \
+    "$perfc/upload.csv:2:all" "$perfc/indexacao.csv:60:all:PC-D11" "$perfc/rnf03.csv:2:all" \
     "$perfc/rnf16-u1.csv:3:p95" "$perfc/rnf16-u5.csv" "$perfc/rnf18.csv" --out "/app/out/07-desempenho.md"
   pending V7 "RNF-01 TTFT" "ttft.py exige LLM real e um arquivo de perguntas; executar a parte, depois da V6"
 }

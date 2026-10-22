@@ -156,6 +156,15 @@ class ReportTestCase(unittest.TestCase):
         summary = report.summarize("busca", self._samples([1.0] * 19 + [9.0]), 3.0, "p95")
         self.assertEqual(summary.verdict, "aprovado")
 
+    def test_accepted_limitation_is_reported_but_does_not_fail(self) -> None:
+        """PC-D11: a RNF-02 continua medida; a reprovacao aceita nao derruba a V7."""
+        slow = report.summarize("indexacao", self._samples([150.0, 220.0], "200"), 60, "all", "PC-D11")
+        self.assertEqual(slow.verdict, "reprovado (limitação aceita, PC-D11)")
+        broken = report.summarize("indexacao", self._samples([150.0], "timeout"), 60, "all", "PC-D11")
+        self.assertEqual(broken.verdict, "reprovado")
+        self.assertEqual(report.parse_spec("x.csv:60:all:PC-D11")[1:], (60.0, "all", "PC-D11"))
+        self.assertEqual(report.parse_spec("x.csv:3:p95")[1:], (3.0, "p95", None))
+
     def test_errors_fail_a_scenario_with_a_criterion(self) -> None:
         samples = self._samples([1.0, 1.0]) + self._samples([1.0], status="500")
         self.assertEqual(report.summarize("x", samples, 2.0).verdict, "reprovado")
