@@ -89,7 +89,13 @@ def command_load(args: argparse.Namespace) -> int:
     assistant = AssistantId(args.assistant_id)
     collection = _collection(args.assistant_id)
     if store.collection_exists(collection):
-        raise SystemExit(f"{collection.value} ja existe; exclua-a antes de recarregar.")
+        if not args.replace:
+            raise SystemExit(f"{collection.value} ja existe; use --replace para recarregar.")
+        if args.assistant_id != DEFAULT_ASSISTANT:
+            raise SystemExit(f"--replace so apaga a collection sintetica {DEFAULT_ASSISTANT}.")
+        # Collection sintetica so das medicoes (perf-load), sem documento no banco.
+        store.delete_collection(collection)
+        print(f"{collection.value} apagada para a nova carga", flush=True)
     store.ensure_collection(collection, embedding.dimension)
     batch: list[dict] = []
     loaded = 0
@@ -233,6 +239,9 @@ def main(argv: list[str] | None = None) -> int:
         item.add_argument("--chunks", type=Path, default=None)
     sub.choices["load"].add_argument("--batch", type=int, default=256)
     sub.choices["load"].add_argument("--limit", type=int, default=0)
+    sub.choices["load"].add_argument(
+        "--replace", action="store_true", help="apaga a collection perf-load existente antes"
+    )
     for name in ("dense", "hybrid"):
         item = sub.choices[name]
         item.add_argument("--queries-file", type=Path, default=None)

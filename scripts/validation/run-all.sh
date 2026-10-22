@@ -242,7 +242,7 @@ stage_v7() {
   run V7 "corpus de $chunks trechos" "${run_perf[@]}" python /app/scripts/perf/corpus.py \
     --out "$files" --chunks "$chunks" || return 1
   run V7 "carga dos trechos (perf-load)" "${run_perf[@]}" \
-    python /app/scripts/perf/retrieval_latency.py load --chunks "$files/chunks.jsonl" || return 1
+    python /app/scripts/perf/retrieval_latency.py load --chunks "$files/chunks.jsonl" --replace || return 1
   run V7 "RNF-03 busca densa" "${run_perf[@]}" \
     python /app/scripts/perf/retrieval_latency.py dense --chunks "$files/chunks.jsonl" --out "$perfc/rnf03.csv" || return 1
   run V7 "RNF-16 busca hibrida, 1 usuario" "${run_perf[@]}" \
