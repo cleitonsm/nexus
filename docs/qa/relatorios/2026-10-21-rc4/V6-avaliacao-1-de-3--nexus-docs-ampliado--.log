@@ -1,0 +1,226 @@
+ Container nexus-backend-run-7a59950482ab Creating 
+ Container nexus-backend-run-7a59950482ab Created 
+{"timestamp": "2026-10-21T11:56:45.273216+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "request_id": null, "event": "Context impl PostgresqlImpl."}
+{"timestamp": "2026-10-21T11:56:45.273567+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "request_id": null, "event": "Will assume transactional DDL."}
+{"timestamp": "2026-10-21T11:56:51.807878+00:00", "level": "INFO", "logger": "sentence_transformers.SentenceTransformer", "request_id": null, "event": "Load pretrained SentenceTransformer: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"}
+/usr/local/lib/python3.12/site-packages/qdrant_client/qdrant_remote.py:130: UserWarning: Api key is used with an insecure connection.
+  warnings.warn("Api key is used with an insecure connection.")
+{"timestamp": "2026-10-21T11:56:55.205953+00:00", "level": "INFO", "logger": "nexus.evaluation", "request_id": null, "event": "evaluation.assistant.created", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185"}
+{"timestamp": "2026-10-21T11:56:55.218492+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.221082+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.390409+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.392041+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.443230+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.444732+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.476856+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.478545+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.512070+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.514802+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.544305+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.546048+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.587684+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.589245+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.627548+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.629334+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.659501+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.661045+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.707834+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.709618+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.742141+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.743794+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.775892+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.777561+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.815343+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.816728+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.848821+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.850414+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.891755+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.893659+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.927389+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.929001+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.972058+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:55.973626+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:56.005444+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:56.007067+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:56.044481+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "7eb2b7b2-5932-460c-bd68-4103d26175a0", "document_id": "50b8327c-fb79-441c-84a1-4392ef55ab18", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1}
+{"timestamp": "2026-10-21T11:56:56.048668+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:56.050703+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:56.054658+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:56.480111+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1 \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:56.744294+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:56.983003+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:57.252337+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:57.255525+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:57.276871+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:57.655734+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:57.673841+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:57.684650+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:57.701662+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:57.716163+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:57.725867+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:57.747164+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "7eb2b7b2-5932-460c-bd68-4103d26175a0", "document_id": "50b8327c-fb79-441c-84a1-4392ef55ab18", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1, "chunk_count": 4}
+{"timestamp": "2026-10-21T11:56:57.771009+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "2e90674b-41d4-4545-ad94-dcb6f35ac343", "document_id": "ba8e1251-a689-4430-be78-97141b81a549", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1}
+{"timestamp": "2026-10-21T11:56:57.776661+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+Token indices sequence length is longer than the specified maximum sequence length for this model (149 > 128). Running this sequence through the model will result in indexing errors
+{"timestamp": "2026-10-21T11:56:58.387691+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.401310+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.409967+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.424800+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.439393+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.445513+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.462973+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "2e90674b-41d4-4545-ad94-dcb6f35ac343", "document_id": "ba8e1251-a689-4430-be78-97141b81a549", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1, "chunk_count": 13}
+{"timestamp": "2026-10-21T11:56:58.482593+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "b7d86bb8-791e-4de3-8e09-dba326c15072", "document_id": "85d22779-84bd-4920-96f9-0c794b016880", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1}
+{"timestamp": "2026-10-21T11:56:58.486987+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.888872+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.898490+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.905781+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.919508+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.932150+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.936015+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:56:58.948354+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "b7d86bb8-791e-4de3-8e09-dba326c15072", "document_id": "85d22779-84bd-4920-96f9-0c794b016880", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1, "chunk_count": 7}
+{"timestamp": "2026-10-21T11:56:58.963986+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "4398d9cd-aa0a-42fa-a011-460f4670d20d", "document_id": "0e0744e4-6cff-4074-8a5d-65ebdc78cdb0", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1}
+{"timestamp": "2026-10-21T11:56:58.966874+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:00.121770+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:00.139415+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:00.151650+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:00.168846+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:00.184133+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:00.189908+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:00.201870+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "4398d9cd-aa0a-42fa-a011-460f4670d20d", "document_id": "0e0744e4-6cff-4074-8a5d-65ebdc78cdb0", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1, "chunk_count": 11}
+{"timestamp": "2026-10-21T11:57:00.215446+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "d25f1bff-574a-49d7-b659-87218138953e", "document_id": "7f76ef61-6204-4ec0-ac04-d7fcf7e4473d", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1}
+{"timestamp": "2026-10-21T11:57:00.218304+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:01.025630+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:01.044746+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:01.053137+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:01.070641+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:01.086135+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:01.090714+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:01.103603+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "d25f1bff-574a-49d7-b659-87218138953e", "document_id": "7f76ef61-6204-4ec0-ac04-d7fcf7e4473d", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1, "chunk_count": 13}
+{"timestamp": "2026-10-21T11:57:01.119802+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "f2074ef0-e8a6-4111-8418-d634850bc981", "document_id": "13827676-933f-4225-917d-54db9d488e0e", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1}
+{"timestamp": "2026-10-21T11:57:01.122421+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:02.115754+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:02.141093+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:02.153787+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:02.178852+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:02.199722+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:02.206685+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:02.235307+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "f2074ef0-e8a6-4111-8418-d634850bc981", "document_id": "13827676-933f-4225-917d-54db9d488e0e", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1, "chunk_count": 13}
+{"timestamp": "2026-10-21T11:57:02.253240+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "b419f8e2-aaac-4938-9fc6-f3dcf83ebdea", "document_id": "2c7c4ffb-715a-411e-ab69-f8a7c8c303d5", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1}
+{"timestamp": "2026-10-21T11:57:02.255965+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:03.541723+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:03.569667+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:03.586119+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:03.635310+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:03.658553+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:03.667552+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:03.685196+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "b419f8e2-aaac-4938-9fc6-f3dcf83ebdea", "document_id": "2c7c4ffb-715a-411e-ab69-f8a7c8c303d5", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1, "chunk_count": 18}
+{"timestamp": "2026-10-21T11:57:03.706175+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "c6149912-0f35-4ce0-857e-6f41ace1a0cb", "document_id": "dc1f1690-e4d0-4164-be1c-85d2ab4ae9aa", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1}
+{"timestamp": "2026-10-21T11:57:03.709012+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:05.295493+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:05.315334+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:05.322322+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:05.333879+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:05.347829+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:05.353563+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:05.365888+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "c6149912-0f35-4ce0-857e-6f41ace1a0cb", "document_id": "dc1f1690-e4d0-4164-be1c-85d2ab4ae9aa", "assistant_id": "829a9c4c-4bc3-464b-b35d-00d8935d6185", "attempt": 1, "chunk_count": 36}
+{"timestamp": "2026-10-21T11:57:05.382394+00:00", "level": "INFO", "logger": "nexus.evaluation", "request_id": null, "event": "evaluation.documents.seeded", "documents": 17}
+{"timestamp": "2026-10-21T11:57:07.507448+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-829a9c4c-4bc3-464b-b35d-00d8935d6185/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-21T11:57:08.660784+00:00", "level": "INFO", "logger": "src.infrastructure.llm.http_chat_llm", "request_id": null, "event": "llm.request.started", "api_host": "99305af44cff:40717", "llm_model": "modelo-simulado", "message_count": 2, "context_chunks": 5, "body_size_bytes": 3924, "stream": false}
+{"timestamp": "2026-10-21T11:57:12.635605+00:00", "level": "WARNING", "logger": "src.infrastructure.llm.http_chat_llm", "request_id": null, "event": "llm.request.unreachable", "reason": "[Errno -2] Name or service not known", "llm_model": "modelo-simulado", "attempt": 1}
+{"timestamp": "2026-10-21T11:57:12.635801+00:00", "level": "INFO", "logger": "src.infrastructure.llm.http_chat_llm", "request_id": null, "event": "llm.request.retrying", "attempt": 1, "next_attempt": 2, "reason": "unreachable", "delay_seconds": 1.0, "llm_model": "modelo-simulado"}
+{"timestamp": "2026-10-21T11:57:17.578755+00:00", "level": "WARNING", "logger": "src.infrastructure.llm.http_chat_llm", "request_id": null, "event": "llm.request.unreachable", "reason": "[Errno -2] Name or service not known", "llm_model": "modelo-simulado", "attempt": 2}
+{"timestamp": "2026-10-21T11:57:17.578959+00:00", "level": "INFO", "logger": "src.infrastructure.llm.http_chat_llm", "request_id": null, "event": "llm.request.retrying", "attempt": 2, "next_attempt": 3, "reason": "unreachable", "delay_seconds": 3.0, "llm_model": "modelo-simulado"}
+{"timestamp": "2026-10-21T11:57:24.557434+00:00", "level": "WARNING", "logger": "src.infrastructure.llm.http_chat_llm", "request_id": null, "event": "llm.request.unreachable", "reason": "[Errno -2] Name or service not known", "llm_model": "modelo-simulado", "attempt": 3}
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/urllib/request.py", line 1344, in do_open
+    h.request(req.get_method(), req.selector, req.data, headers,
+  File "/usr/local/lib/python3.12/http/client.py", line 1358, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+  File "/usr/local/lib/python3.12/http/client.py", line 1404, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+  File "/usr/local/lib/python3.12/http/client.py", line 1353, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/usr/local/lib/python3.12/http/client.py", line 1113, in _send_output
+    self.send(msg)
+  File "/usr/local/lib/python3.12/http/client.py", line 1057, in send
+    self.connect()
+  File "/usr/local/lib/python3.12/http/client.py", line 1023, in connect
+    self.sock = self._create_connection(
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/socket.py", line 841, in create_connection
+    for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/socket.py", line 978, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -2] Name or service not known
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/app/src/infrastructure/llm/http_chat_llm.py", line 276, in _open
+    return request.urlopen(http_request, timeout=self._timeout_seconds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 515, in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 532, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 1373, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 1347, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [Errno -2] Name or service not known>
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/app/src/cli/evaluate.py", line 436, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/app/src/cli/evaluate.py", line 127, in main
+    return _run(args, items, session)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/cli/evaluate.py", line 228, in _run
+    ).execute(
+      ^^^^^^^^
+  File "/app/src/application/use_cases/evaluate_assistant.py", line 71, in execute
+    results = tuple(
+              ^^^^^^
+  File "/app/src/application/use_cases/evaluate_assistant.py", line 72, in <genexpr>
+    self._evaluate_item(item, assistant_id, source_names, data)
+  File "/app/src/application/use_cases/evaluate_assistant.py", line 106, in _evaluate_item
+    answer, fallback_used = self._answer(item, context)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/application/use_cases/evaluate_assistant.py", line 170, in _answer
+    grounded = self._answer_generator.answer(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/application/services/grounded_answer.py", line 214, in answer
+    text = self.generate(
+           ^^^^^^^^^^^^^^
+  File "/app/src/application/services/grounded_answer.py", line 143, in generate
+    return self.generate_completion(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/application/services/grounded_answer.py", line 161, in generate_completion
+    completion = self._llm_gateway.generate_with_usage(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/infrastructure/llm/http_chat_llm.py", line 150, in generate_with_usage
+    status_code, raw = self._post(
+                       ^^^^^^^^^^^
+  File "/app/src/infrastructure/llm/http_chat_llm.py", line 238, in _post
+    response = self._open(payload, context_chunks=context_chunks, stream=stream)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/src/infrastructure/llm/http_chat_llm.py", line 307, in _open
+    raise LLMProviderError("LLM provider is unreachable.") from exc
+src.infrastructure.llm.http_chat_llm.LLMProviderError: LLM provider is unreachable.
+

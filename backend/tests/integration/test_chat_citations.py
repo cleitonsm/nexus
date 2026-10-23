@@ -1,0 +1,400 @@
+"""CT-20 (SPEC-20261007-003): citacoes devolvidas pela API e persistidas.
+
+A primeira classe usa repositorios em memoria; a segunda exige o PostgreSQL
+do Compose. Execute dentro do container do backend.
+"""
+
+from __future__ import annotations
+
+import json
+import unittest
+from uuid import uuid4
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from access_support import AccessHarness, member
+from src.api.dependencies import (
+    get_answer_generator,
+    get_assistant_repository,
+    get_context_retriever,
+    get_conversation_repository,
+    get_document_repository,
+    get_token_counter,
+    get_usage_governance,
+)
+from src.api.routes import conversations_router
+from src.application.services import (
+    ContextRetriever,
+    GroundedAnswerGenerator,
+    RetrievalSettings,
+)
+from src.domain import (
+    Assistant,
+    AssistantId,
+    AssistantName,
+    ChatMessage,
+    Citation,
+    CollectionName,
+    Conversation,
+    ConversationId,
+    Document,
+    DocumentId,
+    IndexOutdatedError,
+    MessageId,
+    MessageRole,
+    SearchResult,
+    SparseVector,
+)
+from src.infrastructure.embeddings import Bm25SparseEmbeddingGateway
+from src.infrastructure.llm import FakeContextAwareLLM
+
+ASSISTANT = AssistantId("assistant-1")
+CONVERSATION = ConversationId("conv-1")
+OWNER = member("user-1", "rh")
+
+
+class InMemoryAssistantRepository:
+    def get_by_id(self, assistant_id: AssistantId) -> Assistant | None:
+        return Assistant(id=ASSISTANT, name=AssistantName("RH"))
+
+
+class KnownDocuments:
+    """Documentos que ainda existem; os demais foram excluidos (RN-29)."""
+
+    def __init__(self, document_ids: tuple[str, ...]) -> None:
+        self._ids = set(document_ids)
+
+    def get_by_id(self, document_id: DocumentId) -> Document | None:
+        if document_id.value not in self._ids:
+            return None
+        return Document(
+            id=document_id,
+            assistant_id=ASSISTANT,
+            source_name="politica.pdf",
+            content_hash="hash",
+        )
+
+
+class InMemoryConversationRepository:
+    def __init__(self) -> None:
+        self.messages: list[ChatMessage] = []
+
+    def get_by_id(self, conversation_id: ConversationId) -> Conversation | None:
+        if conversation_id != CONVERSATION:
+            return None
+        return Conversation(
+            id=CONVERSATION,
+            assistant_id=ASSISTANT,
+            messages=tuple(self.messages),
+            owner_user_id=OWNER.id,
+        )
+
+    def save_message(self, message: ChatMessage) -> ChatMessage:
+        self.messages.append(message)
+        return message
+
+    def list_messages(self, conversation_id: ConversationId) -> list[ChatMessage]:
+        return list(self.messages)
+
+
+class FakeEmbeddingGateway:
+    model_name = "fake"
+    dimension = 1
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return [[1.0] for _ in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return [1.0]
+
+
+class FakeVectorStore:
+    def __init__(self, results: list[SearchResult], outdated: bool = False) -> None:
+        self._results = results
+        self._outdated = outdated
+
+    def hybrid_search(
+        self,
+        collection_name: CollectionName,
+        dense_vector: list[float],
+        sparse_vector: SparseVector,
+        limit: int,
+        payload_filter: dict[str, str] | None = None,
+        *,
+        user_groups: frozenset[str] | None,
+    ) -> list[SearchResult]:
+        if self._outdated:
+            raise IndexOutdatedError("the assistant index is incompatible.")
+        return self._results[:limit]
+
+
+class KeepScoreReranker:
+    model_name = "fake-reranker"
+
+    def rerank(self, query: str, candidates: list[SearchResult]) -> list[SearchResult]:
+        return sorted(candidates, key=lambda item: item.score, reverse=True)
+
+
+class WordTokenCounter:
+    max_tokens = 128
+
+    def count(self, text: str) -> int:
+        return len(text.split())
+
+
+def _hit(score: float) -> SearchResult:
+    return SearchResult(
+        chunk_id="doc-1:2",
+        document_id=DocumentId("doc-1"),
+        score=score,
+        text="As ferias sao de trinta dias.",
+        source_name="politica.pdf",
+        section_path="Ferias > Duracao",
+        page=3,
+    )
+
+
+class ChatCitationsApiTestCase(unittest.TestCase):
+    def _client(
+        self,
+        results: list[SearchResult],
+        outdated: bool = False,
+        existing_documents: tuple[str, ...] = ("doc-1",),
+    ) -> TestClient:
+        app = FastAPI()
+        app.include_router(conversations_router)
+        AccessHarness(app, OWNER).link_assistant(ASSISTANT.value, "rh")
+        conversations = InMemoryConversationRepository()
+        retriever = ContextRetriever(
+            embedding_gateway=FakeEmbeddingGateway(),
+            sparse_embedding_gateway=Bm25SparseEmbeddingGateway(),
+            vector_store_gateway=FakeVectorStore(results, outdated),
+            reranker_gateway=KeepScoreReranker(),
+            settings=RetrievalSettings(),
+        )
+        overrides = app.dependency_overrides
+        overrides[get_assistant_repository] = InMemoryAssistantRepository
+        overrides[get_conversation_repository] = lambda: conversations
+        overrides[get_context_retriever] = lambda: retriever
+        overrides[get_answer_generator] = lambda: GroundedAnswerGenerator(
+            llm_gateway=FakeContextAwareLLM()
+        )
+        overrides[get_token_counter] = WordTokenCounter
+        overrides[get_document_repository] = lambda: KnownDocuments(existing_documents)
+        # Limite e consumo tem testes proprios (test_operations_api.py).
+        overrides[get_usage_governance] = lambda: None
+        return TestClient(app)
+
+    def test_chat_returns_citations_and_conversation_keeps_them(self) -> None:
+        with self._client([_hit(0.9)]) as client:
+            response = client.post(
+                "/conversations/conv-1/chat",
+                json={"question": "Quanto duram as ferias?", "top_k": 4},
+            )
+            detail = client.get("/conversations/conv-1")
+
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertFalse(body["fallback_used"])
+        self.assertEqual(body["rewritten_query"], "Quanto duram as ferias?")
+        expected = {
+            "number": 1,
+            "document_id": "doc-1",
+            "chunk_id": "doc-1:2",
+            "source_name": "politica.pdf",
+            "section_path": "Ferias > Duracao",
+            "page": 3,
+            "score": 0.9,
+            "excerpt": "As ferias sao de trinta dias.",
+            "document_available": True,
+        }
+        self.assertEqual(body["citations"], [expected])
+        self.assertEqual(body["assistant_message"]["citations"], [expected])
+        self.assertEqual(body["user_message"]["citations"], [])
+
+        self.assertEqual(detail.status_code, 200)
+        user_message, assistant_message = detail.json()["messages"]
+        self.assertEqual(user_message["citations"], [])
+        self.assertEqual(assistant_message["citations"], [expected])
+
+    def test_citation_of_a_deleted_document_is_marked(self) -> None:
+        """RN-29, D10: a conversa guarda a citacao e a marca como removida."""
+        with self._client([_hit(0.9)], existing_documents=()) as client:
+            client.post(
+                "/conversations/conv-1/chat",
+                json={"question": "Quanto duram as ferias?"},
+            )
+            detail = client.get("/conversations/conv-1")
+        _, assistant_message = detail.json()["messages"]
+        (citation,) = assistant_message["citations"]
+        self.assertEqual(citation["document_id"], "doc-1")
+        self.assertFalse(citation["document_available"])
+
+    def test_out_of_scope_question_returns_fallback_without_citations(self) -> None:
+        with self._client([_hit(0.2)]) as client:
+            response = client.post(
+                "/conversations/conv-1/chat",
+                json={"question": "Qual a cotacao do dolar?"},
+            )
+        body = response.json()
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(body["fallback_used"])
+        self.assertEqual(body["citations"], [])
+        self.assertEqual(body["used_context_chunks"], 0)
+
+    def test_top_k_limits_the_chunks_of_one_question(self) -> None:
+        hits = [
+            SearchResult(
+                chunk_id=f"doc-1:{index}",
+                document_id=DocumentId("doc-1"),
+                score=0.9 - index / 100,
+                text=f"Trecho {index}.",
+            )
+            for index in range(6)
+        ]
+        with self._client(hits) as client:
+            limited = client.post(
+                "/conversations/conv-1/chat",
+                json={"question": "Pergunta?", "top_k": 2},
+            )
+            above = client.post(
+                "/conversations/conv-1/chat",
+                json={"question": "Pergunta?", "top_k": 20},
+            )
+        self.assertEqual(limited.json()["used_context_chunks"], 2)
+        self.assertEqual(above.json()["used_context_chunks"], 5)
+
+    def test_stream_sends_text_in_parts_and_citations_at_the_end(self) -> None:
+        """CT-44 (RF-58): Server-Sent Events com ``delta`` e ``done``."""
+        with self._client([_hit(0.9)]) as client:
+            response = client.post(
+                "/conversations/conv-1/chat/stream",
+                json={"question": "Quanto duram as ferias?"},
+            )
+            detail = client.get("/conversations/conv-1")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.headers["content-type"].startswith("text/event-stream"))
+        self.assertEqual(response.headers["x-accel-buffering"], "no")
+        events = _parse_sse(response.text)
+        kinds = [kind for kind, _ in events]
+        self.assertIn("delta", kinds)
+        self.assertEqual(kinds[-1], "done")
+        done = events[-1][1]
+        streamed = "".join(data["text"] for kind, data in events if kind == "delta")
+        final = next(
+            (data["text"] for kind, data in events if kind == "replace"), streamed
+        )
+        self.assertEqual(done["assistant_message"]["content"], final.strip())
+        self.assertEqual(done["citations"][0]["source_name"], "politica.pdf")
+        _, assistant_message = detail.json()["messages"]
+        self.assertEqual(assistant_message["content"], done["assistant_message"]["content"])
+
+    def test_stream_errors_before_the_first_byte_keep_the_http_status(self) -> None:
+        with self._client([], outdated=True) as client:
+            conflict = client.post(
+                "/conversations/conv-1/chat/stream",
+                json={"question": "Pergunta?"},
+            )
+            missing = client.post(
+                "/conversations/conv-x/chat/stream",
+                json={"question": "Pergunta?"},
+            )
+        self.assertEqual(conflict.status_code, 409)
+        self.assertEqual(missing.status_code, 404)
+
+    def test_incompatible_index_is_reported_as_conflict(self) -> None:
+        with self._client([], outdated=True) as client:
+            response = client.post(
+                "/conversations/conv-1/chat",
+                json={"question": "Pergunta?"},
+            )
+        self.assertEqual(response.status_code, 409)
+
+
+def _parse_sse(text: str) -> list[tuple[str, dict]]:
+    events = []
+    for block in text.strip().split("\n\n"):
+        fields = dict(
+            line.split(": ", 1) for line in block.splitlines() if ": " in line
+        )
+        events.append((fields["event"], json.loads(fields["data"])))
+    return events
+
+
+def _database_session():
+    """Sessao no PostgreSQL com as migracoes aplicadas, ou None."""
+    try:
+        from sqlalchemy import text
+
+        from src.infrastructure.database import SessionLocal, run_migrations
+
+        run_migrations()
+        session = SessionLocal()
+        session.execute(text("SELECT 1"))
+    except Exception:  # noqa: BLE001 - banco indisponivel pula o teste
+        return None
+    return session
+
+
+class MessageCitationsPersistenceTestCase(unittest.TestCase):
+    def setUp(self) -> None:
+        session = _database_session()
+        if session is None:
+            self.skipTest("PostgreSQL indisponivel")
+        from src.infrastructure.database import (
+            PostgresAssistantRepository,
+            PostgresConversationRepository,
+        )
+
+        self.session = session
+        self.assistants = PostgresAssistantRepository(session=session)
+        self.conversations = PostgresConversationRepository(session=session)
+        self.assistant_id = AssistantId(f"teste-citacoes-{uuid4().hex[:12]}")
+        self.conversation_id = ConversationId(str(uuid4()))
+        self.assistants.save(
+            Assistant(id=self.assistant_id, name=AssistantName("Citacoes"))
+        )
+        self.conversations.save(
+            Conversation(id=self.conversation_id, assistant_id=self.assistant_id)
+        )
+        self.addCleanup(session.close)
+        self.addCleanup(self.assistants.delete, self.assistant_id)
+
+    def _save(self, role: MessageRole, citations: tuple[Citation, ...]) -> None:
+        self.conversations.save_message(
+            ChatMessage(
+                id=MessageId(str(uuid4())),
+                conversation_id=self.conversation_id,
+                role=role,
+                content="conteudo",
+                citations=citations,
+            )
+        )
+
+    def test_citations_round_trip_through_the_messages_table(self) -> None:
+        citation = Citation(
+            number=2,
+            document_id=DocumentId("doc-1"),
+            chunk_id="doc-1:2",
+            source_name="política.pdf",
+            excerpt="As férias são de trinta dias.",
+            section_path="Férias > Duração",
+            page=3,
+            score=0.87,
+        )
+        self._save(MessageRole.USER, ())
+        self._save(MessageRole.ASSISTANT, (citation,))
+        self.session.expire_all()
+
+        user_message, assistant_message = self.conversations.list_messages(
+            self.conversation_id
+        )
+        self.assertEqual(user_message.citations, ())
+        self.assertEqual(assistant_message.citations, (citation,))
+        loaded = self.conversations.get_by_id(self.conversation_id)
+        self.assertEqual(loaded.messages[-1].citations, (citation,))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,15 @@
+flowchart LR
+  backend_src_api_routes_documents_py__document_resp["_document_response<br/><small>backend/src/api/routes/documents.py:357</small>"]
+  backend_src_api_routes_documents_py__translate_err["_translate_errors<br/><small>backend/src/api/routes/documents.py:307</small>"]
+  backend_src_api_routes_documents_py_replace_docume["replace_document<br/><small>backend/src/api/routes/documents.py:217</small>"]
+  backend_src_api_schemas_access_py_DocumentAccessRe["DocumentAccessResponse<br/><small>backend/src/api/schemas/access.py:25</small>"]
+  backend_src_application_use_cases_ingest_document_["ReplaceDocumentInput<br/><small>backend/src/application/use_cases/ingest_document.py:271</small>"]
+  backend_src_application_use_cases_ingest_document_["ReplaceDocumentUseCase<br/><small>backend/src/application/use_cases/ingest_document.py:280</small>"]
+  backend_src_api_routes_documents_py_replace_docume:::entry
+  backend_src_api_routes_documents_py__document_resp --> backend_src_api_schemas_access_py_DocumentAccessRe
+  backend_src_api_routes_documents_py_replace_docume --> backend_src_api_routes_documents_py__document_resp
+  backend_src_api_routes_documents_py_replace_docume --> backend_src_api_routes_documents_py__translate_err
+  backend_src_api_routes_documents_py_replace_docume --> backend_src_application_use_cases_ingest_document_
+  backend_src_api_routes_documents_py_replace_docume --> backend_src_application_use_cases_ingest_document_
+classDef entry fill:#fef3c7,stroke:#d97706,stroke-width:2px
+classDef external fill:#fee2e2,stroke:#991b1b,stroke-dasharray:3 3

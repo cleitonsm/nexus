@@ -2,7 +2,24 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from decimal import Decimal
+
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -25,18 +42,30 @@ class AssistantModel(Base):
         nullable=False,
     )
 
+    # passive_deletes: o ON DELETE CASCADE do banco apaga os filhos (fix-13).
     conversations: Mapped[list[ConversationModel]] = relationship(
         back_populates="assistant",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     documents: Mapped[list[DocumentModel]] = relationship(
         back_populates="assistant",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 
 class DocumentModel(Base):
     __tablename__ = "documents"
+    __table_args__ = (
+        # RN-26: busca do mesmo conteudo no assistente a cada envio.
+        Index("ix_documents_assistant_hash", "assistant_id", "content_hash"),
+        Index("ix_documents_replaces_document_id", "replaces_document_id"),
+        CheckConstraint(
+            "status IN ('pendente', 'processando', 'indexado', 'falhou', 'substituido')",
+            name="ck_documents_status",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     assistant_id: Mapped[str] = mapped_column(
@@ -57,13 +86,111 @@ class DocumentModel(Base):
         nullable=False,
     )
 
+    embedding_model: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    pipeline_version: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+    )
+    chunk_count: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    storage_key: Mapped[str | None] = mapped_column(
+        String(512),
+        nullable=True,
+    )
+    # Ciclo de vida (SPEC-005). Documentos anteriores ficam indexados (C3).
+    status: Mapped[str] = mapped_column(
+        String(16),
+        default="indexado",
+        server_default="indexado",
+        nullable=False,
+    )
+    failure_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    attempts: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger(), nullable=True)
+    version: Mapped[int] = mapped_column(
+        Integer(),
+        default=1,
+        server_default="1",
+        nullable=False,
+    )
+    replaces_document_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("documents.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    uploaded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     assistant: Mapped[AssistantModel] = relationship(
         back_populates="documents"
     )
 
 
+class IngestionJobModel(Base):
+    """Fila de processamento consumida pelo worker (ADR 0009)."""
+
+    __tablename__ = "ingestion_jobs"
+    __table_args__ = (
+        Index("ix_ingestion_jobs_status_available", "status", "available_at"),
+        CheckConstraint(
+            "status IN ('pendente', 'processando', 'concluido', 'falhou')",
+            name="ck_ingestion_jobs_status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    document_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    attempts: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    available_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    reserved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    last_error: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=_utc_now,
+        nullable=False,
+    )
+
+
 class ConversationModel(Base):
     __tablename__ = "conversations"
+    __table_args__ = (
+        # Listagem do usuario: filtra por dono e assistente, ordena por data.
+        Index(
+            "ix_conversations_owner_assistant_updated",
+            "owner_user_id",
+            "assistant_id",
+            "updated_at",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     assistant_id: Mapped[str] = mapped_column(
@@ -83,6 +210,12 @@ class ConversationModel(Base):
         default=_utc_now,
         nullable=False,
     )
+    # Quem criou a conversa (RF-44); nulo nas anteriores a autenticacao.
+    owner_user_id: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+        index=True,
+    )
 
     assistant: Mapped[AssistantModel] = relationship(
         back_populates="conversations"
@@ -91,11 +224,15 @@ class ConversationModel(Base):
         back_populates="conversation",
         order_by="MessageModel.created_at",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 
 class MessageModel(Base):
     __tablename__ = "messages"
+    __table_args__ = (
+        Index("ix_messages_conversation_created", "conversation_id", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     conversation_id: Mapped[str] = mapped_column(
@@ -110,6 +247,11 @@ class MessageModel(Base):
         DateTime(timezone=True),
         default=_utc_now,
         nullable=False,
+    )
+    # Fontes da resposta (SPEC-003); nulo em mensagens sem citacoes.
+    citations: Mapped[list[dict[str, object]] | None] = mapped_column(
+        JSON(),
+        nullable=True,
     )
 
     conversation: Mapped[ConversationModel] = relationship(
@@ -132,3 +274,203 @@ class SecretSettingModel(Base):
         default=_utc_now,
         nullable=False,
     )
+
+
+class ReindexJobModel(Base):
+    __tablename__ = "reindex_jobs"
+    __table_args__ = (
+        # No maximo uma reindexacao em curso por assistente.
+        Index(
+            "uq_reindex_jobs_running",
+            "assistant_id",
+            unique=True,
+            postgresql_where=text("status = 'running'"),
+        ),
+        CheckConstraint(
+            "status IN ('running', 'succeeded', 'failed')",
+            name="ck_reindex_jobs_status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    assistant_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("assistants.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    target_collection: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    total_documents: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    processed_documents: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    error: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=_utc_now,
+        nullable=False,
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    # PC-D4: reservas feitas pelo worker e prazo da reserva atual.
+    attempts: Mapped[int] = mapped_column(
+        Integer(),
+        default=0,
+        server_default="0",
+        nullable=False,
+    )
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+
+class AssistantGroupModel(Base):
+    """Grupo do Keycloak que pode usar o assistente (RF-42)."""
+
+    __tablename__ = "assistant_groups"
+
+    assistant_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("assistants.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    group_name: Mapped[str] = mapped_column(String(255), primary_key=True)
+
+
+class DocumentGroupModel(Base):
+    """Grupo a que o documento esta restrito (RF-43)."""
+
+    __tablename__ = "document_groups"
+
+    document_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    group_name: Mapped[str] = mapped_column(String(255), primary_key=True)
+
+
+class AuditEventModel(Base):
+    """Trilha somente de inclusao (RN-25); o banco recusa UPDATE e DELETE."""
+
+    __tablename__ = "audit_events"
+    __table_args__ = (
+        # Consulta da trilha por assistente (details->>'assistant_id').
+        Index("ix_audit_events_assistant_id", text("(details ->> 'assistant_id')")),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    resource_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    resource_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    details: Mapped[dict[str, object]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"),
+        nullable=False,
+    )
+
+
+class UsageRecordModel(Base):
+    """Uma pergunta ao chat, com tokens e custo estimado (SPEC-006, RF-57)."""
+
+    __tablename__ = "usage_records"
+    __table_args__ = (
+        Index("ix_usage_records_user_occurred", "user_id", "occurred_at"),
+        Index("ix_usage_records_occurred", "occurred_at"),
+        Index("ix_usage_records_conversation", "conversation_id"),
+        Index("ix_usage_records_assistant", "assistant_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    user_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    conversation_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("conversations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    assistant_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("assistants.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    model: Mapped[str] = mapped_column(String(128), nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer(), nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer(), nullable=False, default=0)
+    estimated_cost: Mapped[Decimal] = mapped_column(
+        Numeric(14, 6), nullable=False, default=Decimal("0")
+    )
+    fallback_used: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
+    failed: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AppSettingModel(Base):
+    """Configuracoes ajustadas na tela (sem segredo; segredos ficam cifrados)."""
+
+    __tablename__ = "app_settings"
+
+    key_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict[str, object]] = mapped_column(JSON(), nullable=False)
+    updated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utc_now
+    )
+
+
+class MessageFeedbackModel(Base):
+    """Avaliacao de resposta (RF-61); uma por usuario e mensagem."""
+
+    __tablename__ = "message_feedback"
+    __table_args__ = (
+        UniqueConstraint(
+            "message_id", "user_id", name="uq_message_feedback_message_user"
+        ),
+        Index("ix_message_feedback_assistant_status", "assistant_id", "status"),
+        CheckConstraint(
+            "status IN ('nao_aplicavel', 'pendente', 'validado', 'descartado')",
+            name="ck_message_feedback_status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    message_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    conversation_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    assistant_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("assistants.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    rating: Mapped[str] = mapped_column(String(16), nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    question: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    answer: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    cited_documents: Mapped[list[str] | None] = mapped_column(JSON(), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    expected_answer: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    source_documents: Mapped[list[str] | None] = mapped_column(JSON(), nullable=True)
+    out_of_scope: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
+    reviewed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

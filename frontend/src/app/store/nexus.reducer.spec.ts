@@ -1,7 +1,16 @@
 import "@angular/compiler";
 import { describe, expect, it } from "vitest";
 
-import { Assistant, ChatMessage, Conversation } from "../shared/models/nexus.models";
+import {
+  Assistant,
+  ChatMessage,
+  Citation,
+  Conversation,
+  DocumentAccess,
+  IndexStatus,
+  LlmSettings,
+  MessageFeedback
+} from "../shared/models/nexus.models";
 import { nexusActions } from "./nexus.actions";
 import {
   initialNexusState,
@@ -10,7 +19,16 @@ import {
 } from "./nexus.reducer";
 import {
   selectActiveAssistantConversations,
-  selectCurrentMessages
+  selectActiveDocumentAccess,
+  selectActiveIndexStatus,
+  selectArchivedConversationDetail,
+  selectArchivedConversations,
+  selectAvailableGroups,
+  selectAuditEvents,
+  selectCurrentChatStream,
+  selectCurrentCitationsByMessage,
+  selectCurrentMessages,
+  selectLlmSettings
 } from "./nexus.selectors";
 
 const assistantConversation = (
@@ -31,6 +49,17 @@ const chatMessage = (id: string, role: "user" | "assistant"): ChatMessage => ({
   role,
   content: `${role}-${id}`,
   created_at: "2026-04-30T10:00:00Z"
+});
+
+const citation = (number: number, sourceName = "politica.pdf"): Citation => ({
+  number,
+  document_id: "doc-1",
+  chunk_id: `doc-1:${number}`,
+  source_name: sourceName,
+  section_path: "Ferias > Duracao",
+  page: 3,
+  score: 0.9,
+  excerpt: `Trecho ${number}.`
 });
 
 const assistant = (id: string): Assistant => ({
@@ -204,5 +233,649 @@ describe("nexusSelectors", () => {
     };
 
     expect(selectActiveAssistantConversations(state)).toHaveLength(2);
+  });
+});
+
+// CT-21 (SPEC-20261007-003): o reducer armazena as fontes e o seletor as expoe.
+describe("citations", () => {
+  const answered: ChatMessage = {
+    ...chatMessage("msg-2", "assistant"),
+    citations: [citation(2), citation(1)]
+  };
+
+  it("stores the sources returned with a chat answer", () => {
+    const nextState = nexusReducer(
+      { ...initialNexusState, currentConversationId: "conv-1" },
+      nexusActions.sendChatQuestionSuccess({
+        conversationId: "conv-1",
+        userMessage: chatMessage("msg-1", "user"),
+        assistantMessage: answered
+      })
+    );
+
+    const [, stored] = nextState.messagesByConversation["conv-1"];
+    expect(stored.citations).toHaveLength(2);
+    expect(stored.citations?.[0].source_name).toBe("politica.pdf");
+  });
+
+  it("stores the sources of a loaded conversation", () => {
+    const nextState = nexusReducer(
+      initialNexusState,
+      nexusActions.loadConversationSuccess({
+        conversationId: "conv-1",
+        messages: [chatMessage("msg-1", "user"), answered]
+      })
+    );
+
+    expect(nextState.messagesByConversation["conv-1"][1].citations).toHaveLength(2);
+  });
+
+  it("exposes the sources by message, ordered by number", () => {
+    const state = {
+      nexus: {
+        ...initialNexusState,
+        currentConversationId: "conv-1",
+        messagesByConversation: {
+          "conv-1": [chatMessage("msg-1", "user"), answered],
+          "conv-2": [{ ...answered, id: "msg-9" }]
+        }
+      }
+    };
+
+    const byMessage = selectCurrentCitationsByMessage(state);
+
+    expect(Object.keys(byMessage)).toEqual(["msg-2"]);
+    expect(byMessage["msg-2"].map((item) => item.number)).toEqual([1, 2]);
+  });
+
+  it("exposes nothing for answers without sources", () => {
+    const state = {
+      nexus: {
+        ...initialNexusState,
+        currentConversationId: "conv-1",
+        messagesByConversation: {
+          "conv-1": [
+            chatMessage("msg-1", "user"),
+            { ...chatMessage("msg-2", "assistant"), citations: [] },
+            chatMessage("msg-3", "assistant")
+          ]
+        }
+      }
+    };
+
+    expect(selectCurrentCitationsByMessage(state)).toEqual({});
+  });
+});
+
+describe("access management (SPEC-004)", () => {
+  const documentAccess = (id: string, groups: string[] = []): DocumentAccess => ({
+    id,
+    assistant_id: "assistant-1",
+    source_name: `${id}.md`,
+    created_at: "2026-10-07T10:00:00Z",
+    chunk_count: 3,
+    groups,
+    status: "indexado",
+    version: 1,
+    failure_reason: null,
+    size_bytes: 100,
+    replaces_document_id: null,
+    content_hash: `hash-${id}`,
+    has_original: true
+  });
+
+  it("stores the groups returned for an assistant", () => {
+    const state = nexusReducer(
+      {
+        ...initialNexusState,
+        assistants: [assistant("assistant-1"), assistant("assistant-2")],
+        loading: { ...initialNexusState.loading, assistantGroups: true }
+      },
+      nexusActions.setAssistantGroupsSuccess({
+        assistantId: "assistant-1",
+        groups: ["financeiro", "rh"]
+      })
+    );
+
+    expect(state.assistants[0]?.groups).toEqual(["financeiro", "rh"]);
+    expect(state.assistants[1]?.groups).toBeUndefined();
+    expect(state.loading.assistantGroups).toBe(false);
+  });
+
+  it("keeps the documents of each assistant and exposes the active one", () => {
+    const loaded = nexusReducer(
+      { ...initialNexusState, activeAssistantId: "assistant-1" },
+      nexusActions.loadDocumentAccessSuccess({
+        assistantId: "assistant-1",
+        documents: [documentAccess("doc-1"), documentAccess("doc-2", ["diretoria"])]
+      })
+    );
+
+    expect(selectActiveDocumentAccess({ nexus: loaded }).map((item) => item.id)).toEqual([
+      "doc-1",
+      "doc-2"
+    ]);
+    expect(
+      selectActiveDocumentAccess({ nexus: { ...loaded, activeAssistantId: "assistant-2" } })
+    ).toEqual([]);
+    expect(selectActiveDocumentAccess({ nexus: { ...loaded, activeAssistantId: null } })).toEqual(
+      []
+    );
+  });
+
+  it("replaces only the document whose restriction changed", () => {
+    const loaded = nexusReducer(
+      initialNexusState,
+      nexusActions.loadDocumentAccessSuccess({
+        assistantId: "assistant-1",
+        documents: [documentAccess("doc-1"), documentAccess("doc-2")]
+      })
+    );
+    const restricted = nexusReducer(
+      { ...loaded, loading: { ...loaded.loading, documentGroups: true } },
+      nexusActions.setDocumentGroupsSuccess({ document: documentAccess("doc-2", ["diretoria"]) })
+    );
+
+    expect(restricted.documentAccessByAssistant["assistant-1"]).toEqual([
+      documentAccess("doc-1"),
+      documentAccess("doc-2", ["diretoria"])
+    ]);
+    expect(restricted.loading.documentGroups).toBe(false);
+  });
+
+  it("surfaces a refused change as an error and stops loading", () => {
+    const state = nexusReducer(
+      { ...initialNexusState, loading: { ...initialNexusState.loading, documentGroups: true } },
+      nexusActions.setDocumentGroupsFailure({ error: "Você não tem permissão para esta operação." })
+    );
+
+    expect(state.error).toBe("Você não tem permissão para esta operação.");
+    expect(state.loading.documentGroups).toBe(false);
+  });
+
+  it("replaces the audit events on each consultation", () => {
+    const event = {
+      id: "e1",
+      occurred_at: "2026-10-07T12:00:00Z",
+      user_id: "ana",
+      action: "chat.question",
+      resource_type: "assistant",
+      resource_id: "assistant-1",
+      details: { retrieved_documents: [{ source_name: "politica.md" }] }
+    };
+    const loading = nexusReducer(
+      initialNexusState,
+      nexusActions.loadAuditEvents({
+        filters: { userId: "", action: "", assistantId: "", from: "", to: "" }
+      })
+    );
+    const loaded = nexusReducer(loading, nexusActions.loadAuditEventsSuccess({ events: [event] }));
+
+    expect(loading.loading.auditEvents).toBe(true);
+    expect(selectAuditEvents({ nexus: loaded })).toEqual([event]);
+    expect(loaded.loading.auditEvents).toBe(false);
+  });
+});
+
+describe("document lifecycle (SPEC-005)", () => {
+  const document = (id: string, changes: Partial<DocumentAccess> = {}): DocumentAccess => ({
+    id,
+    assistant_id: "assistant-1",
+    source_name: `${id}.md`,
+    created_at: "2026-10-08T10:00:00Z",
+    chunk_count: 0,
+    groups: [],
+    status: "pendente",
+    version: 1,
+    failure_reason: null,
+    size_bytes: 100,
+    replaces_document_id: null,
+    content_hash: `hash-${id}`,
+    has_original: true,
+    ...changes
+  });
+
+  const loaded = (documents: DocumentAccess[]): NexusState =>
+    nexusReducer(
+      initialNexusState,
+      nexusActions.loadDocumentAccessSuccess({ assistantId: "assistant-1", documents })
+    );
+
+  it("background polling neither shows the loading notice nor clears an error", () => {
+    const state = { ...loaded([document("doc-1")]), error: "Arquivo duplicado." };
+    const polled = nexusReducer(
+      state,
+      nexusActions.loadDocumentAccess({ assistantId: "assistant-1", background: true })
+    );
+    expect(polled.loading.documentAccess).toBe(false);
+    expect(polled.error).toBe("Arquivo duplicado.");
+
+    const explicit = nexusReducer(
+      state,
+      nexusActions.loadDocumentAccess({ assistantId: "assistant-1" })
+    );
+    expect(explicit.loading.documentAccess).toBe(true);
+    expect(explicit.error).toBeNull();
+  });
+
+  it("removes a deleted document together with its pending version", () => {
+    const state = loaded([
+      document("doc-1", { status: "indexado" }),
+      document("doc-1-v2", { version: 2, replaces_document_id: "doc-1" }),
+      document("doc-2", { status: "indexado" })
+    ]);
+    const deleted = nexusReducer(
+      { ...state, loading: { ...state.loading, documentAction: true } },
+      nexusActions.deleteDocumentSuccess({ assistantId: "assistant-1", documentId: "doc-1" })
+    );
+    expect(deleted.documentAccessByAssistant["assistant-1"]?.map((item) => item.id)).toEqual([
+      "doc-2"
+    ]);
+    expect(deleted.loading.documentAction).toBe(false);
+  });
+
+  it("adds the new version and updates a reprocessed document", () => {
+    const state = loaded([
+      document("doc-1", { status: "indexado" }),
+      document("doc-2", { status: "falhou", failure_reason: "Sem texto." })
+    ]);
+    const replaced = nexusReducer(
+      state,
+      nexusActions.replaceDocumentSuccess({
+        document: document("doc-1-v2", { version: 2, replaces_document_id: "doc-1" })
+      })
+    );
+    expect(replaced.documentAccessByAssistant["assistant-1"]?.map((item) => item.id)).toEqual([
+      "doc-1-v2",
+      "doc-1",
+      "doc-2"
+    ]);
+    const reprocessed = nexusReducer(
+      replaced,
+      nexusActions.reprocessDocumentSuccess({ document: document("doc-2") })
+    );
+    expect(
+      reprocessed.documentAccessByAssistant["assistant-1"]?.find((item) => item.id === "doc-2")
+    ).toEqual(document("doc-2"));
+  });
+
+  it("shows a refused action as an error", () => {
+    const state = nexusReducer(
+      { ...initialNexusState, loading: { ...initialNexusState.loading, documentAction: true } },
+      nexusActions.deleteDocumentFailure({ error: "a reindex is in progress for this assistant." })
+    );
+    expect(state.loading.documentAction).toBe(false);
+    expect(state.error).toBe("a reindex is in progress for this assistant.");
+  });
+});
+
+describe("chat streaming and feedback (SPEC-006)", () => {
+  const withConversation = (): NexusState => ({
+    ...initialNexusState,
+    currentConversationId: "conv-1"
+  });
+
+  it("shows the question at once and accumulates the streamed text (RF-58)", () => {
+    let state = nexusReducer(
+      withConversation(),
+      nexusActions.sendChatQuestion({
+        assistantId: "assistant-1",
+        conversationId: "conv-1",
+        question: "Quanto duram as ferias?",
+        topK: 4
+      })
+    );
+    state = nexusReducer(
+      state,
+      nexusActions.chatStreamStarted({ conversationId: "conv-1", question: "Quanto duram as ferias?" })
+    );
+    state = nexusReducer(state, nexusActions.chatStreamDelta({ text: "Trinta " }));
+    state = nexusReducer(state, nexusActions.chatStreamDelta({ text: "dias [1]." }));
+    expect(state.chatStream).toEqual({
+      conversationId: "conv-1",
+      question: "Quanto duram as ferias?",
+      text: "Trinta dias [1]."
+    });
+    expect(state.loading.sendChat).toBe(true);
+  });
+
+  it("replaces the streamed text with the fallback", () => {
+    let state = nexusReducer(
+      withConversation(),
+      nexusActions.chatStreamStarted({ conversationId: "conv-1", question: "Pergunta" })
+    );
+    state = nexusReducer(state, nexusActions.chatStreamDelta({ text: "Texto sem fonte" }));
+    state = nexusReducer(state, nexusActions.chatStreamReplace({ text: "Nao encontrei contexto" }));
+    expect(state.chatStream?.text).toBe("Nao encontrei contexto");
+  });
+
+  it("swaps the streaming bubble for the stored messages when done", () => {
+    let state = nexusReducer(
+      withConversation(),
+      nexusActions.chatStreamStarted({ conversationId: "conv-1", question: "Pergunta" })
+    );
+    state = nexusReducer(
+      state,
+      nexusActions.sendChatQuestionSuccess({
+        conversationId: "conv-1",
+        userMessage: chatMessage("m-1", "user"),
+        assistantMessage: chatMessage("m-2", "assistant")
+      })
+    );
+    expect(state.chatStream).toBeNull();
+    expect(state.messagesByConversation["conv-1"]).toHaveLength(2);
+  });
+
+  it("clears the streaming bubble and keeps the error on failure (RN-32)", () => {
+    let state = nexusReducer(
+      withConversation(),
+      nexusActions.chatStreamStarted({ conversationId: "conv-1", question: "Pergunta" })
+    );
+    state = nexusReducer(
+      state,
+      nexusActions.sendChatQuestionFailure({ error: "Você atingiu o limite de 20 perguntas por minuto." })
+    );
+    expect(state.chatStream).toBeNull();
+    expect(state.error).toContain("limite");
+  });
+
+  it("selects the stream only for the current or a new conversation", () => {
+    const state = nexusReducer(
+      withConversation(),
+      nexusActions.chatStreamStarted({ conversationId: "conv-2", question: "Outra" })
+    );
+    expect(selectCurrentChatStream.projector(state)).toBeNull();
+    const fresh = nexusReducer(
+      withConversation(),
+      nexusActions.chatStreamStarted({ conversationId: null, question: "Nova" })
+    );
+    expect(selectCurrentChatStream.projector(fresh)?.question).toBe("Nova");
+  });
+
+  it("tracks the rating of each answer and its failure (RF-61)", () => {
+    let state = nexusReducer(
+      initialNexusState,
+      nexusActions.submitFeedback({ messageId: "m-2", rating: "nao_util", comment: "faltou" })
+    );
+    expect(state.feedbackByMessage["m-2"]).toEqual({ rating: "nao_util", sending: true, error: null });
+    state = nexusReducer(
+      state,
+      nexusActions.submitFeedbackFailure({ messageId: "m-2", error: "message not found" })
+    );
+    expect(state.feedbackByMessage["m-2"]).toEqual({
+      rating: "nao_util",
+      sending: false,
+      error: "message not found"
+    });
+  });
+
+  it("removes a reviewed item from the curator queue", () => {
+    const pending: MessageFeedback = {
+      id: "f-1",
+      message_id: "m-2",
+      conversation_id: "conv-1",
+      assistant_id: "assistant-1",
+      rating: "nao_util",
+      comment: null,
+      status: "pendente",
+      created_at: "2026-10-08T12:00:00Z",
+      updated_at: "2026-10-08T12:00:00Z"
+    };
+    let state = nexusReducer(
+      initialNexusState,
+      nexusActions.loadCuratorFeedbackSuccess({ items: [pending] })
+    );
+    state = nexusReducer(
+      state,
+      nexusActions.reviewFeedbackSuccess({ feedback: { ...pending, status: "validado" } })
+    );
+    expect(state.curatorFeedback).toEqual([]);
+    expect(state.notice).toContain("validada");
+  });
+
+  it("keeps the saved usage limits and confirms the change", () => {
+    const state = nexusReducer(
+      initialNexusState,
+      nexusActions.saveUsageLimitsSuccess({
+        limits: { per_minute: 5, per_day: 100, source: "configurado" }
+      })
+    );
+    expect(state.usageLimits?.per_minute).toBe(5);
+    expect(state.notice).toContain("próxima pergunta");
+    expect(nexusReducer(state, nexusActions.clearError()).notice).toBeNull();
+  });
+});
+
+describe("index status (RF-31, PC-D2)", () => {
+  const indexStatus = (changes: Partial<IndexStatus> = {}): IndexStatus => ({
+    assistant_id: "assistant-1",
+    embedding_model: "modelo",
+    pipeline_version: "3",
+    collection_name: "assistant-assistant-1-v1",
+    outdated: false,
+    documents_total: 2,
+    documents_indexed: 2,
+    documents_without_original: [],
+    last_reindex: null,
+    sparse_parameters_changed: true,
+    sparse_parameters_recorded: { k1: 1.2, b: 0.75, average_length: 64 },
+    sparse_parameters_current: { k1: 1.5, b: 0.75, average_length: 64 },
+    ...changes
+  });
+
+  it("stores the status per assistant and exposes the active one", () => {
+    const loading = nexusReducer(
+      initialNexusState,
+      nexusActions.loadIndexStatus({ assistantId: "assistant-1" })
+    );
+    expect(loading.loading.indexStatus).toBe(true);
+    const loaded = nexusReducer(
+      { ...loading, activeAssistantId: "assistant-1" },
+      nexusActions.loadIndexStatusSuccess({ status: indexStatus() })
+    );
+    expect(loaded.loading.indexStatus).toBe(false);
+    expect(selectActiveIndexStatus.projector(loaded)?.sparse_parameters_changed).toBe(true);
+    expect(selectActiveIndexStatus.projector({ ...loaded, activeAssistantId: "outro" })).toBeNull();
+  });
+
+  it("background refresh does not show the loading indicator", () => {
+    const state = nexusReducer(
+      initialNexusState,
+      nexusActions.loadIndexStatus({ assistantId: "assistant-1", background: true })
+    );
+    expect(state.loading.indexStatus).toBe(false);
+  });
+
+  it("records the started reindex in the status", () => {
+    const base = nexusReducer(
+      initialNexusState,
+      nexusActions.loadIndexStatusSuccess({ status: indexStatus() })
+    );
+    const starting = nexusReducer(base, nexusActions.startReindex({ assistantId: "assistant-1" }));
+    expect(starting.loading.startReindex).toBe(true);
+    const started = nexusReducer(
+      starting,
+      nexusActions.startReindexSuccess({
+        job: {
+          id: "job-1",
+          assistant_id: "assistant-1",
+          status: "running",
+          target_collection: "assistant-assistant-1-v2",
+          total_documents: 2,
+          processed_documents: 0,
+          error: null,
+          started_at: "2026-10-08T10:00:00Z",
+          finished_at: null
+        }
+      })
+    );
+    expect(started.loading.startReindex).toBe(false);
+    expect(started.indexStatusByAssistant["assistant-1"].last_reindex?.status).toBe("running");
+    const refused = nexusReducer(
+      starting,
+      nexusActions.startReindexFailure({ error: "a reindex is already running." })
+    );
+    expect(refused.loading.startReindex).toBe(false);
+    expect(refused.error).toBe("a reindex is already running.");
+  });
+});
+
+describe("archived conversations (PC-D5)", () => {
+  const archived = (id: string): Conversation => ({
+    id,
+    assistant_id: "assistant-1",
+    name: `Conversa ${id}`,
+    created_at: "2026-01-10T10:00:00Z",
+    updated_at: "2026-01-10T10:00:00Z",
+    message_count: 2
+  });
+
+  it("loads the list and opens one conversation for reading", () => {
+    const loading = nexusReducer(initialNexusState, nexusActions.loadArchivedConversations());
+    expect(loading.loading.archivedConversations).toBe(true);
+    const loaded = nexusReducer(
+      loading,
+      nexusActions.loadArchivedConversationsSuccess({
+        conversations: [archived("c1"), archived("c2")]
+      })
+    );
+    expect(selectArchivedConversations.projector(loaded).map((item) => item.id)).toEqual([
+      "c1",
+      "c2"
+    ]);
+    const opened = nexusReducer(
+      nexusReducer(loaded, nexusActions.openArchivedConversation({ conversationId: "c1" })),
+      nexusActions.openArchivedConversationSuccess({
+        conversation: {
+          id: "c1",
+          assistant_id: "assistant-1",
+          created_at: "2026-01-10T10:00:00Z",
+          updated_at: "2026-01-10T10:00:00Z",
+          messages: []
+        }
+      })
+    );
+    expect(opened.loading.archivedAction).toBe(false);
+    expect(selectArchivedConversationDetail.projector(opened)?.id).toBe("c1");
+    expect(nexusReducer(opened, nexusActions.closeArchivedConversation()).archivedConversationDetail).toBeNull();
+  });
+
+  it("removes a deleted conversation and closes it if it was open", () => {
+    const state: NexusState = {
+      ...initialNexusState,
+      archivedConversations: [archived("c1"), archived("c2")],
+      archivedConversationDetail: {
+        id: "c1",
+        assistant_id: "assistant-1",
+        created_at: "2026-01-10T10:00:00Z",
+        updated_at: "2026-01-10T10:00:00Z",
+        messages: []
+      }
+    };
+    const deleted = nexusReducer(
+      state,
+      nexusActions.deleteArchivedConversationSuccess({ conversationId: "c1" })
+    );
+    expect(deleted.archivedConversations.map((item) => item.id)).toEqual(["c2"]);
+    expect(deleted.archivedConversationDetail).toBeNull();
+    const refused = nexusReducer(
+      { ...state, loading: { ...state.loading, archivedAction: true } },
+      nexusActions.deleteArchivedConversationFailure({ error: "forbidden" })
+    );
+    expect(refused.loading.archivedAction).toBe(false);
+    expect(refused.error).toBe("forbidden");
+  });
+});
+
+describe("available groups (PC-D6)", () => {
+  it("keeps the Keycloak groups and falls back to free text when unavailable", () => {
+    expect(selectAvailableGroups.projector(initialNexusState)).toBeNull();
+    const loaded = nexusReducer(
+      initialNexusState,
+      nexusActions.loadAvailableGroupsSuccess({ groups: ["financeiro", "rh"] })
+    );
+    expect(selectAvailableGroups.projector(loaded)).toEqual(["financeiro", "rh"]);
+    const failed = nexusReducer(loaded, nexusActions.loadAvailableGroupsFailure());
+    expect(failed.availableGroups).toBeNull();
+    expect(failed.error).toBeNull();
+  });
+});
+
+describe("chat stream cancellation (SPEC-006 D13)", () => {
+  it("clears the streaming bubble and the waiting state", () => {
+    let state = nexusReducer(
+      initialNexusState,
+      nexusActions.sendChatQuestion({
+        assistantId: "assistant-1",
+        conversationId: "conv-1",
+        question: "Pergunta",
+        topK: 4
+      })
+    );
+    state = nexusReducer(
+      state,
+      nexusActions.chatStreamStarted({ conversationId: "conv-1", question: "Pergunta" })
+    );
+    state = nexusReducer(state, nexusActions.chatStreamCancelled());
+    expect(state.chatStream).toBeNull();
+    expect(state.loading.sendChat).toBe(false);
+    expect(state.error).toBeNull();
+  });
+});
+
+describe("LLM connection (SPEC-008, CT-69)", () => {
+  const openai: LlmSettings = {
+    provider: "openai",
+    model: "gpt-4o-mini",
+    api_url: "https://api.openai.com/v1/chat/completions",
+    source: "ambiente",
+    provider_urls: {
+      openai: "https://api.openai.com/v1/chat/completions",
+      gemini: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+    }
+  };
+
+  it("stores the effective connection once loaded", () => {
+    let state = nexusReducer(initialNexusState, nexusActions.loadLlmSettings());
+    expect(state.loading.llmSettings).toBe(true);
+    state = nexusReducer(state, nexusActions.loadLlmSettingsSuccess({ settings: openai }));
+    expect(state.loading.llmSettings).toBe(false);
+    expect(selectLlmSettings.projector(state)).toEqual(openai);
+  });
+
+  it("saves, drops the previous key test and announces that it applies to the next question", () => {
+    let state = nexusReducer(
+      { ...initialNexusState, apiKeyTestResult: { ok: true, model: "gpt-4o-mini", message: "ok", response_preview: "OK" } },
+      nexusActions.saveLlmSettings({
+        input: { provider: "gemini", model: "gemini-flash", api_url: null }
+      })
+    );
+    expect(state.loading.saveLlmSettings).toBe(true);
+    expect(state.error).toBeNull();
+    state = nexusReducer(
+      state,
+      nexusActions.saveLlmSettingsSuccess({
+        settings: { ...openai, provider: "gemini", model: "gemini-flash", source: "configurado" }
+      })
+    );
+    expect(state.loading.saveLlmSettings).toBe(false);
+    expect(state.llmSettings?.source).toBe("configurado");
+    expect(state.apiKeyTestResult).toBeNull();
+    expect(state.notice).toContain("próxima pergunta");
+  });
+
+  it("keeps the loaded connection and shows the server message when saving fails", () => {
+    const loaded = nexusReducer(initialNexusState, nexusActions.loadLlmSettingsSuccess({ settings: openai }));
+    const saving = nexusReducer(
+      loaded,
+      nexusActions.saveLlmSettings({ input: { provider: "custom", model: "m", api_url: "http://x" } })
+    );
+    const failed = nexusReducer(
+      saving,
+      nexusActions.saveLlmSettingsFailure({ error: "api_url must use https." })
+    );
+    expect(failed.loading.saveLlmSettings).toBe(false);
+    expect(failed.llmSettings).toEqual(openai);
+    expect(failed.error).toBe("api_url must use https.");
   });
 });

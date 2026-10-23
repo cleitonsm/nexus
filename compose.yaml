@@ -9,7 +9,10 @@ services:
       - path: .env
         required: false
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - backend_cache:/app/cache
+      - documents_data:/app/data/documents
     healthcheck:
       test:
         [
@@ -27,11 +30,42 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
+      # A API so busca as chaves do Keycloak na primeira requisicao com token.
+      keycloak:
+        condition: service_started
+
+  # Ingestao em segundo plano (SPEC-005, ADR 0009): mesma imagem do backend,
+  # outro comando. Sobe depois do backend, que aplica as migracoes.
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/backend.Dockerfile
+    command: ["python", "-m", "src.cli.worker"]
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    volumes:
+      - backend_cache:/app/cache
+      - documents_data:/app/data/documents
+    # Tempo para concluir o job em andamento ao receber SIGTERM.
+    stop_grace_period: 90s
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
 
   frontend:
     build:
       context: .
       dockerfile: infra/docker/frontend.Dockerfile
+    # Enderecos do login, publicados em /config.json pelo Nginx.
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
     ports:
       - "${FRONTEND_PORT:-4200}:80"
     healthcheck:
@@ -52,7 +86,7 @@ services:
       - path: .env
         required: false
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -62,12 +96,76 @@ services:
       retries: 5
       start_period: 10s
 
+  # Cria o banco do Keycloak no PostgreSQL existente, se ainda nao existir.
+  # Funciona tambem em volumes criados antes da Fase 4.
+  keycloak-db-init:
+    image: postgres:16-alpine
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        export PGPASSWORD="$$POSTGRES_PASSWORD"
+        psql -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -tAc \
+          "SELECT 1 FROM pg_database WHERE datname = 'keycloak'" | grep -q 1 \
+          || psql -h postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "CREATE DATABASE keycloak"
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER:-nexus}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-nexus}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # Endereco pelo qual o navegador chega ao Keycloak: e o emissor dos
+      # tokens. A API busca as chaves pelo nome do servico (backchannel).
+      KC_HOSTNAME: ${KEYCLOAK_URL:-http://localhost:8080}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      # Endereco do frontend no navegador, usado no realm importado
+      # (${NEXUS_FRONTEND_URL} em redirectUris, webOrigins e logout).
+      NEXUS_FRONTEND_URL: ${NEXUS_FRONTEND_URL:-http://localhost:4200}
+      # Segredo do cliente de servico nexus-backend (PC-D6), o mesmo que o
+      # backend usa para ler a lista de grupos.
+      NEXUS_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET:-nexus-backend-dev-secret}
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8080}:8080"
+    volumes:
+      - ./infra/keycloak/nexus-realm.json:/opt/keycloak/data/import/nexus-realm.json:ro
+    healthcheck:
+      # A imagem nao traz curl nem wget; a consulta usa o /dev/tcp do bash.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          read -r status <&3 &&
+          case "$$status" in *" 200 "*) exit 0 ;; *) exit 1 ;; esac
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      keycloak-db-init:
+        condition: service_completed_successfully
+
   qdrant:
     image: qdrant/qdrant:v1.11.3
     environment:
       - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY:-nexus-local}
     ports:
-      - "${QDRANT_PORT:-6333}:6333"
+      - "127.0.0.1:${QDRANT_PORT:-6333}:6333"
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
@@ -77,6 +175,78 @@ services:
       retries: 5
       start_period: 10s
 
+  # --- SPEC-006 D1: observabilidade, desligada por padrao ---------------
+  # docker compose --profile observabilidade up -d
+  # e, no .env, OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    profiles: ["observabilidade"]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "127.0.0.1:${JAEGER_UI_PORT:-16686}:16686"
+    # Memoria limitada: os rastreamentos ficam so em memoria (risco R17).
+    command: ["--memory.max-traces=20000"]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: ["observabilidade"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    profiles: ["observabilidade"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - jaeger
+
+  # --- SPEC-006 D5: backup diario em volume local ------------------------
+  # docker compose --profile backup up -d backup
+  # Restauracao: docs/infraestrutura/backup-e-restauracao.md
+  backup:
+    build:
+      context: .
+      dockerfile: infra/docker/backup.Dockerfile
+    profiles: ["backup"]
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    volumes:
+      - ${BACKUP_PATH:-./backups}:/backups
+      - documents_data:/documents
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   qdrant_data:
+  backend_cache:
+  documents_data:
+  prometheus_data:
+  grafana_data:

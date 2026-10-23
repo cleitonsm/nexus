@@ -5,17 +5,27 @@ from hashlib import sha256
 
 
 class LocalHashEmbeddingGateway:
+    """Duble deterministico para testes: nao captura significado.
+
+    Fora dos testes o adaptador e ``SentenceTransformerEmbeddingGateway``.
     """
-    Deterministic local embedding that does not depend on external services.
-    """
+
+    model_name = "local-hash"
 
     def __init__(self, *, vector_size: int = 384) -> None:
         if vector_size <= 0:
             raise ValueError("vector_size must be positive.")
         self._vector_size = vector_size
 
-    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+    @property
+    def dimension(self) -> int:
+        return self._vector_size
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return [self._embed_single(text) for text in texts]
+
+    def embed_query(self, text: str) -> list[float]:
+        return self._embed_single(text)
 
     def _embed_single(self, text: str) -> list[float]:
         vector = [0.0] * self._vector_size

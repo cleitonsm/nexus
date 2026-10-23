@@ -114,10 +114,17 @@ cp .env.example .env
 docker compose up -d --build
 
 # 3. Acesse
-# Frontend:        http://localhost:4200
+# Frontend:        http://localhost:4200  (leva ao login do Keycloak)
+# Keycloak:        http://localhost:8080
 # Backend (docs):  http://localhost:8000/docs
 # Backend (health): http://localhost:8000/health
 ```
+
+O acesso exige login. O realm de desenvolvimento traz usuários fictícios, todos com a senha
+`nexus-dev`: `admin.nexus` (administrador), `curadora.rh` (curadora), `usuario.rh`,
+`usuario.financeiro` e `diretora`. Papéis, grupos e o console do Keycloak estão em
+[`infra/keycloak/README.md`](infra/keycloak/README.md). Assistentes criados antes da autenticação
+só aparecem para o administrador até serem vinculados a um grupo.
 
 Para o guia de validação ponta a ponta (assistente → documento → chat → histórico), consulte [`docs/infraestrutura/docker-local.md`](docs/infraestrutura/docker-local.md).
 
@@ -139,8 +146,11 @@ nexus/
 │       └── store/      # NgRx store, actions, effects
 ├── docs/
 │   ├── arquitetura/    # ADRs, C4, fluxos
+│   ├── especificacao/  # Requisitos, histórias, casos de uso, specs SDD
+│   ├── gestao-riscos/  # Identificação, análise e resposta a riscos
 │   ├── infraestrutura/ # Docker, variáveis, troubleshooting
-│   └── negocio/        # Visão, escopo, público, glossário
+│   ├── negocio/        # Visão, escopo, público, glossário
+│   └── qa/             # Roteiros de validação manual
 ├── compose.yaml
 └── .env.example
 ```
@@ -163,6 +173,91 @@ nexus/
 
 ---
 
+## Evolução: RAG Enterprise
+
+O MVP comprovou o ciclo completo. O próximo passo é levar o RAG ao nível corporativo: respostas mais precisas e verificáveis, acesso controlado e operação mensurável. As seis fases estão especificadas e com código entregue, cobertas por testes unitários; falta validá-las no ambiente Docker. O caminho até a conclusão está no [plano de conclusão](docs/plano-de-conclusao.md).
+
+### Do MVP à evolução
+
+Como cada aspecto funcionava no MVP e como fica com a evolução (código entregue, validação no Docker pendente):
+
+| Aspecto | MVP | Evolução |
+|---|---|---|
+| Embeddings | Hash determinístico de palavras em 384 posições (`LocalHashEmbeddingGateway`); o modelo citado acima ainda não é carregado | Modelo semântico local da ADR 0004 |
+| Chunking | Corte fixo de 700 caracteres | Por estrutura do documento, medido em tokens |
+| Busca | Densa, quatro vizinhos, sem nota mínima | Híbrida (densa + BM25), reranking local e nota mínima |
+| Fallback | Só quando a busca não devolve nenhum trecho | Por nota mínima de relevância |
+| Fontes | Não exibidas | Citação de documento, seção e página |
+| Acesso | Sem autenticação | Keycloak, papéis e grupos por assistente e por documento |
+| Ingestão | Síncrona, sem exclusão de documento | Em segundo plano, com ciclo de vida completo |
+| Qualidade | Não medida | Comando de avaliação com conjunto de referência (Fase 1) e portão de qualidade local (Fase 6) |
+| Logs | Sem identificador de requisição | JSON com identificador de requisição (Fase 1); rastreamento, métricas e custo por conversa (Fase 6) |
+
+### Decisões fixadas
+
+- **Embeddings continuam locais**, como na ADR 0004. Vetorização, busca esparsa, reranking e OCR rodam no próprio ambiente.
+- **Keycloak é sempre o provedor de identidade.**
+
+### Seis fases, especificadas com SDD
+
+Cada fase tem uma especificação que precisa ser aprovada antes de qualquer código, com critérios de aceite em Gherkin e testes escritos antes da implementação.
+
+| Fase | Entrega | Especificação | Situação |
+|---|---|---|---|
+| 1 | Avaliação e linha de base | [SPEC-001](docs/especificacao/specs/SPEC-001-avaliacao-e-linha-de-base.md) | Código entregue; validação no Docker pendente |
+| 2 | Recuperação semântica | [SPEC-002](docs/especificacao/specs/SPEC-002-recuperacao-semantica.md) | Código entregue; validação no Docker pendente |
+| 3 | Busca híbrida, reranking e citações | [SPEC-003](docs/especificacao/specs/SPEC-003-busca-hibrida-reranking-citacoes.md) | Código entregue; validação no Docker pendente |
+| 4 | Autenticação e controle de acesso | [SPEC-004](docs/especificacao/specs/SPEC-004-autenticacao-e-controle-de-acesso.md) | Código entregue; validação no Docker pendente |
+| 5 | Ingestão e ciclo de vida de documentos | [SPEC-005](docs/especificacao/specs/SPEC-005-ingestao-e-ciclo-de-vida.md) | Código entregue; validação no Docker pendente |
+| 6 | Operação e governança | [SPEC-006](docs/especificacao/specs/SPEC-006-operacao-e-governanca.md) | Código entregue; validação no Docker pendente |
+
+### Medindo a qualidade (Fase 1)
+
+Com o ambiente no ar:
+
+```bash
+scripts/eval.sh nexus-docs        # Linux, macOS ou Git Bash
+scripts\eval.ps1 nexus-docs       # Windows PowerShell
+```
+
+O comando indexa a documentação do próprio Nexus em um assistente piloto, executa 27 perguntas de referência e grava um relatório com recall@5, MRR, fidelidade e fallback correto, comparando com a execução anterior. Detalhes em [`backend/tests/evaluation/README.md`](backend/tests/evaluation/README.md).
+
+### Arquitetura alvo
+
+```mermaid
+flowchart LR
+    User[Usuário] --> FE[Angular + NgRx]
+    FE -->|login| KC[Keycloak]
+    FE -->|token| API[FastAPI]
+    API --> UC[Use Cases + Política de Acesso]
+    UC --> DB[(PostgreSQL)]
+    UC --> RAG[LangGraph RAG]
+    RAG --> HYB[Busca híbrida + Reranker local]
+    HYB --> VDB[(Qdrant)]
+    RAG --> LLM[LLM Provider]
+    API -->|fila| WK[Worker de Ingestão]
+    WK --> EMB[Embeddings locais + BM25]
+    EMB --> VDB
+```
+
+O backend continua em Clean Architecture: tudo o que é novo entra atrás de portas do domínio, e o worker de ingestão é o mesmo código do backend, não um microsserviço.
+
+A documentação desta evolução foi gerada com apoio de IA generativa. O autor aprovou as SPEC-001 a SPEC-006 e validou o conjunto de referência piloto; os planos de implementação e o código seguem **pendentes de revisão do autor**.
+
+---
+
+## Limitações conhecidas
+
+Aceitas na conclusão da evolução (decisão PC-D7), cada uma com o motivo:
+
+- **Tabelas em PDF** saem como texto corrido; extrair a estrutura exigiria uma dependência nova e foi adiado (D11 da SPEC-005). Tabelas de DOCX são preservadas.
+- **Limite de uso e registro de consumo não são atômicos** (C2): duas perguntas simultâneas no limite podem passar. O erro é de uma pergunta e não compromete segurança.
+- **`/metrics` fica na porta 8000, aberto no ambiente local** (C9), por desenho: a porta só escuta em `127.0.0.1`. Em outro ambiente, restrinja no proxy.
+- **Backup só local** (D5 da SPEC-006): a cópia diária fica no volume do Docker. Replicar para fora do host é responsabilidade de quem opera.
+- **Sem tela de versões substituídas** (D5 da SPEC-005): só a versão vigente do documento é consultável.
+- **Nota mínima de relevância** (`RELEVANCE_MIN_SCORE`): o valor 0,10 foi calibrado com 27 itens do piloto (82% das perguntas dentro do escopo respondidas; 100% das fora do escopo em fallback). A amostra fora do escopo é pequena; refaça com `scripts\calibrate.ps1` sobre o conjunto ampliado validado e com dados reais.
+- **Validação de grupos** depende do cliente de serviço `nexus-backend` no Keycloak; sem ele a API aceita o grupo e registra um aviso.
+
 ## Documentação
 
 | Documento | Descrição |
@@ -174,6 +269,15 @@ nexus/
 | [Clean Architecture no backend](docs/arquitetura/clean-architecture-backend.md) | Camadas, regras de dependência e exemplos |
 | [Fluxo RAG e isolamento](docs/arquitetura/rag-e-isolamento-de-conhecimento.md) | Estratégia de ingestão e separação por assistente |
 | [LangGraph conversacional](docs/arquitetura/langgraph-fluxo-conversacional.md) | Etapas do grafo, memória e regras de produto |
-| [Plano incremental](docs/plano-incremental.md) | As 8 etapas de construção do MVP |
+| [Plano incremental](docs/plano-incremental.md) | As 8 etapas de construção do MVP e as 6 etapas da evolução RAG Enterprise |
 | [Docker local](docs/infraestrutura/docker-local.md) | Guia de execução e validação local |
 | [Gestão de riscos e comunicação](docs/gestao-riscos/README.md) | Atividade de identificação, análise e resposta a riscos com apoio de genAI |
+| [Especificação de requisitos](docs/especificacao/README.md) | Requisitos, regras de negócio, histórias, critérios de aceitação e casos de uso |
+| [Especificações SDD da evolução](docs/especificacao/specs/README.md) | Uma especificação por fase da evolução RAG Enterprise |
+| [Estratégia de testes](docs/especificacao/estrategia-de-testes.md) | Níveis de teste e casos de teste da evolução |
+| [Escopo da evolução RAG Enterprise](docs/negocio/escopo-rag-enterprise.md) | Objetivo de negócio, escopo, benefícios e critérios de aceite |
+| [ADRs](docs/arquitetura/adrs) | Decisões arquiteturais; 0006 a 0011 tratam da evolução |
+| [Plano de conclusão da evolução](docs/plano-de-conclusao.md) | O que falta, em que ordem e até quando, para concluir a evolução |
+| [Plano de validação final](docs/qa/plano-de-validacao-final.md) | Preparação e campanha de testes que comprovam a evolução |
+| [Validação manual da evolução](docs/qa/validacao-manual-rag-enterprise.md) | Roteiro ponta a ponta por fase |
+| [Avaliação de qualidade](backend/tests/evaluation/README.md) | Conjunto de referência, comando de avaliação e métricas |

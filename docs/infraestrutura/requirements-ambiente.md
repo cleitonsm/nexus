@@ -55,3 +55,38 @@ Nao deve ser necessario instalar Python, Node.js, Angular CLI, PostgreSQL ou Qdr
 - `docker compose up --build` sobe frontend, backend, postgres e qdrant.
 - Backend responde em `/health`.
 - Qdrant responde em `http://localhost:6333`.
+
+## Evolução RAG Enterprise (Planejado)
+
+A Fase 1, já implementada, não altera os requisitos de ambiente: não acrescenta serviços, portas
+nem dependências.
+
+Para as próximas fases, a premissa de dependências locais não muda: Git e Docker continuam sendo
+as únicas exigências. O que muda é o consumo de recursos.
+
+### Portas Adicionais Previstas (Host)
+
+- `8080`: Keycloak.
+- Portas do perfil opcional de observabilidade, definidas na implementação.
+
+### Volumes Adicionais
+
+- `backend_cache`: passa de opcional a necessário, para os modelos de embedding e de reranking.
+- `documents_data`: arquivos originais dos documentos.
+- `keycloak` usa o volume `postgres_data`, em banco próprio.
+
+### Capacidade
+
+- A capacidade mínima atual (8 GB para o Docker) deixa de ser suficiente com modelos locais,
+  Keycloak e worker ativos.
+- Passa a valer como mínimo o que hoje é indicado como confortável: 6 vCPUs, 12 GB de memória para
+  o Docker e 30 GB de disco livre.
+- Não é exigida GPU; embeddings, reranking e OCR rodam em CPU.
+- A primeira construção das imagens e o primeiro uso baixam os modelos e levam mais tempo.
+
+### Checklist Adicional
+
+- Keycloak responde e o realm `nexus` foi importado.
+- Login pelo frontend redireciona para o Keycloak e retorna autenticado.
+- O worker está em execução e consome a fila.
+- O modelo de embedding está no volume de cache e a ingestão funciona sem acesso à internet.

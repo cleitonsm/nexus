@@ -1,0 +1,66 @@
+# Processado pelo envsubst na subida do container: so as variaveis de ambiente
+# definidas (KEYCLOAK_URL, KEYCLOAK_REALM, OIDC_FRONTEND_CLIENT_ID) sao
+# substituidas; as variaveis do proprio Nginx ($host, $uri...) ficam como estao.
+server {
+    listen 80;
+    server_name _;
+    # 25 MB de arquivo (RN-30) mais a sobrecarga do formulario multipart.
+    client_max_body_size 26m;
+    # SPEC-006 D12 (RF-60): a pagina so carrega imagens do proprio site. Mesmo
+    # que uma resposta do LLM traga uma imagem externa, o navegador nao a busca.
+    add_header Content-Security-Policy "img-src 'self' data:" always;
+
+    # A documentacao interativa da API nao exige token: fica fora do proxy.
+    location ~ ^/api/(docs|redoc|openapi\.json) {
+        return 404;
+    }
+
+    # Metricas so pela rede interna do Compose (Prometheus do perfil
+    # observabilidade); pelo proxy publico, 404 (SPEC-006, RNF-25).
+    location = /api/metrics {
+        return 404;
+    }
+
+    # Resposta em streaming (RF-58): cada parte segue assim que chega.
+    location ~ ^/api/conversations/[^/]+/chat/stream$ {
+        rewrite ^/api/(.*)$ /$1 break;
+        proxy_pass http://backend:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_cache off;
+        gzip off;
+        proxy_read_timeout 300s;
+    }
+
+    location /api/ {
+        proxy_pass http://backend:8000/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Enderecos publicos do login; nenhum segredo (o cliente OIDC e publico).
+    location = /config.json {
+        default_type application/json;
+        add_header Cache-Control "no-store";
+        return 200 '{"keycloakUrl":"${KEYCLOAK_URL}","realm":"${KEYCLOAK_REALM}","clientId":"${OIDC_FRONTEND_CLIENT_ID}"}';
+    }
+
+    location = /health {
+        add_header Content-Type text/plain;
+        return 200 'ok';
+    }
+
+    location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+}

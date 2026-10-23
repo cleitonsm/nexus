@@ -1,0 +1,10 @@
+{
+  "goal": "health check",
+  "skip_paths": ["docs/", ".cursor/", ".claude/", "node_modules/", "dist/", ".angular/"],
+  "known_issues": [],
+  "ground_truth": "CLAUDE.md / docs/arquitetura (excluded from review, may be consulted)",
+  "style_standard": null,
+  "sensitive_paths": [],
+  "test_posture": "signal_only",
+  "budget_hint": "medium"
+}

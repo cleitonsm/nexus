@@ -1,0 +1,27 @@
+flowchart LR
+  backend_src_api_routes_documents_py__document_resp["_document_response<br/><small>backend/src/api/routes/documents.py:357</small>"]
+  backend_src_api_routes_documents_py__translate_err["_translate_errors<br/><small>backend/src/api/routes/documents.py:307</small>"]
+  backend_src_api_routes_documents_py_reprocess_docu["reprocess_document<br/><small>backend/src/api/routes/documents.py:259</small>"]
+  backend_src_api_schemas_access_py_DocumentAccessRe["DocumentAccessResponse<br/><small>backend/src/api/schemas/access.py:25</small>"]
+  backend_src_application_dto_access_dto_py_CurrentU["from_user<br/><small>backend/src/application/dto/access_dto.py:17</small>"]
+  backend_src_application_services_access_control_py["audit<br/><small>backend/src/application/services/access_control.py:78</small>"]
+  backend_src_application_services_access_control_py["record<br/><small>backend/src/application/services/access_control.py:36</small>"]
+  backend_src_application_use_cases_audit_and_sessio["execute<br/><small>backend/src/application/use_cases/audit_and_session.py:40</small>"]
+  backend_src_application_use_cases_ingest_document_["ReprocessDocumentInput<br/><small>backend/src/application/use_cases/ingest_document.py:372</small>"]
+  backend_src_application_use_cases_ingest_document_["ReprocessDocumentUseCase<br/><small>backend/src/application/use_cases/ingest_document.py:377</small>"]
+  backend_src_domain_audit_py_AuditEvent["AuditEvent<br/><small>backend/src/domain/audit.py:61</small>"]
+  backend_src_domain_interfaces_py_AuditLogRepositor["append<br/><small>backend/src/domain/interfaces.py:572</small>"]
+  backend_src_api_routes_documents_py_reprocess_docu:::entry
+  backend_src_api_routes_documents_py__document_resp --> backend_src_api_schemas_access_py_DocumentAccessRe
+  backend_src_api_routes_documents_py_reprocess_docu --> backend_src_api_routes_documents_py__document_resp
+  backend_src_api_routes_documents_py_reprocess_docu --> backend_src_api_routes_documents_py__translate_err
+  backend_src_api_routes_documents_py_reprocess_docu --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_api_routes_documents_py_reprocess_docu --> backend_src_application_use_cases_ingest_document_
+  backend_src_api_routes_documents_py_reprocess_docu --> backend_src_application_use_cases_ingest_document_
+  backend_src_application_services_access_control_py --> backend_src_application_services_access_control_py
+  backend_src_application_services_access_control_py --> backend_src_domain_audit_py_AuditEvent
+  backend_src_application_services_access_control_py --> backend_src_domain_interfaces_py_AuditLogRepositor
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_dto_access_dto_py_CurrentU
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_services_access_control_py
+classDef entry fill:#fef3c7,stroke:#d97706,stroke-width:2px
+classDef external fill:#fee2e2,stroke:#991b1b,stroke-dasharray:3 3

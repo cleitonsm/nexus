@@ -43,3 +43,32 @@ leitura ao código e à documentação do próprio repositório Nexus), utilizan
 linguagem de grande porte (LLM) para gerar as primeiras versões de cada etapa a partir dos
 prompts estruturados. Nenhuma informação sensível ou dado real de cliente foi utilizada — todo o
 conteúdo é derivado da documentação pública do próprio projeto acadêmico.
+
+## Ciclo 2 — Evolução RAG Enterprise
+
+Além da atividade original, que cobre os riscos do MVP (R1 a R8), cada arquivo recebeu uma seção
+**Ciclo 2**, dedicada aos riscos da evolução do Nexus para um RAG de nível corporativo (R9 a R20),
+especificada em [`docs/especificacao/specs`](../especificacao/specs/README.md).
+
+| Arquivo | Acréscimo do ciclo 2 |
+|---|---|
+| [`01-identificacao-riscos.md`](01-identificacao-riscos.md) | Riscos R9 a R20 e situação dos riscos R1 a R8 diante da evolução |
+| [`02-analise-riscos.md`](02-analise-riscos.md) | Análise qualitativa e nova matriz de probabilidade x impacto |
+| [`03-estrategias-resposta.md`](03-estrategias-resposta.md) | Estratégias sugeridas para R9, R11, R12, R14, R15 e R19 |
+| [`04-comunicacao-stakeholders.md`](04-comunicacao-stakeholders.md) | Comunicação da proposta de evolução para público não técnico |
+
+**Diferença importante em relação ao ciclo 1:** as seções do ciclo 2 contêm a saída gerada pela
+IA **ainda sem a revisão do autor**. Os prompts foram reconstruídos no formato da pasta a partir
+da tarefa e do contexto efetivamente fornecidos. As estratégias de resposta são sugestões; a
+escolha final ainda não foi registrada. Ferramenta utilizada neste ciclo: Claude (Anthropic), em
+modo agente, com acesso de leitura ao código e à documentação do repositório.
+
+Cada arquivo traz ainda uma seção **Atualização após a Fase 1**, com o que mudou depois da
+primeira entrega, incluindo o risco R21 (código entregue sem execução no ambiente real).
+
+### Riscos de maior atenção no ciclo 2
+
+- **R12** — falha na aplicação das permissões entre grupos.
+- **R15** — envio de conteúdo sensível ao provedor de LLM.
+- **R11** — limite de sequência do modelo de embedding, que degrada a busca sem gerar erro.
+- **R14** — conjunto de referência insuficiente, que compromete todas as medidas.

@@ -1,0 +1,718 @@
+flowchart TB
+  subgraph P0["main() in backend/src/cli/evaluate.py"]
+    P0_backend_src_application_dto_access_dto_py_CurrentU["from_user"]
+    P0_backend_src_application_dto_evaluation_dto_py_Eval["to_dict"]
+    P0_backend_src_application_services_access_control_py["AccessControl"]
+    P0_backend_src_application_services_access_control_py["audit"]
+    P0_backend_src_application_services_access_control_py["AuditTrail"]
+    P0_backend_src_application_services_grounded_answer_p["GroundedAnswerGenerator"]
+    P0_backend_src_application_services_index_state_py_is["is_index_outdated"]
+    P0_backend_src_application_services_index_state_py_re["read_index_state"]
+    P0_backend_src_application_services_retrieval_py_Cont["ContextRetriever"]
+    P0_backend_src_application_services_retrieval_py_Retr["RetrievalSettings"]
+    P0_backend_src_application_use_cases_audit_and_sessio["execute"]
+    P0_backend_src_application_use_cases_compare_evaluati["CompareEvaluationReportsInput"]
+    P0_backend_src_application_use_cases_compare_evaluati["CompareEvaluationReportsUseCase"]
+    P0_backend_src_application_use_cases_create_assistant["CreateAssistantInput"]
+    P0_backend_src_application_use_cases_create_assistant["CreateAssistantUseCase"]
+    P0_backend_src_application_use_cases_evaluate_assista["EvaluateAssistantInput"]
+    P0_backend_src_application_use_cases_evaluate_assista["EvaluateAssistantUseCase"]
+    P0_backend_src_application_use_cases_ingest_document_["IngestDocumentInput"]
+    P0_backend_src_application_use_cases_ingest_document_["IngestDocumentUseCase"]
+    P0_backend_src_cli_evaluate_py__build_llm_gateway["_build_llm_gateway"]
+    P0_backend_src_cli_evaluate_py__discard_outdated_inde["_discard_outdated_index"]
+    P0_backend_src_cli_evaluate_py__ensure_assistant["_ensure_assistant"]
+    P0_backend_src_cli_evaluate_py__parameters["_parameters"]
+    P0_backend_src_cli_evaluate_py__parse_args["_parse_args"]
+    P0_backend_src_cli_evaluate_py__run["_run"]
+    P0_backend_src_cli_evaluate_py__seed_documents["_seed_documents"]
+    P0_backend_src_cli_evaluate_py__store_and_compare["_store_and_compare"]
+    P0_backend_src_cli_evaluate_py_main["main"]
+    P0_backend_src_domain_interfaces_py_AssistantReposito["delete"]
+    P0_backend_src_domain_interfaces_py_AssistantReposito["list_all"]
+    P0_backend_src_domain_interfaces_py_AssistantReposito["save"]
+    P0_backend_src_domain_interfaces_py_ConversationRepos["list_by_assistant"]
+    P0_backend_src_domain_interfaces_py_DocumentFileStora["load"]
+    P0_backend_src_domain_interfaces_py_VectorStoreGatewa["delete_collection"]
+    P0_backend_src_domain_value_objects_py_AssistantId["AssistantId"]
+    P0_backend_src_infrastructure_composition_py__float_e["_float_env"]
+    P0_backend_src_infrastructure_composition_py__int_env["_int_env"]
+    P0_backend_src_infrastructure_composition_py_build_do["build_document_indexer"]
+    P0_backend_src_infrastructure_composition_py_build_em["build_embedding_gateway"]
+    P0_backend_src_infrastructure_composition_py_build_fi["build_file_storage"]
+    P0_backend_src_infrastructure_composition_py_build_re["build_reranker_gateway"]
+    P0_backend_src_infrastructure_composition_py_build_sp["build_sparse_embedding_gateway"]
+    P0_backend_src_infrastructure_composition_py_build_to["build_token_counter"]
+    P0_backend_src_infrastructure_composition_py_embeddin["embedding_model_name"]
+    P0_backend_src_infrastructure_composition_py_max_file["max_file_bytes"]
+    P0_backend_src_infrastructure_composition_py_retrieva["retrieval_settings"]
+    P0_backend_src_infrastructure_database_alembic_versio["_has_column"]
+    P0_backend_src_infrastructure_database_alembic_versio["_timestamp"]
+    P0_backend_src_infrastructure_database_alembic_versio["upgrade"]
+    P0_backend_src_infrastructure_database_migrate_py_run["run_migrations"]
+    P0_backend_src_infrastructure_database_repositories_p["PostgresAssistantPermissionRepository"]
+    P0_backend_src_infrastructure_database_repositories_p["PostgresAssistantRepository"]
+    P0_backend_src_infrastructure_database_repositories_p["PostgresAuditLogRepository"]
+    P0_backend_src_infrastructure_database_repositories_p["PostgresDocumentRepository"]
+    P0_backend_src_infrastructure_database_repositories_p["PostgresReindexJobRepository"]
+    P0_backend_src_infrastructure_embeddings_sentence_tra["SentenceTransformerEmbeddingGateway"]
+    P0_backend_src_infrastructure_evaluation_dataset_load["JsonlEvaluationDatasetLoader"]
+    P0_backend_src_infrastructure_evaluation_llm_answer_j["LLMAnswerJudge"]
+    P0_backend_src_infrastructure_evaluation_report_store["JsonEvaluationReportStore"]
+    P0_backend_src_infrastructure_evaluation_report_store["load_latest"]
+    P0_backend_src_infrastructure_observability_structure["JsonLogFormatter"]
+    P0_backend_src_infrastructure_observability_structure["_adopt_server_loggers"]
+    P0_backend_src_infrastructure_observability_structure["configure_logging"]
+    P0_backend_src_infrastructure_vector_store_qdrant_sto["QdrantVectorStoreGateway"]
+    P0_backend_src_application_use_cases_audit_and_sessio --> P0_backend_src_application_dto_access_dto_py_CurrentU
+    P0_backend_src_application_use_cases_audit_and_sessio --> P0_backend_src_application_services_access_control_py
+    P0_backend_src_cli_evaluate_py__discard_outdated_inde --> P0_backend_src_application_services_index_state_py_is
+    P0_backend_src_cli_evaluate_py__discard_outdated_inde --> P0_backend_src_application_services_index_state_py_re
+    P0_backend_src_cli_evaluate_py__discard_outdated_inde --> P0_backend_src_domain_interfaces_py_AssistantReposito
+    P0_backend_src_cli_evaluate_py__discard_outdated_inde --> P0_backend_src_domain_interfaces_py_ConversationRepos
+    P0_backend_src_cli_evaluate_py__discard_outdated_inde --> P0_backend_src_domain_interfaces_py_VectorStoreGatewa
+    P0_backend_src_cli_evaluate_py__ensure_assistant --> P0_backend_src_application_use_cases_audit_and_sessio
+    P0_backend_src_cli_evaluate_py__ensure_assistant --> P0_backend_src_application_use_cases_create_assistant
+    P0_backend_src_cli_evaluate_py__ensure_assistant --> P0_backend_src_application_use_cases_create_assistant
+    P0_backend_src_cli_evaluate_py__ensure_assistant --> P0_backend_src_domain_interfaces_py_AssistantReposito
+    P0_backend_src_cli_evaluate_py__ensure_assistant --> P0_backend_src_domain_value_objects_py_AssistantId
+    P0_backend_src_cli_evaluate_py__ensure_assistant --> P0_backend_src_infrastructure_database_repositories_p
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_application_dto_evaluation_dto_py_Eval
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_application_services_access_control_py
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_application_services_access_control_py
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_application_services_grounded_answer_p
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_application_services_retrieval_py_Cont
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_application_use_cases_audit_and_sessio
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_application_use_cases_evaluate_assista
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_application_use_cases_evaluate_assista
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_application_use_cases_ingest_document_
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_cli_evaluate_py__build_llm_gateway
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_cli_evaluate_py__discard_outdated_inde
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_cli_evaluate_py__ensure_assistant
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_cli_evaluate_py__parameters
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_cli_evaluate_py__seed_documents
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_cli_evaluate_py__store_and_compare
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_composition_py_build_do
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_composition_py_build_em
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_composition_py_build_fi
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_composition_py_build_re
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_composition_py_build_sp
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_composition_py_build_to
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_composition_py_max_file
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_composition_py_retrieva
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_database_repositories_p
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_database_repositories_p
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_database_repositories_p
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_database_repositories_p
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_evaluation_llm_answer_j
+    P0_backend_src_cli_evaluate_py__run --> P0_backend_src_infrastructure_vector_store_qdrant_sto
+    P0_backend_src_cli_evaluate_py__seed_documents --> P0_backend_src_application_use_cases_audit_and_sessio
+    P0_backend_src_cli_evaluate_py__seed_documents --> P0_backend_src_application_use_cases_ingest_document_
+    P0_backend_src_cli_evaluate_py__seed_documents --> P0_backend_src_domain_interfaces_py_ConversationRepos
+    P0_backend_src_cli_evaluate_py__store_and_compare --> P0_backend_src_application_use_cases_audit_and_sessio
+    P0_backend_src_cli_evaluate_py__store_and_compare --> P0_backend_src_application_use_cases_compare_evaluati
+    P0_backend_src_cli_evaluate_py__store_and_compare --> P0_backend_src_application_use_cases_compare_evaluati
+    P0_backend_src_cli_evaluate_py__store_and_compare --> P0_backend_src_domain_interfaces_py_AssistantReposito
+    P0_backend_src_cli_evaluate_py__store_and_compare --> P0_backend_src_infrastructure_evaluation_report_store
+    P0_backend_src_cli_evaluate_py__store_and_compare --> P0_backend_src_infrastructure_evaluation_report_store
+    P0_backend_src_cli_evaluate_py_main --> P0_backend_src_cli_evaluate_py__parse_args
+    P0_backend_src_cli_evaluate_py_main --> P0_backend_src_cli_evaluate_py__run
+    P0_backend_src_cli_evaluate_py_main --> P0_backend_src_domain_interfaces_py_DocumentFileStora
+    P0_backend_src_cli_evaluate_py_main --> P0_backend_src_infrastructure_database_migrate_py_run
+    P0_backend_src_cli_evaluate_py_main --> P0_backend_src_infrastructure_evaluation_dataset_load
+    P0_backend_src_cli_evaluate_py_main --> P0_backend_src_infrastructure_observability_structure
+    P0_backend_src_infrastructure_composition_py_build_em --> P0_backend_src_infrastructure_composition_py__int_env
+    P0_backend_src_infrastructure_composition_py_build_em --> P0_backend_src_infrastructure_composition_py_embeddin
+    P0_backend_src_infrastructure_composition_py_build_em --> P0_backend_src_infrastructure_embeddings_sentence_tra
+    P0_backend_src_infrastructure_composition_py_retrieva --> P0_backend_src_application_services_retrieval_py_Retr
+    P0_backend_src_infrastructure_composition_py_retrieva --> P0_backend_src_infrastructure_composition_py__float_e
+    P0_backend_src_infrastructure_composition_py_retrieva --> P0_backend_src_infrastructure_composition_py__int_env
+    P0_backend_src_infrastructure_database_alembic_versio --> P0_backend_src_infrastructure_database_alembic_versio
+    P0_backend_src_infrastructure_database_alembic_versio --> P0_backend_src_infrastructure_database_alembic_versio
+    P0_backend_src_infrastructure_database_migrate_py_run --> P0_backend_src_infrastructure_database_alembic_versio
+    P0_backend_src_infrastructure_observability_structure --> P0_backend_src_infrastructure_observability_structure
+    P0_backend_src_infrastructure_observability_structure --> P0_backend_src_infrastructure_observability_structure
+  end
+  subgraph P1["POST /{conversation_id}/chat/stream"]
+    P1_backend_src_api_dependencies_py_UnconfiguredLLMGat["generate_stream"]
+    P1_backend_src_api_routes_conversations_py__chat_erro["_chat_error"]
+    P1_backend_src_api_routes_conversations_py__chat_inpu["_chat_input"]
+    P1_backend_src_api_routes_conversations_py__chat_resp["_chat_response"]
+    P1_backend_src_api_routes_conversations_py__in_one_co["_in_one_context"]
+    P1_backend_src_api_routes_conversations_py__message_r["_message_response"]
+    P1_backend_src_api_routes_conversations_py__not_found["_not_found"]
+    P1_backend_src_api_routes_conversations_py__server_se["_server_sent_events"]
+    P1_backend_src_api_routes_conversations_py__sse["_sse"]
+    P1_backend_src_api_routes_conversations_py_chat_with_["chat_with_assistant_stream"]
+    P1_backend_src_api_schemas_conversations_py_ChatRespo["ChatResponse"]
+    P1_backend_src_api_schemas_conversations_py_CitationR["CitationResponse"]
+    P1_backend_src_api_schemas_conversations_py_MessageRe["MessageResponse"]
+    P1_backend_src_application_dto_conversation_dto_py_Ch["ChatStreamEvent"]
+    P1_backend_src_application_dto_conversation_dto_py_Ch["ChatTurnResult"]
+    P1_backend_src_application_dto_conversation_dto_py_Ci["from_entity"]
+    P1_backend_src_application_dto_conversation_dto_py_Me["from_entity"]
+    P1_backend_src_application_services_access_control_py["_deny"]
+    P1_backend_src_application_services_access_control_py["audit"]
+    P1_backend_src_application_services_access_control_py["owns_conversation"]
+    P1_backend_src_application_services_access_control_py["require_assistant_access"]
+    P1_backend_src_application_services_access_control_py["record"]
+    P1_backend_src_application_services_usage_py_UsageGov["check"]
+    P1_backend_src_application_services_usage_py_UsageGov["current_limits"]
+    P1_backend_src_application_use_cases_chat_with_assist["ChatWithAssistantInput"]
+    P1_backend_src_application_use_cases_chat_with_assist["ChatWithAssistantUseCase"]
+    P1_backend_src_application_use_cases_chat_with_assist["_audit_failure"]
+    P1_backend_src_application_use_cases_chat_with_assist["_audit_question"]
+    P1_backend_src_application_use_cases_chat_with_assist["_check_usage_limit"]
+    P1_backend_src_application_use_cases_chat_with_assist["_finish_failure"]
+    P1_backend_src_application_use_cases_chat_with_assist["_finish_success"]
+    P1_backend_src_application_use_cases_chat_with_assist["_initial_state"]
+    P1_backend_src_application_use_cases_chat_with_assist["_record_usage"]
+    P1_backend_src_application_use_cases_chat_with_assist["_start"]
+    P1_backend_src_application_use_cases_chat_with_assist["_stream_answer"]
+    P1_backend_src_application_use_cases_chat_with_assist["_stream_events"]
+    P1_backend_src_application_use_cases_chat_with_assist["_top_n"]
+    P1_backend_src_application_use_cases_chat_with_assist["start_stream"]
+    P1_backend_src_application_use_cases_chat_with_assist["ConversationNotFoundError"]
+    P1_backend_src_application_use_cases_chat_with_assist["_retrieved"]
+    P1_backend_src_application_use_cases_chat_with_assist["_turn_attributes"]
+    P1_backend_src_domain_access_py_AccessPolicy_can_acce["can_access_assistant"]
+    P1_backend_src_domain_access_py_AccessPolicy_owns_con["owns_conversation"]
+    P1_backend_src_domain_audit_py_AuditEvent["AuditEvent"]
+    P1_backend_src_domain_errors_py_AccessDeniedError["AccessDeniedError"]
+    P1_backend_src_domain_errors_py_UsageLimitExceededErr["UsageLimitExceededError"]
+    P1_backend_src_domain_interfaces_py_AssistantPermissi["get_assistant_groups"]
+    P1_backend_src_domain_interfaces_py_AssistantReposito["get_by_id"]
+    P1_backend_src_domain_interfaces_py_AuditLogRepositor["append"]
+    P1_backend_src_domain_interfaces_py_UsageSettingsRepo["get_limits"]
+    P1_backend_src_domain_observability_py_MetricsRecorde["increment"]
+    P1_backend_src_domain_observability_py_MetricsRecorde["observe"]
+    P1_backend_src_domain_observability_py_NoopTracer_spa["span"]
+    P1_backend_src_domain_observability_py__NoopSpan["_NoopSpan"]
+    P1_backend_src_domain_usage_py_TokenUsage["TokenUsage"]
+    P1_backend_src_domain_value_objects_py_ConversationId["ConversationId"]
+    P1_backend_src_api_routes_conversations_py__chat_erro --> P1_backend_src_api_routes_conversations_py__not_found
+    P1_backend_src_api_routes_conversations_py__chat_inpu --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_api_routes_conversations_py__chat_resp --> P1_backend_src_api_routes_conversations_py__message_r
+    P1_backend_src_api_routes_conversations_py__chat_resp --> P1_backend_src_api_schemas_conversations_py_ChatRespo
+    P1_backend_src_api_routes_conversations_py__message_r --> P1_backend_src_api_schemas_conversations_py_CitationR
+    P1_backend_src_api_routes_conversations_py__message_r --> P1_backend_src_api_schemas_conversations_py_MessageRe
+    P1_backend_src_api_routes_conversations_py__server_se --> P1_backend_src_api_routes_conversations_py__chat_erro
+    P1_backend_src_api_routes_conversations_py__server_se --> P1_backend_src_api_routes_conversations_py__chat_resp
+    P1_backend_src_api_routes_conversations_py__server_se --> P1_backend_src_api_routes_conversations_py__in_one_co
+    P1_backend_src_api_routes_conversations_py__server_se --> P1_backend_src_api_routes_conversations_py__sse
+    P1_backend_src_api_routes_conversations_py_chat_with_ --> P1_backend_src_api_routes_conversations_py__chat_erro
+    P1_backend_src_api_routes_conversations_py_chat_with_ --> P1_backend_src_api_routes_conversations_py__chat_inpu
+    P1_backend_src_api_routes_conversations_py_chat_with_ --> P1_backend_src_api_routes_conversations_py__server_se
+    P1_backend_src_api_routes_conversations_py_chat_with_ --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_api_routes_conversations_py_chat_with_ --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_dto_conversation_dto_py_Me --> P1_backend_src_application_dto_conversation_dto_py_Ci
+    P1_backend_src_application_services_access_control_py --> P1_backend_src_application_services_access_control_py
+    P1_backend_src_application_services_access_control_py --> P1_backend_src_domain_errors_py_AccessDeniedError
+    P1_backend_src_application_services_access_control_py --> P1_backend_src_application_services_access_control_py
+    P1_backend_src_application_services_access_control_py --> P1_backend_src_domain_access_py_AccessPolicy_owns_con
+    P1_backend_src_application_services_access_control_py --> P1_backend_src_application_services_access_control_py
+    P1_backend_src_application_services_access_control_py --> P1_backend_src_domain_access_py_AccessPolicy_can_acce
+    P1_backend_src_application_services_access_control_py --> P1_backend_src_domain_interfaces_py_AssistantPermissi
+    P1_backend_src_application_services_access_control_py --> P1_backend_src_domain_audit_py_AuditEvent
+    P1_backend_src_application_services_access_control_py --> P1_backend_src_domain_interfaces_py_AuditLogRepositor
+    P1_backend_src_application_services_usage_py_UsageGov --> P1_backend_src_application_services_usage_py_UsageGov
+    P1_backend_src_application_services_usage_py_UsageGov --> P1_backend_src_application_services_usage_py_UsageGov
+    P1_backend_src_application_services_usage_py_UsageGov --> P1_backend_src_domain_errors_py_UsageLimitExceededErr
+    P1_backend_src_application_services_usage_py_UsageGov --> P1_backend_src_domain_observability_py_MetricsRecorde
+    P1_backend_src_application_services_usage_py_UsageGov --> P1_backend_src_domain_interfaces_py_UsageSettingsRepo
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_services_access_control_py
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_services_access_control_py
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_services_access_control_py
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_services_usage_py_UsageGov
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_observability_py_MetricsRecorde
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_dto_conversation_dto_py_Ch
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_dto_conversation_dto_py_Me
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_observability_py_MetricsRecorde
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_usage_py_TokenUsage
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_services_access_control_py
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_services_access_control_py
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_services_access_control_py
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_interfaces_py_AssistantReposito
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_usage_py_TokenUsage
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_value_objects_py_ConversationId
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_api_dependencies_py_UnconfiguredLLMGat
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_dto_conversation_dto_py_Ch
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_interfaces_py_AuditLogRepositor
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_observability_py_MetricsRecorde
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_observability_py_NoopTracer_spa
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_usage_py_TokenUsage
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_dto_conversation_dto_py_Ch
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_domain_observability_py_NoopTracer_spa
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_application_use_cases_chat_with_assist --> P1_backend_src_application_use_cases_chat_with_assist
+    P1_backend_src_domain_observability_py_NoopTracer_spa --> P1_backend_src_domain_observability_py__NoopSpan
+  end
+  subgraph P2["main() in backend/src/cli/worker.py"]
+    P2_backend_src_application_dto_access_dto_py_CurrentU["from_user"]
+    P2_backend_src_application_services_access_control_py["AccessControl"]
+    P2_backend_src_application_services_access_control_py["audit"]
+    P2_backend_src_application_services_access_control_py["AuditTrail"]
+    P2_backend_src_application_services_access_control_py["record"]
+    P2_backend_src_application_services_document_indexing["DocumentIndexer"]
+    P2_backend_src_application_services_ingestion_py_Inge["IngestionSettings"]
+    P2_backend_src_application_use_cases_audit_and_sessio["execute"]
+    P2_backend_src_application_use_cases_process_ingestio["ProcessNextIngestionJobUseCase"]
+    P2_backend_src_application_use_cases_process_ingestio["RequeueExpiredIngestionJobsUseCase"]
+    P2_backend_src_application_use_cases_reindex_assistan["ProcessNextReindexJobUseCase"]
+    P2_backend_src_application_use_cases_reindex_assistan["ReindexSettings"]
+    P2_backend_src_application_use_cases_reindex_assistan["RunReindexInput"]
+    P2_backend_src_application_use_cases_reindex_assistan["RunReindexUseCase"]
+    P2_backend_src_cli_worker_py_WorkerAdapters["WorkerAdapters"]
+    P2_backend_src_cli_worker_py_main["main"]
+    P2_backend_src_cli_worker_py_run_once["run_once"]
+    P2_backend_src_cli_worker_py_run_reindex_once["run_reindex_once"]
+    P2_backend_src_domain_audit_py_AuditEvent["AuditEvent"]
+    P2_backend_src_domain_interfaces_py_AuditLogRepositor["append"]
+    P2_backend_src_domain_interfaces_py_SparseEncodingPar["SparseEncodingParameters"]
+    P2_backend_src_infrastructure_chunking_structural_chu["StructuralDocumentChunker"]
+    P2_backend_src_infrastructure_composition_py__first_t["_first_text_env"]
+    P2_backend_src_infrastructure_composition_py__float_e["_float_env"]
+    P2_backend_src_infrastructure_composition_py__int_env["_int_env"]
+    P2_backend_src_infrastructure_composition_py__text_en["_text_env"]
+    P2_backend_src_infrastructure_composition_py_bm25_par["bm25_parameters"]
+    P2_backend_src_infrastructure_composition_py_build_do["build_document_chunker"]
+    P2_backend_src_infrastructure_composition_py_build_do["build_document_indexer"]
+    P2_backend_src_infrastructure_composition_py_build_em["build_embedding_gateway"]
+    P2_backend_src_infrastructure_composition_py_build_fi["build_file_storage"]
+    P2_backend_src_infrastructure_composition_py_build_oc["build_ocr"]
+    P2_backend_src_infrastructure_composition_py_build_sp["build_sparse_embedding_gateway"]
+    P2_backend_src_infrastructure_composition_py_build_to["build_token_counter"]
+    P2_backend_src_infrastructure_composition_py_default_["default_sparse_encoding_parameters"]
+    P2_backend_src_infrastructure_composition_py_embeddin["embedding_model_name"]
+    P2_backend_src_infrastructure_composition_py_ingestio["ingestion_settings"]
+    P2_backend_src_infrastructure_composition_py_reindex_["reindex_settings"]
+    P2_backend_src_infrastructure_database_operations_rep["PostgresIndexParametersRepository"]
+    P2_backend_src_infrastructure_database_repositories_p["PostgresAssistantPermissionRepository"]
+    P2_backend_src_infrastructure_database_repositories_p["PostgresAuditLogRepository"]
+    P2_backend_src_infrastructure_database_repositories_p["PostgresDocumentRepository"]
+    P2_backend_src_infrastructure_database_repositories_p["PostgresIngestionJobQueue"]
+    P2_backend_src_infrastructure_database_repositories_p["PostgresReindexJobRepository"]
+    P2_backend_src_infrastructure_documents_extractor_py_["SupportedDocumentExtractor"]
+    P2_backend_src_infrastructure_documents_ocr_py_Tesser["TesseractPdfOcr"]
+    P2_backend_src_infrastructure_embeddings_bm25_sparse_["Bm25SparseEmbeddingGateway"]
+    P2_backend_src_infrastructure_embeddings_sentence_tra["SentenceTransformerEmbeddingGateway"]
+    P2_backend_src_infrastructure_embeddings_sentence_tra["SentenceTransformerTokenCounter"]
+    P2_backend_src_infrastructure_observability_structure["JsonLogFormatter"]
+    P2_backend_src_infrastructure_observability_structure["_adopt_server_loggers"]
+    P2_backend_src_infrastructure_observability_structure["configure_logging"]
+    P2_backend_src_infrastructure_storage_local_file_stor["LocalDocumentFileStorage"]
+    P2_backend_src_infrastructure_vector_store_qdrant_sto["QdrantVectorStoreGateway"]
+    P2_backend_src_application_services_access_control_py --> P2_backend_src_application_services_access_control_py
+    P2_backend_src_application_services_access_control_py --> P2_backend_src_domain_audit_py_AuditEvent
+    P2_backend_src_application_services_access_control_py --> P2_backend_src_domain_interfaces_py_AuditLogRepositor
+    P2_backend_src_application_use_cases_audit_and_sessio --> P2_backend_src_application_dto_access_dto_py_CurrentU
+    P2_backend_src_application_use_cases_audit_and_sessio --> P2_backend_src_application_services_access_control_py
+    P2_backend_src_cli_worker_py_main --> P2_backend_src_cli_worker_py_WorkerAdapters
+    P2_backend_src_cli_worker_py_main --> P2_backend_src_cli_worker_py_run_once
+    P2_backend_src_cli_worker_py_main --> P2_backend_src_cli_worker_py_run_reindex_once
+    P2_backend_src_cli_worker_py_main --> P2_backend_src_infrastructure_composition_py_build_do
+    P2_backend_src_cli_worker_py_main --> P2_backend_src_infrastructure_composition_py_build_fi
+    P2_backend_src_cli_worker_py_main --> P2_backend_src_infrastructure_composition_py_ingestio
+    P2_backend_src_cli_worker_py_main --> P2_backend_src_infrastructure_composition_py_reindex_
+    P2_backend_src_cli_worker_py_main --> P2_backend_src_infrastructure_observability_structure
+    P2_backend_src_cli_worker_py_main --> P2_backend_src_infrastructure_vector_store_qdrant_sto
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_application_services_access_control_py
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_application_services_access_control_py
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_application_use_cases_audit_and_sessio
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_application_use_cases_process_ingestio
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_application_use_cases_process_ingestio
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_infrastructure_composition_py_default_
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_infrastructure_database_operations_rep
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_infrastructure_database_repositories_p
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_infrastructure_database_repositories_p
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_infrastructure_database_repositories_p
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_infrastructure_database_repositories_p
+    P2_backend_src_cli_worker_py_run_once --> P2_backend_src_infrastructure_database_repositories_p
+    P2_backend_src_cli_worker_py_run_reindex_once --> P2_backend_src_application_use_cases_audit_and_sessio
+    P2_backend_src_cli_worker_py_run_reindex_once --> P2_backend_src_application_use_cases_reindex_assistan
+    P2_backend_src_cli_worker_py_run_reindex_once --> P2_backend_src_application_use_cases_reindex_assistan
+    P2_backend_src_cli_worker_py_run_reindex_once --> P2_backend_src_application_use_cases_reindex_assistan
+    P2_backend_src_cli_worker_py_run_reindex_once --> P2_backend_src_infrastructure_composition_py_default_
+    P2_backend_src_cli_worker_py_run_reindex_once --> P2_backend_src_infrastructure_database_operations_rep
+    P2_backend_src_cli_worker_py_run_reindex_once --> P2_backend_src_infrastructure_database_repositories_p
+    P2_backend_src_cli_worker_py_run_reindex_once --> P2_backend_src_infrastructure_database_repositories_p
+    P2_backend_src_cli_worker_py_run_reindex_once --> P2_backend_src_infrastructure_database_repositories_p
+    P2_backend_src_infrastructure_composition_py_bm25_par --> P2_backend_src_infrastructure_composition_py__float_e
+    P2_backend_src_infrastructure_composition_py_build_do --> P2_backend_src_infrastructure_chunking_structural_chu
+    P2_backend_src_infrastructure_composition_py_build_do --> P2_backend_src_infrastructure_composition_py__int_env
+    P2_backend_src_infrastructure_composition_py_build_do --> P2_backend_src_infrastructure_composition_py_build_to
+    P2_backend_src_infrastructure_composition_py_build_do --> P2_backend_src_application_services_document_indexing
+    P2_backend_src_infrastructure_composition_py_build_do --> P2_backend_src_infrastructure_composition_py_build_do
+    P2_backend_src_infrastructure_composition_py_build_do --> P2_backend_src_infrastructure_composition_py_build_em
+    P2_backend_src_infrastructure_composition_py_build_do --> P2_backend_src_infrastructure_composition_py_build_oc
+    P2_backend_src_infrastructure_composition_py_build_do --> P2_backend_src_infrastructure_composition_py_build_sp
+    P2_backend_src_infrastructure_composition_py_build_do --> P2_backend_src_infrastructure_documents_extractor_py_
+    P2_backend_src_infrastructure_composition_py_build_em --> P2_backend_src_infrastructure_composition_py__int_env
+    P2_backend_src_infrastructure_composition_py_build_em --> P2_backend_src_infrastructure_composition_py_embeddin
+    P2_backend_src_infrastructure_composition_py_build_em --> P2_backend_src_infrastructure_embeddings_sentence_tra
+    P2_backend_src_infrastructure_composition_py_build_fi --> P2_backend_src_infrastructure_composition_py__first_t
+    P2_backend_src_infrastructure_composition_py_build_fi --> P2_backend_src_infrastructure_storage_local_file_stor
+    P2_backend_src_infrastructure_composition_py_build_oc --> P2_backend_src_infrastructure_composition_py__text_en
+    P2_backend_src_infrastructure_composition_py_build_oc --> P2_backend_src_infrastructure_documents_ocr_py_Tesser
+    P2_backend_src_infrastructure_composition_py_build_sp --> P2_backend_src_infrastructure_composition_py_bm25_par
+    P2_backend_src_infrastructure_composition_py_build_sp --> P2_backend_src_infrastructure_embeddings_bm25_sparse_
+    P2_backend_src_infrastructure_composition_py_build_to --> P2_backend_src_infrastructure_composition_py_embeddin
+    P2_backend_src_infrastructure_composition_py_build_to --> P2_backend_src_infrastructure_embeddings_sentence_tra
+    P2_backend_src_infrastructure_composition_py_default_ --> P2_backend_src_domain_interfaces_py_SparseEncodingPar
+    P2_backend_src_infrastructure_composition_py_ingestio --> P2_backend_src_application_services_ingestion_py_Inge
+    P2_backend_src_infrastructure_composition_py_ingestio --> P2_backend_src_infrastructure_composition_py__int_env
+    P2_backend_src_infrastructure_composition_py_reindex_ --> P2_backend_src_application_use_cases_reindex_assistan
+    P2_backend_src_infrastructure_composition_py_reindex_ --> P2_backend_src_infrastructure_composition_py_ingestio
+    P2_backend_src_infrastructure_observability_structure --> P2_backend_src_infrastructure_observability_structure
+    P2_backend_src_infrastructure_observability_structure --> P2_backend_src_infrastructure_observability_structure
+  end
+  subgraph P3["GET /ping"]
+    P3_backend_src_api_middleware_py__record["_record"]
+    P3_backend_src_api_middleware_py__request_fields["_request_fields"]
+    P3_backend_src_api_middleware_py__route["_route"]
+    P3_backend_src_api_middleware_py_register_request_con["register_request_context"]
+    P3_backend_src_application_dto_access_dto_py_CurrentU["from_user"]
+    P3_backend_src_application_services_access_control_py["audit"]
+    P3_backend_src_application_services_access_control_py["record"]
+    P3_backend_src_application_use_cases_audit_and_sessio["execute"]
+    P3_backend_src_application_use_cases_manage_documents["DocumentRefInput"]
+    P3_backend_src_application_use_cases_manage_documents["GetDocumentUseCase"]
+    P3_backend_src_domain_audit_py_AuditEvent["AuditEvent"]
+    P3_backend_src_domain_interfaces_py_AuditLogRepositor["append"]
+    P3_backend_src_domain_observability_py_MetricsRecorde["increment"]
+    P3_backend_src_domain_observability_py_MetricsRecorde["observe"]
+    P3_backend_src_domain_observability_py_NoopMetrics["NoopMetrics"]
+    P3_backend_src_domain_observability_py_NoopTracer["NoopTracer"]
+    P3_backend_src_domain_observability_py_NoopTracer_spa["span"]
+    P3_backend_src_domain_observability_py_Span_set_attri["set_attribute"]
+    P3_backend_src_domain_observability_py__NoopSpan["_NoopSpan"]
+    P3_backend_src_infrastructure_observability_structure["JsonLogFormatter"]
+    P3_backend_src_infrastructure_observability_structure["_adopt_server_loggers"]
+    P3_backend_src_infrastructure_observability_structure["bind_request_id"]
+    P3_backend_src_infrastructure_observability_structure["configure_logging"]
+    P3_backend_src_infrastructure_observability_structure["get_request_id"]
+    P3_backend_src_infrastructure_observability_structure["normalize_request_id"]
+    P3_backend_src_infrastructure_observability_structure["reset_request_id"]
+    P3_backend_tests_integration_test_request_context_py_["setUp"]
+    P3_backend_tests_integration_test_request_context_py_["_build_app"]
+    P3_backend_tests_unit_test_document_lifecycle_py_Life["get"]
+    P3_backend_src_api_middleware_py__record --> P3_backend_src_api_middleware_py__route
+    P3_backend_src_api_middleware_py__record --> P3_backend_src_domain_observability_py_MetricsRecorde
+    P3_backend_src_api_middleware_py__record --> P3_backend_src_domain_observability_py_MetricsRecorde
+    P3_backend_src_api_middleware_py__route --> P3_backend_tests_unit_test_document_lifecycle_py_Life
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_src_api_middleware_py__record
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_src_api_middleware_py__request_fields
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_src_api_middleware_py__route
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_src_domain_observability_py_NoopMetrics
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_src_domain_observability_py_NoopTracer
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_src_domain_observability_py_NoopTracer_spa
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_src_domain_observability_py_Span_set_attri
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_src_infrastructure_observability_structure
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_src_infrastructure_observability_structure
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_src_infrastructure_observability_structure
+    P3_backend_src_api_middleware_py_register_request_con --> P3_backend_tests_unit_test_document_lifecycle_py_Life
+    P3_backend_src_application_services_access_control_py --> P3_backend_src_application_services_access_control_py
+    P3_backend_src_application_services_access_control_py --> P3_backend_src_domain_audit_py_AuditEvent
+    P3_backend_src_application_services_access_control_py --> P3_backend_src_domain_interfaces_py_AuditLogRepositor
+    P3_backend_src_application_use_cases_audit_and_sessio --> P3_backend_src_application_dto_access_dto_py_CurrentU
+    P3_backend_src_application_use_cases_audit_and_sessio --> P3_backend_src_application_services_access_control_py
+    P3_backend_src_domain_observability_py_NoopTracer_spa --> P3_backend_src_domain_observability_py__NoopSpan
+    P3_backend_src_infrastructure_observability_structure --> P3_backend_src_infrastructure_observability_structure
+    P3_backend_src_infrastructure_observability_structure --> P3_backend_src_infrastructure_observability_structure
+    P3_backend_src_infrastructure_observability_structure --> P3_backend_tests_unit_test_document_lifecycle_py_Life
+    P3_backend_tests_integration_test_request_context_py_ --> P3_backend_src_infrastructure_observability_structure
+    P3_backend_tests_integration_test_request_context_py_ --> P3_backend_tests_integration_test_request_context_py_
+    P3_backend_tests_integration_test_request_context_py_ --> P3_backend_src_api_middleware_py_register_request_con
+    P3_backend_tests_integration_test_request_context_py_ --> P3_backend_src_infrastructure_observability_structure
+    P3_backend_tests_integration_test_request_context_py_ --> P3_backend_tests_unit_test_document_lifecycle_py_Life
+    P3_backend_tests_unit_test_document_lifecycle_py_Life --> P3_backend_src_application_use_cases_audit_and_sessio
+    P3_backend_tests_unit_test_document_lifecycle_py_Life --> P3_backend_src_application_use_cases_manage_documents
+    P3_backend_tests_unit_test_document_lifecycle_py_Life --> P3_backend_src_application_use_cases_manage_documents
+  end
+  subgraph P4["GET /{conversation_id}"]
+    P4_backend_src_api_routes_conversations_py__message_r["_message_response"]
+    P4_backend_src_api_routes_conversations_py__not_found["_not_found"]
+    P4_backend_src_api_routes_conversations_py_get_archiv["get_archived_conversation"]
+    P4_backend_src_api_schemas_conversations_py_CitationR["CitationResponse"]
+    P4_backend_src_api_schemas_conversations_py_Conversat["ConversationDetailResponse"]
+    P4_backend_src_api_schemas_conversations_py_MessageRe["MessageResponse"]
+    P4_backend_src_application_dto_access_dto_py_CurrentU["from_user"]
+    P4_backend_src_application_dto_conversation_dto_py_Ci["from_entity"]
+    P4_backend_src_application_dto_conversation_dto_py_Me["from_entity"]
+    P4_backend_src_application_services_access_control_py["audit"]
+    P4_backend_src_application_services_access_control_py["record"]
+    P4_backend_src_application_use_cases_audit_and_sessio["execute"]
+    P4_backend_src_application_use_cases_manage_archived_["ArchivedConversationInput"]
+    P4_backend_src_application_use_cases_manage_archived_["GetArchivedConversationUseCase"]
+    P4_backend_src_application_use_cases_manage_conversat["GetConversationUseCase"]
+    P4_backend_src_application_use_cases_manage_conversat["removed_sources"]
+    P4_backend_src_application_use_cases_manage_conversat["_is_available"]
+    P4_backend_src_application_use_cases_manage_documents["DocumentRefInput"]
+    P4_backend_src_application_use_cases_manage_documents["GetDocumentUseCase"]
+    P4_backend_src_domain_audit_py_AuditEvent["AuditEvent"]
+    P4_backend_src_domain_interfaces_py_AssistantReposito["get_by_id"]
+    P4_backend_src_domain_interfaces_py_AuditLogRepositor["append"]
+    P4_backend_src_domain_value_objects_py_DocumentId["DocumentId"]
+    P4_backend_tests_unit_test_document_lifecycle_py_Life["get"]
+    P4_backend_src_api_routes_conversations_py__message_r --> P4_backend_src_api_schemas_conversations_py_CitationR
+    P4_backend_src_api_routes_conversations_py__message_r --> P4_backend_src_api_schemas_conversations_py_MessageRe
+    P4_backend_src_api_routes_conversations_py_get_archiv --> P4_backend_src_api_routes_conversations_py__message_r
+    P4_backend_src_api_routes_conversations_py_get_archiv --> P4_backend_src_api_routes_conversations_py__not_found
+    P4_backend_src_api_routes_conversations_py_get_archiv --> P4_backend_src_api_schemas_conversations_py_Conversat
+    P4_backend_src_api_routes_conversations_py_get_archiv --> P4_backend_src_application_dto_conversation_dto_py_Me
+    P4_backend_src_api_routes_conversations_py_get_archiv --> P4_backend_src_application_use_cases_audit_and_sessio
+    P4_backend_src_api_routes_conversations_py_get_archiv --> P4_backend_src_application_use_cases_manage_archived_
+    P4_backend_src_api_routes_conversations_py_get_archiv --> P4_backend_src_application_use_cases_manage_archived_
+    P4_backend_src_api_routes_conversations_py_get_archiv --> P4_backend_src_application_use_cases_manage_conversat
+    P4_backend_src_api_routes_conversations_py_get_archiv --> P4_backend_src_application_use_cases_manage_conversat
+    P4_backend_src_api_routes_conversations_py_get_archiv --> P4_backend_tests_unit_test_document_lifecycle_py_Life
+    P4_backend_src_application_dto_conversation_dto_py_Me --> P4_backend_src_application_dto_conversation_dto_py_Ci
+    P4_backend_src_application_services_access_control_py --> P4_backend_src_application_services_access_control_py
+    P4_backend_src_application_services_access_control_py --> P4_backend_src_domain_audit_py_AuditEvent
+    P4_backend_src_application_services_access_control_py --> P4_backend_src_domain_interfaces_py_AuditLogRepositor
+    P4_backend_src_application_use_cases_audit_and_sessio --> P4_backend_src_application_dto_access_dto_py_CurrentU
+    P4_backend_src_application_use_cases_audit_and_sessio --> P4_backend_src_application_services_access_control_py
+    P4_backend_src_application_use_cases_manage_conversat --> P4_backend_src_application_use_cases_manage_conversat
+    P4_backend_src_application_use_cases_manage_conversat --> P4_backend_src_domain_interfaces_py_AssistantReposito
+    P4_backend_src_application_use_cases_manage_conversat --> P4_backend_src_domain_value_objects_py_DocumentId
+    P4_backend_tests_unit_test_document_lifecycle_py_Life --> P4_backend_src_application_use_cases_audit_and_sessio
+    P4_backend_tests_unit_test_document_lifecycle_py_Life --> P4_backend_src_application_use_cases_manage_documents
+    P4_backend_tests_unit_test_document_lifecycle_py_Life --> P4_backend_src_application_use_cases_manage_documents
+  end
+  subgraph P5["GET /metrics"]
+    P5_backend_src_api_main_py_metrics["metrics"]
+    P5_backend_src_application_dto_access_dto_py_CurrentU["from_user"]
+    P5_backend_src_application_services_access_control_py["audit"]
+    P5_backend_src_application_services_access_control_py["record"]
+    P5_backend_src_application_use_cases_audit_and_sessio["execute"]
+    P5_backend_src_application_use_cases_manage_documents["DocumentRefInput"]
+    P5_backend_src_application_use_cases_manage_documents["GetDocumentUseCase"]
+    P5_backend_src_domain_audit_py_AuditEvent["AuditEvent"]
+    P5_backend_src_domain_interfaces_py_AuditLogRepositor["append"]
+    P5_backend_src_infrastructure_composition_py_build_me["build_metrics"]
+    P5_backend_src_infrastructure_observability_metrics_p["MetricsRegistry"]
+    P5_backend_src_infrastructure_observability_metrics_p["_collect"]
+    P5_backend_src_infrastructure_observability_metrics_p["render"]
+    P5_backend_src_infrastructure_observability_metrics_p["_Histogram"]
+    P5_backend_src_infrastructure_observability_metrics_p["_copy"]
+    P5_backend_src_infrastructure_observability_metrics_p["_escape"]
+    P5_backend_src_infrastructure_observability_metrics_p["_gauge_lines"]
+    P5_backend_src_infrastructure_observability_metrics_p["_header"]
+    P5_backend_src_infrastructure_observability_metrics_p["_histogram_lines"]
+    P5_backend_src_infrastructure_observability_metrics_p["_label_key"]
+    P5_backend_src_infrastructure_observability_metrics_p["_labels"]
+    P5_backend_src_infrastructure_observability_metrics_p["_number"]
+    P5_backend_tests_unit_test_document_lifecycle_py_Life["get"]
+    P5_backend_src_api_main_py_metrics --> P5_backend_src_infrastructure_composition_py_build_me
+    P5_backend_src_api_main_py_metrics --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_api_main_py_metrics --> P5_backend_tests_unit_test_document_lifecycle_py_Life
+    P5_backend_src_application_services_access_control_py --> P5_backend_src_application_services_access_control_py
+    P5_backend_src_application_services_access_control_py --> P5_backend_src_domain_audit_py_AuditEvent
+    P5_backend_src_application_services_access_control_py --> P5_backend_src_domain_interfaces_py_AuditLogRepositor
+    P5_backend_src_application_use_cases_audit_and_sessio --> P5_backend_src_application_dto_access_dto_py_CurrentU
+    P5_backend_src_application_use_cases_audit_and_sessio --> P5_backend_src_application_services_access_control_py
+    P5_backend_src_infrastructure_composition_py_build_me --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_domain_interfaces_py_AuditLogRepositor
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_domain_interfaces_py_AuditLogRepositor
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_domain_interfaces_py_AuditLogRepositor
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_tests_unit_test_document_lifecycle_py_Life
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_domain_interfaces_py_AuditLogRepositor
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_src_infrastructure_observability_metrics_p --> P5_backend_src_infrastructure_observability_metrics_p
+    P5_backend_tests_unit_test_document_lifecycle_py_Life --> P5_backend_src_application_use_cases_audit_and_sessio
+    P5_backend_tests_unit_test_document_lifecycle_py_Life --> P5_backend_src_application_use_cases_manage_documents
+    P5_backend_tests_unit_test_document_lifecycle_py_Life --> P5_backend_src_application_use_cases_manage_documents
+  end
+  subgraph P6["GET /{conversation_id}"]
+    P6_backend_src_api_routes_conversations_py__message_r["_message_response"]
+    P6_backend_src_api_routes_conversations_py__not_found["_not_found"]
+    P6_backend_src_api_routes_conversations_py_get_conver["get_conversation"]
+    P6_backend_src_api_schemas_conversations_py_CitationR["CitationResponse"]
+    P6_backend_src_api_schemas_conversations_py_Conversat["ConversationDetailResponse"]
+    P6_backend_src_api_schemas_conversations_py_MessageRe["MessageResponse"]
+    P6_backend_src_application_dto_access_dto_py_CurrentU["from_user"]
+    P6_backend_src_application_dto_conversation_dto_py_Ci["from_entity"]
+    P6_backend_src_application_dto_conversation_dto_py_Me["from_entity"]
+    P6_backend_src_application_services_access_control_py["audit"]
+    P6_backend_src_application_services_access_control_py["record"]
+    P6_backend_src_application_use_cases_audit_and_sessio["execute"]
+    P6_backend_src_application_use_cases_manage_conversat["ConversationRefInput"]
+    P6_backend_src_application_use_cases_manage_conversat["GetConversationUseCase"]
+    P6_backend_src_application_use_cases_manage_conversat["removed_sources"]
+    P6_backend_src_application_use_cases_manage_conversat["_is_available"]
+    P6_backend_src_application_use_cases_manage_documents["DocumentRefInput"]
+    P6_backend_src_application_use_cases_manage_documents["GetDocumentUseCase"]
+    P6_backend_src_domain_audit_py_AuditEvent["AuditEvent"]
+    P6_backend_src_domain_interfaces_py_AssistantReposito["get_by_id"]
+    P6_backend_src_domain_interfaces_py_AuditLogRepositor["append"]
+    P6_backend_src_domain_value_objects_py_DocumentId["DocumentId"]
+    P6_backend_tests_unit_test_document_lifecycle_py_Life["get"]
+    P6_backend_src_api_routes_conversations_py__message_r --> P6_backend_src_api_schemas_conversations_py_CitationR
+    P6_backend_src_api_routes_conversations_py__message_r --> P6_backend_src_api_schemas_conversations_py_MessageRe
+    P6_backend_src_api_routes_conversations_py_get_conver --> P6_backend_src_api_routes_conversations_py__message_r
+    P6_backend_src_api_routes_conversations_py_get_conver --> P6_backend_src_api_routes_conversations_py__not_found
+    P6_backend_src_api_routes_conversations_py_get_conver --> P6_backend_src_api_schemas_conversations_py_Conversat
+    P6_backend_src_api_routes_conversations_py_get_conver --> P6_backend_src_application_dto_conversation_dto_py_Me
+    P6_backend_src_api_routes_conversations_py_get_conver --> P6_backend_src_application_use_cases_audit_and_sessio
+    P6_backend_src_api_routes_conversations_py_get_conver --> P6_backend_src_application_use_cases_manage_conversat
+    P6_backend_src_api_routes_conversations_py_get_conver --> P6_backend_src_application_use_cases_manage_conversat
+    P6_backend_src_api_routes_conversations_py_get_conver --> P6_backend_src_application_use_cases_manage_conversat
+    P6_backend_src_api_routes_conversations_py_get_conver --> P6_backend_tests_unit_test_document_lifecycle_py_Life
+    P6_backend_src_application_dto_conversation_dto_py_Me --> P6_backend_src_application_dto_conversation_dto_py_Ci
+    P6_backend_src_application_services_access_control_py --> P6_backend_src_application_services_access_control_py
+    P6_backend_src_application_services_access_control_py --> P6_backend_src_domain_audit_py_AuditEvent
+    P6_backend_src_application_services_access_control_py --> P6_backend_src_domain_interfaces_py_AuditLogRepositor
+    P6_backend_src_application_use_cases_audit_and_sessio --> P6_backend_src_application_dto_access_dto_py_CurrentU
+    P6_backend_src_application_use_cases_audit_and_sessio --> P6_backend_src_application_services_access_control_py
+    P6_backend_src_application_use_cases_manage_conversat --> P6_backend_src_application_use_cases_manage_conversat
+    P6_backend_src_application_use_cases_manage_conversat --> P6_backend_src_domain_interfaces_py_AssistantReposito
+    P6_backend_src_application_use_cases_manage_conversat --> P6_backend_src_domain_value_objects_py_DocumentId
+    P6_backend_tests_unit_test_document_lifecycle_py_Life --> P6_backend_src_application_use_cases_audit_and_sessio
+    P6_backend_tests_unit_test_document_lifecycle_py_Life --> P6_backend_src_application_use_cases_manage_documents
+    P6_backend_tests_unit_test_document_lifecycle_py_Life --> P6_backend_src_application_use_cases_manage_documents
+  end
+  subgraph P7["main() in backend/src/cli/purge_audit.py"]
+    P7_backend_src_application_dto_access_dto_py_CurrentU["from_user"]
+    P7_backend_src_application_services_access_control_py["audit"]
+    P7_backend_src_application_services_access_control_py["AuditTrail"]
+    P7_backend_src_application_services_access_control_py["record"]
+    P7_backend_src_application_use_cases_audit_and_sessio["execute"]
+    P7_backend_src_application_use_cases_audit_and_sessio["PurgeAuditEventsInput"]
+    P7_backend_src_application_use_cases_audit_and_sessio["PurgeAuditEventsUseCase"]
+    P7_backend_src_cli_purge_audit_py_main["main"]
+    P7_backend_src_domain_audit_py_AuditEvent["AuditEvent"]
+    P7_backend_src_domain_interfaces_py_AuditLogRepositor["append"]
+    P7_backend_src_infrastructure_composition_py__int_env["_int_env"]
+    P7_backend_src_infrastructure_composition_py_audit_re["audit_retention_days"]
+    P7_backend_src_infrastructure_database_alembic_versio["_has_column"]
+    P7_backend_src_infrastructure_database_alembic_versio["_timestamp"]
+    P7_backend_src_infrastructure_database_alembic_versio["upgrade"]
+    P7_backend_src_infrastructure_database_migrate_py_run["run_migrations"]
+    P7_backend_src_infrastructure_database_repositories_p["PostgresAuditLogRepository"]
+    P7_backend_src_infrastructure_database_repositories_p["PostgresAuditRetentionRepository"]
+    P7_backend_src_infrastructure_observability_structure["JsonLogFormatter"]
+    P7_backend_src_infrastructure_observability_structure["_adopt_server_loggers"]
+    P7_backend_src_infrastructure_observability_structure["configure_logging"]
+    P7_backend_src_application_services_access_control_py --> P7_backend_src_application_services_access_control_py
+    P7_backend_src_application_services_access_control_py --> P7_backend_src_domain_audit_py_AuditEvent
+    P7_backend_src_application_services_access_control_py --> P7_backend_src_domain_interfaces_py_AuditLogRepositor
+    P7_backend_src_application_use_cases_audit_and_sessio --> P7_backend_src_application_dto_access_dto_py_CurrentU
+    P7_backend_src_application_use_cases_audit_and_sessio --> P7_backend_src_application_services_access_control_py
+    P7_backend_src_cli_purge_audit_py_main --> P7_backend_src_application_services_access_control_py
+    P7_backend_src_cli_purge_audit_py_main --> P7_backend_src_application_use_cases_audit_and_sessio
+    P7_backend_src_cli_purge_audit_py_main --> P7_backend_src_application_use_cases_audit_and_sessio
+    P7_backend_src_cli_purge_audit_py_main --> P7_backend_src_application_use_cases_audit_and_sessio
+    P7_backend_src_cli_purge_audit_py_main --> P7_backend_src_infrastructure_composition_py_audit_re
+    P7_backend_src_cli_purge_audit_py_main --> P7_backend_src_infrastructure_database_migrate_py_run
+    P7_backend_src_cli_purge_audit_py_main --> P7_backend_src_infrastructure_database_repositories_p
+    P7_backend_src_cli_purge_audit_py_main --> P7_backend_src_infrastructure_database_repositories_p
+    P7_backend_src_cli_purge_audit_py_main --> P7_backend_src_infrastructure_observability_structure
+    P7_backend_src_infrastructure_composition_py_audit_re --> P7_backend_src_infrastructure_composition_py__int_env
+    P7_backend_src_infrastructure_database_alembic_versio --> P7_backend_src_infrastructure_database_alembic_versio
+    P7_backend_src_infrastructure_database_alembic_versio --> P7_backend_src_infrastructure_database_alembic_versio
+    P7_backend_src_infrastructure_database_migrate_py_run --> P7_backend_src_infrastructure_database_alembic_versio
+    P7_backend_src_infrastructure_observability_structure --> P7_backend_src_infrastructure_observability_structure
+    P7_backend_src_infrastructure_observability_structure --> P7_backend_src_infrastructure_observability_structure
+  end
+  subgraph P8["GET /index-status"]
+    P8_backend_src_api_routes_index_py__existing_assistan["_existing_assistant_id"]
+    P8_backend_src_api_routes_index_py__job_response["_job_response"]
+    P8_backend_src_api_routes_index_py_get_index_status["get_index_status"]
+    P8_backend_src_api_schemas_index_py_IndexStatusRespon["IndexStatusResponse"]
+    P8_backend_src_api_schemas_index_py_ReindexJobRespons["ReindexJobResponse"]
+    P8_backend_src_application_dto_access_dto_py_CurrentU["from_user"]
+    P8_backend_src_application_services_access_control_py["audit"]
+    P8_backend_src_application_services_access_control_py["record"]
+    P8_backend_src_application_use_cases_audit_and_sessio["execute"]
+    P8_backend_src_application_use_cases_manage_documents["DocumentRefInput"]
+    P8_backend_src_application_use_cases_manage_documents["GetDocumentUseCase"]
+    P8_backend_src_application_use_cases_reindex_assistan["GetIndexStatusInput"]
+    P8_backend_src_application_use_cases_reindex_assistan["GetIndexStatusUseCase"]
+    P8_backend_src_domain_audit_py_AuditEvent["AuditEvent"]
+    P8_backend_src_domain_interfaces_py_AssistantReposito["get_by_id"]
+    P8_backend_src_domain_interfaces_py_AuditLogRepositor["append"]
+    P8_backend_src_domain_value_objects_py_AssistantId["AssistantId"]
+    P8_backend_tests_unit_test_document_lifecycle_py_Life["get"]
+    P8_backend_src_api_routes_index_py__existing_assistan --> P8_backend_src_domain_interfaces_py_AssistantReposito
+    P8_backend_src_api_routes_index_py__existing_assistan --> P8_backend_src_domain_value_objects_py_AssistantId
+    P8_backend_src_api_routes_index_py__job_response --> P8_backend_src_api_schemas_index_py_ReindexJobRespons
+    P8_backend_src_api_routes_index_py_get_index_status --> P8_backend_src_api_routes_index_py__existing_assistan
+    P8_backend_src_api_routes_index_py_get_index_status --> P8_backend_src_api_routes_index_py__job_response
+    P8_backend_src_api_routes_index_py_get_index_status --> P8_backend_src_api_schemas_index_py_IndexStatusRespon
+    P8_backend_src_api_routes_index_py_get_index_status --> P8_backend_src_application_use_cases_audit_and_sessio
+    P8_backend_src_api_routes_index_py_get_index_status --> P8_backend_src_application_use_cases_reindex_assistan
+    P8_backend_src_api_routes_index_py_get_index_status --> P8_backend_src_application_use_cases_reindex_assistan
+    P8_backend_src_api_routes_index_py_get_index_status --> P8_backend_tests_unit_test_document_lifecycle_py_Life
+    P8_backend_src_application_services_access_control_py --> P8_backend_src_application_services_access_control_py
+    P8_backend_src_application_services_access_control_py --> P8_backend_src_domain_audit_py_AuditEvent
+    P8_backend_src_application_services_access_control_py --> P8_backend_src_domain_interfaces_py_AuditLogRepositor
+    P8_backend_src_application_use_cases_audit_and_sessio --> P8_backend_src_application_dto_access_dto_py_CurrentU
+    P8_backend_src_application_use_cases_audit_and_sessio --> P8_backend_src_application_services_access_control_py
+    P8_backend_tests_unit_test_document_lifecycle_py_Life --> P8_backend_src_application_use_cases_audit_and_sessio
+    P8_backend_tests_unit_test_document_lifecycle_py_Life --> P8_backend_src_application_use_cases_manage_documents
+    P8_backend_tests_unit_test_document_lifecycle_py_Life --> P8_backend_src_application_use_cases_manage_documents
+  end
+  subgraph P9["POST /api-key/test"]
+    P9_backend_src_api_dependencies_py_UnconfiguredLLMGat["generate"]
+    P9_backend_src_api_dependencies_py_get_configured_llm["get_configured_llm_model"]
+    P9_backend_src_api_routes_admin_py_test_api_key["test_api_key"]
+    P9_backend_src_api_schemas_admin_py_ApiKeyTestRespons["ApiKeyTestResponse"]
+    P9_backend_src_application_dto_access_dto_py_CurrentU["from_user"]
+    P9_backend_src_application_services_access_control_py["_deny"]
+    P9_backend_src_application_services_access_control_py["audit"]
+    P9_backend_src_application_services_access_control_py["require_llm_configuration"]
+    P9_backend_src_application_services_access_control_py["record"]
+    P9_backend_src_application_use_cases_audit_and_sessio["execute"]
+    P9_backend_src_application_use_cases_manage_api_key_p["GetGlobalApiKeyValueUseCase"]
+    P9_backend_src_domain_access_py_AccessPolicy_can_conf["can_configure_llm"]
+    P9_backend_src_domain_audit_py_AuditEvent["AuditEvent"]
+    P9_backend_src_domain_errors_py_AccessDeniedError["AccessDeniedError"]
+    P9_backend_src_domain_interfaces_py_AuditLogRepositor["append"]
+    P9_backend_src_infrastructure_composition_py_llm_mode["llm_model_name"]
+    P9_backend_src_infrastructure_llm_http_chat_llm_py_Ht["HttpChatCompletionsLLM"]
+    P9_backend_src_api_dependencies_py_get_configured_llm --> P9_backend_src_infrastructure_composition_py_llm_mode
+    P9_backend_src_api_routes_admin_py_test_api_key --> P9_backend_src_api_dependencies_py_UnconfiguredLLMGat
+    P9_backend_src_api_routes_admin_py_test_api_key --> P9_backend_src_api_dependencies_py_get_configured_llm
+    P9_backend_src_api_routes_admin_py_test_api_key --> P9_backend_src_api_schemas_admin_py_ApiKeyTestRespons
+    P9_backend_src_api_routes_admin_py_test_api_key --> P9_backend_src_application_services_access_control_py
+    P9_backend_src_api_routes_admin_py_test_api_key --> P9_backend_src_application_services_access_control_py
+    P9_backend_src_api_routes_admin_py_test_api_key --> P9_backend_src_application_use_cases_audit_and_sessio
+    P9_backend_src_api_routes_admin_py_test_api_key --> P9_backend_src_application_use_cases_manage_api_key_p
+    P9_backend_src_api_routes_admin_py_test_api_key --> P9_backend_src_infrastructure_llm_http_chat_llm_py_Ht
+    P9_backend_src_application_services_access_control_py --> P9_backend_src_application_services_access_control_py
+    P9_backend_src_application_services_access_control_py --> P9_backend_src_domain_errors_py_AccessDeniedError
+    P9_backend_src_application_services_access_control_py --> P9_backend_src_application_services_access_control_py
+    P9_backend_src_application_services_access_control_py --> P9_backend_src_application_services_access_control_py
+    P9_backend_src_application_services_access_control_py --> P9_backend_src_domain_access_py_AccessPolicy_can_conf
+    P9_backend_src_application_services_access_control_py --> P9_backend_src_domain_audit_py_AuditEvent
+    P9_backend_src_application_services_access_control_py --> P9_backend_src_domain_interfaces_py_AuditLogRepositor
+    P9_backend_src_application_use_cases_audit_and_sessio --> P9_backend_src_application_dto_access_dto_py_CurrentU
+    P9_backend_src_application_use_cases_audit_and_sessio --> P9_backend_src_application_services_access_control_py
+  end

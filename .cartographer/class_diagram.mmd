@@ -1,0 +1,444 @@
+classDiagram
+  class AppComponent
+  class MarkdownPipe
+  class ServerSentEventsReader
+  class GroupPickerComponent
+  class ShellComponent
+  class OidcError
+  class OidcClient
+  class AuthService
+  class NexusApiService
+  class FeedbackPageComponent
+  class ArchivedConversationsPageComponent
+  class UsagePageComponent
+  class ChatPageComponent
+  class AuditPageComponent
+  class AssistantsPageComponent
+  class AdminPageComponent
+  class QdrantVectorStoreGateway
+    QdrantVectorStoreGateway : __init__()
+    QdrantVectorStoreGateway : ensure_collection()
+    QdrantVectorStoreGateway : _ensure_group_index()
+    QdrantVectorStoreGateway : _ensure_lifecycle_indexes()
+    QdrantVectorStoreGateway : upsert_chunks()
+    QdrantVectorStoreGateway : hybrid_search()
+    QdrantVectorStoreGateway : _legacy_dense_search()
+    QdrantVectorStoreGateway : _has_hybrid_vectors()
+    QdrantVectorStoreGateway : _client
+  class CrossEncoderRerankerGateway
+    CrossEncoderRerankerGateway : __init__()
+    CrossEncoderRerankerGateway : model_name()
+    CrossEncoderRerankerGateway : rerank()
+    CrossEncoderRerankerGateway : _model_name
+    CrossEncoderRerankerGateway : _batch_size
+  class PostgresAssistantRepository
+    PostgresAssistantRepository : __init__()
+    PostgresAssistantRepository : save()
+    PostgresAssistantRepository : list_all()
+    PostgresAssistantRepository : get_by_id()
+    PostgresAssistantRepository : delete()
+    PostgresAssistantRepository : _session
+  class PostgresConversationRepository
+    PostgresConversationRepository : __init__()
+    PostgresConversationRepository : save()
+    PostgresConversationRepository : get_by_id()
+    PostgresConversationRepository : list_by_assistant()
+    PostgresConversationRepository : list_archived()
+    PostgresConversationRepository : save_message()
+    PostgresConversationRepository : list_messages()
+    PostgresConversationRepository : delete()
+    PostgresConversationRepository : _session
+  class PostgresDocumentRepository
+    PostgresDocumentRepository : __init__()
+    PostgresDocumentRepository : save()
+    PostgresDocumentRepository : get_by_id()
+    PostgresDocumentRepository : list_by_assistant()
+    PostgresDocumentRepository : find_by_hash()
+    PostgresDocumentRepository : delete()
+    PostgresDocumentRepository : _session
+  class PostgresIngestionJobQueue
+    PostgresIngestionJobQueue : __init__()
+    PostgresIngestionJobQueue : enqueue()
+    PostgresIngestionJobQueue : reserve_next()
+    PostgresIngestionJobQueue : list_expired()
+    PostgresIngestionJobQueue : complete()
+    PostgresIngestionJobQueue : retry()
+    PostgresIngestionJobQueue : fail()
+    PostgresIngestionJobQueue : _write()
+    PostgresIngestionJobQueue : _session
+  class PostgresReindexJobRepository
+    PostgresReindexJobRepository : __init__()
+    PostgresReindexJobRepository : save()
+    PostgresReindexJobRepository : get_by_id()
+    PostgresReindexJobRepository : get_latest()
+    PostgresReindexJobRepository : get_running()
+    PostgresReindexJobRepository : list_running()
+    PostgresReindexJobRepository : claim_next()
+    PostgresReindexJobRepository : _session
+  class PostgresAssistantPermissionRepository
+    PostgresAssistantPermissionRepository : __init__()
+    PostgresAssistantPermissionRepository : get_assistant_groups()
+    PostgresAssistantPermissionRepository : list_assistant_groups()
+    PostgresAssistantPermissionRepository : set_assistant_groups()
+    PostgresAssistantPermissionRepository : get_document_groups()
+    PostgresAssistantPermissionRepository : list_document_groups()
+    PostgresAssistantPermissionRepository : set_document_groups()
+    PostgresAssistantPermissionRepository : _session
+  class PostgresAuditLogRepository
+    PostgresAuditLogRepository : __init__()
+    PostgresAuditLogRepository : append()
+    PostgresAuditLogRepository : list_events()
+    PostgresAuditLogRepository : _session
+  class PostgresAuditRetentionRepository
+    PostgresAuditRetentionRepository : __init__()
+    PostgresAuditRetentionRepository : purge_older_than()
+    PostgresAuditRetentionRepository : PURGE_SETTING
+    PostgresAuditRetentionRepository : _session
+  class PostgresSecretSettingsRepository
+    PostgresSecretSettingsRepository : __init__()
+    PostgresSecretSettingsRepository : set_encrypted_value()
+    PostgresSecretSettingsRepository : get_encrypted_value()
+    PostgresSecretSettingsRepository : _session
+  class Base
+  class PostgresUsageRecordRepository
+    PostgresUsageRecordRepository : __init__()
+    PostgresUsageRecordRepository : append()
+    PostgresUsageRecordRepository : summarize_by_user()
+    PostgresUsageRecordRepository : summarize_by_conversation()
+    PostgresUsageRecordRepository : _totals()
+    PostgresUsageRecordRepository : _session
+  class PostgresUsageLimiter
+    PostgresUsageLimiter : __init__()
+    PostgresUsageLimiter : check()
+    PostgresUsageLimiter : _session
+  class PostgresUsageSettingsRepository
+    PostgresUsageSettingsRepository : __init__()
+    PostgresUsageSettingsRepository : get_limits()
+    PostgresUsageSettingsRepository : save_limits()
+    PostgresUsageSettingsRepository : _session
+  class PostgresIndexParametersRepository
+    PostgresIndexParametersRepository : __init__()
+    PostgresIndexParametersRepository : get_sparse_parameters()
+    PostgresIndexParametersRepository : save_sparse_parameters()
+    PostgresIndexParametersRepository : _session
+    PostgresIndexParametersRepository : _assumed
+  class PostgresFeedbackRepository
+    PostgresFeedbackRepository : __init__()
+    PostgresFeedbackRepository : save()
+    PostgresFeedbackRepository : get_by_id()
+    PostgresFeedbackRepository : get_by_message()
+    PostgresFeedbackRepository : list_feedback()
+    PostgresFeedbackRepository : _session
+  class AssistantModel
+    AssistantModel : __tablename__
+    AssistantModel : id
+    AssistantModel : name
+    AssistantModel : description
+    AssistantModel : initial_prompt
+    AssistantModel : created_at
+  Base <|-- AssistantModel
+  class DocumentModel
+    DocumentModel : __tablename__
+    DocumentModel : __table_args__
+    DocumentModel : id
+    DocumentModel : assistant_id
+    DocumentModel : source_name
+    DocumentModel : content_hash
+  Base <|-- DocumentModel
+  class IngestionJobModel
+    IngestionJobModel : __tablename__
+    IngestionJobModel : __table_args__
+    IngestionJobModel : id
+    IngestionJobModel : document_id
+    IngestionJobModel : kind
+    IngestionJobModel : status
+  Base <|-- IngestionJobModel
+  class ConversationModel
+    ConversationModel : __tablename__
+    ConversationModel : id
+    ConversationModel : assistant_id
+    ConversationModel : name
+    ConversationModel : created_at
+    ConversationModel : updated_at
+  Base <|-- ConversationModel
+  class MessageModel
+    MessageModel : __tablename__
+    MessageModel : id
+    MessageModel : conversation_id
+    MessageModel : role
+    MessageModel : content
+    MessageModel : created_at
+  Base <|-- MessageModel
+  class SecretSettingModel
+    SecretSettingModel : __tablename__
+    SecretSettingModel : key_name
+    SecretSettingModel : encrypted_value
+    SecretSettingModel : created_at
+    SecretSettingModel : updated_at
+  Base <|-- SecretSettingModel
+  class ReindexJobModel
+    ReindexJobModel : __tablename__
+    ReindexJobModel : __table_args__
+    ReindexJobModel : id
+    ReindexJobModel : assistant_id
+    ReindexJobModel : target_collection
+    ReindexJobModel : status
+  Base <|-- ReindexJobModel
+  class AssistantGroupModel
+    AssistantGroupModel : __tablename__
+    AssistantGroupModel : assistant_id
+    AssistantGroupModel : group_name
+  Base <|-- AssistantGroupModel
+  class DocumentGroupModel
+    DocumentGroupModel : __tablename__
+    DocumentGroupModel : document_id
+    DocumentGroupModel : group_name
+  Base <|-- DocumentGroupModel
+  class AuditEventModel
+    AuditEventModel : __tablename__
+    AuditEventModel : id
+    AuditEventModel : occurred_at
+    AuditEventModel : user_id
+    AuditEventModel : action
+    AuditEventModel : resource_type
+  Base <|-- AuditEventModel
+  class UsageRecordModel
+    UsageRecordModel : __tablename__
+    UsageRecordModel : __table_args__
+    UsageRecordModel : id
+    UsageRecordModel : user_id
+    UsageRecordModel : user_name
+    UsageRecordModel : conversation_id
+  Base <|-- UsageRecordModel
+  class AppSettingModel
+    AppSettingModel : __tablename__
+    AppSettingModel : key_name
+    AppSettingModel : value
+    AppSettingModel : updated_by
+    AppSettingModel : updated_at
+  Base <|-- AppSettingModel
+  class MessageFeedbackModel
+    MessageFeedbackModel : __tablename__
+    MessageFeedbackModel : __table_args__
+    MessageFeedbackModel : id
+    MessageFeedbackModel : message_id
+    MessageFeedbackModel : conversation_id
+    MessageFeedbackModel : assistant_id
+  Base <|-- MessageFeedbackModel
+  class EvaluationDatasetError
+    EvaluationDatasetError : __init__()
+    EvaluationDatasetError : errors
+  class JsonlEvaluationDatasetLoader
+    JsonlEvaluationDatasetLoader : __init__()
+    JsonlEvaluationDatasetLoader : load()
+    JsonlEvaluationDatasetLoader : _parse()
+    JsonlEvaluationDatasetLoader : _allow_unvalidated
+  class LLMAnswerJudge
+    LLMAnswerJudge : __init__()
+    LLMAnswerJudge : is_faithful()
+    LLMAnswerJudge : _llm_gateway
+  class JsonEvaluationReportStore
+    JsonEvaluationReportStore : __init__()
+    JsonEvaluationReportStore : load_latest()
+    JsonEvaluationReportStore : save()
+    JsonEvaluationReportStore : _base_directory
+  class KeycloakGroupDirectory
+    KeycloakGroupDirectory : __init__()
+    KeycloakGroupDirectory : configured()
+    KeycloakGroupDirectory : list_groups()
+    KeycloakGroupDirectory : _access_token()
+    KeycloakGroupDirectory : _fetch_all()
+    KeycloakGroupDirectory : _paged()
+    KeycloakGroupDirectory : _token_url
+    KeycloakGroupDirectory : _groups_url
+    KeycloakGroupDirectory : _client_id
+    KeycloakGroupDirectory : _client_secret
+    KeycloakGroupDirectory : _post_form
+    KeycloakGroupDirectory : _get_json
+  class KeycloakTokenVerifier
+    KeycloakTokenVerifier : __init__()
+    KeycloakTokenVerifier : verify()
+    KeycloakTokenVerifier : _check_claims()
+    KeycloakTokenVerifier : _key()
+    KeycloakTokenVerifier : _should_refresh()
+    KeycloakTokenVerifier : _refresh()
+    KeycloakTokenVerifier : _issuer
+    KeycloakTokenVerifier : _audience
+    KeycloakTokenVerifier : _fetch_jwks
+    KeycloakTokenVerifier : _clock
+    KeycloakTokenVerifier : _cache_seconds
+    KeycloakTokenVerifier : _min_refresh_seconds
+  class SpanRecord
+    SpanRecord : duration_seconds()
+    SpanRecord : set_attribute()
+    SpanRecord : record_error()
+    SpanRecord : name
+    SpanRecord : trace_id
+    SpanRecord : span_id
+    SpanRecord : parent_span_id
+    SpanRecord : start_ns
+    SpanRecord : end_ns
+  class SpanTracer
+    SpanTracer : __init__()
+    SpanTracer : span()
+    SpanTracer : _new_trace_id()
+    SpanTracer : _finish()
+    SpanTracer : _exporter
+    SpanTracer : _metrics
+    SpanTracer : _id_source
+    SpanTracer : _clock_ns
+  class OtlpJsonSpanExporter
+    OtlpJsonSpanExporter : __init__()
+    OtlpJsonSpanExporter : submit()
+    OtlpJsonSpanExporter : flush()
+    OtlpJsonSpanExporter : _run()
+    OtlpJsonSpanExporter : _export()
+    OtlpJsonSpanExporter : _url
+    OtlpJsonSpanExporter : _service_name
+    OtlpJsonSpanExporter : _batch_size
+    OtlpJsonSpanExporter : _flush_interval
+    OtlpJsonSpanExporter : _timeout
+    OtlpJsonSpanExporter : _send
+  class GaugeSample
+    GaugeSample : name
+    GaugeSample : labels
+    GaugeSample : value
+  class _Histogram
+    _Histogram : __init__()
+    _Histogram : observe()
+    _Histogram : __slots__
+    _Histogram : buckets
+    _Histogram : counts
+    _Histogram : sum
+    _Histogram : count
+  class MetricsRegistry
+    MetricsRegistry : __init__()
+    MetricsRegistry : increment()
+    MetricsRegistry : observe()
+    MetricsRegistry : register_collector()
+    MetricsRegistry : render()
+    MetricsRegistry : _collect()
+    MetricsRegistry : _buckets
+    MetricsRegistry : _lock
+  class JsonLogFormatter
+    JsonLogFormatter : format()
+  class TracedLLMGateway
+    TracedLLMGateway : __init__()
+    TracedLLMGateway : _attributes()
+    TracedLLMGateway : generate()
+    TracedLLMGateway : generate_with_usage()
+    TracedLLMGateway : generate_stream()
+    TracedLLMGateway : _inner
+    TracedLLMGateway : _tracer
+    TracedLLMGateway : _model
+  class TracedVectorStore
+    TracedVectorStore : __init__()
+    TracedVectorStore : hybrid_search()
+    TracedVectorStore : __getattr__()
+    TracedVectorStore : _inner
+    TracedVectorStore : _tracer
+  class TracedTokenVerifier
+    TracedTokenVerifier : __init__()
+    TracedTokenVerifier : verify()
+    TracedTokenVerifier : _inner
+    TracedTokenVerifier : _tracer
+  class FakeContextAwareLLM
+    FakeContextAwareLLM : generate()
+    FakeContextAwareLLM : generate_with_usage()
+    FakeContextAwareLLM : generate_stream()
+  class LLMConfigurationError
+  class LLMProviderError
+  class HttpChatCompletionsLLM
+    HttpChatCompletionsLLM : __init__()
+    HttpChatCompletionsLLM : model()
+    HttpChatCompletionsLLM : generate()
+    HttpChatCompletionsLLM : generate_with_usage()
+    HttpChatCompletionsLLM : generate_stream()
+    HttpChatCompletionsLLM : _post()
+    HttpChatCompletionsLLM : _open()
+    HttpChatCompletionsLLM : _api_url
+    HttpChatCompletionsLLM : _model
+    HttpChatCompletionsLLM : _api_key
+    HttpChatCompletionsLLM : _timeout_seconds
+  class SecretDecryptionError
+  class FernetSecretCipher
+    FernetSecretCipher : __init__()
+    FernetSecretCipher : encrypt()
+    FernetSecretCipher : decrypt()
+    FernetSecretCipher : _fernet
+  class LocalDocumentFileStorage
+    LocalDocumentFileStorage : __init__()
+    LocalDocumentFileStorage : save()
+    LocalDocumentFileStorage : load()
+    LocalDocumentFileStorage : delete()
+    LocalDocumentFileStorage : _resolve()
+    LocalDocumentFileStorage : _base_dir
+  class _Unit
+    _Unit : text
+    _Unit : separator
+    _Unit : page
+    _Unit : sentences
+  class StructuralDocumentChunker
+    StructuralDocumentChunker : __init__()
+    StructuralDocumentChunker : chunk()
+    StructuralDocumentChunker : _prefix()
+    StructuralDocumentChunker : _fits()
+    StructuralDocumentChunker : _units()
+    StructuralDocumentChunker : _block_units()
+    StructuralDocumentChunker : _prose_units()
+    StructuralDocumentChunker : _line_units()
+    StructuralDocumentChunker : _counter
+    StructuralDocumentChunker : _max_tokens
+    StructuralDocumentChunker : _overlap_sentences
+    StructuralDocumentChunker : _max_prefix_tokens
+  class OcrUnavailableError
+  class TesseractPdfOcr
+    TesseractPdfOcr : __init__()
+    TesseractPdfOcr : languages()
+    TesseractPdfOcr : recognize_page()
+    TesseractPdfOcr : _render()
+    TesseractPdfOcr : _recognize()
+    TesseractPdfOcr : _run()
+    TesseractPdfOcr : _languages
+    TesseractPdfOcr : _timeout
+  class SupportedDocumentExtractor
+    SupportedDocumentExtractor : __init__()
+    SupportedDocumentExtractor : supports()
+    SupportedDocumentExtractor : extract()
+    SupportedDocumentExtractor : _ocr
+  class PdfPageOcr
+    PdfPageOcr : recognize_page()
+  class _SectionStack
+    _SectionStack : __init__()
+    _SectionStack : enter()
+    _SectionStack : path()
+  class _BlockBuilder
+    _BlockBuilder : __init__()
+    _BlockBuilder : kind()
+    _BlockBuilder : add()
+    _BlockBuilder : start()
+    _BlockBuilder : flush()
+    _BlockBuilder : _sections
+  class LocalHashEmbeddingGateway
+    LocalHashEmbeddingGateway : __init__()
+    LocalHashEmbeddingGateway : dimension()
+    LocalHashEmbeddingGateway : embed_documents()
+    LocalHashEmbeddingGateway : embed_query()
+    LocalHashEmbeddingGateway : _embed_single()
+    LocalHashEmbeddingGateway : model_name
+    LocalHashEmbeddingGateway : _vector_size
+  class SentenceTransformerEmbeddingGateway
+    SentenceTransformerEmbeddingGateway : __init__()
+    SentenceTransformerEmbeddingGateway : model_name()
+    SentenceTransformerEmbeddingGateway : dimension()
+    SentenceTransformerEmbeddingGateway : embed_documents()
+    SentenceTransformerEmbeddingGateway : embed_query()
+    SentenceTransformerEmbeddingGateway : _encode()
+    SentenceTransformerEmbeddingGateway : _model_name
+    SentenceTransformerEmbeddingGateway : _model
+    SentenceTransformerEmbeddingGateway : _dimension
+  class SentenceTransformerTokenCounter
+    SentenceTransformerTokenCounter : __init__()
+    SentenceTransformerTokenCounter : max_tokens()
+    SentenceTransformerTokenCounter : count()
+    SentenceTransformerTokenCounter : _model

@@ -35,3 +35,10 @@ Manter uma API key global do sistema, armazenada apenas em formato criptografado
   ambiente controlado (rede interna/dev) ate a entrada de auth.
 - O backend passa a depender de configuracao valida de `NEXUS_SECRETS_KEY`; sem ela, a gravacao e
   uso da API key devem falhar de forma explicita.
+
+## Evolução RAG Enterprise
+
+A criptografia e a não exposição da chave permanecem como decididas. A limitação de ausência de
+autenticação administrativa é encerrada pela
+[ADR 0008](0008-keycloak-e-modelo-de-permissoes.md): as rotas de configuração e teste da chave
+passam a exigir o papel administrador.

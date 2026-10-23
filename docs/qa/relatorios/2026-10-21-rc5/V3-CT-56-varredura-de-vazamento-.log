@@ -1,0 +1,16 @@
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-keycloak-1 Running 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-backend-run-ca7d022e447c Creating 
+ Container nexus-backend-run-ca7d022e447c Created 
+OK: nenhum vazamento; todos os controles recuperaram o documento permitido

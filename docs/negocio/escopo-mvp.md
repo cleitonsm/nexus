@@ -26,3 +26,9 @@
 - O histórico de uma conversa deve permanecer disponível após reiniciar a API.
 - O ambiente deve subir localmente com Docker sem instalar dependências de backend ou frontend
   na máquina host.
+
+## Evolução Posterior ao MVP
+
+Parte dos itens listados em "Fora do Escopo Inicial" passa a ser tratada na evolução RAG
+Enterprise. O escopo, os benefícios esperados e os critérios de aceite dessa evolução estão em
+[`escopo-rag-enterprise.md`](escopo-rag-enterprise.md).

@@ -1,0 +1,7 @@
+== Parte 1: kill -9 no worker durante o job
+worker encerrado a forca; aguardando o limite de 30 s
+OK: job reprocessado sem duplicidade
+== Parte 2: SIGTERM (docker compose stop) durante o job
+estado depois do stop: indexado
+OK: o job em andamento foi concluido antes de o worker sair
+CT-53: APROVADO

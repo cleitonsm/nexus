@@ -1,0 +1,125 @@
+<section class="mx-auto max-w-6xl space-y-4">
+  <div
+    *ngIf="error()"
+    class="rounded-md border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
+  >
+    <div class="flex items-center justify-between gap-2">
+      <span>{{ error() }}</span>
+      <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
+    </div>
+  </div>
+
+  <article class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
+    <h2 class="text-lg font-semibold">Auditoria</h2>
+    <p class="mt-1 text-sm text-slate-400">
+      Quem entrou, perguntou ou alterou a base. Os eventos não podem ser alterados nem excluídos, e
+      não guardam o texto de perguntas, respostas ou documentos.
+    </p>
+
+    <form
+      class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
+      [formGroup]="filters"
+      (ngSubmit)="search()"
+    >
+      <label class="block text-xs text-slate-300">
+        Usuário (identificador)
+        <input
+          type="text"
+          formControlName="userId"
+          class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+        />
+      </label>
+      <label class="block text-xs text-slate-300">
+        Tipo de evento
+        <select
+          formControlName="action"
+          class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+        >
+          <option value="">Todos</option>
+          <option *ngFor="let item of actions" [value]="item.value">{{ item.label }}</option>
+        </select>
+      </label>
+      <label class="block text-xs text-slate-300">
+        Assistente
+        <select
+          formControlName="assistantId"
+          class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+        >
+          <option value="">Todos</option>
+          <option *ngFor="let assistant of assistants()" [value]="assistant.id">
+            {{ assistant.name }}
+          </option>
+        </select>
+      </label>
+      <label class="block text-xs text-slate-300">
+        De
+        <input
+          type="datetime-local"
+          formControlName="from"
+          class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+        />
+      </label>
+      <label class="block text-xs text-slate-300">
+        Até
+        <input
+          type="datetime-local"
+          formControlName="to"
+          class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+        />
+      </label>
+      <div class="flex gap-2 sm:col-span-2 lg:col-span-5">
+        <button
+          type="submit"
+          [disabled]="loading().auditEvents"
+          class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {{ loading().auditEvents ? "Consultando..." : "Consultar" }}
+        </button>
+        <button
+          type="button"
+          (click)="clearFilters()"
+          class="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-300"
+        >
+          Limpar filtros
+        </button>
+      </div>
+    </form>
+  </article>
+
+  <article class="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
+    <table class="w-full min-w-[640px] text-left text-sm">
+      <thead class="text-xs uppercase tracking-wider text-slate-400">
+        <tr>
+          <th class="px-2 py-2 font-medium">Data</th>
+          <th class="px-2 py-2 font-medium">Usuário</th>
+          <th class="px-2 py-2 font-medium">Evento</th>
+          <th class="px-2 py-2 font-medium">Recurso</th>
+          <th class="px-2 py-2 font-medium">Detalhes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let event of events()" class="border-t border-slate-800 align-top">
+          <td class="whitespace-nowrap px-2 py-2 text-slate-300">
+            {{ event.occurred_at | date: "dd/MM/yyyy HH:mm:ss" }}
+          </td>
+          <td class="px-2 py-2">{{ userLabel(event) }}</td>
+          <td class="px-2 py-2">{{ actionLabel(event) }}</td>
+          <td class="px-2 py-2 text-slate-300">
+            {{ event.resource_type }}<span *ngIf="event.resource_id">: {{ event.resource_id }}</span>
+          </td>
+          <td class="px-2 py-2 text-slate-300">
+            <span *ngIf="summary(event)">{{ summary(event) }}</span>
+            <ul *ngIf="retrievedDocuments(event).length > 0" class="list-disc pl-4">
+              <li *ngFor="let name of retrievedDocuments(event)">{{ name }}</li>
+            </ul>
+          </td>
+        </tr>
+        <tr *ngIf="events().length === 0 && !loading().auditEvents">
+          <td colspan="5" class="px-2 py-6 text-center text-xs text-slate-500">
+            Nenhum evento para os filtros informados.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </article>
+</section>

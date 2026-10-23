@@ -1,0 +1,49 @@
+{
+  "gaps": [
+    {
+      "segment": "backend/src/application/use_cases",
+      "file_count": 23,
+      "integrations": [],
+      "directory_prefix": "backend/src/application",
+      "assigned_agent": "generalist-reviewer",
+      "score": 230,
+      "reason": "low score (230) \u2014 no specialist matched well",
+      "runners_up": []
+    },
+    {
+      "segment": "backend/src/application/dto",
+      "file_count": 7,
+      "integrations": [],
+      "directory_prefix": "backend/src/application/dto",
+      "assigned_agent": "generalist-reviewer",
+      "score": 70,
+      "reason": "low score (70) \u2014 no specialist matched well",
+      "runners_up": []
+    },
+    {
+      "segment": "backend/src/infrastructure/chunking",
+      "file_count": 3,
+      "integrations": [],
+      "directory_prefix": "backend/src/infrastructure/chunking",
+      "assigned_agent": "generalist-reviewer",
+      "score": 30,
+      "reason": "low score (30) \u2014 no specialist matched well",
+      "runners_up": []
+    },
+    {
+      "segment": "frontend",
+      "file_count": 4,
+      "integrations": [],
+      "directory_prefix": "frontend",
+      "assigned_agent": "generalist-reviewer",
+      "score": 40,
+      "reason": "low score (40) \u2014 no specialist matched well",
+      "runners_up": []
+    }
+  ],
+  "threshold": 1500,
+  "stats": {
+    "count": 4,
+    "total_segments": 20
+  }
+}

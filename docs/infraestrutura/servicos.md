@@ -24,3 +24,73 @@ alterar casos de uso.
 ## Embedding Local
 
 Componente responsável por transformar chunks em vetores usando modelo executado localmente.
+
+## Avaliação de Qualidade (Fase 1)
+
+Não é um serviço: é um comando executado sob demanda no container do backend
+(`python -m src.cli.evaluate`, acionado por `scripts/eval.sh` ou `scripts/eval.ps1`). Usa o
+PostgreSQL, o Qdrant e, quando há chave configurada, o provedor de LLM.
+
+## Evolução RAG Enterprise
+
+Os serviços abaixo foram acrescentados ao `compose.yaml` pelas Fases 4 a 6 (código entregue;
+validação no Docker pendente, ver o [plano de conclusão](../plano-de-conclusao.md)).
+
+### Keycloak
+
+**Já existe no `compose.yaml` desde a Fase 4** (serviços `keycloak` e `keycloak-db-init`, porta
+`8080`). Provedor de identidade. Autentica os usuários e informa papéis e grupos nos tokens. Usa
+um banco próprio dentro do PostgreSQL existente e importa o realm de desenvolvimento na subida
+(ADR 0008). Usuários de exemplo e console em `infra/keycloak/README.md`.
+
+### Worker de Ingestão e Reindexação
+
+Serviço `worker`, com a mesma imagem do backend (`python -m src.cli.worker`). Extrai texto,
+aplica OCR, fragmenta, vetoriza e indexa os documentos enfileirados (ADR 0009). Quando a fila de
+ingestão está vazia, executa as reindexações pedidas pela API (decisão PC-D4): a API só registra o
+pedido (`POST /assistants/{id}/reindex`, 202), e o worker o reserva por um prazo renovado a cada
+documento. Se o worker parar no meio, a reindexação recomeça do zero depois do prazo
+(`INGESTION_JOB_TIMEOUT_SECONDS`), até `INGESTION_MAX_ATTEMPTS` tentativas; esgotadas, ela falha,
+a versão parcial é descartada e a base vigente continua respondendo. Com um único worker, a
+ingestão espera a reindexação em curso terminar; para paralelizar, suba mais réplicas do serviço.
+
+### Filas de Ingestão e de Reindexação
+
+Tabelas `ingestion_jobs` e `reindex_jobs` no PostgreSQL existente, reservadas com
+`FOR UPDATE SKIP LOCKED`; não há broker dedicado.
+
+### Armazenamento de Documentos Originais
+
+Volume que guarda os arquivos enviados, para reprocessamento e reindexação.
+
+### Embedding Local, BM25 e Reranker
+
+Modelos executados dentro do backend e do worker, em CPU, com cache em volume. Substituem o
+embedding por hash, ainda em uso (ADR 0006 e ADR 0007).
+
+### Observabilidade (perfil `observabilidade`, SPEC-006 D1)
+
+`docker compose --profile observabilidade up -d` sobe:
+
+- **Jaeger** (`jaegertracing/all-in-one:1.62.0`): recebe os rastreamentos por OTLP/HTTP na porta
+  interna 4318 e os mostra em `http://localhost:16686`. Guarda em memória (até 20 mil
+  rastreamentos).
+- **Prometheus** (`prom/prometheus:v2.55.1`): lê `http://backend:8000/metrics` a cada 15 s, com
+  retenção de 7 dias. `http://localhost:9090`.
+- **Grafana** (`grafana/grafana:11.3.0`): painel "Nexus — Operação" já provisionado, com
+  Prometheus e Jaeger como fontes. `http://localhost:3000`.
+
+Detalhes em [observabilidade.md](observabilidade.md).
+
+### Backup (perfil `backup`, SPEC-006 D5)
+
+Serviço `backup` (imagem `postgres:16-alpine` com `curl` e `jq`) que executa
+`scripts/backup.sh` ao subir e a cada 24 h, gravando em `BACKUP_PATH`. Procedimento de
+restauração em [backup-e-restauracao.md](backup-e-restauracao.md).
+
+## Portas publicadas
+
+O `compose.yaml` publica todas as portas, exceto a do frontend, apenas em `127.0.0.1` (SPEC-007
+fix-4): PostgreSQL, Qdrant, Keycloak, API, Jaeger, Prometheus e Grafana não ficam acessíveis pela
+rede. O frontend segue em todas as interfaces. Fora do ambiente local, a API e o worker recusam
+iniciar com segredos padrão (ver `docs/infraestrutura/variaveis-ambiente.md`).

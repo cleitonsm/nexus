@@ -29,14 +29,31 @@ class ConversationHistoryResponse(BaseModel):
 
 
 class MessageRoleRequest(StrEnum):
+    """Papeis aceitos de fora: so ``user`` (SPEC-007 fix-1).
+
+    ``assistant`` e ``system`` sao gerados pelo servidor; aceitar de fora
+    permitiria forjar resposta do assistente no historico.
+    """
+
     USER = "user"
-    ASSISTANT = "assistant"
-    SYSTEM = "system"
 
 
 class AddMessageRequest(BaseModel):
     role: MessageRoleRequest
     content: str = Field(min_length=1)
+
+
+class CitationResponse(BaseModel):
+    number: int
+    document_id: str
+    chunk_id: str
+    source_name: str
+    section_path: str
+    page: int | None
+    score: float
+    excerpt: str
+    # Falso quando o documento foi excluido ou substituido (RN-29).
+    document_available: bool = True
 
 
 class MessageResponse(BaseModel):
@@ -45,11 +62,14 @@ class MessageResponse(BaseModel):
     role: str
     content: str
     created_at: datetime
+    citations: list[CitationResponse] = Field(default_factory=list)
 
 
 class ChatRequest(BaseModel):
     question: str = Field(min_length=1)
-    top_k: int = Field(default=4, ge=1, le=20)
+    # Teto por pergunta: reduz a quantidade de trechos abaixo de
+    # RERANK_TOP_N, nunca acima (SPEC-003).
+    top_k: int | None = Field(default=None, ge=1, le=20)
 
 
 class ChatResponse(BaseModel):
@@ -59,6 +79,8 @@ class ChatResponse(BaseModel):
     assistant_message: MessageResponse
     used_context_chunks: int
     fallback_used: bool
+    citations: list[CitationResponse] = Field(default_factory=list)
+    rewritten_query: str = ""
 
 
 class ConversationDetailResponse(BaseModel):

@@ -1,0 +1,26 @@
+
+> nexus-frontend@0.1.0 build
+> ng build --configuration production
+
+- Generating browser application bundles (phase: setup)...
+✔ Browser application bundle generation complete.
+✔ Browser application bundle generation complete.
+- Copying assets...
+✔ Copying assets complete.
+- Generating index html...
+✔ Index html generation complete.
+
+Initial chunk files           | Names         |  Raw size | Estimated transfer size
+main.36fe9635318fda27.js      | main          |   1.63 MB |               374.04 kB
+styles.30a3f681eca012ef.css   | styles        |  40.39 kB |                 6.58 kB
+polyfills.da75eae142cb3c71.js | polyfills     |  34.85 kB |                11.31 kB
+runtime.4c2d4512df201a0b.js   | runtime       | 906 bytes |               519 bytes
+
+                              | Initial total |   1.70 MB |               392.45 kB
+
+Build at: 2026-10-21T15:50:54.295Z - Hash: d409ed2db001b068 - Time: 22205ms
+npm notice
+npm notice New major version of npm available! 10.9.9 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

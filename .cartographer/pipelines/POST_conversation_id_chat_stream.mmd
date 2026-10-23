@@ -1,0 +1,130 @@
+flowchart LR
+  backend_src_api_dependencies_py_UnconfiguredLLMGat["generate_stream<br/><small>backend/src/api/dependencies.py:284</small>"]
+  backend_src_api_routes_conversations_py__chat_erro["_chat_error<br/><small>backend/src/api/routes/conversations.py:358</small>"]
+  backend_src_api_routes_conversations_py__chat_inpu["_chat_input<br/><small>backend/src/api/routes/conversations.py:345</small>"]
+  backend_src_api_routes_conversations_py__chat_resp["_chat_response<br/><small>backend/src/api/routes/conversations.py:425</small>"]
+  backend_src_api_routes_conversations_py__in_one_co["_in_one_context<br/><small>backend/src/api/routes/conversations.py:371</small>"]
+  backend_src_api_routes_conversations_py__message_r["_message_response<br/><small>backend/src/api/routes/conversations.py:439</small>"]
+  backend_src_api_routes_conversations_py__not_found["_not_found<br/><small>backend/src/api/routes/conversations.py:92</small>"]
+  backend_src_api_routes_conversations_py__server_se["_server_sent_events<br/><small>backend/src/api/routes/conversations.py:393</small>"]
+  backend_src_api_routes_conversations_py__sse["_sse<br/><small>backend/src/api/routes/conversations.py:421</small>"]
+  backend_src_api_routes_conversations_py_chat_with_["chat_with_assistant_stream<br/><small>backend/src/api/routes/conversations.py:292</small>"]
+  backend_src_api_schemas_conversations_py_ChatRespo["ChatResponse<br/><small>backend/src/api/schemas/conversations.py:71</small>"]
+  backend_src_api_schemas_conversations_py_CitationR["CitationResponse<br/><small>backend/src/api/schemas/conversations.py:42</small>"]
+  backend_src_api_schemas_conversations_py_MessageRe["MessageResponse<br/><small>backend/src/api/schemas/conversations.py:55</small>"]
+  backend_src_application_dto_conversation_dto_py_Ch["ChatStreamEvent<br/><small>backend/src/application/dto/conversation_dto.py:118</small>"]
+  backend_src_application_dto_conversation_dto_py_Ch["ChatTurnResult<br/><small>backend/src/application/dto/conversation_dto.py:103</small>"]
+  backend_src_application_dto_conversation_dto_py_Ci["from_entity<br/><small>backend/src/application/dto/conversation_dto.py:54</small>"]
+  backend_src_application_dto_conversation_dto_py_Me["from_entity<br/><small>backend/src/application/dto/conversation_dto.py:83</small>"]
+  backend_src_application_services_access_control_py["_deny<br/><small>backend/src/application/services/access_control.py:195</small>"]
+  backend_src_application_services_access_control_py["audit<br/><small>backend/src/application/services/access_control.py:78</small>"]
+  backend_src_application_services_access_control_py["owns_conversation<br/><small>backend/src/application/services/access_control.py:116</small>"]
+  backend_src_application_services_access_control_py["require_assistant_access<br/><small>backend/src/application/services/access_control.py:172</small>"]
+  backend_src_application_services_access_control_py["record<br/><small>backend/src/application/services/access_control.py:36</small>"]
+  backend_src_application_services_usage_py_UsageGov["check<br/><small>backend/src/application/services/usage.py:68</small>"]
+  backend_src_application_services_usage_py_UsageGov["current_limits<br/><small>backend/src/application/services/usage.py:65</small>"]
+  backend_src_application_use_cases_chat_with_assist["ChatWithAssistantInput<br/><small>backend/src/application/use_cases/chat_with_assistant.py:65</small>"]
+  backend_src_application_use_cases_chat_with_assist["ChatWithAssistantUseCase<br/><small>backend/src/application/use_cases/chat_with_assistant.py:104</small>"]
+  backend_src_application_use_cases_chat_with_assist["_audit_failure<br/><small>backend/src/application/use_cases/chat_with_assistant.py:386</small>"]
+  backend_src_application_use_cases_chat_with_assist["_audit_question<br/><small>backend/src/application/use_cases/chat_with_assistant.py:409</small>"]
+  backend_src_application_use_cases_chat_with_assist["_check_usage_limit<br/><small>backend/src/application/use_cases/chat_with_assistant.py:194</small>"]
+  backend_src_application_use_cases_chat_with_assist["_finish_failure<br/><small>backend/src/application/use_cases/chat_with_assistant.py:306</small>"]
+  backend_src_application_use_cases_chat_with_assist["_finish_success<br/><small>backend/src/application/use_cases/chat_with_assistant.py:274</small>"]
+  backend_src_application_use_cases_chat_with_assist["_initial_state<br/><small>backend/src/application/use_cases/chat_with_assistant.py:363</small>"]
+  backend_src_application_use_cases_chat_with_assist["_record_usage<br/><small>backend/src/application/use_cases/chat_with_assistant.py:336</small>"]
+  backend_src_application_use_cases_chat_with_assist["_start<br/><small>backend/src/application/use_cases/chat_with_assistant.py:165</small>"]
+  backend_src_application_use_cases_chat_with_assist["_stream_answer<br/><small>backend/src/application/use_cases/chat_with_assistant.py:243</small>"]
+  backend_src_application_use_cases_chat_with_assist["_stream_events<br/><small>backend/src/application/use_cases/chat_with_assistant.py:220</small>"]
+  backend_src_application_use_cases_chat_with_assist["_top_n<br/><small>backend/src/application/use_cases/chat_with_assistant.py:428</small>"]
+  backend_src_application_use_cases_chat_with_assist["start_stream<br/><small>backend/src/application/use_cases/chat_with_assistant.py:155</small>"]
+  backend_src_application_use_cases_chat_with_assist["ConversationNotFoundError<br/><small>backend/src/application/use_cases/chat_with_assistant.py:57</small>"]
+  backend_src_application_use_cases_chat_with_assist["_retrieved<br/><small>backend/src/application/use_cases/chat_with_assistant.py:768</small>"]
+  backend_src_application_use_cases_chat_with_assist["_turn_attributes<br/><small>backend/src/application/use_cases/chat_with_assistant.py:784</small>"]
+  backend_src_domain_access_py_AccessPolicy_can_acce["can_access_assistant<br/><small>backend/src/domain/access.py:88</small>"]
+  backend_src_domain_access_py_AccessPolicy_owns_con["owns_conversation<br/><small>backend/src/domain/access.py:121</small>"]
+  backend_src_domain_audit_py_AuditEvent["AuditEvent<br/><small>backend/src/domain/audit.py:61</small>"]
+  backend_src_domain_errors_py_AccessDeniedError["AccessDeniedError<br/><small>backend/src/domain/errors.py:20</small>"]
+  backend_src_domain_errors_py_UsageLimitExceededErr["UsageLimitExceededError<br/><small>backend/src/domain/errors.py:55</small>"]
+  backend_src_domain_interfaces_py_AssistantPermissi["get_assistant_groups<br/><small>backend/src/domain/interfaces.py:529</small>"]
+  backend_src_domain_interfaces_py_AssistantReposito["get_by_id<br/><small>backend/src/domain/interfaces.py:44</small>"]
+  backend_src_domain_interfaces_py_AuditLogRepositor["append<br/><small>backend/src/domain/interfaces.py:572</small>"]
+  backend_src_domain_interfaces_py_UsageSettingsRepo["get_limits<br/><small>backend/src/domain/interfaces.py:603</small>"]
+  backend_src_domain_observability_py_MetricsRecorde["increment<br/><small>backend/src/domain/observability.py:34</small>"]
+  backend_src_domain_observability_py_MetricsRecorde["observe<br/><small>backend/src/domain/observability.py:41</small>"]
+  backend_src_domain_observability_py_NoopTracer_spa["span<br/><small>backend/src/domain/observability.py:61</small>"]
+  backend_src_domain_observability_py__NoopSpan["_NoopSpan<br/><small>backend/src/domain/observability.py:49</small>"]
+  backend_src_domain_usage_py_TokenUsage["TokenUsage<br/><small>backend/src/domain/usage.py:28</small>"]
+  backend_src_domain_value_objects_py_ConversationId["ConversationId<br/><small>backend/src/domain/value_objects.py:40</small>"]
+  backend_src_api_routes_conversations_py_chat_with_:::entry
+  backend_src_api_routes_conversations_py__chat_erro --> backend_src_api_routes_conversations_py__not_found
+  backend_src_api_routes_conversations_py__chat_inpu --> backend_src_application_use_cases_chat_with_assist
+  backend_src_api_routes_conversations_py__chat_resp --> backend_src_api_routes_conversations_py__message_r
+  backend_src_api_routes_conversations_py__chat_resp --> backend_src_api_schemas_conversations_py_ChatRespo
+  backend_src_api_routes_conversations_py__message_r --> backend_src_api_schemas_conversations_py_CitationR
+  backend_src_api_routes_conversations_py__message_r --> backend_src_api_schemas_conversations_py_MessageRe
+  backend_src_api_routes_conversations_py__server_se --> backend_src_api_routes_conversations_py__chat_erro
+  backend_src_api_routes_conversations_py__server_se --> backend_src_api_routes_conversations_py__chat_resp
+  backend_src_api_routes_conversations_py__server_se --> backend_src_api_routes_conversations_py__in_one_co
+  backend_src_api_routes_conversations_py__server_se --> backend_src_api_routes_conversations_py__sse
+  backend_src_api_routes_conversations_py_chat_with_ --> backend_src_api_routes_conversations_py__chat_erro
+  backend_src_api_routes_conversations_py_chat_with_ --> backend_src_api_routes_conversations_py__chat_inpu
+  backend_src_api_routes_conversations_py_chat_with_ --> backend_src_api_routes_conversations_py__server_se
+  backend_src_api_routes_conversations_py_chat_with_ --> backend_src_application_use_cases_chat_with_assist
+  backend_src_api_routes_conversations_py_chat_with_ --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_dto_conversation_dto_py_Me --> backend_src_application_dto_conversation_dto_py_Ci
+  backend_src_application_services_access_control_py --> backend_src_application_services_access_control_py
+  backend_src_application_services_access_control_py --> backend_src_domain_errors_py_AccessDeniedError
+  backend_src_application_services_access_control_py --> backend_src_application_services_access_control_py
+  backend_src_application_services_access_control_py --> backend_src_domain_access_py_AccessPolicy_owns_con
+  backend_src_application_services_access_control_py --> backend_src_application_services_access_control_py
+  backend_src_application_services_access_control_py --> backend_src_domain_access_py_AccessPolicy_can_acce
+  backend_src_application_services_access_control_py --> backend_src_domain_interfaces_py_AssistantPermissi
+  backend_src_application_services_access_control_py --> backend_src_domain_audit_py_AuditEvent
+  backend_src_application_services_access_control_py --> backend_src_domain_interfaces_py_AuditLogRepositor
+  backend_src_application_services_usage_py_UsageGov --> backend_src_application_services_usage_py_UsageGov
+  backend_src_application_services_usage_py_UsageGov --> backend_src_application_services_usage_py_UsageGov
+  backend_src_application_services_usage_py_UsageGov --> backend_src_domain_errors_py_UsageLimitExceededErr
+  backend_src_application_services_usage_py_UsageGov --> backend_src_domain_observability_py_MetricsRecorde
+  backend_src_application_services_usage_py_UsageGov --> backend_src_domain_interfaces_py_UsageSettingsRepo
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_services_access_control_py
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_services_access_control_py
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_services_access_control_py
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_services_usage_py_UsageGov
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_observability_py_MetricsRecorde
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_dto_conversation_dto_py_Ch
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_dto_conversation_dto_py_Me
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_observability_py_MetricsRecorde
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_usage_py_TokenUsage
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_services_access_control_py
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_services_access_control_py
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_services_access_control_py
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_interfaces_py_AssistantReposito
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_usage_py_TokenUsage
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_value_objects_py_ConversationId
+  backend_src_application_use_cases_chat_with_assist --> backend_src_api_dependencies_py_UnconfiguredLLMGat
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_dto_conversation_dto_py_Ch
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_interfaces_py_AuditLogRepositor
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_observability_py_MetricsRecorde
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_observability_py_NoopTracer_spa
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_usage_py_TokenUsage
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_dto_conversation_dto_py_Ch
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_domain_observability_py_NoopTracer_spa
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_application_use_cases_chat_with_assist --> backend_src_application_use_cases_chat_with_assist
+  backend_src_domain_observability_py_NoopTracer_spa --> backend_src_domain_observability_py__NoopSpan
+classDef entry fill:#fef3c7,stroke:#d97706,stroke-width:2px
+classDef external fill:#fee2e2,stroke:#991b1b,stroke-dasharray:3 3

@@ -1,0 +1,83 @@
+# npm audit report
+
+@angular/common  <=19.2.25
+Severity: high
+Depends on vulnerable versions of @angular/core
+@angular/common: Denial of Service (DoS) via OOM in Date Formatting (formatDate) - https://github.com/advisories/GHSA-48r7-hpm6-gfxm
+@angular/common: Weak 32-Bit Cache Key Hashing in `HttpTransferCache` Leading to Cross-Request Data Leakage and State Poisoning - https://github.com/advisories/GHSA-39pv-4j6c-2g6v
+@angular/common: Denial of Service (DoS) via OOM in Number Formatting (digitsInfo) - https://github.com/advisories/GHSA-p3vc-36g9-x9gr
+@angular/common: Information Leak via Default Caching of Credentialed Requests in HttpTransferCache - https://github.com/advisories/GHSA-q6f4-qqrg-jv6x
+Angular: Cache-Key Ambiguity in HttpTransferCache Leading to Cross-Request Response Reuse and State Poisoning - https://github.com/advisories/GHSA-jhpw-976m-542j
+Angular: Information Leak via `HttpTransferCache` Bypass When Using `withRequestsMadeViaParent` - https://github.com/advisories/GHSA-p297-fm68-3q8c
+@angular/common: XSRF Token Leakage via URL Parsing Discrepancy in Angular HTTP Client (Incomplete fix for CVE-2025-66035) - https://github.com/advisories/GHSA-jfgx-762w-99vr
+fix available via `npm audit fix --force`
+Will install @angular/common@22.2.3, which is a breaking change
+node_modules/@angular/common
+  @angular/animations  <=19.2.25
+  Depends on vulnerable versions of @angular/common
+  Depends on vulnerable versions of @angular/core
+  node_modules/@angular/animations
+    @angular/platform-browser  <=19.2.25
+    Depends on vulnerable versions of @angular/animations
+    Depends on vulnerable versions of @angular/common
+    Depends on vulnerable versions of @angular/core
+    node_modules/@angular/platform-browser
+      @angular/forms  <=19.2.25
+      Depends on vulnerable versions of @angular/common
+      Depends on vulnerable versions of @angular/core
+      Depends on vulnerable versions of @angular/platform-browser
+      node_modules/@angular/forms
+  @angular/platform-browser-dynamic  <=19.2.25
+  Depends on vulnerable versions of @angular/common
+  Depends on vulnerable versions of @angular/compiler
+  Depends on vulnerable versions of @angular/core
+  Depends on vulnerable versions of @angular/platform-browser
+  node_modules/@angular/platform-browser-dynamic
+  @angular/router  <=19.2.25
+  Depends on vulnerable versions of @angular/common
+  Depends on vulnerable versions of @angular/core
+  Depends on vulnerable versions of @angular/platform-browser
+  node_modules/@angular/router
+
+@angular/compiler  <=19.2.25
+Severity: high
+@angular/compiler: Two-Way Property Binding Sanitization Bypass (XSS) - https://github.com/advisories/GHSA-58w9-8g37-x9v5
+Angular: Template and Attribute Namespace Sanitization Bypass (XSS) - https://github.com/advisories/GHSA-f3m7-gqxr-g87x
+Angular i18n: Cross-Site Scripting (XSS) via event-handler attributes - https://github.com/advisories/GHSA-jj27-h5hq-8x99
+Angular: Sanitization bypass via directive host bindings on concrete host elements in @angular/core and @angular/compiler - https://github.com/advisories/GHSA-hh8m-fm6v-7cvg
+fix available via `npm audit fix --force`
+Will install @angular/compiler@22.2.3, which is a breaking change
+node_modules/@angular/compiler
+
+@angular/core  <=19.2.25
+Severity: high
+Angular: Template and Attribute Namespace Sanitization Bypass (XSS) - https://github.com/advisories/GHSA-f3m7-gqxr-g87x
+@angular/core: Angular Template and Dynamic Component Namespace Bypass leading to Cross-Site Scripting (XSS) - https://github.com/advisories/GHSA-692r-grfm-v8x7
+Angular Client Hydration DOM Clobbering & Response-Cache Poisoning - https://github.com/advisories/GHSA-rgjc-h3x7-9mwg
+Angular i18n: Cross-Site Scripting (XSS) via event-handler attributes - https://github.com/advisories/GHSA-jj27-h5hq-8x99
+Angular: Sanitization bypass via directive host bindings on concrete host elements in @angular/core and @angular/compiler - https://github.com/advisories/GHSA-hh8m-fm6v-7cvg
+fix available via `npm audit fix --force`
+Will install @angular/core@22.2.3, which is a breaking change
+node_modules/@angular/core
+  @ngrx/effects  <=19.2.1
+  Depends on vulnerable versions of @angular/core
+  Depends on vulnerable versions of @ngrx/store
+  node_modules/@ngrx/effects
+  @ngrx/store  1.5.0 - 2.0.0 || 2.1.1 - 19.2.1
+  Depends on vulnerable versions of @angular/core
+  node_modules/@ngrx/store
+    @ngrx/store-devtools  4.0.0 - 19.2.1
+    Depends on vulnerable versions of @angular/core
+    Depends on vulnerable versions of @ngrx/store
+    node_modules/@ngrx/store-devtools
+
+
+11 vulnerabilities (7 moderate, 4 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+npm notice
+npm notice New major version of npm available! 10.9.9 -> 12.2.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

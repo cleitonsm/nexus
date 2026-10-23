@@ -3,10 +3,22 @@ import { createActionGroup, emptyProps, props } from "@ngrx/store";
 import {
   ApiKeyTestResult,
   ApiKeyStatus,
+  LlmSettings,
+  LlmSettingsInput,
   Assistant,
+  AuditEvent,
+  AuditFilters,
   ChatMessage,
   Conversation,
-  IngestedDocument
+  ConversationDetail,
+  DocumentAccess,
+  FeedbackRating,
+  IndexStatus,
+  ReindexJob,
+  FeedbackReview,
+  MessageFeedback,
+  UsageLimits,
+  UsageReport
 } from "../shared/models/nexus.models";
 
 export const nexusActions = createActionGroup({
@@ -59,8 +71,10 @@ export const nexusActions = createActionGroup({
       assistantId: string;
       file: File;
       metadata: Record<string, string>;
+      /** Grupos a que o documento ja nasce restrito; vazio segue o assistente. */
+      groups?: string[];
     }>(),
-    "Upload Document Success": props<{ document: IngestedDocument }>(),
+    "Upload Document Success": props<{ document: DocumentAccess }>(),
     "Upload Document Failure": props<{ error: string }>(),
 
     "Send Chat Question": props<{
@@ -83,6 +97,41 @@ export const nexusActions = createActionGroup({
       assistantMessage: ChatMessage;
     }>(),
     "Send Chat Question Failure": props<{ error: string }>(),
+    /** RF-58: a pergunta aparece na hora e a resposta, em partes. */
+    "Chat Stream Started": props<{ conversationId: string | null; question: string }>(),
+    "Chat Stream Delta": props<{ text: string }>(),
+    /** Texto final diferente do transmitido (fallback): substitui o exibido. */
+    "Chat Stream Replace": props<{ text: string }>(),
+    /** D13: o usuario parou a resposta ou saiu do chat. */
+    "Cancel Chat Stream": emptyProps(),
+    "Chat Stream Cancelled": emptyProps(),
+
+    "Submit Feedback": props<{
+      messageId: string;
+      rating: FeedbackRating;
+      comment: string | null;
+    }>(),
+    "Submit Feedback Success": props<{ feedback: MessageFeedback }>(),
+    "Submit Feedback Failure": props<{ messageId: string; error: string }>(),
+    "Load Curator Feedback": props<{ status: string; assistantId: string | null }>(),
+    "Load Curator Feedback Success": props<{ items: MessageFeedback[] }>(),
+    "Load Curator Feedback Failure": props<{ error: string }>(),
+    "Review Feedback": props<{ feedbackId: string; review: FeedbackReview }>(),
+    "Review Feedback Success": props<{ feedback: MessageFeedback }>(),
+    "Review Feedback Failure": props<{ error: string }>(),
+    "Export Feedback": props<{ assistantId: string }>(),
+    "Export Feedback Success": emptyProps(),
+    "Export Feedback Failure": props<{ error: string }>(),
+
+    "Load Usage Report": props<{ from: string | null; to: string | null }>(),
+    "Load Usage Report Success": props<{ report: UsageReport }>(),
+    "Load Usage Report Failure": props<{ error: string }>(),
+    "Load Usage Limits": emptyProps(),
+    "Load Usage Limits Success": props<{ limits: UsageLimits }>(),
+    "Load Usage Limits Failure": props<{ error: string }>(),
+    "Save Usage Limits": props<{ limits: UsageLimits }>(),
+    "Save Usage Limits Success": props<{ limits: UsageLimits }>(),
+    "Save Usage Limits Failure": props<{ error: string }>(),
 
     "Load Api Key Status": emptyProps(),
     "Load Api Key Status Success": props<{ status: ApiKeyStatus }>(),
@@ -90,8 +139,62 @@ export const nexusActions = createActionGroup({
     "Save Api Key": props<{ apiKey: string }>(),
     "Save Api Key Success": props<{ status: ApiKeyStatus }>(),
     "Save Api Key Failure": props<{ error: string }>(),
+    "Load Llm Settings": emptyProps(),
+    "Load Llm Settings Success": props<{ settings: LlmSettings }>(),
+    "Load Llm Settings Failure": props<{ error: string }>(),
+    "Save Llm Settings": props<{ input: LlmSettingsInput }>(),
+    "Save Llm Settings Success": props<{ settings: LlmSettings }>(),
+    "Save Llm Settings Failure": props<{ error: string }>(),
     "Test Api Key": emptyProps(),
     "Test Api Key Success": props<{ result: ApiKeyTestResult }>(),
-    "Test Api Key Failure": props<{ error: string }>()
+    "Test Api Key Failure": props<{ error: string }>(),
+
+    "Set Assistant Groups": props<{ assistantId: string; groups: string[] }>(),
+    "Set Assistant Groups Success": props<{ assistantId: string; groups: string[] }>(),
+    "Set Assistant Groups Failure": props<{ error: string }>(),
+    /** ``background``: consulta periodica (D4), sem o aviso de carregamento. */
+    "Load Document Access": props<{ assistantId: string; background?: boolean }>(),
+    "Load Document Access Success": props<{
+      assistantId: string;
+      documents: DocumentAccess[];
+    }>(),
+    "Load Document Access Failure": props<{ error: string }>(),
+    "Set Document Groups": props<{ documentId: string; groups: string[] }>(),
+    "Set Document Groups Success": props<{ document: DocumentAccess }>(),
+    "Set Document Groups Failure": props<{ error: string }>(),
+    "Stop Document Polling": emptyProps(),
+    "Delete Document": props<{ assistantId: string; documentId: string }>(),
+    "Delete Document Success": props<{ assistantId: string; documentId: string }>(),
+    "Delete Document Failure": props<{ error: string }>(),
+    "Replace Document": props<{ assistantId: string; documentId: string; file: File }>(),
+    "Replace Document Success": props<{ document: DocumentAccess }>(),
+    "Replace Document Failure": props<{ error: string }>(),
+    "Reprocess Document": props<{ documentId: string }>(),
+    "Reprocess Document Success": props<{ document: DocumentAccess }>(),
+    "Reprocess Document Failure": props<{ error: string }>(),
+    /** ``background``: consulta durante a reindexacao, sem aviso de carregamento. */
+    "Load Index Status": props<{ assistantId: string; background?: boolean }>(),
+    "Load Index Status Success": props<{ status: IndexStatus }>(),
+    "Load Index Status Failure": props<{ error: string }>(),
+    "Start Reindex": props<{ assistantId: string }>(),
+    "Start Reindex Success": props<{ job: ReindexJob }>(),
+    "Start Reindex Failure": props<{ error: string }>(),
+    "Load Available Groups": emptyProps(),
+    "Load Available Groups Success": props<{ groups: string[] }>(),
+    /** Sem a lista, a tela usa o campo de texto; nao e mostrado como erro. */
+    "Load Available Groups Failure": emptyProps(),
+    "Load Archived Conversations": emptyProps(),
+    "Load Archived Conversations Success": props<{ conversations: Conversation[] }>(),
+    "Load Archived Conversations Failure": props<{ error: string }>(),
+    "Open Archived Conversation": props<{ conversationId: string }>(),
+    "Open Archived Conversation Success": props<{ conversation: ConversationDetail }>(),
+    "Open Archived Conversation Failure": props<{ error: string }>(),
+    "Close Archived Conversation": emptyProps(),
+    "Delete Archived Conversation": props<{ conversationId: string }>(),
+    "Delete Archived Conversation Success": props<{ conversationId: string }>(),
+    "Delete Archived Conversation Failure": props<{ error: string }>(),
+    "Load Audit Events": props<{ filters: AuditFilters }>(),
+    "Load Audit Events Success": props<{ events: AuditEvent[] }>(),
+    "Load Audit Events Failure": props<{ error: string }>()
   }
 });

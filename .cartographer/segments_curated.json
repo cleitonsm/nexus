@@ -1,0 +1,345 @@
+{
+ "segments": [
+  {
+   "name": "api-http",
+   "assigned_agent": "backend-api-reviewer",
+   "files": [
+    "backend/src/api/dependencies.py",
+    "backend/src/api/errors.py",
+    "backend/src/api/main.py",
+    "backend/src/api/middleware.py",
+    "backend/src/api/routes/admin.py",
+    "backend/src/api/routes/assistants.py",
+    "backend/src/api/routes/conversations.py",
+    "backend/src/api/routes/documents.py",
+    "backend/src/api/routes/feedback.py",
+    "backend/src/api/routes/index.py",
+    "backend/src/api/routes/me.py",
+    "backend/src/api/schemas/access.py",
+    "backend/src/api/schemas/admin.py",
+    "backend/src/api/schemas/assistants.py",
+    "backend/src/api/schemas/conversations.py",
+    "backend/src/api/schemas/index.py",
+    "backend/src/api/schemas/operations.py"
+   ],
+   "file_count": 17,
+   "loc": 2917,
+   "integrations": [
+    "fastapi"
+   ]
+  },
+  {
+   "name": "auth-access-control",
+   "assigned_agent": "auth-security-reviewer",
+   "files": [
+    "backend/src/api/dependencies.py",
+    "backend/src/api/middleware.py",
+    "backend/src/application/services/access_control.py",
+    "backend/src/application/use_cases/audit_and_session.py",
+    "backend/src/application/use_cases/list_groups.py",
+    "backend/src/application/use_cases/manage_api_key.py",
+    "backend/src/application/use_cases/manage_assistant_access.py",
+    "backend/src/domain/access.py",
+    "backend/src/domain/audit.py",
+    "backend/src/infrastructure/auth/keycloak_group_directory.py",
+    "backend/src/infrastructure/auth/keycloak_token_verifier.py",
+    "backend/src/infrastructure/secrets/cipher.py",
+    "infra/keycloak/nexus-realm.json"
+   ],
+   "file_count": 13,
+   "loc": 2114,
+   "integrations": [
+    "keycloak",
+    "jwt"
+   ]
+  },
+  {
+   "name": "application-use-cases",
+   "assigned_agent": "generalist-reviewer",
+   "files": [
+    "backend/src/application/services/access_control.py",
+    "backend/src/application/services/document_indexing.py",
+    "backend/src/application/services/grounded_answer.py",
+    "backend/src/application/services/index_state.py",
+    "backend/src/application/services/ingestion.py",
+    "backend/src/application/services/retrieval.py",
+    "backend/src/application/services/usage.py",
+    "backend/src/application/use_cases/audit_and_session.py",
+    "backend/src/application/use_cases/chat_with_assistant.py",
+    "backend/src/application/use_cases/check_consistency.py",
+    "backend/src/application/use_cases/compare_evaluation_reports.py",
+    "backend/src/application/use_cases/create_assistant.py",
+    "backend/src/application/use_cases/evaluate_assistant.py",
+    "backend/src/application/use_cases/infer_assistant.py",
+    "backend/src/application/use_cases/ingest_document.py",
+    "backend/src/application/use_cases/list_assistants.py",
+    "backend/src/application/use_cases/list_conversations.py",
+    "backend/src/application/use_cases/list_groups.py",
+    "backend/src/application/use_cases/manage_api_key.py",
+    "backend/src/application/use_cases/manage_archived_conversations.py",
+    "backend/src/application/use_cases/manage_assistant_access.py",
+    "backend/src/application/use_cases/manage_conversation.py",
+    "backend/src/application/use_cases/manage_documents.py",
+    "backend/src/application/use_cases/manage_feedback.py",
+    "backend/src/application/use_cases/manage_usage.py",
+    "backend/src/application/use_cases/process_ingestion.py",
+    "backend/src/application/use_cases/register_conversation.py",
+    "backend/src/application/use_cases/reindex_assistant.py"
+   ],
+   "file_count": 28,
+   "loc": 5123,
+   "integrations": []
+  },
+  {
+   "name": "domain-and-dto",
+   "assigned_agent": "generalist-reviewer",
+   "files": [
+    "backend/src/application/dto/access_dto.py",
+    "backend/src/application/dto/assistant_dto.py",
+    "backend/src/application/dto/conversation_dto.py",
+    "backend/src/application/dto/evaluation_dto.py",
+    "backend/src/application/dto/index_dto.py",
+    "backend/src/application/dto/operations_dto.py",
+    "backend/src/domain/access.py",
+    "backend/src/domain/audit.py",
+    "backend/src/domain/chunking.py",
+    "backend/src/domain/citations.py",
+    "backend/src/domain/entities.py",
+    "backend/src/domain/errors.py",
+    "backend/src/domain/evaluation.py",
+    "backend/src/domain/feedback.py",
+    "backend/src/domain/interfaces.py",
+    "backend/src/domain/observability.py",
+    "backend/src/domain/prompt_injection.py",
+    "backend/src/domain/usage.py",
+    "backend/src/domain/value_objects.py"
+   ],
+   "file_count": 19,
+   "loc": 2855,
+   "integrations": []
+  },
+  {
+   "name": "rag-retrieval",
+   "assigned_agent": "ai-pipeline-reviewer",
+   "files": [
+    "backend/src/application/services/grounded_answer.py",
+    "backend/src/application/services/retrieval.py",
+    "backend/src/application/use_cases/chat_with_assistant.py",
+    "backend/src/application/use_cases/infer_assistant.py",
+    "backend/src/domain/citations.py",
+    "backend/src/domain/prompt_injection.py",
+    "backend/src/infrastructure/composition.py",
+    "backend/src/infrastructure/embeddings/bm25_sparse_embedding.py",
+    "backend/src/infrastructure/embeddings/local_embedding.py",
+    "backend/src/infrastructure/embeddings/sentence_transformer_embedding.py",
+    "backend/src/infrastructure/reranking/cross_encoder_reranker.py",
+    "backend/src/infrastructure/vector_store/qdrant_store.py"
+   ],
+   "file_count": 12,
+   "loc": 2532,
+   "integrations": [
+    "qdrant",
+    "huggingface",
+    "openai"
+   ]
+  },
+  {
+   "name": "llm-and-evaluation",
+   "assigned_agent": "ai-pipeline-reviewer",
+   "files": [
+    "backend/src/cli/evaluate.py",
+    "backend/src/domain/evaluation.py",
+    "backend/src/infrastructure/evaluation/dataset_loader.py",
+    "backend/src/infrastructure/evaluation/llm_answer_judge.py",
+    "backend/src/infrastructure/evaluation/report_store.py",
+    "backend/src/infrastructure/llm/fake_llm.py",
+    "backend/src/infrastructure/llm/http_chat_llm.py"
+   ],
+   "file_count": 7,
+   "loc": 1119,
+   "integrations": [
+    "openai"
+   ]
+  },
+  {
+   "name": "ingestion-and-worker",
+   "assigned_agent": "queue-worker-reviewer",
+   "files": [
+    "backend/src/application/services/document_indexing.py",
+    "backend/src/application/services/index_state.py",
+    "backend/src/application/services/ingestion.py",
+    "backend/src/application/use_cases/ingest_document.py",
+    "backend/src/application/use_cases/process_ingestion.py",
+    "backend/src/application/use_cases/reindex_assistant.py",
+    "backend/src/cli/check_consistency.py",
+    "backend/src/cli/purge_audit.py",
+    "backend/src/cli/worker.py",
+    "backend/src/domain/chunking.py",
+    "backend/src/infrastructure/chunking/sentences.py",
+    "backend/src/infrastructure/chunking/structural_chunker.py",
+    "backend/src/infrastructure/documents/extractor.py",
+    "backend/src/infrastructure/documents/ocr.py",
+    "backend/src/infrastructure/documents/structured_extraction.py",
+    "backend/src/infrastructure/documents/text_extraction.py",
+    "backend/src/infrastructure/storage/local_file_storage.py"
+   ],
+   "file_count": 17,
+   "loc": 3200,
+   "integrations": [
+    "filesystem",
+    "worker"
+   ]
+  },
+  {
+   "name": "database",
+   "assigned_agent": "db-schema-reviewer",
+   "files": [
+    "backend/src/infrastructure/database/alembic/env.py",
+    "backend/src/infrastructure/database/alembic/versions/0001_baseline.py",
+    "backend/src/infrastructure/database/alembic/versions/0002_semantic_retrieval.py",
+    "backend/src/infrastructure/database/alembic/versions/0003_message_citations.py",
+    "backend/src/infrastructure/database/alembic/versions/0004_access_control.py",
+    "backend/src/infrastructure/database/alembic/versions/0005_document_lifecycle.py",
+    "backend/src/infrastructure/database/alembic/versions/0006_operations.py",
+    "backend/src/infrastructure/database/alembic/versions/0007_reindex_in_worker.py",
+    "backend/src/infrastructure/database/base.py",
+    "backend/src/infrastructure/database/migrate.py",
+    "backend/src/infrastructure/database/models.py",
+    "backend/src/infrastructure/database/operations_repositories.py",
+    "backend/src/infrastructure/database/repositories.py",
+    "backend/src/infrastructure/database/session.py"
+   ],
+   "file_count": 14,
+   "loc": 2353,
+   "integrations": [
+    "postgres",
+    "sqlalchemy"
+   ]
+  },
+  {
+   "name": "observability",
+   "assigned_agent": "generalist-reviewer",
+   "files": [
+    "backend/src/domain/observability.py",
+    "backend/src/infrastructure/observability/instrumented.py",
+    "backend/src/infrastructure/observability/metrics.py",
+    "backend/src/infrastructure/observability/structured_logging.py",
+    "backend/src/infrastructure/observability/tracing.py",
+    "infra/observability/grafana/dashboards/nexus-operacao.json",
+    "infra/observability/grafana/provisioning/dashboards/dashboards.yml",
+    "infra/observability/grafana/provisioning/datasources/datasources.yml",
+    "infra/observability/prometheus.yml"
+   ],
+   "file_count": 9,
+   "loc": 1247,
+   "integrations": []
+  },
+  {
+   "name": "frontend-core-store",
+   "assigned_agent": "frontend-ui-reviewer",
+   "files": [
+    "frontend/src/app/core/auth/access.spec.ts",
+    "frontend/src/app/core/auth/access.ts",
+    "frontend/src/app/core/auth/auth.guard.ts",
+    "frontend/src/app/core/auth/auth.interceptor.ts",
+    "frontend/src/app/core/auth/auth.models.ts",
+    "frontend/src/app/core/auth/auth.service.ts",
+    "frontend/src/app/core/auth/http-auth.spec.ts",
+    "frontend/src/app/core/auth/http-auth.ts",
+    "frontend/src/app/core/auth/oidc-client.spec.ts",
+    "frontend/src/app/core/auth/oidc-client.ts",
+    "frontend/src/app/core/auth/pkce.spec.ts",
+    "frontend/src/app/core/auth/pkce.ts",
+    "frontend/src/app/core/services/nexus-api.service.ts",
+    "frontend/src/app/shared/chat/chat-stream.spec.ts",
+    "frontend/src/app/shared/chat/chat-stream.ts",
+    "frontend/src/app/shared/documents/document-lifecycle.spec.ts",
+    "frontend/src/app/shared/documents/document-lifecycle.ts",
+    "frontend/src/app/shared/documents/index-status.spec.ts",
+    "frontend/src/app/shared/documents/index-status.ts",
+    "frontend/src/app/shared/groups/group-picker.component.ts",
+    "frontend/src/app/shared/groups/group-selection.spec.ts",
+    "frontend/src/app/shared/groups/group-selection.ts",
+    "frontend/src/app/shared/models/nexus.models.ts",
+    "frontend/src/app/shared/pipes/markdown.pipe.spec.ts",
+    "frontend/src/app/shared/pipes/markdown.pipe.ts",
+    "frontend/src/app/store/auth.actions.ts",
+    "frontend/src/app/store/auth.effects.ts",
+    "frontend/src/app/store/auth.reducer.spec.ts",
+    "frontend/src/app/store/auth.reducer.ts",
+    "frontend/src/app/store/auth.selectors.ts",
+    "frontend/src/app/store/nexus.actions.ts",
+    "frontend/src/app/store/nexus.effects.ts",
+    "frontend/src/app/store/nexus.reducer.spec.ts",
+    "frontend/src/app/store/nexus.reducer.ts",
+    "frontend/src/app/store/nexus.selectors.ts",
+    "frontend/src/main.ts"
+   ],
+   "file_count": 36,
+   "loc": 5516,
+   "integrations": [
+    "angular",
+    "ngrx"
+   ]
+  },
+  {
+   "name": "frontend-pages",
+   "assigned_agent": "frontend-ui-reviewer",
+   "files": [
+    "frontend/src/app/app.component.html",
+    "frontend/src/app/app.component.ts",
+    "frontend/src/app/app.routes.ts",
+    "frontend/src/app/pages/admin-page.component.html",
+    "frontend/src/app/pages/admin-page.component.ts",
+    "frontend/src/app/pages/archived-conversations-page.component.html",
+    "frontend/src/app/pages/archived-conversations-page.component.ts",
+    "frontend/src/app/pages/assistants-page.component.html",
+    "frontend/src/app/pages/assistants-page.component.ts",
+    "frontend/src/app/pages/audit-page.component.html",
+    "frontend/src/app/pages/audit-page.component.ts",
+    "frontend/src/app/pages/chat-page.component.html",
+    "frontend/src/app/pages/chat-page.component.ts",
+    "frontend/src/app/pages/feedback-page.component.html",
+    "frontend/src/app/pages/feedback-page.component.ts",
+    "frontend/src/app/pages/usage-page.component.html",
+    "frontend/src/app/pages/usage-page.component.ts",
+    "frontend/src/app/shell/shell.component.html",
+    "frontend/src/app/shell/shell.component.ts"
+   ],
+   "file_count": 19,
+   "loc": 3090,
+   "integrations": [
+    "angular"
+   ]
+  },
+  {
+   "name": "devops-infra",
+   "assigned_agent": "devops-config-reviewer",
+   "files": [
+    ".dockerignore",
+    ".env.example",
+    ".github/workflows/ci.yml",
+    "backend/requirements.txt",
+    "compose.yaml",
+    "frontend/package.json",
+    "infra/docker/README.md",
+    "infra/docker/backend.Dockerfile",
+    "infra/docker/backup.Dockerfile",
+    "infra/docker/frontend.Dockerfile",
+    "scripts/backup-common.sh",
+    "scripts/backup-loop.sh",
+    "scripts/backup.sh",
+    "scripts/eval.ps1",
+    "scripts/eval.sh",
+    "scripts/quality-gate.sh",
+    "scripts/restore.sh"
+   ],
+   "file_count": 17,
+   "loc": 927,
+   "integrations": [
+    "docker",
+    "ci"
+   ]
+  }
+ ]
+}

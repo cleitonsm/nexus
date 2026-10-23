@@ -1,0 +1,12 @@
+# Prometheus do perfil "observabilidade" (SPEC-006 D1).
+# Le o /metrics da API pela rede interna do Compose; o proxy publico do
+# frontend responde 404 nesse caminho.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: nexus-backend
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:8000"]

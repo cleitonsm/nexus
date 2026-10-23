@@ -1,18 +1,37 @@
 import { CommonModule } from "@angular/common";
-import { AfterViewChecked, Component, ElementRef, ViewChild, computed, effect, inject } from "@angular/core";
+import {
+  AfterViewChecked,
+  Component,
+  ElementRef,
+  OnDestroy,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal
+} from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { Store } from "@ngrx/store";
 
+import { ChatMessage, Citation, FeedbackRating } from "../shared/models/nexus.models";
 import { MarkdownPipe } from "../shared/pipes/markdown.pipe";
+import { selectMenu } from "../store/auth.selectors";
 import { nexusActions } from "../store/nexus.actions";
 import {
   selectActiveAssistantId,
   selectAssistants,
+  selectCurrentCitationsByMessage,
+  selectCurrentChatStream,
   selectCurrentConversationId,
   selectCurrentMessages,
+  selectError,
+  selectFeedbackByMessage,
   selectInferAssistantError,
   selectLoadingState
 } from "../store/nexus.selectors";
+
+/** Comentario opcional da avaliacao (RF-61); o mesmo limite da API. */
+export const FEEDBACK_COMMENT_MAX = 1000;
 
 @Component({
   selector: "app-chat-page",
@@ -21,7 +40,7 @@ import {
   templateUrl: "./chat-page.component.html",
   host: { class: "flex-1 min-h-0 flex flex-col overflow-hidden" }
 })
-export class ChatPageComponent implements AfterViewChecked {
+export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   @ViewChild("messagesContainer") private messagesContainer!: ElementRef<HTMLDivElement>;
   @ViewChild("chatTextarea") private chatTextarea!: ElementRef<HTMLTextAreaElement>;
 
@@ -34,13 +53,28 @@ export class ChatPageComponent implements AfterViewChecked {
   protected readonly activeAssistantId = this.store.selectSignal(selectActiveAssistantId);
   protected readonly currentConversationId = this.store.selectSignal(selectCurrentConversationId);
   protected readonly messages = this.store.selectSignal(selectCurrentMessages);
+  protected readonly citationsByMessage = this.store.selectSignal(selectCurrentCitationsByMessage);
+  /** Fonte aberta no painel: um clique abre, outro clique na mesma fecha. */
+  protected readonly openCitation = signal<{ messageId: string; number: number } | null>(null);
   protected readonly loading = this.store.selectSignal(selectLoadingState);
+  /** So o administrador cria assistentes (RN-21). */
+  protected readonly menu = this.store.selectSignal(selectMenu);
   protected readonly isInferring = computed(() => this.loading().inferAssistant);
   protected readonly inferAssistantError = this.store.selectSignal(selectInferAssistantError);
   protected readonly hasAssistants = computed(() => this.assistants().length > 0);
   protected readonly topAssistants = computed(() => this.assistants().slice(0, 3));
 
-  protected readonly hasInteracted = computed(() => this.messages().length > 0 || this.loading().sendChat);
+  /** Resposta em streaming (RF-58): pergunta exibida e texto parcial. */
+  protected readonly chatStream = this.store.selectSignal(selectCurrentChatStream);
+  protected readonly feedbackByMessage = this.store.selectSignal(selectFeedbackByMessage);
+  protected readonly error = this.store.selectSignal(selectError);
+  /** Avaliacao "nao util" sendo escrita: comentario antes do envio. */
+  protected readonly feedbackDraft = signal<{ messageId: string; comment: string } | null>(null);
+  protected readonly feedbackCommentMax = FEEDBACK_COMMENT_MAX;
+
+  protected readonly hasInteracted = computed(
+    () => this.messages().length > 0 || this.loading().sendChat || this.chatStream() !== null
+  );
 
   protected readonly activeAssistant = computed(() =>
     this.assistants().find((assistant) => assistant.id === this.activeAssistantId()) ?? null
@@ -69,17 +103,8 @@ export class ChatPageComponent implements AfterViewChecked {
     effect(() => {
       this.messages();
       this.loading().sendChat;
+      this.chatStream();
       this.pendingScroll = true;
-    });
-    effect(() => {
-      // #region agent log
-      this.agentDebugLog("H5,H6", "chat send button state changed", {
-        hasCurrentConversation: Boolean(this.currentConversationId()),
-        sendChatLoading: this.loading().sendChat,
-        formInvalid: this.chatForm.invalid,
-        messageCount: this.messages().length
-      });
-      // #endregion
     });
   }
 
@@ -117,12 +142,6 @@ export class ChatPageComponent implements AfterViewChecked {
 
   protected sendQuestion(): void {
     if (this.chatForm.invalid) {
-      // #region agent log
-      this.agentDebugLog("H5", "send question blocked by invalid form", {
-        hasCurrentConversation: Boolean(this.currentConversationId()),
-        sendChatLoading: this.loading().sendChat
-      });
-      // #endregion
       this.chatForm.markAllAsTouched();
       return;
     }
@@ -144,32 +163,13 @@ export class ChatPageComponent implements AfterViewChecked {
       return;
     }
     if (!assistantId) {
-      // #region agent log
-      this.agentDebugLog("H5", "send question blocked by missing assistant", {
-        hasCurrentConversation: Boolean(conversationId),
-        sendChatLoading: this.loading().sendChat
-      });
-      // #endregion
       return;
     }
     const question = this.chatForm.controls.question.value.trim();
     if (!question) {
-      // #region agent log
-      this.agentDebugLog("H5", "send question blocked by empty question", {
-        hasCurrentConversation: true,
-        sendChatLoading: this.loading().sendChat
-      });
-      // #endregion
       return;
     }
 
-    // #region agent log
-    this.agentDebugLog("H6,H7,H8,H9", "dispatching chat question", {
-      hasCurrentConversation: true,
-      questionLength: question.length,
-      messageCount: this.messages().length
-    });
-    // #endregion
     this.store.dispatch(
       nexusActions.sendChatQuestion({
         assistantId,
@@ -182,7 +182,93 @@ export class ChatPageComponent implements AfterViewChecked {
     this.resetTextareaHeight();
   }
 
+  protected toggleCitation(messageId: string, citation: Citation): void {
+    const current = this.openCitation();
+    const isOpen = current?.messageId === messageId && current.number === citation.number;
+    this.openCitation.set(isOpen ? null : { messageId, number: citation.number });
+  }
+
+  protected isCitationOpen(messageId: string, citation: Citation): boolean {
+    const current = this.openCitation();
+    return current?.messageId === messageId && current.number === citation.number;
+  }
+
+  protected openCitationOf(messageId: string): Citation | null {
+    const current = this.openCitation();
+    if (current?.messageId !== messageId) {
+      return null;
+    }
+    return (
+      this.citationsByMessage()[messageId]?.find((item) => item.number === current.number) ?? null
+    );
+  }
+
+  protected feedbackOf(message: ChatMessage): FeedbackRating | null {
+    return this.feedbackByMessage()[message.id]?.rating ?? null;
+  }
+
+  protected feedbackError(message: ChatMessage): string | null {
+    return this.feedbackByMessage()[message.id]?.error ?? null;
+  }
+
+  protected markUseful(message: ChatMessage): void {
+    this.feedbackDraft.set(null);
+    this.sendFeedback(message.id, "util", null);
+  }
+
+  /** "Nao util" abre o comentario; o envio avisa que o curador vera a conversa. */
+  protected openNegativeFeedback(message: ChatMessage): void {
+    this.feedbackDraft.set({ messageId: message.id, comment: "" });
+  }
+
+  protected updateFeedbackComment(event: Event): void {
+    const draft = this.feedbackDraft();
+    if (draft) {
+      const comment = (event.target as HTMLTextAreaElement).value.slice(0, FEEDBACK_COMMENT_MAX);
+      this.feedbackDraft.set({ ...draft, comment });
+    }
+  }
+
+  protected sendNegativeFeedback(): void {
+    const draft = this.feedbackDraft();
+    if (!draft) {
+      return;
+    }
+    this.sendFeedback(draft.messageId, "nao_util", draft.comment.trim() || null);
+    this.feedbackDraft.set(null);
+  }
+
+  protected cancelNegativeFeedback(): void {
+    this.feedbackDraft.set(null);
+  }
+
+  private sendFeedback(messageId: string, rating: FeedbackRating, comment: string | null): void {
+    if (this.feedbackByMessage()[messageId]?.sending) {
+      return;
+    }
+    this.store.dispatch(nexusActions.submitFeedback({ messageId, rating, comment }));
+  }
+
+  /** D13: para a resposta em andamento; a pergunta continua na conversa. */
+  protected stopAnswer(): void {
+    if (this.chatStream()) {
+      this.store.dispatch(nexusActions.cancelChatStream());
+    }
+  }
+
+  /** Sair do chat com uma resposta em andamento encerra o streaming (D13). */
+  ngOnDestroy(): void {
+    this.stopAnswer();
+  }
+
+  protected clearError(): void {
+    this.store.dispatch(nexusActions.clearError());
+  }
+
   protected openCreateAssistantModal(): void {
+    if (!this.menu().manageAssistants) {
+      return;
+    }
     this.store.dispatch(nexusActions.openCreateAssistantModal());
   }
 
@@ -193,24 +279,4 @@ export class ChatPageComponent implements AfterViewChecked {
   protected dismissInferError(): void {
     this.store.dispatch(nexusActions.clearInferAssistantError());
   }
-
-  private agentDebugLog(hypothesisId: string, message: string, data: object): void {
-    fetch("http://127.0.0.1:7657/ingest/1e04e285-e754-4529-87f1-5953edf93f4e", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "a1f259"
-      },
-      body: JSON.stringify({
-        sessionId: "a1f259",
-        runId: "llm-ui-pre-fix",
-        hypothesisId,
-        location: "frontend/src/app/pages/chat-page.component.ts",
-        message,
-        data,
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-  }
-
 }

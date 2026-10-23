@@ -1,0 +1,210 @@
+ Image nexus-frontend Building 
+ Image nexus-backend Building 
+ Image nexus-worker Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.37kB 0.0s done
+#1 DONE 0.0s
+
+#2 [worker internal] load build definition from backend.Dockerfile
+#2 transferring dockerfile: 1.15kB 0.0s done
+#2 DONE 0.0s
+
+#3 [frontend internal] load build definition from frontend.Dockerfile
+#3 transferring dockerfile: 498B 0.0s done
+#3 DONE 0.1s
+
+#4 [frontend internal] load metadata for docker.io/library/nginx:1.27-alpine
+#4 DONE 0.1s
+
+#5 [worker internal] load metadata for docker.io/library/python:3.12-slim
+#5 DONE 0.1s
+
+#6 [backend internal] load .dockerignore
+#6 transferring context: 181B 0.0s done
+#6 DONE 0.0s
+
+#7 [worker 1/9] FROM docker.io/library/python:3.12-slim@sha256:9d3abd9fc11d06998ccdbdd93b4dd49b5ad7d67fcbbc11c016eb0eb2c2194891
+#7 resolve docker.io/library/python:3.12-slim@sha256:9d3abd9fc11d06998ccdbdd93b4dd49b5ad7d67fcbbc11c016eb0eb2c2194891 0.1s done
+#7 DONE 0.1s
+
+#8 [worker internal] load build context
+#8 ...
+
+#7 [backend 1/9] FROM docker.io/library/python:3.12-slim@sha256:9d3abd9fc11d06998ccdbdd93b4dd49b5ad7d67fcbbc11c016eb0eb2c2194891
+#7 resolve docker.io/library/python:3.12-slim@sha256:9d3abd9fc11d06998ccdbdd93b4dd49b5ad7d67fcbbc11c016eb0eb2c2194891 0.1s done
+#7 DONE 0.1s
+
+#8 [worker internal] load build context
+#8 transferring context: 727.11kB 0.7s done
+#8 DONE 0.7s
+
+#9 [worker 7/9] RUN pip install --no-cache-dir -r /app/requirements.txt
+#9 CACHED
+
+#10 [worker 5/9] RUN pip install --no-cache-dir torch==2.5.1     --index-url https://download.pytorch.org/whl/cpu
+#10 CACHED
+
+#11 [worker 2/9] WORKDIR /app
+#11 CACHED
+
+#12 [worker 3/9] RUN apt-get update     && apt-get install -y --no-install-recommends         poppler-utils tesseract-ocr tesseract-ocr-por tesseract-ocr-eng     && rm -rf /var/lib/apt/lists/*
+#12 CACHED
+
+#13 [worker 4/9] RUN mkdir -p /app/cache /app/data/documents
+#13 CACHED
+
+#14 [worker 6/9] COPY backend/requirements.txt /app/requirements.txt
+#14 CACHED
+
+#15 [worker 8/9] COPY backend/alembic.ini /app/alembic.ini
+#15 CACHED
+
+#16 [worker 9/9] COPY backend/src /app/src
+#16 DONE 0.1s
+
+#17 [frontend internal] load metadata for docker.io/library/node:22-alpine
+#17 ...
+
+#16 [backend 9/9] COPY backend/src /app/src
+#16 DONE 0.1s
+
+#18 [worker] exporting to image
+#18 exporting layers 0.2s done
+#18 exporting manifest sha256:b2691be20121e6e48e980f34df7564236711fd893cade11cb878caaa74ef5334 0.0s done
+#18 exporting config sha256:8fc3d3092b2578abfd865d622bd6d535b5e38692f8c9491aff94ecf585b27385 0.0s done
+#18 exporting attestation manifest sha256:ddd6047721fc7512bf969eabcd1278a1c946318ea6ce140f820d308252f111d2 0.1s done
+#18 exporting manifest list sha256:519d006a9a7fa1f84f16f1725eafc9c00d9ce674f125ba3909f62957b3b62641
+#18 ...
+
+#6 [frontend internal] load .dockerignore
+#6 transferring context: 181B 0.0s done
+#6 DONE 0.0s
+
+#17 [frontend internal] load metadata for docker.io/library/node:22-alpine
+#17 DONE 1.5s
+
+#19 [frontend internal] load build context
+#19 DONE 0.0s
+
+#18 [worker] exporting to image
+#18 exporting manifest list sha256:519d006a9a7fa1f84f16f1725eafc9c00d9ce674f125ba3909f62957b3b62641 0.0s done
+#18 naming to docker.io/library/nexus-worker:latest done
+#18 unpacking to docker.io/library/nexus-worker:latest
+#18 unpacking to docker.io/library/nexus-worker:latest 0.1s done
+#18 DONE 0.6s
+
+#20 [frontend stage-1 1/3] FROM docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+#20 resolve docker.io/library/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 0.1s done
+#20 DONE 0.1s
+
+#21 [frontend build 1/6] FROM docker.io/library/node:22-alpine@sha256:ce8d97f7cfc7c5386421eb932df20a29df99b1a7f469f6157d5c9956702ffadc
+#21 resolve docker.io/library/node:22-alpine@sha256:ce8d97f7cfc7c5386421eb932df20a29df99b1a7f469f6157d5c9956702ffadc 0.1s done
+#21 DONE 0.1s
+
+#19 [frontend internal] load build context
+#19 ...
+
+#22 [backend] exporting to image
+#22 exporting layers 0.2s done
+#22 exporting manifest sha256:60d1d4c8b35bbf649764465b3171bb8da86606eb6412cc9b91a7a7757c13479b 0.0s done
+#22 exporting config sha256:4b130531503461e482c7b535a48ba0d386a7ca4032436a37d4b9621699a4242b 0.0s done
+#22 exporting attestation manifest sha256:754e31fca9e2f87b88fc6bf13a35702b2cd39a17c3bd22bcf46c40e71a898f56 0.1s done
+#22 exporting manifest list sha256:25af6ca3fd9b5febafadb8c9bb328c9e1a8c02084bf684d8ff0ea84bc18c4a08 0.0s done
+#22 naming to docker.io/library/nexus-backend:latest 0.0s done
+#22 unpacking to docker.io/library/nexus-backend:latest 0.1s done
+#22 DONE 0.7s
+
+#19 [frontend internal] load build context
+#19 ...
+
+#23 [worker] resolving provenance for metadata file
+#23 DONE 0.2s
+
+#24 [backend] resolving provenance for metadata file
+#24 DONE 0.2s
+
+#19 [frontend internal] load build context
+#19 transferring context: 68.52MB 3.5s
+#19 transferring context: 72.83MB 6.2s done
+#19 DONE 6.2s
+
+#25 [frontend build 3/6] COPY frontend/package.json frontend/package-lock.json* ./
+#25 CACHED
+
+#26 [frontend build 4/6] RUN npm install
+#26 CACHED
+
+#27 [frontend build 5/6] COPY frontend .
+#27 CACHED
+
+#28 [frontend build 2/6] WORKDIR /app
+#28 CACHED
+
+#29 [frontend build 6/6] RUN npm run build
+#29 CACHED
+
+#30 [frontend stage-1 2/3] COPY frontend/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+#30 CACHED
+
+#31 [frontend stage-1 3/3] COPY --from=build /app/dist /usr/share/nginx/html
+#31 CACHED
+
+#32 [frontend] exporting to image
+#32 exporting layers done
+#32 exporting manifest sha256:499967357d31e5257af4748cfe364d1b016b41895d37b5c5cae67a1ce0dae9a2 done
+#32 exporting config sha256:4caf3ed754270d1700dde5ddfa21464050fd5bccde41920565de40a381977084 done
+#32 exporting attestation manifest sha256:37400da86fdd6cbde0f67ac037fae97cc67749321f6c8eefe3fd548591855497 0.0s done
+#32 exporting manifest list sha256:a1be9a52536d6b240d4ddf126efd0eab5ca98e36d31a472caa657bd1b46191df 0.0s done
+#32 naming to docker.io/library/nexus-frontend:latest
+#32 naming to docker.io/library/nexus-frontend:latest done
+#32 unpacking to docker.io/library/nexus-frontend:latest 0.0s done
+#32 DONE 0.2s
+
+#33 [frontend] resolving provenance for metadata file
+#33 DONE 0.0s
+ Image nexus-backend Built 
+ Image nexus-worker Built 
+ Image nexus-frontend Built 
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-keycloak-1 Running 
+ Container nexus-backend-1 Recreate 
+ Container nexus-backend-1 Recreated 
+ Container nexus-worker-1 Recreate 
+ Container nexus-frontend-1 Recreate 
+ Container nexus-frontend-1 Recreated 
+ Container nexus-worker-1 Recreated 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-backend-1 Starting 
+ Container nexus-backend-1 Started 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-frontend-1 Starting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-worker-1 Starting 
+ Container nexus-worker-1 Started 
+ Container nexus-frontend-1 Started 
+ Container nexus-backend-1 Waiting 
+ Container nexus-keycloak-1 Waiting 
+ Container nexus-worker-1 Waiting 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-frontend-1 Waiting 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-keycloak-1 Healthy 
+ Container nexus-worker-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-backend-1 Healthy 
+ Container nexus-frontend-1 Healthy 

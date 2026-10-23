@@ -1,16 +1,30 @@
 import { Injectable } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
-import { Observable } from "rxjs";
+import { HttpClient, HttpEventType, HttpParams } from "@angular/common/http";
+import { Observable, filter, mergeMap } from "rxjs";
 
 import {
   ApiKeyTestResult,
   ApiKeyStatus,
+  LlmSettings,
+  LlmSettingsInput,
   Assistant,
+  AuditEvent,
+  AuditFilters,
   ChatResponse,
+  ChatStreamEvent,
   Conversation,
   ConversationDetail,
-  IngestedDocument
+  DocumentAccess,
+  IndexStatus,
+  ReindexJob,
+  FeedbackRating,
+  FeedbackReview,
+  MessageFeedback,
+  UsageLimits,
+  UsageReport
 } from "../../shared/models/nexus.models";
+import { ServerSentEventsReader } from "../../shared/chat/chat-stream";
+import { SessionUser } from "../auth/auth.models";
 
 interface CreateAssistantPayload {
   name: string;
@@ -41,6 +55,65 @@ export class NexusApiService {
 
   constructor(private readonly http: HttpClient) {}
 
+  getMe(): Observable<SessionUser> {
+    return this.http.get<SessionUser>(`${this.baseUrl}/me`);
+  }
+
+  setAssistantGroups(assistantId: string, groups: string[]): Observable<{ groups: string[] }> {
+    return this.http.put<{ groups: string[] }>(
+      `${this.baseUrl}/assistants/${assistantId}/groups`,
+      { groups }
+    );
+  }
+
+  listDocuments(assistantId: string): Observable<DocumentAccess[]> {
+    return this.http.get<DocumentAccess[]>(
+      `${this.baseUrl}/assistants/${assistantId}/documents`
+    );
+  }
+
+  /** PC-D6: grupos do Keycloak (administrador e curador); 503 sem a lista. */
+  listGroups(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.baseUrl}/groups`);
+  }
+
+  /** PC-D5: conversas anteriores a autenticacao (so administrador). */
+  listArchivedConversations(): Observable<Conversation[]> {
+    return this.http.get<Conversation[]>(`${this.baseUrl}/admin/archived-conversations`);
+  }
+
+  getArchivedConversation(conversationId: string): Observable<ConversationDetail> {
+    return this.http.get<ConversationDetail>(
+      `${this.baseUrl}/admin/archived-conversations/${conversationId}`
+    );
+  }
+
+  deleteArchivedConversation(conversationId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.baseUrl}/admin/archived-conversations/${conversationId}`
+    );
+  }
+
+  getIndexStatus(assistantId: string): Observable<IndexStatus> {
+    return this.http.get<IndexStatus>(`${this.baseUrl}/assistants/${assistantId}/index-status`);
+  }
+
+  startReindex(assistantId: string): Observable<ReindexJob> {
+    return this.http.post<ReindexJob>(`${this.baseUrl}/assistants/${assistantId}/reindex`, {});
+  }
+
+  setDocumentGroups(documentId: string, groups: string[]): Observable<DocumentAccess> {
+    return this.http.put<DocumentAccess>(`${this.baseUrl}/documents/${documentId}/groups`, {
+      groups
+    });
+  }
+
+  listAuditEvents(filters: AuditFilters): Observable<AuditEvent[]> {
+    return this.http.get<AuditEvent[]>(`${this.baseUrl}/admin/audit-events`, {
+      params: auditParams(filters)
+    });
+  }
+
   listAssistants(): Observable<Assistant[]> {
     return this.http.get<Assistant[]>(`${this.baseUrl}/assistants`);
   }
@@ -61,22 +134,51 @@ export class NexusApiService {
     return this.http.delete<void>(`${this.baseUrl}/assistants/${assistantId}`);
   }
 
+  /** RF-48: a API responde 202 com o documento pendente; o worker o indexa. */
   uploadDocument(
     assistantId: string,
     file: File,
-    metadata?: Record<string, string>
-  ): Observable<IngestedDocument> {
+    metadata?: Record<string, string>,
+    groups: string[] = []
+  ): Observable<DocumentAccess> {
     const formData = new FormData();
     formData.set("file", file, file.name);
     if (metadata && Object.keys(metadata).length > 0) {
       formData.set("metadata", JSON.stringify(metadata));
     }
-    // #region agent log
-    fetch("http://127.0.0.1:7657/ingest/1e04e285-e754-4529-87f1-5953edf93f4e", { method: "POST", headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "a1f259" }, body: JSON.stringify({ sessionId: "a1f259", runId: "pre-fix", hypothesisId: "H3", location: "frontend/src/app/core/services/nexus-api.service.ts:uploadDocument", message: "frontend starting document upload", data: { fileSizeBytes: file.size, fileType: file.type, hasMetadata: Boolean(metadata && Object.keys(metadata).length > 0), metadataKeysCount: metadata ? Object.keys(metadata).length : 0, url: `${this.baseUrl}/assistants/${assistantId}/documents` }, timestamp: Date.now() }) }).catch(() => {});
-    // #endregion
-    return this.http.post<IngestedDocument>(
+    // Restricao ja no envio (D8 da SPEC-004): os trechos nascem restritos.
+    if (groups.length > 0) {
+      formData.set("groups", JSON.stringify(groups));
+    }
+    return this.http.post<DocumentAccess>(
       `${this.baseUrl}/assistants/${assistantId}/documents`,
       formData
+    );
+  }
+
+  getDocument(documentId: string): Observable<DocumentAccess> {
+    return this.http.get<DocumentAccess>(`${this.baseUrl}/documents/${documentId}`);
+  }
+
+  deleteDocument(documentId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/documents/${documentId}`);
+  }
+
+  /** RF-51: nova versao; a atual continua respondendo ate a nova ser indexada. */
+  replaceDocument(documentId: string, file: File): Observable<DocumentAccess> {
+    const formData = new FormData();
+    formData.set("file", file, file.name);
+    return this.http.put<DocumentAccess>(
+      `${this.baseUrl}/documents/${documentId}/content`,
+      formData
+    );
+  }
+
+  /** RF-54: reprocessa a partir do original guardado, sem novo envio. */
+  reprocessDocument(documentId: string): Observable<DocumentAccess> {
+    return this.http.post<DocumentAccess>(
+      `${this.baseUrl}/documents/${documentId}/reprocess`,
+      {}
     );
   }
 
@@ -107,6 +209,92 @@ export class NexusApiService {
     );
   }
 
+  /**
+   * RF-58: Server-Sent Events lidos pelo progresso do HttpClient, para que o
+   * interceptor de autenticacao continue valendo. Cada leitura entrega so os
+   * eventos completos ainda nao vistos.
+   */
+  streamChatMessage(conversationId: string, payload: ChatPayload): Observable<ChatStreamEvent> {
+    const reader = new ServerSentEventsReader();
+    return this.http
+      .post(`${this.baseUrl}/conversations/${conversationId}/chat/stream`, payload, {
+        observe: "events",
+        reportProgress: true,
+        responseType: "text",
+        headers: { Accept: "text/event-stream" }
+      })
+      .pipe(
+        filter(
+          (event) =>
+            event.type === HttpEventType.DownloadProgress ||
+            event.type === HttpEventType.Response
+        ),
+        mergeMap((event) =>
+          event.type === HttpEventType.Response
+            ? reader.finish(event.body ?? "")
+            : reader.read((event as { partialText?: string }).partialText ?? "")
+        )
+      );
+  }
+
+  /** RF-61: so quem fez a pergunta avalia; a ultima avaliacao vale. */
+  submitFeedback(
+    messageId: string,
+    rating: FeedbackRating,
+    comment: string | null
+  ): Observable<MessageFeedback> {
+    return this.http.post<MessageFeedback>(`${this.baseUrl}/messages/${messageId}/feedback`, {
+      rating,
+      comment
+    });
+  }
+
+  /** RN-33: avaliacoes negativas para o curador. */
+  listFeedback(status: string, assistantId: string | null): Observable<MessageFeedback[]> {
+    let params = new HttpParams().set("status", status);
+    if (assistantId) {
+      params = params.set("assistant_id", assistantId);
+    }
+    return this.http.get<MessageFeedback[]>(`${this.baseUrl}/feedback`, { params });
+  }
+
+  reviewFeedback(feedbackId: string, review: FeedbackReview): Observable<MessageFeedback> {
+    return this.http.post<MessageFeedback>(
+      `${this.baseUrl}/feedback/${feedbackId}/review`,
+      review
+    );
+  }
+
+  /** Itens validados no formato JSONL do conjunto de referencia (SPEC-001). */
+  exportFeedback(assistantId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/feedback/export`, {
+      params: new HttpParams().set("assistant_id", assistantId),
+      responseType: "blob"
+    });
+  }
+
+  getUsageReport(from: string | null, to: string | null): Observable<UsageReport> {
+    let params = new HttpParams();
+    if (from) {
+      params = params.set("from", from);
+    }
+    if (to) {
+      params = params.set("to", to);
+    }
+    return this.http.get<UsageReport>(`${this.baseUrl}/admin/usage`, { params });
+  }
+
+  getUsageLimits(): Observable<UsageLimits> {
+    return this.http.get<UsageLimits>(`${this.baseUrl}/admin/usage-limits`);
+  }
+
+  saveUsageLimits(limits: UsageLimits): Observable<UsageLimits> {
+    return this.http.put<UsageLimits>(`${this.baseUrl}/admin/usage-limits`, {
+      per_minute: limits.per_minute,
+      per_day: limits.per_day
+    });
+  }
+
   getApiKeyStatus(): Observable<ApiKeyStatus> {
     return this.http.get<ApiKeyStatus>(`${this.baseUrl}/admin/api-key/status`);
   }
@@ -115,7 +303,41 @@ export class NexusApiService {
     return this.http.post<ApiKeyStatus>(`${this.baseUrl}/admin/api-key`, payload);
   }
 
+  getLlmSettings(): Observable<LlmSettings> {
+    return this.http.get<LlmSettings>(`${this.baseUrl}/admin/llm-settings`);
+  }
+
+  saveLlmSettings(input: LlmSettingsInput): Observable<LlmSettings> {
+    return this.http.put<LlmSettings>(`${this.baseUrl}/admin/llm-settings`, input);
+  }
+
   testApiKey(): Observable<ApiKeyTestResult> {
     return this.http.post<ApiKeyTestResult>(`${this.baseUrl}/admin/api-key/test`, {});
   }
+}
+
+/** So os filtros preenchidos viram parametros; as datas vao em ISO 8601. */
+function auditParams(filters: AuditFilters): HttpParams {
+  const entries: Record<string, string> = {
+    user_id: filters.userId.trim(),
+    action: filters.action.trim(),
+    assistant_id: filters.assistantId.trim(),
+    from: toIso(filters.from),
+    to: toIso(filters.to)
+  };
+  let params = new HttpParams();
+  for (const [name, value] of Object.entries(entries)) {
+    if (value) {
+      params = params.set(name, value);
+    }
+  }
+  return params;
+}
+
+function toIso(localDateTime: string): string {
+  if (!localDateTime.trim()) {
+    return "";
+  }
+  const parsed = new Date(localDateTime);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
 }

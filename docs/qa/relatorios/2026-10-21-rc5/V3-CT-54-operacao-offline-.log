@@ -1,0 +1,9 @@
+== Subindo a pilha na rede interna
+== A internet deve estar inacessivel
+OK: sem saida para a internet
+== Ingestao, busca e reranking (avaliacao sem LLM)
+OK: avaliacao sem LLM terminou (codigo 1)
+== OCR de PDF digitalizado
+OK: OCR
+(o assistente 'CT-54 offline' pode ser excluido pela interface)
+CT-54: APROVADO

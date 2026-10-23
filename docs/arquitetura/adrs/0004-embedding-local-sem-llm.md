@@ -36,3 +36,11 @@ Gerar embeddings localmente, via runtime no container backend, sem chamar LLM ex
 - A dimensão dos vetores deve ser compatível com as collections do Qdrant.
 - O provedor de LLM continua separado e usado apenas na geração de respostas.
 - A troca futura para outro modelo continua permitida, desde que acompanhada de migracao/reindexacao.
+
+## Evolução RAG Enterprise
+
+A decisão é **mantida**: embeddings continuam locais. A implementação do MVP, entretanto, usa um
+hash determinístico de palavras (`LocalHashEmbeddingGateway`) e não o modelo recomendado acima. A
+[ADR 0006](0006-embeddings-reais-e-reindexacao.md) define a implementação efetiva deste modelo e a
+rotina de reindexação exigida nesta ADR. O mesmo princípio de execução local é estendido aos
+vetores esparsos e ao reranking pela [ADR 0007](0007-busca-hibrida-e-reranking.md).

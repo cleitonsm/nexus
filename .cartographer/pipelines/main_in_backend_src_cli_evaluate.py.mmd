@@ -1,0 +1,136 @@
+flowchart LR
+  backend_src_application_dto_access_dto_py_CurrentU["from_user<br/><small>backend/src/application/dto/access_dto.py:17</small>"]
+  backend_src_application_dto_evaluation_dto_py_Eval["to_dict<br/><small>backend/src/application/dto/evaluation_dto.py:33</small>"]
+  backend_src_application_services_access_control_py["AccessControl<br/><small>backend/src/application/services/access_control.py:58</small>"]
+  backend_src_application_services_access_control_py["audit<br/><small>backend/src/application/services/access_control.py:78</small>"]
+  backend_src_application_services_access_control_py["AuditTrail<br/><small>backend/src/application/services/access_control.py:25</small>"]
+  backend_src_application_services_grounded_answer_p["GroundedAnswerGenerator<br/><small>backend/src/application/services/grounded_answer.py:93</small>"]
+  backend_src_application_services_index_state_py_is["is_index_outdated<br/><small>backend/src/application/services/index_state.py:58</small>"]
+  backend_src_application_services_index_state_py_re["read_index_state<br/><small>backend/src/application/services/index_state.py:43</small>"]
+  backend_src_application_services_retrieval_py_Cont["ContextRetriever<br/><small>backend/src/application/services/retrieval.py:37</small>"]
+  backend_src_application_services_retrieval_py_Retr["RetrievalSettings<br/><small>backend/src/application/services/retrieval.py:17</small>"]
+  backend_src_application_use_cases_audit_and_sessio["execute<br/><small>backend/src/application/use_cases/audit_and_session.py:40</small>"]
+  backend_src_application_use_cases_compare_evaluati["CompareEvaluationReportsInput<br/><small>backend/src/application/use_cases/compare_evaluation_reports.py:13</small>"]
+  backend_src_application_use_cases_compare_evaluati["CompareEvaluationReportsUseCase<br/><small>backend/src/application/use_cases/compare_evaluation_reports.py:19</small>"]
+  backend_src_application_use_cases_create_assistant["CreateAssistantInput<br/><small>backend/src/application/use_cases/create_assistant.py:20</small>"]
+  backend_src_application_use_cases_create_assistant["CreateAssistantUseCase<br/><small>backend/src/application/use_cases/create_assistant.py:28</small>"]
+  backend_src_application_use_cases_evaluate_assista["EvaluateAssistantInput<br/><small>backend/src/application/use_cases/evaluate_assistant.py:29</small>"]
+  backend_src_application_use_cases_evaluate_assista["EvaluateAssistantUseCase<br/><small>backend/src/application/use_cases/evaluate_assistant.py:36</small>"]
+  backend_src_application_use_cases_ingest_document_["IngestDocumentInput<br/><small>backend/src/application/use_cases/ingest_document.py:194</small>"]
+  backend_src_application_use_cases_ingest_document_["IngestDocumentUseCase<br/><small>backend/src/application/use_cases/ingest_document.py:207</small>"]
+  backend_src_cli_evaluate_py__build_llm_gateway["_build_llm_gateway<br/><small>backend/src/cli/evaluate.py:283</small>"]
+  backend_src_cli_evaluate_py__discard_outdated_inde["_discard_outdated_index<br/><small>backend/src/cli/evaluate.py:225</small>"]
+  backend_src_cli_evaluate_py__ensure_assistant["_ensure_assistant<br/><small>backend/src/cli/evaluate.py:205</small>"]
+  backend_src_cli_evaluate_py__parameters["_parameters<br/><small>backend/src/cli/evaluate.py:304</small>"]
+  backend_src_cli_evaluate_py__parse_args["_parse_args<br/><small>backend/src/cli/evaluate.py:116</small>"]
+  backend_src_cli_evaluate_py__run["_run<br/><small>backend/src/cli/evaluate.py:133</small>"]
+  backend_src_cli_evaluate_py__seed_documents["_seed_documents<br/><small>backend/src/cli/evaluate.py:257</small>"]
+  backend_src_cli_evaluate_py__store_and_compare["_store_and_compare<br/><small>backend/src/cli/evaluate.py:336</small>"]
+  backend_src_cli_evaluate_py_main["main<br/><small>backend/src/cli/evaluate.py:99</small>"]
+  backend_src_domain_interfaces_py_AssistantReposito["delete<br/><small>backend/src/domain/interfaces.py:46</small>"]
+  backend_src_domain_interfaces_py_AssistantReposito["list_all<br/><small>backend/src/domain/interfaces.py:42</small>"]
+  backend_src_domain_interfaces_py_AssistantReposito["save<br/><small>backend/src/domain/interfaces.py:40</small>"]
+  backend_src_domain_interfaces_py_ConversationRepos["list_by_assistant<br/><small>backend/src/domain/interfaces.py:132</small>"]
+  backend_src_domain_interfaces_py_DocumentFileStora["load<br/><small>backend/src/domain/interfaces.py:439</small>"]
+  backend_src_domain_interfaces_py_VectorStoreGatewa["delete_collection<br/><small>backend/src/domain/interfaces.py:365</small>"]
+  backend_src_domain_value_objects_py_AssistantId["AssistantId<br/><small>backend/src/domain/value_objects.py:18</small>"]
+  backend_src_infrastructure_composition_py__float_e["_float_env<br/><small>backend/src/infrastructure/composition.py:356</small>"]
+  backend_src_infrastructure_composition_py__int_env["_int_env<br/><small>backend/src/infrastructure/composition.py:346</small>"]
+  backend_src_infrastructure_composition_py_build_do["build_document_indexer<br/><small>backend/src/infrastructure/composition.py:182</small>"]
+  backend_src_infrastructure_composition_py_build_em["build_embedding_gateway<br/><small>backend/src/infrastructure/composition.py:82</small>"]
+  backend_src_infrastructure_composition_py_build_fi["build_file_storage<br/><small>backend/src/infrastructure/composition.py:238</small>"]
+  backend_src_infrastructure_composition_py_build_re["build_reranker_gateway<br/><small>backend/src/infrastructure/composition.py:138</small>"]
+  backend_src_infrastructure_composition_py_build_sp["build_sparse_embedding_gateway<br/><small>backend/src/infrastructure/composition.py:100</small>"]
+  backend_src_infrastructure_composition_py_build_to["build_token_counter<br/><small>backend/src/infrastructure/composition.py:90</small>"]
+  backend_src_infrastructure_composition_py_embeddin["embedding_model_name<br/><small>backend/src/infrastructure/composition.py:77</small>"]
+  backend_src_infrastructure_composition_py_max_file["max_file_bytes<br/><small>backend/src/infrastructure/composition.py:247</small>"]
+  backend_src_infrastructure_composition_py_retrieva["retrieval_settings<br/><small>backend/src/infrastructure/composition.py:142</small>"]
+  backend_src_infrastructure_database_alembic_versio["_has_column<br/><small>backend/src/infrastructure/database/alembic/versions/0001_baseline.py:127</small>"]
+  backend_src_infrastructure_database_alembic_versio["_timestamp<br/><small>backend/src/infrastructure/database/alembic/versions/0001_baseline.py:23</small>"]
+  backend_src_infrastructure_database_alembic_versio["upgrade<br/><small>backend/src/infrastructure/database/alembic/versions/0001_baseline.py:32</small>"]
+  backend_src_infrastructure_database_migrate_py_run["run_migrations<br/><small>backend/src/infrastructure/database/migrate.py:8</small>"]
+  backend_src_infrastructure_database_repositories_p["PostgresAssistantPermissionRepository<br/><small>backend/src/infrastructure/database/repositories.py:450</small>"]
+  backend_src_infrastructure_database_repositories_p["PostgresAssistantRepository<br/><small>backend/src/infrastructure/database/repositories.py:48</small>"]
+  backend_src_infrastructure_database_repositories_p["PostgresAuditLogRepository<br/><small>backend/src/infrastructure/database/repositories.py:519</small>"]
+  backend_src_infrastructure_database_repositories_p["PostgresDocumentRepository<br/><small>backend/src/infrastructure/database/repositories.py:215</small>"]
+  backend_src_infrastructure_database_repositories_p["PostgresReindexJobRepository<br/><small>backend/src/infrastructure/database/repositories.py:361</small>"]
+  backend_src_infrastructure_embeddings_sentence_tra["SentenceTransformerEmbeddingGateway<br/><small>backend/src/infrastructure/embeddings/sentence_transformer_embedding.py:26</small>"]
+  backend_src_infrastructure_evaluation_dataset_load["JsonlEvaluationDatasetLoader<br/><small>backend/src/infrastructure/evaluation/dataset_loader.py:17</small>"]
+  backend_src_infrastructure_evaluation_llm_answer_j["LLMAnswerJudge<br/><small>backend/src/infrastructure/evaluation/llm_answer_judge.py:14</small>"]
+  backend_src_infrastructure_evaluation_report_store["JsonEvaluationReportStore<br/><small>backend/src/infrastructure/evaluation/report_store.py:7</small>"]
+  backend_src_infrastructure_evaluation_report_store["load_latest<br/><small>backend/src/infrastructure/evaluation/report_store.py:13</small>"]
+  backend_src_infrastructure_observability_structure["JsonLogFormatter<br/><small>backend/src/infrastructure/observability/structured_logging.py:50</small>"]
+  backend_src_infrastructure_observability_structure["_adopt_server_loggers<br/><small>backend/src/infrastructure/observability/structured_logging.py:88</small>"]
+  backend_src_infrastructure_observability_structure["configure_logging<br/><small>backend/src/infrastructure/observability/structured_logging.py:70</small>"]
+  backend_src_infrastructure_vector_store_qdrant_sto["QdrantVectorStoreGateway<br/><small>backend/src/infrastructure/vector_store/qdrant_store.py:34</small>"]
+  backend_src_cli_evaluate_py_main:::entry
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_dto_access_dto_py_CurrentU
+  backend_src_application_use_cases_audit_and_sessio --> backend_src_application_services_access_control_py
+  backend_src_cli_evaluate_py__discard_outdated_inde --> backend_src_application_services_index_state_py_is
+  backend_src_cli_evaluate_py__discard_outdated_inde --> backend_src_application_services_index_state_py_re
+  backend_src_cli_evaluate_py__discard_outdated_inde --> backend_src_domain_interfaces_py_AssistantReposito
+  backend_src_cli_evaluate_py__discard_outdated_inde --> backend_src_domain_interfaces_py_ConversationRepos
+  backend_src_cli_evaluate_py__discard_outdated_inde --> backend_src_domain_interfaces_py_VectorStoreGatewa
+  backend_src_cli_evaluate_py__ensure_assistant --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_cli_evaluate_py__ensure_assistant --> backend_src_application_use_cases_create_assistant
+  backend_src_cli_evaluate_py__ensure_assistant --> backend_src_application_use_cases_create_assistant
+  backend_src_cli_evaluate_py__ensure_assistant --> backend_src_domain_interfaces_py_AssistantReposito
+  backend_src_cli_evaluate_py__ensure_assistant --> backend_src_domain_value_objects_py_AssistantId
+  backend_src_cli_evaluate_py__ensure_assistant --> backend_src_infrastructure_database_repositories_p
+  backend_src_cli_evaluate_py__run --> backend_src_application_dto_evaluation_dto_py_Eval
+  backend_src_cli_evaluate_py__run --> backend_src_application_services_access_control_py
+  backend_src_cli_evaluate_py__run --> backend_src_application_services_access_control_py
+  backend_src_cli_evaluate_py__run --> backend_src_application_services_grounded_answer_p
+  backend_src_cli_evaluate_py__run --> backend_src_application_services_retrieval_py_Cont
+  backend_src_cli_evaluate_py__run --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_cli_evaluate_py__run --> backend_src_application_use_cases_evaluate_assista
+  backend_src_cli_evaluate_py__run --> backend_src_application_use_cases_evaluate_assista
+  backend_src_cli_evaluate_py__run --> backend_src_application_use_cases_ingest_document_
+  backend_src_cli_evaluate_py__run --> backend_src_cli_evaluate_py__build_llm_gateway
+  backend_src_cli_evaluate_py__run --> backend_src_cli_evaluate_py__discard_outdated_inde
+  backend_src_cli_evaluate_py__run --> backend_src_cli_evaluate_py__ensure_assistant
+  backend_src_cli_evaluate_py__run --> backend_src_cli_evaluate_py__parameters
+  backend_src_cli_evaluate_py__run --> backend_src_cli_evaluate_py__seed_documents
+  backend_src_cli_evaluate_py__run --> backend_src_cli_evaluate_py__store_and_compare
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_composition_py_build_do
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_composition_py_build_em
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_composition_py_build_fi
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_composition_py_build_re
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_composition_py_build_sp
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_composition_py_build_to
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_composition_py_max_file
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_composition_py_retrieva
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_database_repositories_p
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_database_repositories_p
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_database_repositories_p
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_database_repositories_p
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_evaluation_llm_answer_j
+  backend_src_cli_evaluate_py__run --> backend_src_infrastructure_vector_store_qdrant_sto
+  backend_src_cli_evaluate_py__seed_documents --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_cli_evaluate_py__seed_documents --> backend_src_application_use_cases_ingest_document_
+  backend_src_cli_evaluate_py__seed_documents --> backend_src_domain_interfaces_py_ConversationRepos
+  backend_src_cli_evaluate_py__store_and_compare --> backend_src_application_use_cases_audit_and_sessio
+  backend_src_cli_evaluate_py__store_and_compare --> backend_src_application_use_cases_compare_evaluati
+  backend_src_cli_evaluate_py__store_and_compare --> backend_src_application_use_cases_compare_evaluati
+  backend_src_cli_evaluate_py__store_and_compare --> backend_src_domain_interfaces_py_AssistantReposito
+  backend_src_cli_evaluate_py__store_and_compare --> backend_src_infrastructure_evaluation_report_store
+  backend_src_cli_evaluate_py__store_and_compare --> backend_src_infrastructure_evaluation_report_store
+  backend_src_cli_evaluate_py_main --> backend_src_cli_evaluate_py__parse_args
+  backend_src_cli_evaluate_py_main --> backend_src_cli_evaluate_py__run
+  backend_src_cli_evaluate_py_main --> backend_src_domain_interfaces_py_DocumentFileStora
+  backend_src_cli_evaluate_py_main --> backend_src_infrastructure_database_migrate_py_run
+  backend_src_cli_evaluate_py_main --> backend_src_infrastructure_evaluation_dataset_load
+  backend_src_cli_evaluate_py_main --> backend_src_infrastructure_observability_structure
+  backend_src_infrastructure_composition_py_build_em --> backend_src_infrastructure_composition_py__int_env
+  backend_src_infrastructure_composition_py_build_em --> backend_src_infrastructure_composition_py_embeddin
+  backend_src_infrastructure_composition_py_build_em --> backend_src_infrastructure_embeddings_sentence_tra
+  backend_src_infrastructure_composition_py_retrieva --> backend_src_application_services_retrieval_py_Retr
+  backend_src_infrastructure_composition_py_retrieva --> backend_src_infrastructure_composition_py__float_e
+  backend_src_infrastructure_composition_py_retrieva --> backend_src_infrastructure_composition_py__int_env
+  backend_src_infrastructure_database_alembic_versio --> backend_src_infrastructure_database_alembic_versio
+  backend_src_infrastructure_database_alembic_versio --> backend_src_infrastructure_database_alembic_versio
+  backend_src_infrastructure_database_migrate_py_run --> backend_src_infrastructure_database_alembic_versio
+  backend_src_infrastructure_observability_structure --> backend_src_infrastructure_observability_structure
+  backend_src_infrastructure_observability_structure --> backend_src_infrastructure_observability_structure
+classDef entry fill:#fef3c7,stroke:#d97706,stroke-width:2px
+classDef external fill:#fee2e2,stroke:#991b1b,stroke-dasharray:3 3

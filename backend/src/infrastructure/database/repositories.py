@@ -1,30 +1,48 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import delete, func, or_, select, text, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, lazyload, selectinload
 
 from src.domain import (
     Assistant,
     AssistantId,
     AssistantName,
+    AuditEvent,
+    AuditQuery,
     ChatMessage,
+    Citation,
     Conversation,
     ConversationId,
     Document,
     DocumentId,
     DocumentMetadata,
+    DocumentStatus,
+    IngestionJob,
+    IngestionJobKind,
+    IngestionJobStatus,
     MessageId,
     MessageRole,
+    JobOwnershipLostError,
+    ReindexInProgressError,
+    ReindexJob,
+    ReindexStatus,
 )
 
+from .transactions import commit_or_rollback
 from .models import (
+    AssistantGroupModel,
     AssistantModel,
+    AuditEventModel,
     ConversationModel,
+    DocumentGroupModel,
     DocumentModel,
+    IngestionJobModel,
     MessageModel,
+    ReindexJobModel,
     SecretSettingModel,
 )
 
@@ -48,7 +66,7 @@ class PostgresAssistantRepository:
             model.name = assistant.name.value
             model.description = assistant.description
             model.initial_prompt = assistant.initial_prompt
-        self._session.commit()
+        commit_or_rollback(self._session)
         self._session.refresh(model)
         return _assistant_to_entity(model)
 
@@ -72,7 +90,7 @@ class PostgresAssistantRepository:
         if model is None:
             return False
         self._session.delete(model)
-        self._session.commit()
+        commit_or_rollback(self._session)
         return True
 
 
@@ -89,14 +107,16 @@ class PostgresConversationRepository:
                 name=conversation.name,
                 created_at=conversation.created_at,
                 updated_at=conversation.updated_at,
+                owner_user_id=conversation.owner_user_id,
             )
             self._session.add(model)
         else:
+            # O dono e definido na criacao e nao muda depois (RF-44).
             model.assistant_id = conversation.assistant_id.value
             model.updated_at = conversation.updated_at
             if conversation.name is not None:
                 model.name = conversation.name
-        self._session.commit()
+        commit_or_rollback(self._session)
         return self.get_by_id(conversation.id) or conversation
 
     def get_by_id(
@@ -111,51 +131,49 @@ class PostgresConversationRepository:
         model = self._session.scalars(stmt).first()
         if model is None:
             return None
-        sorted_messages = sorted(
-            model.messages,
-            key=lambda item: item.created_at,
-        )
-        messages = tuple(_message_to_entity(item) for item in sorted_messages)
-        return Conversation(
-            id=ConversationId(model.id),
-            assistant_id=AssistantId(model.assistant_id),
-            name=model.name,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-            messages=messages,
-        )
+        return _conversation_to_entity(model)
 
     def list_by_assistant(
         self,
         assistant_id: AssistantId,
+        owner_user_id: str,
     ) -> list[Conversation]:
+        """RN-24: o filtro pelo dono faz parte da consulta."""
+        return self._summaries(
+            ConversationModel.assistant_id == assistant_id.value,
+            ConversationModel.owner_user_id == owner_user_id,
+        )
+
+    def list_archived(self) -> list[Conversation]:
+        """PC-D5: conversas sem dono, anteriores a autenticacao."""
+        return self._summaries(ConversationModel.owner_user_id.is_(None))
+
+    def _summaries(self, *conditions: object) -> list[Conversation]:
+        """fix-8: so as colunas da conversa e a contagem; sem carregar mensagens."""
+        count = (
+            select(func.count(MessageModel.id))
+            .where(MessageModel.conversation_id == ConversationModel.id)
+            .correlate(ConversationModel)
+            .scalar_subquery()
+        )
         stmt = (
-            select(ConversationModel)
-            .where(ConversationModel.assistant_id == assistant_id.value)
-            .options(selectinload(ConversationModel.messages))
+            select(ConversationModel, count.label("message_total"))
+            .where(*conditions)
+            .options(lazyload(ConversationModel.messages))
             .order_by(ConversationModel.updated_at.desc())
         )
-        items = self._session.scalars(stmt).all()
-        conversations: list[Conversation] = []
-        for model in items:
-            sorted_messages = sorted(
-                model.messages,
-                key=lambda message: message.created_at,
+        return [
+            Conversation(
+                id=ConversationId(model.id),
+                assistant_id=AssistantId(model.assistant_id),
+                name=model.name,
+                created_at=model.created_at,
+                updated_at=model.updated_at,
+                owner_user_id=model.owner_user_id,
+                message_total=total,
             )
-            conversations.append(
-                Conversation(
-                    id=ConversationId(model.id),
-                    assistant_id=AssistantId(model.assistant_id),
-                    name=model.name,
-                    created_at=model.created_at,
-                    updated_at=model.updated_at,
-                    messages=tuple(
-                        _message_to_entity(message)
-                        for message in sorted_messages
-                    ),
-                )
-            )
-        return conversations
+            for model, total in self._session.execute(stmt).all()
+        ]
 
     def save_message(self, message: ChatMessage) -> ChatMessage:
         model = MessageModel(
@@ -164,6 +182,7 @@ class PostgresConversationRepository:
             role=message.role.value,
             content=message.content,
             created_at=message.created_at,
+            citations=_citations_to_json(message.citations),
         )
         self._session.add(model)
         conversation = self._session.get(
@@ -174,7 +193,7 @@ class PostgresConversationRepository:
             if conversation.name is None and message.role == MessageRole.USER:
                 raw = message.content.strip()
                 conversation.name = raw[:97] + "..." if len(raw) > 100 else raw
-        self._session.commit()
+        commit_or_rollback(self._session)
         return _message_to_entity(model)
 
     def list_messages(
@@ -196,8 +215,12 @@ class PostgresConversationRepository:
         if model is None:
             return False
         self._session.delete(model)
-        self._session.commit()
+        commit_or_rollback(self._session)
         return True
+
+    def get_message(self, message_id: str) -> ChatMessage | None:
+        model = self._session.get(MessageModel, message_id)
+        return _message_to_entity(model) if model is not None else None
 
 
 class PostgresDocumentRepository:
@@ -205,36 +228,435 @@ class PostgresDocumentRepository:
         self._session = session
 
     def save(self, document: Document) -> Document:
-        model = self._session.get(DocumentModel, document.id.value)
-        if model is None:
-            model = DocumentModel(
-                id=document.id.value,
-                assistant_id=document.assistant_id.value,
-                source_name=document.source_name,
-                content_hash=document.content_hash,
-                metadata_json=json.dumps(document.metadata.values),
-                created_at=document.created_at,
-            )
-            self._session.add(model)
-        else:
-            model.assistant_id = document.assistant_id.value
-            model.source_name = document.source_name
-            model.content_hash = document.content_hash
-            model.metadata_json = json.dumps(document.metadata.values)
-        self._session.commit()
+        model = _write_document(self._session, document)
+        commit_or_rollback(self._session)
         self._session.refresh(model)
         return _document_to_entity(model)
 
+    def save_many(self, documents: list[Document]) -> None:
+        """fix-5: uma transacao so; falha no meio nao deixa gravacao parcial."""
+        for document in documents:
+            _write_document(self._session, document)
+        commit_or_rollback(self._session)
+
+    def get_by_id(self, document_id: DocumentId) -> Document | None:
+        model = self._session.get(DocumentModel, document_id.value)
+        return _document_to_entity(model) if model else None
+
     def list_by_assistant(self, assistant_id: AssistantId) -> list[Document]:
+        """Documentos vigentes; versoes substituidas ficam de fora (D5)."""
         stmt = (
             select(DocumentModel)
-            .where(DocumentModel.assistant_id == assistant_id.value)
+            .where(
+                DocumentModel.assistant_id == assistant_id.value,
+                DocumentModel.status != DocumentStatus.REPLACED.value,
+            )
             .order_by(DocumentModel.created_at.desc())
         )
         return [
             _document_to_entity(item)
             for item in self._session.scalars(stmt).all()
         ]
+
+    def find_by_hash(
+        self,
+        assistant_id: AssistantId,
+        content_hash: str,
+    ) -> Document | None:
+        stmt = (
+            select(DocumentModel)
+            .where(
+                DocumentModel.assistant_id == assistant_id.value,
+                DocumentModel.content_hash == content_hash,
+                DocumentModel.status != DocumentStatus.REPLACED.value,
+            )
+            .order_by(DocumentModel.created_at)
+            .limit(1)
+        )
+        model = self._session.scalars(stmt).first()
+        return _document_to_entity(model) if model else None
+
+    def delete(self, document_id: DocumentId) -> bool:
+        model = self._session.get(DocumentModel, document_id.value)
+        if model is None:
+            return False
+        self._session.delete(model)
+        commit_or_rollback(self._session)
+        return True
+
+
+class PostgresIngestionJobQueue:
+    """Fila sobre a tabela ``ingestion_jobs`` (ADR 0009).
+
+    A reserva usa ``FOR UPDATE SKIP LOCKED``: varios workers consultam ao
+    mesmo tempo sem pegar o mesmo job. Conclusao, nova tentativa e falha
+    gravam job e documento numa unica transacao.
+    """
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def enqueue(self, job: IngestionJob) -> IngestionJob:
+        model = IngestionJobModel(id=job.id, created_at=job.created_at)
+        _apply_job(model, job)
+        self._session.add(model)
+        commit_or_rollback(self._session)
+        return job
+
+    def reserve_next(self, now: datetime) -> IngestionJob | None:
+        reindexing = (
+            select(ReindexJobModel.id)
+            .where(
+                ReindexJobModel.assistant_id == DocumentModel.assistant_id,
+                ReindexJobModel.status == ReindexStatus.RUNNING.value,
+            )
+            .exists()
+        )
+        stmt = (
+            select(IngestionJobModel)
+            .join(DocumentModel, DocumentModel.id == IngestionJobModel.document_id)
+            .where(
+                IngestionJobModel.status == IngestionJobStatus.PENDING.value,
+                IngestionJobModel.available_at <= now,
+                ~reindexing,
+            )
+            .order_by(IngestionJobModel.available_at, IngestionJobModel.created_at)
+            .limit(1)
+            .with_for_update(skip_locked=True, of=IngestionJobModel)
+        )
+        model = self._session.scalars(stmt).first()
+        if model is None:
+            self._session.rollback()
+            return None
+        job = _ingestion_job_to_entity(model).reserve(now)
+        _apply_job(model, job)
+        commit_or_rollback(self._session)
+        return job
+
+    def renew(self, job: IngestionJob, now: datetime) -> bool:
+        """UPDATE condicional: so o dono (id, tentativa, processando) renova."""
+        result = self._session.execute(
+            update(IngestionJobModel)
+            .where(*_ingestion_owner(job))
+            .values(reserved_at=now)
+        )
+        commit_or_rollback(self._session)
+        return result.rowcount == 1
+
+    def list_expired(self, reserved_before: datetime) -> list[IngestionJob]:
+        stmt = select(IngestionJobModel).where(
+            IngestionJobModel.status == IngestionJobStatus.PROCESSING.value,
+            IngestionJobModel.reserved_at < reserved_before,
+        )
+        jobs = [
+            _ingestion_job_to_entity(item)
+            for item in self._session.scalars(stmt).all()
+        ]
+        self._session.rollback()
+        return jobs
+
+    def complete(
+        self,
+        job: IngestionJob,
+        document: Document,
+        replaced: Document | None = None,
+    ) -> None:
+        documents = [document] if replaced is None else [document, replaced]
+        self._write(job, documents)
+
+    def retry(self, job: IngestionJob, document: Document) -> None:
+        self._write(job, [document])
+
+    def fail(self, job: IngestionJob, document: Document) -> None:
+        self._write(job, [document])
+
+    def _write(self, job: IngestionJob, documents: list[Document]) -> None:
+        try:
+            # Gravacao condicionada ao dono: se outra tentativa assumiu o job,
+            # nada e gravado (SPEC-007 fix-3).
+            result = self._session.execute(
+                update(IngestionJobModel)
+                .where(*_ingestion_owner(job))
+                .values(**_job_values(job))
+            )
+            if result.rowcount != 1:
+                self._session.rollback()
+                raise JobOwnershipLostError(job.id)
+            for document in documents:
+                # Documento excluido durante o processamento nao volta (C4).
+                if self._session.get(DocumentModel, document.id.value) is not None:
+                    _write_document(self._session, document)
+            commit_or_rollback(self._session)
+        except Exception:
+            self._session.rollback()
+            raise
+
+
+class PostgresReindexJobRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def save(self, job: ReindexJob) -> ReindexJob:
+        model = self._session.get(ReindexJobModel, job.id)
+        if model is None:
+            model = ReindexJobModel(
+                id=job.id,
+                assistant_id=job.assistant_id.value,
+                started_at=job.started_at,
+            )
+            self._session.add(model)
+        model.target_collection = job.target_collection
+        model.status = job.status.value
+        model.total_documents = job.total_documents
+        model.processed_documents = job.processed_documents
+        model.error = job.error
+        model.finished_at = job.finished_at
+        model.attempts = job.attempts
+        model.lease_expires_at = job.lease_expires_at
+        try:
+            commit_or_rollback(self._session)
+        except IntegrityError as exc:
+            self._session.rollback()
+            raise ReindexInProgressError(
+                "a reindex is already in progress for this assistant."
+            ) from exc
+        self._session.refresh(model)
+        return _reindex_job_to_entity(model)
+
+    def get_by_id(self, job_id: str) -> ReindexJob | None:
+        model = self._session.get(ReindexJobModel, job_id)
+        return _reindex_job_to_entity(model) if model else None
+
+    def get_latest(self, assistant_id: AssistantId) -> ReindexJob | None:
+        stmt = (
+            select(ReindexJobModel)
+            .where(ReindexJobModel.assistant_id == assistant_id.value)
+            .order_by(ReindexJobModel.started_at.desc())
+            .limit(1)
+        )
+        model = self._session.scalars(stmt).first()
+        return _reindex_job_to_entity(model) if model else None
+
+    def get_running(self, assistant_id: AssistantId) -> ReindexJob | None:
+        stmt = select(ReindexJobModel).where(
+            ReindexJobModel.assistant_id == assistant_id.value,
+            ReindexJobModel.status == ReindexStatus.RUNNING.value,
+        )
+        model = self._session.scalars(stmt).first()
+        return _reindex_job_to_entity(model) if model else None
+
+    def list_running(self) -> list[ReindexJob]:
+        stmt = select(ReindexJobModel).where(
+            ReindexJobModel.status == ReindexStatus.RUNNING.value
+        )
+        return [
+            _reindex_job_to_entity(item)
+            for item in self._session.scalars(stmt).all()
+        ]
+
+    def renew_lease(
+        self,
+        job_id: str,
+        attempts: int,
+        *,
+        lease_expires_at: datetime,
+        processed_documents: int,
+    ) -> bool:
+        result = self._session.execute(
+            update(ReindexJobModel)
+            .where(*_reindex_owner(job_id, attempts))
+            .values(
+                lease_expires_at=lease_expires_at,
+                processed_documents=processed_documents,
+            )
+        )
+        commit_or_rollback(self._session)
+        return result.rowcount == 1
+
+    def save_if_owner(self, job: ReindexJob, attempts: int) -> bool:
+        result = self._session.execute(
+            update(ReindexJobModel)
+            .where(*_reindex_owner(job.id, attempts))
+            .values(
+                target_collection=job.target_collection,
+                status=job.status.value,
+                total_documents=job.total_documents,
+                processed_documents=job.processed_documents,
+                error=job.error,
+                finished_at=job.finished_at,
+                attempts=job.attempts,
+                lease_expires_at=job.lease_expires_at,
+            )
+        )
+        commit_or_rollback(self._session)
+        return result.rowcount == 1
+
+    def claim_next(self, now: datetime, lease: timedelta) -> ReindexJob | None:
+        """PC-D4: reserva com ``FOR UPDATE SKIP LOCKED``, como a fila de ingestao."""
+        stmt = (
+            select(ReindexJobModel)
+            .where(
+                ReindexJobModel.status == ReindexStatus.RUNNING.value,
+                or_(
+                    ReindexJobModel.lease_expires_at.is_(None),
+                    ReindexJobModel.lease_expires_at <= now,
+                ),
+            )
+            .order_by(ReindexJobModel.started_at)
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
+        model = self._session.scalars(stmt).first()
+        if model is None:
+            self._session.rollback()
+            return None
+        job = _reindex_job_to_entity(model).claim(now, lease)
+        model.attempts = job.attempts
+        model.lease_expires_at = job.lease_expires_at
+        commit_or_rollback(self._session)
+        self._session.refresh(model)
+        return _reindex_job_to_entity(model)
+
+
+class PostgresAssistantPermissionRepository:
+    """Vinculos de assistentes e de documentos com grupos (RF-42, RF-43)."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get_assistant_groups(self, assistant_id: AssistantId) -> frozenset[str]:
+        stmt = select(AssistantGroupModel.group_name).where(
+            AssistantGroupModel.assistant_id == assistant_id.value
+        )
+        return frozenset(self._session.scalars(stmt).all())
+
+    def list_assistant_groups(self) -> dict[str, frozenset[str]]:
+        stmt = select(
+            AssistantGroupModel.assistant_id,
+            AssistantGroupModel.group_name,
+        )
+        return _group_by_owner(self._session.execute(stmt).all())
+
+    def set_assistant_groups(
+        self,
+        assistant_id: AssistantId,
+        groups: frozenset[str],
+    ) -> None:
+        self._session.execute(
+            delete(AssistantGroupModel).where(
+                AssistantGroupModel.assistant_id == assistant_id.value
+            )
+        )
+        self._session.add_all(
+            AssistantGroupModel(assistant_id=assistant_id.value, group_name=group)
+            for group in sorted(groups)
+        )
+        commit_or_rollback(self._session)
+
+    def get_document_groups(self, document_id: DocumentId) -> frozenset[str]:
+        stmt = select(DocumentGroupModel.group_name).where(
+            DocumentGroupModel.document_id == document_id.value
+        )
+        return frozenset(self._session.scalars(stmt).all())
+
+    def list_document_groups(
+        self,
+        assistant_id: AssistantId,
+    ) -> dict[str, frozenset[str]]:
+        stmt = (
+            select(DocumentGroupModel.document_id, DocumentGroupModel.group_name)
+            .join(DocumentModel, DocumentModel.id == DocumentGroupModel.document_id)
+            .where(DocumentModel.assistant_id == assistant_id.value)
+        )
+        return _group_by_owner(self._session.execute(stmt).all())
+
+    def set_document_groups(
+        self,
+        document_id: DocumentId,
+        groups: frozenset[str],
+    ) -> None:
+        self._session.execute(
+            delete(DocumentGroupModel).where(
+                DocumentGroupModel.document_id == document_id.value
+            )
+        )
+        self._session.add_all(
+            DocumentGroupModel(document_id=document_id.value, group_name=group)
+            for group in sorted(groups)
+        )
+        commit_or_rollback(self._session)
+
+
+class PostgresAuditLogRepository:
+    """So inclui e consulta: nao ha operacao de alteracao nem de exclusao."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def append(self, event: AuditEvent) -> AuditEvent:
+        self._session.add(
+            AuditEventModel(
+                id=event.id,
+                occurred_at=event.occurred_at,
+                user_id=event.user_id,
+                action=event.action,
+                resource_type=event.resource_type,
+                resource_id=event.resource_id,
+                details=dict(event.details),
+            )
+        )
+        commit_or_rollback(self._session)
+        return event
+
+    def list_events(self, query: AuditQuery) -> list[AuditEvent]:
+        stmt = select(AuditEventModel)
+        if query.user_id is not None:
+            stmt = stmt.where(AuditEventModel.user_id == query.user_id)
+        if query.action is not None:
+            stmt = stmt.where(AuditEventModel.action == query.action)
+        if query.assistant_id is not None:
+            stmt = stmt.where(
+                AuditEventModel.details["assistant_id"].as_string()
+                == query.assistant_id
+            )
+        if query.occurred_from is not None:
+            stmt = stmt.where(AuditEventModel.occurred_at >= query.occurred_from)
+        if query.occurred_to is not None:
+            stmt = stmt.where(AuditEventModel.occurred_at <= query.occurred_to)
+        stmt = (
+            stmt.order_by(AuditEventModel.occurred_at.desc(), AuditEventModel.id)
+            .limit(query.limit)
+            .offset(query.offset)
+        )
+        return [
+            _audit_event_to_entity(item)
+            for item in self._session.scalars(stmt).all()
+        ]
+
+
+class PostgresAuditRetentionRepository:
+    """Limpeza por retencao (D6), usada so pelo comando de manutencao.
+
+    O gatilho de ``audit_events`` recusa qualquer DELETE, exceto dentro de uma
+    transacao que ligue ``nexus.audit_purge``; ``SET LOCAL`` vale so para ela.
+    """
+
+    PURGE_SETTING = "SET LOCAL nexus.audit_purge = 'on'"
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def purge_older_than(self, cutoff: datetime) -> int:
+        try:
+            self._session.execute(text(self.PURGE_SETTING))
+            result = self._session.execute(
+                delete(AuditEventModel).where(AuditEventModel.occurred_at < cutoff)
+            )
+            commit_or_rollback(self._session)
+        except Exception:
+            self._session.rollback()
+            raise
+        return int(result.rowcount or 0)
 
 
 class PostgresSecretSettingsRepository:
@@ -260,7 +682,7 @@ class PostgresSecretSettingsRepository:
         else:
             model.encrypted_value = encrypted_value
             model.updated_at = now
-        self._session.commit()
+        commit_or_rollback(self._session)
 
     def get_encrypted_value(self, *, key_name: str) -> str | None:
         model = self._session.get(SecretSettingModel, key_name)
@@ -279,12 +701,163 @@ def _assistant_to_entity(model: AssistantModel) -> Assistant:
     )
 
 
+def _conversation_to_entity(model: ConversationModel) -> Conversation:
+    sorted_messages = sorted(model.messages, key=lambda item: item.created_at)
+    return Conversation(
+        id=ConversationId(model.id),
+        assistant_id=AssistantId(model.assistant_id),
+        name=model.name,
+        created_at=model.created_at,
+        updated_at=model.updated_at,
+        messages=tuple(_message_to_entity(item) for item in sorted_messages),
+        owner_user_id=model.owner_user_id,
+    )
+
+
+def _group_by_owner(rows: object) -> dict[str, frozenset[str]]:
+    grouped: dict[str, set[str]] = {}
+    for owner_id, group_name in rows:  # type: ignore[attr-defined]
+        grouped.setdefault(owner_id, set()).add(group_name)
+    return {owner_id: frozenset(names) for owner_id, names in grouped.items()}
+
+
+def _audit_event_to_entity(model: AuditEventModel) -> AuditEvent:
+    return AuditEvent(
+        id=model.id,
+        user_id=model.user_id,
+        action=model.action,
+        resource_type=model.resource_type,
+        resource_id=model.resource_id,
+        details=dict(model.details or {}),
+        occurred_at=model.occurred_at,
+    )
+
+
 def _message_to_entity(model: MessageModel) -> ChatMessage:
     return ChatMessage(
         id=MessageId(model.id),
         conversation_id=ConversationId(model.conversation_id),
         role=MessageRole(model.role),
         content=model.content,
+        created_at=model.created_at,
+        citations=_citations_from_json(model.citations),
+    )
+
+
+def _citations_to_json(
+    citations: tuple[Citation, ...],
+) -> list[dict[str, object]] | None:
+    if not citations:
+        return None
+    return [
+        {
+            "number": item.number,
+            "document_id": item.document_id.value,
+            "chunk_id": item.chunk_id,
+            "source_name": item.source_name,
+            "section_path": item.section_path,
+            "page": item.page,
+            "score": item.score,
+            "excerpt": item.excerpt,
+        }
+        for item in citations
+    ]
+
+
+def _citations_from_json(
+    raw: list[dict[str, object]] | None,
+) -> tuple[Citation, ...]:
+    return tuple(_citation_from_json(item) for item in raw or [])
+
+
+def _citation_from_json(item: dict[str, object]) -> Citation:
+    page = item.get("page")
+    return Citation(
+        number=int(str(item["number"])),
+        document_id=DocumentId(str(item["document_id"])),
+        chunk_id=str(item["chunk_id"]),
+        source_name=str(item.get("source_name") or ""),
+        section_path=str(item.get("section_path") or ""),
+        page=page if isinstance(page, int) else None,
+        score=float(str(item.get("score") or 0.0)),
+        excerpt=str(item["excerpt"]),
+    )
+
+
+def _write_document(session: Session, document: Document) -> DocumentModel:
+    """Inclui ou atualiza o documento na sessao, sem confirmar a transacao."""
+    model = session.get(DocumentModel, document.id.value)
+    if model is None:
+        model = DocumentModel(id=document.id.value, created_at=document.created_at)
+        session.add(model)
+    model.assistant_id = document.assistant_id.value
+    model.source_name = document.source_name
+    model.content_hash = document.content_hash
+    model.metadata_json = json.dumps(document.metadata.values)
+    model.embedding_model = document.embedding_model
+    model.pipeline_version = document.pipeline_version
+    model.chunk_count = document.chunk_count
+    model.storage_key = document.storage_key
+    model.status = document.status.value
+    model.failure_reason = document.failure_reason
+    model.attempts = document.attempts
+    model.size_bytes = document.size_bytes
+    model.version = document.version
+    model.replaces_document_id = (
+        document.replaces_document_id.value if document.replaces_document_id else None
+    )
+    model.uploaded_by = document.uploaded_by
+    return model
+
+
+def _reindex_owner(job_id: str, attempts: int) -> tuple:
+    return (
+        ReindexJobModel.id == job_id,
+        ReindexJobModel.attempts == attempts,
+        ReindexJobModel.status == ReindexStatus.RUNNING.value,
+    )
+
+
+def _ingestion_owner(job: IngestionJob) -> tuple:
+    return (
+        IngestionJobModel.id == job.id,
+        IngestionJobModel.attempts == job.attempts,
+        IngestionJobModel.status == IngestionJobStatus.PROCESSING.value,
+    )
+
+
+def _job_values(job: IngestionJob) -> dict[str, object]:
+    return {
+        "document_id": job.document_id.value,
+        "kind": job.kind.value,
+        "status": job.status.value,
+        "attempts": job.attempts,
+        "available_at": job.available_at,
+        "reserved_at": job.reserved_at,
+        "last_error": job.last_error,
+    }
+
+
+def _apply_job(model: IngestionJobModel, job: IngestionJob) -> None:
+    model.document_id = job.document_id.value
+    model.kind = job.kind.value
+    model.status = job.status.value
+    model.attempts = job.attempts
+    model.available_at = job.available_at
+    model.reserved_at = job.reserved_at
+    model.last_error = job.last_error
+
+
+def _ingestion_job_to_entity(model: IngestionJobModel) -> IngestionJob:
+    return IngestionJob(
+        id=model.id,
+        document_id=DocumentId(model.document_id),
+        kind=IngestionJobKind(model.kind),
+        status=IngestionJobStatus(model.status),
+        attempts=model.attempts,
+        available_at=model.available_at,
+        reserved_at=model.reserved_at,
+        last_error=model.last_error,
         created_at=model.created_at,
     )
 
@@ -298,4 +871,35 @@ def _document_to_entity(model: DocumentModel) -> Document:
         content_hash=model.content_hash,
         metadata=DocumentMetadata.from_dict(metadata),
         created_at=model.created_at,
+        embedding_model=model.embedding_model,
+        pipeline_version=model.pipeline_version,
+        chunk_count=model.chunk_count,
+        storage_key=model.storage_key,
+        status=DocumentStatus(model.status),
+        failure_reason=model.failure_reason,
+        attempts=model.attempts,
+        size_bytes=model.size_bytes,
+        version=model.version,
+        replaces_document_id=(
+            DocumentId(model.replaces_document_id)
+            if model.replaces_document_id
+            else None
+        ),
+        uploaded_by=model.uploaded_by,
+    )
+
+
+def _reindex_job_to_entity(model: ReindexJobModel) -> ReindexJob:
+    return ReindexJob(
+        id=model.id,
+        assistant_id=AssistantId(model.assistant_id),
+        target_collection=model.target_collection,
+        status=ReindexStatus(model.status),
+        total_documents=model.total_documents,
+        processed_documents=model.processed_documents,
+        error=model.error,
+        started_at=model.started_at,
+        finished_at=model.finished_at,
+        attempts=model.attempts or 0,
+        lease_expires_at=model.lease_expires_at,
     )

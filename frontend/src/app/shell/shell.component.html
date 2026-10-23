@@ -57,6 +57,7 @@
             <h2 class="text-xs font-medium text-nexus-dim uppercase tracking-wider">Assistentes</h2>
             <div class="flex items-center gap-2">
               <span
+                *ngIf="menu().manageAssistants"
                 (click)="$event.stopPropagation(); openCreateAssistantModal()"
                 class="text-nexus-accent hover:underline text-xs opacity-0 group-hover:opacity-100 transition-opacity"
               >Criar</span>
@@ -134,9 +135,92 @@
 
       </div>
 
-      <!-- Footer Actions -->
+      <!-- Footer Actions: cada item aparece conforme o papel (RF-46) -->
       <div class="mt-auto border-t border-nexus-hover p-2">
+        <a
+          routerLink="/chat"
+          routerLinkActive="bg-nexus-active"
+          (click)="closeMobileSidebar()"
+          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+          title="Conversas"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+          </svg>
+          <span *ngIf="sidebarContentVisible()">Conversas</span>
+        </a>
+        <a
+          *ngIf="menu().manageDocuments"
+          routerLink="/assistants"
+          routerLinkActive="bg-nexus-active"
+          (click)="closeMobileSidebar()"
+          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+          title="Documentos e permissões"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+            <path d="M14 2v6h6" />
+          </svg>
+          <span *ngIf="sidebarContentVisible()">Documentos e permissões</span>
+        </a>
+        <a
+          *ngIf="menu().viewAudit"
+          routerLink="/admin/audit"
+          routerLinkActive="bg-nexus-active"
+          (click)="closeMobileSidebar()"
+          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+          title="Auditoria"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+          </svg>
+          <span *ngIf="sidebarContentVisible()">Auditoria</span>
+        </a>
+        <a
+          *ngIf="menu().viewArchived"
+          routerLink="/admin/archived"
+          routerLinkActive="bg-nexus-active"
+          (click)="closeMobileSidebar()"
+          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+          title="Conversas arquivadas"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 8v13H3V8" />
+            <path d="M1 3h22v5H1z" />
+            <path d="M10 12h4" />
+          </svg>
+          <span *ngIf="sidebarContentVisible()">Conversas arquivadas</span>
+        </a>
+        <a
+          *ngIf="menu().reviewFeedback"
+          routerLink="/feedback"
+          routerLinkActive="bg-nexus-active"
+          (click)="closeMobileSidebar()"
+          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+          title="Avaliações das respostas"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3z" />
+            <path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17" />
+          </svg>
+          <span *ngIf="sidebarContentVisible()">Avaliações</span>
+        </a>
+        <a
+          *ngIf="menu().viewUsage"
+          routerLink="/admin/usage"
+          routerLinkActive="bg-nexus-active"
+          (click)="closeMobileSidebar()"
+          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+          title="Consumo e limites"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 20V10M12 20V4M6 20v-6" />
+          </svg>
+          <span *ngIf="sidebarContentVisible()">Consumo e limites</span>
+        </a>
         <button
+          *ngIf="menu().configureLlm"
           (click)="openAdminModal()"
           class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
         >
@@ -146,6 +230,31 @@
           </svg>
           <span *ngIf="sidebarContentVisible()">Configurações</span>
         </button>
+
+        <div
+          *ngIf="user() as sessionUser"
+          class="mt-2 flex items-center gap-2 border-t border-nexus-hover px-2 pt-2"
+        >
+          <div *ngIf="sidebarContentVisible()" class="min-w-0 flex-1">
+            <div class="truncate text-sm font-medium">{{ sessionUser.name }}</div>
+            <div class="truncate text-xs text-nexus-dim">
+              {{ sessionUser.groups.length > 0 ? sessionUser.groups.join(", ") : "sem grupo" }}
+            </div>
+          </div>
+          <button
+            type="button"
+            (click)="logout()"
+            class="flex h-9 shrink-0 items-center gap-2 rounded-full px-3 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+            title="Sair"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+              <path d="M16 17l5-5-5-5" />
+              <path d="M21 12H9" />
+            </svg>
+            <span *ngIf="sidebarContentVisible()">Sair</span>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -272,12 +381,12 @@
   aria-modal="true"
   aria-labelledby="admin-api-key-title"
 >
-  <article class="w-full max-w-lg rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+  <article class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
     <div class="flex items-start justify-between gap-4">
       <div>
         <h2 id="admin-api-key-title" class="text-lg font-semibold">Administração</h2>
         <p class="mt-1 text-sm text-slate-400">
-          Configure a API key global usada pelas integrações de LLM.
+          Configure a conexão (provedor e modelo) e a API key global usadas pelas integrações de LLM.
         </p>
       </div>
       <button
@@ -289,6 +398,91 @@
         x
       </button>
     </div>
+
+    <div
+      *ngIf="error()"
+      class="mt-4 rounded-2xl border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
+    >
+      <div class="flex items-center justify-between gap-2">
+        <span>{{ error() }}</span>
+        <button type="button" class="text-xs underline" (click)="clearError()">fechar</button>
+      </div>
+    </div>
+    <div
+      *ngIf="notice()"
+      class="mt-4 rounded-2xl border border-emerald-400/50 bg-emerald-500/10 p-3 text-sm text-emerald-100"
+    >
+      {{ notice() }}
+    </div>
+
+    <section class="mt-5 rounded-2xl border border-slate-800 bg-slate-950 p-4">
+      <h3 class="text-sm font-semibold text-slate-200">Conexão com o LLM</h3>
+      <p class="mt-1 text-xs text-slate-400">
+        Origem do valor atual:
+        <strong class="text-slate-200">
+          {{ llmSettings()?.source === "configurado" ? "esta tela" : "ambiente (.env)" }}
+        </strong>
+      </p>
+      <form class="mt-3 space-y-3" [formGroup]="llmForm" (ngSubmit)="saveLlmSettings()">
+        <label class="block text-sm text-slate-300">
+          Provedor
+          <select
+            formControlName="provider"
+            class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+          >
+            <option *ngFor="let item of llmProviders" [value]="item.value">
+              {{ item.label }}
+            </option>
+          </select>
+        </label>
+        <label class="block text-sm text-slate-300">
+          Modelo
+          <input
+            type="text"
+            autocomplete="off"
+            formControlName="model"
+            class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+            placeholder="Nome exato do modelo, como o provedor o informa"
+          />
+          <span
+            *ngIf="llmForm.controls.model.touched && llmForm.controls.model.invalid"
+            class="mt-1 block text-xs text-rose-300"
+          >
+            Informe o nome do modelo, sem espaços (até 200 caracteres).
+          </span>
+        </label>
+        <label *ngIf="isCustomProvider()" class="block text-sm text-slate-300">
+          URL do endpoint (chat completions)
+          <input
+            type="url"
+            autocomplete="off"
+            formControlName="apiUrl"
+            class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
+            placeholder="https://servidor.exemplo.com/v1/chat/completions"
+          />
+          <span class="mt-1 block text-xs text-slate-400">
+            Use https, sem usuário, senha nem parâmetros na URL. A chave vai para este endereço.
+          </span>
+        </label>
+        <p *ngIf="!isCustomProvider()" class="break-all text-xs text-slate-400">
+          Endpoint: <span class="text-slate-200">{{ llmEndpointPreview() }}</span>
+        </p>
+        <ul class="list-disc space-y-1 pl-5 text-xs text-amber-200/90">
+          <li>A chave abaixo não é ligada ao provedor: ao trocá-lo, salve a chave do novo provedor.</li>
+          <li>Trocar de modelo invalida a comparação com a linha de base da avaliação.</li>
+          <li>O custo estimado continua usando os preços de LLM_PRICE_* do ambiente.</li>
+        </ul>
+        <div class="flex justify-end">
+          <button
+            type="submit"
+            [disabled]="loading().saveLlmSettings || loading().llmSettings"
+            class="rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {{ loading().saveLlmSettings ? "Salvando..." : "Salvar conexão" }}
+          </button>
+        </div>
+      </form>
+    </section>
 
     <div class="mt-5 rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm">
       <span class="text-slate-400">Status:</span>
