@@ -3,6 +3,13 @@
 Cada amostra cria uma conversa nova e faz uma pergunta; ``--concurrency``
 dispara perguntas simultaneas. A amostra e ``200`` se o primeiro evento ``delta``
 (ou ``replace``) chegou, e o tempo vai ate esse evento.
+
+Na V7 (decisao do autor, 2026-10-22) roda automaticamente sobre o assistente que a V6
+indexa (``--assistant-name``), com as perguntas do escopo do conjunto validado
+(``--dataset``, JSONL da avaliacao):
+
+  python ttft.py --base-url http://backend:8000 --assistant-name "Nexus Docs Ampliado (avaliacao)" \
+    --dataset /app/datasets/nexus-docs-ampliado.jsonl --out ttft.csv
 """
 
 from __future__ import annotations
@@ -15,9 +22,15 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
 try:
-    from common import Sample, api_headers, get_token, new_request_id, now_iso, request, write_samples
+    from common import (
+        Sample, TokenSource, api_headers, as_token_source, new_request_id, now_iso, request,
+        write_samples,
+    )
 except ImportError:  # pragma: no cover
-    from scripts.perf.common import Sample, api_headers, get_token, new_request_id, now_iso, request, write_samples
+    from scripts.perf.common import (
+        Sample, TokenSource, api_headers, as_token_source, new_request_id, now_iso, request,
+        write_samples,
+    )
 
 TEXT_EVENTS = {"delta", "replace"}
 
@@ -75,29 +88,62 @@ def ask_timed(base_url: str, token: str, assistant_id: str, question: str) -> Sa
     return Sample(start_iso, now_iso(), elapsed if elapsed is not None else time.perf_counter() - begin, status, request_id)
 
 
+def dataset_questions(path: str) -> list[str]:
+    """Perguntas do escopo (``out_of_scope`` falso) de um conjunto de avaliacao JSONL."""
+    questions = []
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            if line.strip():
+                item = json.loads(line)
+                if not item.get("out_of_scope"):
+                    questions.append(item["question"])
+    return questions
+
+
+def find_assistant(base_url: str, token: str, name: str) -> str:
+    status, _, payload = request("GET", f"{base_url}/assistants", headers=api_headers(token))
+    if status != 200:
+        raise SystemExit(f"listing assistants failed with status {status}.")
+    for item in json.loads(payload):
+        if item.get("name") == name:
+            return str(item["id"])
+    raise SystemExit(f"assistente {name!r} nao encontrado; rode a V6 antes (ela o cria e indexa).")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", required=True)
-    parser.add_argument("--assistant-id", required=True)
-    parser.add_argument("--questions", required=True, help="arquivo com uma pergunta por linha")
+    target = parser.add_mutually_exclusive_group(required=True)
+    target.add_argument("--assistant-id")
+    target.add_argument("--assistant-name", help="assistente da V6, procurado pelo nome")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--questions", help="arquivo com uma pergunta por linha")
+    source.add_argument("--dataset", help="conjunto JSONL da avaliacao (so perguntas do escopo)")
     parser.add_argument("--samples", type=int, default=100)
     parser.add_argument("--concurrency", type=int, default=5)
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
-    with open(args.questions, encoding="utf-8") as handle:
-        questions = [line.strip() for line in handle if line.strip()]
+    if args.dataset:
+        questions = dataset_questions(args.dataset)
+    else:
+        with open(args.questions, encoding="utf-8") as handle:
+            questions = [line.strip() for line in handle if line.strip()]
     if not questions:
         raise SystemExit("no questions.")
-    token = get_token()
+    token = as_token_source(TokenSource())  # renova o token nas rodadas longas
     base = args.base_url.rstrip("/")
+    assistant_id = args.assistant_id or find_assistant(base, token(), args.assistant_name)
     with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
         samples = list(
             pool.map(
-                lambda i: ask_timed(base, token, args.assistant_id, questions[i % len(questions)]),
+                lambda i: ask_timed(base, token(), assistant_id, questions[i % len(questions)]),
                 range(args.samples),
             )
         )
     write_samples(args.out, samples)
+    failed = [sample.status for sample in samples if sample.status != "200"]
+    if failed:
+        print(f"{len(failed)} de {len(samples)} perguntas sem texto ou com erro: {sorted(set(failed))}")
     return 0
 
 

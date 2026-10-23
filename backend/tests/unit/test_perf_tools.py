@@ -441,5 +441,29 @@ class PurgeDocumentsTestCase(unittest.TestCase):
         )
 
 
+class TtftAutomationTestCase(unittest.TestCase):
+    """RNF-01 na V7 (decisao do autor, 2026-10-22): assistente da V6 e perguntas do escopo."""
+
+    def test_dataset_questions_skip_out_of_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "d.jsonl"
+            path.write_text(
+                json.dumps({"question": "Dentro?", "out_of_scope": False}) + "\n\n"
+                + json.dumps({"question": "Fora?", "out_of_scope": True}) + "\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(ttft.dataset_questions(str(path)), ["Dentro?"])
+
+    def test_finds_the_v6_assistant_by_name_or_explains(self) -> None:
+        original = ttft.request
+        listing = json.dumps([{"id": "a9", "name": "Nexus Docs Ampliado (avaliacao)"}]).encode()
+        ttft.request = lambda *args, **kwargs: (200, {}, listing)
+        self.addCleanup(lambda: setattr(ttft, "request", original))
+        self.assertEqual(ttft.find_assistant("http://api", "t", "Nexus Docs Ampliado (avaliacao)"), "a9")
+        with self.assertRaises(SystemExit) as raised:
+            ttft.find_assistant("http://api", "t", "Outro")
+        self.assertIn("V6", str(raised.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -254,10 +254,19 @@ stage_v7() {
   run V7 "RNF-18 busca durante a reindexacao" "${run_perf[@]}" \
     python /app/scripts/perf/reindex_under_load.py --base-url "$api" --assistant-id "${NEXUS_REINDEX_ASSISTANT_ID:-$assistant}" \
     --chunks "$files/chunks.jsonl" --users 1 --out "$perfc/rnf18.csv" || return 1
+  # RNF-01 (decisao do autor, 2026-10-22): LLM real, sobre o assistente que a V6 indexa, com as
+  # perguntas do escopo do conjunto validado; 100 perguntas, 5 simultaneas (secao 7 do plano).
+  local ttft_assistant="Nexus Docs (avaliacao)"
+  [ "$EVAL_DATASET" = "nexus-docs-ampliado" ] && ttft_assistant="Nexus Docs Ampliado (avaliacao)"
+  # Mesmo comando do run_perf (o ultimo item e o servico), com o conjunto montado.
+  local run_ttft=("${run_perf[@]:0:${#run_perf[@]}-1}" -v ./backend/tests/evaluation/datasets:/app/datasets:ro backend)
+  run V7 "RNF-01 TTFT (LLM real)" "${run_ttft[@]}" \
+    python /app/scripts/perf/ttft.py --base-url "$api" --assistant-name "$ttft_assistant" \
+    --dataset "/app/datasets/$EVAL_DATASET.jsonl" --samples 100 --concurrency 5 --out "$perfc/ttft.csv" || return 1
   run V7 "consolidacao" "${run_perf[@]}" python /app/scripts/perf/report.py \
-    "$perfc/upload.csv:2:all" "$perfc/indexacao.csv:60:all:PC-D11" "$perfc/rnf03.csv:2:all" \
-    "$perfc/rnf16-u1.csv:3:p95" "$perfc/rnf16-u5.csv" "$perfc/rnf18.csv" --out "/app/out/07-desempenho.md"
-  pending V7 "RNF-01 TTFT" "ttft.py exige LLM real e um arquivo de perguntas; executar a parte, depois da V6"
+    "$perfc/ttft.csv:30:p95" "$perfc/upload.csv:2:all" "$perfc/indexacao.csv:60:all:PC-D11" \
+    "$perfc/rnf03.csv:2:all" "$perfc/rnf16-u1.csv:3:p95" "$perfc/rnf16-u5.csv" "$perfc/rnf18.csv" \
+    --out "/app/out/07-desempenho.md"
 }
 
 stage_v8() {
