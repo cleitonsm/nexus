@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import http.client
 import json
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
@@ -88,6 +89,29 @@ def ask_timed(base_url: str, token: str, assistant_id: str, question: str) -> Sa
     return Sample(start_iso, now_iso(), elapsed if elapsed is not None else time.perf_counter() - begin, status, request_id)
 
 
+class Pacer:
+    """Espaca o inicio das perguntas para caber no limite de uso por usuario (RN-32).
+
+    O teste usa um so usuario; acima de ``RATE_LIMIT_PER_MINUTE`` (20) a API responde
+    429 de proposito (ensaio de 2026-10-24: 58 de 100). Com 18 por minuto as perguntas
+    comecam a cada 3,3 s e ainda se sobrepoem quando a resposta demora.
+    """
+
+    def __init__(self, per_minute: float, clock=time.monotonic, sleep=time.sleep) -> None:
+        self._interval = 60.0 / per_minute if per_minute > 0 else 0.0
+        self._next = None
+        self._lock = threading.Lock()
+        self._clock, self._sleep = clock, sleep
+
+    def wait(self) -> None:
+        with self._lock:
+            now = self._clock()
+            start = now if self._next is None else max(now, self._next)
+            self._next = start + self._interval
+        if start > now:
+            self._sleep(start - now)
+
+
 def dataset_questions(path: str) -> list[str]:
     """Perguntas do escopo (``out_of_scope`` falso) de um conjunto de avaliacao JSONL."""
     questions = []
@@ -121,6 +145,10 @@ def main(argv: list[str] | None = None) -> int:
     source.add_argument("--dataset", help="conjunto JSONL da avaliacao (so perguntas do escopo)")
     parser.add_argument("--samples", type=int, default=100)
     parser.add_argument("--concurrency", type=int, default=5)
+    parser.add_argument(
+        "--per-minute", type=float, default=18.0,
+        help="perguntas iniciadas por minuto (limite de uso RN-32 = 20); 0 desliga",
+    )
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     if args.dataset:
@@ -133,13 +161,14 @@ def main(argv: list[str] | None = None) -> int:
     token = as_token_source(TokenSource())  # renova o token nas rodadas longas
     base = args.base_url.rstrip("/")
     assistant_id = args.assistant_id or find_assistant(base, token(), args.assistant_name)
+    pacer = Pacer(args.per_minute)
+
+    def one(index: int) -> Sample:
+        pacer.wait()  # fora do tempo medido
+        return ask_timed(base, token(), assistant_id, questions[index % len(questions)])
+
     with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
-        samples = list(
-            pool.map(
-                lambda i: ask_timed(base, token(), assistant_id, questions[i % len(questions)]),
-                range(args.samples),
-            )
-        )
+        samples = list(pool.map(one, range(args.samples)))
     write_samples(args.out, samples)
     failed = [sample.status for sample in samples if sample.status != "200"]
     if failed:
