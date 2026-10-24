@@ -86,5 +86,23 @@ class ModelConcurrencyTestCase(unittest.TestCase):
         self.assertTrue(all(item[0].score == 0.5 for item in results))
 
 
+class ModelLoadingTestCase(unittest.TestCase):
+    """Ensaio de 2026-10-24: 5 carregamentos simultaneos depois de o backend subir
+    corrompiam o torch ("Cannot copy out of meta tensor") ate reiniciar o processo."""
+
+    def test_loads_never_overlap_even_across_models(self) -> None:
+        guard = _NotReentrant()
+
+        def create(name):
+            guard._enter()
+            return name
+
+        with mock.patch.object(embedding_module, "_create_model", side_effect=create), \
+                mock.patch.object(reranker_module, "_create_model", side_effect=create):
+            loaders = [embedding_module._load_model, reranker_module._load_model]
+            results = _parallel(lambda: [load("m") for load in loaders])
+        self.assertEqual(results[0], ["m", "m"])
+
+
 if __name__ == "__main__":
     unittest.main()

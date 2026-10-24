@@ -4,9 +4,17 @@ import threading
 from functools import lru_cache
 from typing import Any
 
+from src.infrastructure.model_loading import MODEL_LOAD_LOCK
+
+
+def _load_model(model_name: str) -> Any:
+    """Um carregamento por vez no processo (ver ``model_loading``)."""
+    with MODEL_LOAD_LOCK:
+        return _create_model(model_name)
+
 
 @lru_cache(maxsize=2)
-def _load_model(model_name: str) -> Any:
+def _create_model(model_name: str) -> Any:
     """Carrega o modelo uma unica vez por processo (SPEC-002).
 
     O cache de arquivos fica no diretorio indicado por ``HF_HOME`` (volume

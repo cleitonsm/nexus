@@ -6,10 +6,17 @@ from functools import lru_cache
 from typing import Any
 
 from src.domain import SearchResult
+from src.infrastructure.model_loading import MODEL_LOAD_LOCK
+
+
+def _load_model(model_name: str) -> tuple[Any, Any]:
+    """Um carregamento por vez no processo (ver ``model_loading``)."""
+    with MODEL_LOAD_LOCK:
+        return _create_model(model_name)
 
 
 @lru_cache(maxsize=2)
-def _load_model(model_name: str) -> tuple[Any, Any]:
+def _create_model(model_name: str) -> tuple[Any, Any]:
     """Carrega o cross-encoder uma unica vez por processo.
 
     Usa o mesmo cache de arquivos dos embeddings (``HF_HOME``); com
