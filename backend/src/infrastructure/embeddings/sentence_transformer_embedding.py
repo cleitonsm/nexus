@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from functools import lru_cache
 from typing import Any
 
@@ -23,6 +24,18 @@ def _load_model(model_name: str) -> Any:
     return SentenceTransformer(model_name, device="cpu")
 
 
+@lru_cache(maxsize=2)
+def _model_lock(model_name: str) -> threading.Lock:
+    """Uma trava por modelo carregado, compartilhada pelo gateway e pelo contador.
+
+    O tokenizador rapido do Hugging Face nao aceita uso simultaneo (``RuntimeError:
+    Already borrowed``): com 5 perguntas ao mesmo tempo no chat, parte delas falhava com
+    502 (ensaio do RNF-01, 2026-10-24). Em CPU o torch ja usa varias threads por chamada,
+    entao enfileirar as chamadas tambem evita disputa de nucleos.
+    """
+    return threading.Lock()
+
+
 class SentenceTransformerEmbeddingGateway:
     """Embeddings semanticos locais (ADR 0004 e ADR 0006)."""
 
@@ -31,6 +44,7 @@ class SentenceTransformerEmbeddingGateway:
             raise ValueError("embedding model name must not be empty.")
         self._model_name = model_name.strip()
         self._model = _load_model(self._model_name)
+        self._lock = _model_lock(self._model_name)
         actual = int(self._model.get_sentence_embedding_dimension())
         if actual != expected_dimension:
             raise ValueError(
@@ -56,12 +70,13 @@ class SentenceTransformerEmbeddingGateway:
         return self._encode([text])[0]
 
     def _encode(self, texts: list[str]) -> list[list[float]]:
-        vectors = self._model.encode(
-            texts,
-            normalize_embeddings=True,
-            convert_to_numpy=True,
-            show_progress_bar=False,
-        )
+        with self._lock:
+            vectors = self._model.encode(
+                texts,
+                normalize_embeddings=True,
+                convert_to_numpy=True,
+                show_progress_bar=False,
+            )
         return [[float(value) for value in vector] for vector in vectors]
 
 
@@ -70,17 +85,19 @@ class SentenceTransformerTokenCounter:
 
     def __init__(self, *, model_name: str) -> None:
         self._model = _load_model(model_name.strip())
+        self._lock = _model_lock(model_name.strip())
 
     @property
     def max_tokens(self) -> int:
         return int(self._model.max_seq_length)
 
     def count(self, text: str) -> int:
-        encoded = self._model.tokenizer(
-            text,
-            add_special_tokens=True,
-            truncation=False,
-            return_attention_mask=False,
-            return_token_type_ids=False,
-        )
+        with self._lock:
+            encoded = self._model.tokenizer(
+                text,
+                add_special_tokens=True,
+                truncation=False,
+                return_attention_mask=False,
+                return_token_type_ids=False,
+            )
         return len(encoded["input_ids"])

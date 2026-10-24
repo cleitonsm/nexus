@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from dataclasses import replace
 from functools import lru_cache
 from typing import Any
@@ -26,6 +27,14 @@ def _load_model(model_name: str) -> tuple[Any, Any]:
     return CrossEncoder(model_name, device="cpu"), nn.Sigmoid()
 
 
+@lru_cache(maxsize=2)
+def _model_lock(model_name: str) -> threading.Lock:
+    """Uma trava por cross-encoder: o tokenizador rapido nao aceita uso simultaneo
+    (``Already borrowed``) e, em CPU, 5 reranks paralelos levavam 41 s cada contra
+    cerca de 3 s isolados (ensaio do RNF-01, 2026-10-24)."""
+    return threading.Lock()
+
+
 class CrossEncoderRerankerGateway:
     """Reranking local em CPU (RF-34, RNF-26, ADR 0007).
 
@@ -39,6 +48,7 @@ class CrossEncoderRerankerGateway:
         self._model_name = model_name.strip()
         self._batch_size = batch_size
         self._model, self._activation = _load_model(self._model_name)
+        self._lock = _model_lock(self._model_name)
 
     @property
     def model_name(self) -> str:
@@ -51,12 +61,13 @@ class CrossEncoderRerankerGateway:
     ) -> list[SearchResult]:
         if not candidates:
             return []
-        scores = self._model.predict(
-            [(query, candidate.text) for candidate in candidates],
-            batch_size=self._batch_size,
-            activation_fct=self._activation,
-            show_progress_bar=False,
-        )
+        with self._lock:
+            scores = self._model.predict(
+                [(query, candidate.text) for candidate in candidates],
+                batch_size=self._batch_size,
+                activation_fct=self._activation,
+                show_progress_bar=False,
+            )
         ranked = [
             replace(candidate, score=float(score))
             for candidate, score in zip(candidates, scores)
