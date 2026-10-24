@@ -24,7 +24,7 @@ def _load_model(model_name: str) -> Any:
     return SentenceTransformer(model_name, device="cpu")
 
 
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=None)  # a trava nunca sai do cache enquanto o modelo existe
 def _model_lock(model_name: str) -> threading.Lock:
     """Uma trava por modelo carregado, compartilhada pelo gateway e pelo contador.
 

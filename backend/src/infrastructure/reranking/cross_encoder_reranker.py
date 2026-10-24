@@ -27,7 +27,7 @@ def _load_model(model_name: str) -> tuple[Any, Any]:
     return CrossEncoder(model_name, device="cpu"), nn.Sigmoid()
 
 
-@lru_cache(maxsize=2)
+@lru_cache(maxsize=None)  # a trava nunca sai do cache enquanto o modelo existe
 def _model_lock(model_name: str) -> threading.Lock:
     """Uma trava por cross-encoder: o tokenizador rapido nao aceita uso simultaneo
     (``Already borrowed``) e, em CPU, 5 reranks paralelos levavam 41 s cada contra
