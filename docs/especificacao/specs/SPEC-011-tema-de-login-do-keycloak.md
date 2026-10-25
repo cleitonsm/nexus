@@ -238,6 +238,7 @@ Nenhuma.
 | Tema | `infra/keycloak/themes/nexus/login/`: `theme.properties`, `nexus.css`, `nexus-mark.svg`, `favicon.ico` e mensagens pt-BR e en; nenhum template sobrescrito (D1) |
 | Imagem e realm | `infra/docker/keycloak.Dockerfile`; `compose.yaml` constrói a imagem; `nexus-realm.json` com `loginTheme` e `displayNameHtml`; o CI confere o tema |
 | Frontend | D8 em `shell.component.html`; `favicon.svg` e `favicon.ico` em `frontend/public`, referenciados no `index.html` |
+| Defeito encontrado na validação | O `index.html` não tinha `<base href="/">`: abrir uma rota com dois níveis (`/admin/audit`) carregava `/admin/main-*.js`, o Nginx devolvia o `index.html` e o app não iniciava. Isso fazia o CT-86 (`access.spec.ts`) falhar para curador, usuário e sem sessão. Corrigido com `<base href="/">` e favicons com caminho absoluto |
 | CT-85 | Pendente: sem Docker no ambiente de implementação |
 | CT-86 a CT-88 | `frontend/e2e/login-theme.spec.ts` (CT-87, CT-88 e RNF-36) escrito, não executado; `helpers.ts` não muda, porque os ids do formulário continuam os do `keycloak.v2` |
 | CT-89 | Prévia: o HTML que o `keycloak.v2` 26.0.17 gera para `login`, credencial inválida, inglês, `logout-confirm` e `error`, com o `nexus.css`, renderizado no Chromium a 1280 px e 360 px, sem rolagem horizontal. Feita sem o CSS do PatternFly (registro npm inacessível), então a conferência na pilha real continua pendente |

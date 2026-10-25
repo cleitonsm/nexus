@@ -4,8 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Nexus</title>
-    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48" />
+    <!-- Sem base, /admin/audit carregaria /admin/main-*.js e o app nao iniciaria (SPEC-011, CT-86). -->
+    <base href="/" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
   </head>
   <body class="bg-slate-950 text-slate-100">
     <app-root></app-root>
