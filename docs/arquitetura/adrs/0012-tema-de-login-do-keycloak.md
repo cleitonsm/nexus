@@ -2,7 +2,7 @@
 
 ## Status
 
-Aceita em 2026-10-25, com a aprovação da SPEC-011. Implementação pendente. Complementa a
+Aceita em 2026-10-25, com a aprovação da SPEC-011. Implementada; ainda não executada no ambiente Docker. Complementa a
 [ADR 0008](0008-keycloak-e-modelo-de-permissoes.md).
 
 ## Contexto

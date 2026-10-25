@@ -20,4 +20,5 @@ que não foi automatizado.
 
 Status: escrito, **não executado** (sem navegador e sem registro npm onde foi escrito). Os seletores
 do Keycloak (`#username`, `#password`, `#kc-login`) e o botão `Sair` (atributo `title`) vêm do tema
-padrão e de `shell.component.html`; se algum falhar na primeira execução, ajuste em `helpers.ts`.
+`nexus` (SPEC-011, herda os ids do `keycloak.v2`) e de `shell.component.html`; `login-theme.spec.ts`
+confere o próprio tema (CT-87, CT-88); se algum falhar na primeira execução, ajuste em `helpers.ts`.

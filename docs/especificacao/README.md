@@ -24,7 +24,7 @@ conteúdo do **MVP** e a seção **Evolução — RAG Enterprise**, que continua
 | Artefato | MVP | Evolução RAG Enterprise | Total |
 |----------|-----|-------------------------|-------|
 | Requisitos funcionais | RF-01 a RF-23 | RF-24 a RF-63 | 63 |
-| Requisitos não funcionais | RNF-01 a RNF-15 | RNF-16 a RNF-33 | 33 |
+| Requisitos não funcionais | RNF-01 a RNF-15 | RNF-16 a RNF-36 | 36 |
 | Regras de negócio | RN-01 a RN-13 | RN-14 a RN-33 | 33 |
 | Histórias de usuário | HU-01 a HU-14 (épicos 1 a 6) | HU-15 a HU-37 (épicos 7 a 12) | 37 |
 | Casos de uso | UC-01 a UC-05 | UC-06 a UC-13 | 13 |

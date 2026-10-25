@@ -41,7 +41,9 @@ validação no Docker pendente, ver o [plano de conclusão](../plano-de-conclusa
 **Já existe no `compose.yaml` desde a Fase 4** (serviços `keycloak` e `keycloak-db-init`, porta
 `8080`). Provedor de identidade. Autentica os usuários e informa papéis e grupos nos tokens. Usa
 um banco próprio dentro do PostgreSQL existente e importa o realm de desenvolvimento na subida
-(ADR 0008). Usuários de exemplo e console em `infra/keycloak/README.md`.
+(ADR 0008). Usuários de exemplo e console em `infra/keycloak/README.md`. Desde a SPEC-011 a
+imagem é construída por `infra/docker/keycloak.Dockerfile` (base `quay.io/keycloak/keycloak:26.0`)
+e traz o tema de login `nexus`, no padrão visual do frontend (ADR 0012).
 
 ### Worker de Ingestão e Reindexação
 

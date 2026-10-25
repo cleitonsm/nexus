@@ -143,6 +143,12 @@ infraestrutura e poucos roteiros ponta a ponta.
 | CT-82 | E2E (Playwright) | Na Auditoria, selecionar um assistente leva ao chat em branco com as recentes listadas | RF-77 |
 | CT-83 | E2E (Playwright) | Menu pelo teclado (Enter, setas, Esc com foco de volta) e fechamento por clique fora | RF-78 |
 | CT-84 | E2E (Playwright) | `/admin` leva ao chat | SPEC-010 D6 |
+| CT-85 | Manual (Docker) | A imagem derivada do Keycloak constrói, o serviço fica saudável e o tema `nexus` aparece no realm | RF-79 |
+| CT-86 | E2E (Playwright) | Login, logout e acesso negado da suíte existente passam com o tema | RNF-34 |
+| CT-87 | E2E (Playwright) | O login carrega `nexus.css`, mostra marca e selo e o botão `#kc-login` em pílula indigo-600 | RF-79, RF-80 |
+| CT-88 | E2E (Playwright) | Senha errada mostra o erro no cartão; trocar para `en` mostra "Sign in" | RF-79, RF-81 |
+| CT-89 | Manual (visual) | Capturas a 360 px e 1280 px de login, erro, `logout-confirm` e `error`; contraste AA | RNF-35, RNF-36 |
+| CT-90 | Manual (visual) | O shell mantém o fundo `#0f172a` depois da troca das classes `gemini-*` | SPEC-011 D8 |
 
 ---
 

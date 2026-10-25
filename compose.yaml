@@ -118,7 +118,11 @@ services:
         condition: service_healthy
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0
+    # Imagem 26.0 com o tema de login "nexus" (SPEC-011, ADR 0012). Depois de
+    # mudar o tema: docker compose up -d --build keycloak
+    build:
+      context: .
+      dockerfile: infra/docker/keycloak.Dockerfile
     command: ["start-dev", "--import-realm"]
     environment:
       KC_DB: postgres

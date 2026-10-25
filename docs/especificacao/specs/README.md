@@ -22,7 +22,7 @@ testes são escritos antes da implementação.
 | SPEC-20261014-008 | Configuração do LLM na administração (provedor, modelo e URL) | [`SPEC-008-configuracao-do-llm.md`](SPEC-008-configuracao-do-llm.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-68 a RF-72 |
 | SPEC-20261014-009 | Robustez do LLM (novas tentativas), grupos de documentos validados no Keycloak e cliente Qdrant 1.11.3 | [`SPEC-009-robustez-llm-grupos-qdrant.md`](SPEC-009-robustez-llm-grupos-qdrant.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-73, RF-74 |
 | SPEC-20261025-010 | Navegação da barra lateral e menu de Administração | [`SPEC-010-navegacao-e-menu-de-administracao.md`](SPEC-010-navegacao-e-menu-de-administracao.md) | Aprovada (2026-10-25); código entregue, validação pendente | RF-75 a RF-78 |
-| SPEC-20261025-011 | Tema de login do Keycloak no padrão visual do Nexus | [`SPEC-011-tema-de-login-do-keycloak.md`](SPEC-011-tema-de-login-do-keycloak.md) | Aprovada (2026-10-25); implementação pendente | RF-79 a RF-81 |
+| SPEC-20261025-011 | Tema de login do Keycloak no padrão visual do Nexus | [`SPEC-011-tema-de-login-do-keycloak.md`](SPEC-011-tema-de-login-do-keycloak.md) | Aprovada (2026-10-25); código entregue, validação pendente | RF-79 a RF-81 |
 
 ## Status possíveis
 

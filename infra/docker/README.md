@@ -12,7 +12,8 @@ A implementação do ambiente Docker está planejada para a etapa 2 do plano inc
 
 ## Keycloak (Fase 4)
 
-O `compose.yaml` sobe o serviço `keycloak` (imagem `quay.io/keycloak/keycloak:26.0`, modo de
+O `compose.yaml` sobe o serviço `keycloak` (imagem construída por `keycloak.Dockerfile` sobre
+`quay.io/keycloak/keycloak:26.0`, com o tema de login `nexus` da SPEC-011; modo de
 desenvolvimento) com o realm de `infra/keycloak/nexus-realm.json`. O serviço `keycloak-db-init`
 cria antes o banco `keycloak` no PostgreSQL existente. O `frontend.Dockerfile` copia o modelo
 `frontend/nginx/default.conf.template`, que o Nginx preenche na subida com os endereços do login.
