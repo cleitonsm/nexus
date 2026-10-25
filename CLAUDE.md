@@ -1,6 +1,6 @@
 # Nexus — guia para o Claude Code
 
-Plataforma RAG corporativa: cada assistente responde só com trechos da própria base, filtrados pelos grupos do usuário. Monólito modular (ADR 0001): backend FastAPI em Clean Architecture, worker de ingestão, frontend Angular 19 + NgRx, PostgreSQL 16, Qdrant e Keycloak via `compose.yaml`.
+Plataforma RAG corporativa: cada assistente responde só com trechos da própria base, filtrados pelos grupos do usuário. Monólito modular (ADR 0001): backend FastAPI em Clean Architecture, worker de ingestão, frontend Angular 20 + NgRx, PostgreSQL 16, Qdrant e Keycloak via `compose.yaml`.
 
 Para implementar qualquer coisa, siga a skill **`desenvolvedor-nexus`** (`.claude/skills/desenvolvedor-nexus/SKILL.md`): arquitetura, tecnologias por camada e limites.
 
@@ -27,6 +27,6 @@ Para implementar qualquer coisa, siga a skill **`desenvolvedor-nexus`** (`.claud
 ## Automações do projeto
 
 - Hooks (`.claude/settings.json`): `guard.py` bloqueia `.env` e edição de migração existente; `ruff_check.py` roda o ruff do CI após editar `.py`.
-- Skills: `/spec-to-code <SPEC>` (fluxo SDD completo) e `/new-migration <nome>`.
+- Skills: `/spec-to-code <SPEC>` (fluxo SDD completo), `/new-migration <nome>` e `/prompts-testes-integracao <cenarios|erros|dados> <alvo>` (prompts de GenAI para testes de integração).
 - Subagentes: `architecture-guard` (fronteiras e ADRs) e `rag-quality-reviewer` (pipeline RAG).
 - MCP (`.mcp.json`): `context7` (documentação atual), `playwright` (navegador), `postgres` (somente leitura no banco local; ver `.claude/mcp/README.md`).
