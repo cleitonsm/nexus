@@ -1,4 +1,5 @@
 import { inject } from "@angular/core";
+import { Router } from "@angular/router";
 import { Actions, createEffect, ofType } from "@ngrx/effects";
 import { Action, Store } from "@ngrx/store";
 import {
@@ -102,6 +103,30 @@ export const selectCreatedAssistantEffect = createEffect(
     ),
   { functional: true }
 );
+
+/**
+ * SPEC-010 (RF-77, D4): selecionar um assistente, uma conversa recente ou criar
+ * uma conversa leva ao chat a partir de qualquer tela. Fica no efeito para valer
+ * tambem quando a acao vem de outro fluxo (por exemplo, a inferencia do assistente).
+ */
+export const navigateToChatEffect = createEffect(
+  (actions$ = inject(Actions), router = inject(Router)) =>
+    actions$.pipe(
+      ofType(
+        nexusActions.selectAssistant,
+        nexusActions.selectConversation,
+        nexusActions.createConversationSuccess
+      ),
+      filter(() => !isChatUrl(router.url)),
+      tap(() => void router.navigateByUrl("/chat"))
+    ),
+  { functional: true, dispatch: false }
+);
+
+function isChatUrl(url: string): boolean {
+  const path = url.split(/[?#]/)[0];
+  return path === "/chat" || path.startsWith("/chat/");
+}
 
 export const createConversationEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
@@ -818,6 +843,7 @@ export const nexusEffects = {
   deleteAssistantEffect,
   selectCreatedAssistantEffect,
   selectAssistantEffect,
+  navigateToChatEffect,
   createConversationEffect,
   loadAssistantConversationsEffect,
   deleteConversationEffect,

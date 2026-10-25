@@ -136,6 +136,13 @@ infraestrutura e poucos roteiros ponta a ponta.
 | CT-75 | Unitário e integração | Grupo existente (com e sem barra inicial) aceito; lista vazia não consulta o Keycloak; Keycloak indisponível aceita e registra aviso | RF-74 |
 | CT-76 | Integração | A rota de envio responde 422 para grupo desconhecido, sem gravar | RF-74 |
 | CT-77 | Manual | Subida com `qdrant-client` 1.11.3 sem o aviso de versão; indexação e busca híbrida funcionam | SPEC-009 D1 |
+| CT-78 | Unitário (Vitest) | Menu Administração: 6 itens ordenados para admin, 2 para curador, nenhum para usuário e sem sessão | RF-76 |
+| CT-79 | Unitário (Vitest) | Selecionar assistente abre o chat em branco; recarregar as recentes não abre nem troca a conversa atual | RF-77 |
+| CT-80 | Unitário (Vitest) | Selecionar assistente, conversa ou criar conversa leva a `/chat` fora do chat; já no chat, não navega | RF-77 |
+| CT-81 | E2E (Playwright) | Barra lateral por papel: itens do menu Administração; usuário comum sem o botão; ninguém vê o link Conversas | RF-75, RF-76 |
+| CT-82 | E2E (Playwright) | Na Auditoria, selecionar um assistente leva ao chat em branco com as recentes listadas | RF-77 |
+| CT-83 | E2E (Playwright) | Menu pelo teclado (Enter, setas, Esc com foco de volta) e fechamento por clique fora | RF-78 |
+| CT-84 | E2E (Playwright) | `/admin` leva ao chat | SPEC-010 D6 |
 
 ---
 

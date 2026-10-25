@@ -1,8 +1,14 @@
 import { CommonModule } from "@angular/common";
 import { Component, computed, effect, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
+import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from "@angular/cdk/menu";
+import { ConnectedPosition } from "@angular/cdk/overlay";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
-import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
+import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
 import { Store } from "@ngrx/store";
+import { filter, map } from "rxjs";
+
+import { AdministrationItem, administrationMenu } from "../core/auth/access";
 
 import { authActions } from "../store/auth.actions";
 import { selectMenu, selectSessionUser } from "../store/auth.selectors";
@@ -25,12 +31,13 @@ import {
 @Component({
   selector: "app-shell",
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [CommonModule, ReactiveFormsModule, RouterOutlet, CdkMenu, CdkMenuItem, CdkMenuTrigger],
   templateUrl: "./shell.component.html"
 })
 export class ShellComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly store = inject(Store);
+  private readonly router = inject(Router);
 
   protected readonly assistants = this.store.selectSignal(selectAssistants);
   protected readonly activeAssistantId = this.store.selectSignal(selectActiveAssistantId);
@@ -58,6 +65,41 @@ export class ShellComponent {
   protected readonly sidebarContentVisible = computed(
     () => !this.sidebarCollapsed() || this.mobileSidebarOpen()
   );
+
+  /** SPEC-010 (RF-76): telas do menu Administracao que o papel enxerga. */
+  protected readonly administrationItems = computed(() => administrationMenu(this.menu()));
+
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects)
+    ),
+    { initialValue: this.router.url }
+  );
+
+  /** O botao fica destacado quando a tela atual e uma das do menu. */
+  protected readonly administrationActive = computed(() =>
+    this.administrationItems().some((item) => this.isAdministrationItemActive(item))
+  );
+
+  /** Abre para cima; com a barra recolhida, a direita do icone. */
+  protected readonly administrationMenuPositions = computed<ConnectedPosition[]>(() => {
+    const above: ConnectedPosition = {
+      originX: "start",
+      originY: "top",
+      overlayX: "start",
+      overlayY: "bottom",
+      offsetY: -8
+    };
+    const beside: ConnectedPosition = {
+      originX: "end",
+      originY: "bottom",
+      overlayX: "start",
+      overlayY: "bottom",
+      offsetX: 8
+    };
+    return this.sidebarContentVisible() ? [above, beside] : [beside, above];
+  });
 
   protected readonly activeAssistant = computed(() =>
     this.assistants().find((assistant) => assistant.id === this.activeAssistantId()) ?? null
@@ -106,6 +148,23 @@ export class ShellComponent {
         });
       }
     });
+  }
+
+  protected isAdministrationItemActive(item: AdministrationItem): boolean {
+    if (item.target.kind !== "route") {
+      return false;
+    }
+    const path = this.currentUrl().split(/[?#]/)[0];
+    return path === item.target.path;
+  }
+
+  protected openAdministrationItem(item: AdministrationItem): void {
+    this.closeMobileSidebar();
+    if (item.target.kind === "llmSettings") {
+      this.openAdminModal();
+      return;
+    }
+    void this.router.navigateByUrl(item.target.path);
   }
 
   protected logout(): void {

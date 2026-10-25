@@ -71,7 +71,7 @@ const assistant = (id: string): Assistant => ({
 });
 
 describe("nexusReducer", () => {
-  it("stores assistant conversation history and selects fallback conversation", () => {
+  it("stores assistant conversation history without opening a conversation (CT-79, D5)", () => {
     const stateWithAssistant = nexusReducer(
       initialNexusState,
       nexusActions.selectAssistant({ assistantId: "assistant-1" })
@@ -85,8 +85,45 @@ describe("nexusReducer", () => {
     );
 
     expect(nextState.conversationHistoryByAssistant["assistant-1"]).toHaveLength(2);
-    expect(nextState.selectedConversationByAssistant["assistant-1"]).toBe("conv-1");
-    expect(nextState.currentConversationId).toBe("conv-1");
+    expect(nextState.currentConversationId).toBeNull();
+  });
+
+  it("opens a blank chat when an assistant is selected, even with a previous conversation (CT-79, D5)", () => {
+    const state: NexusState = {
+      ...initialNexusState,
+      activeAssistantId: "assistant-1",
+      currentConversationId: "conv-2",
+      conversationHistoryByAssistant: {
+        "assistant-1": [assistantConversation("conv-1"), assistantConversation("conv-2")]
+      },
+      selectedConversationByAssistant: { "assistant-1": "conv-2" }
+    };
+
+    const nextState = nexusReducer(
+      state,
+      nexusActions.selectAssistant({ assistantId: "assistant-1" })
+    );
+
+    expect(nextState.activeAssistantId).toBe("assistant-1");
+    expect(nextState.currentConversationId).toBeNull();
+  });
+
+  it("keeps the open conversation when the history reloads (CT-79)", () => {
+    const state: NexusState = {
+      ...initialNexusState,
+      activeAssistantId: "assistant-1",
+      currentConversationId: "conv-new"
+    };
+
+    const nextState = nexusReducer(
+      state,
+      nexusActions.loadAssistantConversationsSuccess({
+        assistantId: "assistant-1",
+        conversations: [assistantConversation("conv-1")]
+      })
+    );
+
+    expect(nextState.currentConversationId).toBe("conv-new");
   });
 
   it("appends user and assistant messages on chat success", () => {
