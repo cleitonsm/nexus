@@ -4,8 +4,8 @@ Campanha oficial: **`validacao-final-rc8`** (commit `1bfc1fe`, 2026-10-24), etap
 do autor, e **`validacao-final-rc9`** (commit `400ae33`), que repete a V2 (agora com a cobertura) e a
 V4 e recebe a V5 depois da atualização do Angular 20 (PC-D12). O backend não mudou entre as duas.
 
-**Situação: aguardando a rc9.** Tudo o que é automático passou na rc8; ficam pendentes a cobertura
-(RNF-30), a V4 sobre o Angular 20 e a V5 manual (E1 a E11). Com elas aprovadas, as SPEC-001 a 006
+**Situação: falta só a V5 manual (E1 a E11).** Tudo o que é automático passou: V0 a V8 na rc8 e,
+na rc9, a V2 com a cobertura (95%) e a V4 sobre o Angular 20. Com a V5 aprovada, as SPEC-001 a 006
 passam a `Implementada`.
 
 Ambiente: Windows 11 com Docker Desktop (12 CPUs, i7-8750H, 7,7 GiB para o Docker), modelos locais
@@ -20,12 +20,12 @@ commit é o `1bfc1fe`, que aparece no nome dos relatórios da avaliação e no C
 | V0 ambiente limpo e varreduras | OK | `V0-*.log` |
 | V1 subida e migrações | OK | `V1-*.log` |
 | V2 testes unitários no container (LangGraph real) | OK: 705 testes | `V2-testes-unitarios-no-container-.log` |
-| V2 cobertura de domínio e aplicação (RNF-30) | **Pendente (rc9)**: a rc8 não mediu (defeito do orquestrador, corrigido em `400ae33`) | — |
+| V2 cobertura de domínio e aplicação (RNF-30) | rc9: **95%** (mínimo 80%), 705 testes; a rc8 não mediu (defeito do orquestrador, corrigido em `400ae33`) | [`../2026-10-24-rc9/02-cobertura.txt`](../2026-10-24-rc9/02-cobertura.txt) |
 | V3 integração do backend | OK: 146 testes, nenhum pulado | `V3-testes-de-integracao-do-backend-.log` |
 | V3 CT-53, CT-54, CT-56 | OK; CT-56 com 0 vazamentos | `V3-CT-5*.log`, [`ct56/leakage_scan.json`](ct56/leakage_scan.json) |
 | V4 frontend (Angular 19) | OK: 149 testes, build; `npm audit`: 4 altas → PC-D12 | `V4-*.log` |
-| V4 frontend (Angular 20) | **Pendente (rc9)**; no `ng update`: 0 vulnerabilidades, 149 testes, build ok | — |
-| V5 ponta a ponta (E1 a E11) | **Pendente (rc9)**, manual com capturas | — |
+| V4 frontend (Angular 20) | rc9: OK, 149 testes, build de produção, `npm audit` com 0 vulnerabilidades | `../2026-10-24-rc9/V4-*.log` |
+| V5 ponta a ponta (E1 a E11) | **Pendente**, manual com capturas (rc9) | — |
 | V6 metas de qualidade (3 execuções) | OK | `V6-*.log`, linha de base abaixo |
 | V7 desempenho (100.000 trechos) | OK; RNF-02 como limitação aceita | [`07-desempenho.md`](07-desempenho.md), CSVs em `07-desempenho/` |
 | V8 CT-47, CT-48, portão de qualidade | OK | `V8-*.log`, [`../2026-10-24-ct47/resumo.md`](../2026-10-24-ct47/resumo.md), [`../2026-10-24-ct48/resumo.md`](../2026-10-24-ct48/resumo.md) |
@@ -104,9 +104,9 @@ como risco do ciclo 2.
 
 ## Matriz requisito → caso → evidência → resultado
 
-Contagem (86 requisitos): 64 aprovados, 11 aprovados nos testes automáticos com o cenário da V5
-pendente, 9 pendentes da rc9, 1 limitação aceita (RNF-02) e 1 aprovado com ressalva (RNF-11).
-Etapas citadas: pasta desta campanha, salvo indicação.
+Contagem (86 requisitos): 67 aprovados, 13 aprovados nos testes automáticos com o cenário da V5
+pendente, 4 pendentes da V5 (RNF-13, 14, 15 e 33, só verificáveis na tela), 1 limitação aceita
+(RNF-02) e 1 aprovado com ressalva (RNF-11). Etapas citadas: pasta da rc8, salvo indicação.
 
 ## Requisitos funcionais (RF-24 a RF-74)
 
@@ -126,7 +126,7 @@ Etapas citadas: pasta desta campanha, salvo indicação.
 | RF-35 | O sistema deve descartar candidatos abaixo de uma nota mínima de relevância configurável e… | CT-14 | V2 (705 unitários OK); fallback 0,90 na V6 (3 execuções, Gemini) | Aprovado |
 | RF-36 | O sistema deve reescrever a pergunta do usuário em uma consulta autônoma, usando o histórico… | CT-17 | V2 (705 unitários OK) | Aprovado |
 | RF-37 | O sistema deve devolver, junto com cada resposta gerada, as citações dos trechos utilizados… | CT-15, CT-20, CT-50 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado); geradas com citação 1,0 na V6 (3 execuções, Gemini) | Aprovado |
-| RF-38 | O sistema deve exibir no chat as fontes de cada resposta, permitindo consultar o trecho citado. | CT-21, E4 | V4 rc9 (Angular 20) — pendente; V5 — pendente (manual) | Pendente (rc9) |
+| RF-38 | O sistema deve exibir no chat as fontes de cada resposta, permitindo consultar o trecho citado. | CT-21, E4 | V4 rc9 (Angular 20: 149 testes, build, 0 vulnerabilidades); V5 — pendente (manual) | Aprovado (V4); E4 pendente |
 | RF-39 | O sistema deve limitar o histórico e o contexto enviados ao LLM a um orçamento de tokens… | CT-16 | V2 (705 unitários OK) | Aprovado |
 | RF-40 | O sistema deve autenticar usuários exclusivamente pelo Keycloak, via OpenID Connect… | CT-26, CT-52 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
 | RF-41 | O sistema deve reconhecer os papéis administrador, curador e usuário a partir do token emitido… | CT-30, CT-52 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
@@ -134,7 +134,7 @@ Etapas citadas: pasta desta campanha, salvo indicação.
 | RF-43 | O sistema deve permitir restringir um documento a grupos específicos e aplicar essa restrição… | CT-28, CT-56, E5 | V3 (146 de integração OK, nenhum pulado); CT-56 sem vazamento; V5 — pendente (manual) | Aprovado (V3); E5 pendente |
 | RF-44 | O sistema deve associar cada conversa ao usuário que a criou e permitir o acesso ao seu… | CT-29 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
 | RF-45 | O sistema deve registrar trilha de auditoria de autenticações, perguntas realizadas,… | CT-31, E6 | V3 (146 de integração OK, nenhum pulado); V5 — pendente (manual) | Aprovado (V3); E6 pendente |
-| RF-46 | O frontend deve oferecer login, logout e renovação de sessão pelo Keycloak e ocultar… | CT-32, E1 | V4 rc9 (Angular 20) — pendente; V5 — pendente (manual) | Pendente (rc9) |
+| RF-46 | O frontend deve oferecer login, logout e renovação de sessão pelo Keycloak e ocultar… | CT-32, E1 | V4 rc9 (Angular 20: 149 testes, build, 0 vulnerabilidades); V5 — pendente (manual) | Aprovado (V4); E1 pendente |
 | RF-47 | O sistema deve restringir ao papel administrador a configuração e o teste da chave de API do… | CT-30 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
 | RF-48 | O sistema deve processar a ingestão de forma assíncrona: o upload registra o documento,… | CT-33, CT-50 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado) | Aprovado |
 | RF-49 | O sistema deve expor e exibir o estado de cada documento (pendente, processando, indexado,… | CT-33, CT-50 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado) | Aprovado |
@@ -160,7 +160,7 @@ Etapas citadas: pasta desta campanha, salvo indicação.
 | RF-69 | o administrador altera provedor, modelo e URL; a mudança vale a partir da próxima pergunta e… | CT-63, CT-66, CT-67, CT-68 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado) | Aprovado |
 | RF-70 | chat (incluindo streaming), teste da chave, registro de consumo e comando de avaliação usam a… | CT-64, CT-70 | V2 (705 unitários OK); V6 (3 execuções, Gemini) e RNF-01 da V7 com o Gemini configurado na tela | Aprovado |
 | RF-71 | a alteração gera evento de auditoria com o valor anterior e o novo (provedor, modelo e URL),… | CT-65, CT-66, CT-68 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado) | Aprovado |
-| RF-72 | a tela de administração mostra os campos, a origem do valor, o aviso de chave por provedor… | CT-69 | V4 rc9 (Angular 20) — pendente | Pendente (rc9) |
+| RF-72 | a tela de administração mostra os campos, a origem do valor, o aviso de chave por provedor… | CT-69 | V4 rc9 (Angular 20: 149 testes, build, 0 vulnerabilidades) | Aprovado |
 | RF-73 | chamadas ao LLM (teste da chave, pergunta com e sem streaming, avaliação) repetem a | CT-71 a CT-73 | V2 (705 unitários OK) | Aprovado |
 | RF-74 | envio de documento e alteração dos grupos de um documento recusam grupos que não existem | CT-74 a CT-76 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado); CT-56 com `view-users` | Aprovado |
 
@@ -179,10 +179,10 @@ Etapas citadas: pasta desta campanha, salvo indicação.
 | RNF-09 | O ambiente completo (backend, frontend, banco de dados, vetor store) deve subir localmente com… | V1 | V1 da rc8 (`up --build --wait`, um comando) | Aprovado |
 | RNF-10 | O sistema deve ser compatível com provedores LLM que implementam a interface OpenAI Chat… | V6, CT-70 | Gemini pelo endpoint compatível com OpenAI na V6 (3 execuções, Gemini) e na V7 | Aprovado |
 | RNF-11 | O backend deve seguir Clean Architecture, separando domínio, aplicação, infraestrutura e API,… | revisão | Domínio sem import de framework (varredura de 2026-10-24); a aplicação importa o LangGraph no chat e na inferência, divergindo da ADR 0002 (registrado para o ciclo 2) | Aprovado com ressalva |
-| RNF-12 | O frontend deve seguir o padrão NgRx com estado centralizado, garantindo que toda mutação de… | CT-21, CT-69, FE-02, FE-05 | V4 rc9 (Angular 20) — pendente | Pendente (rc9) |
-| RNF-13 | O sistema deve fornecer feedback visual (indicador de carregamento) para todas as operações… | E10 | V5 — pendente (manual) | Pendente (rc9) |
-| RNF-14 | O sistema deve exibir mensagens de erro compreensíveis ao usuário para falhas de comunicação… | E9 | V5 — pendente (manual) | Pendente (rc9) |
-| RNF-15 | A interface deve ser responsiva, funcionando adequadamente em telas com largura mínima de 360… | E10 | V5 — pendente (manual) | Pendente (rc9) |
+| RNF-12 | O frontend deve seguir o padrão NgRx com estado centralizado, garantindo que toda mutação de… | CT-21, CT-69, FE-02, FE-05 | V4 rc9 (Angular 20: 149 testes, build, 0 vulnerabilidades) | Aprovado |
+| RNF-13 | O sistema deve fornecer feedback visual (indicador de carregamento) para todas as operações… | E10 | V5 — pendente (manual) | Pendente (V5) |
+| RNF-14 | O sistema deve exibir mensagens de erro compreensíveis ao usuário para falhas de comunicação… | E9 | V5 — pendente (manual) | Pendente (V5) |
+| RNF-15 | A interface deve ser responsiva, funcionando adequadamente em telas com largura mínima de 360… | E10 | V5 — pendente (manual) | Pendente (V5) |
 | RNF-16 | A recuperação (busca híbrida e reranking) deve ser concluída em até 3 segundos para 95% das… | retrieval_latency.py hybrid (100.000 trechos) | V7 (`07-desempenho.md`): p95 0,98 s com 1 usuário; 5 usuários p95 4,2 s (informativo) | Aprovado |
 | RNF-17 | O upload de um documento de até 25 MB deve responder em até 2 segundos, devolvendo o… | CT-40, upload_latency.py | V3 (146 de integração OK, nenhum pulado); V7 (`07-desempenho.md`): máximo 1,36 s, com o worker pausado (decisão de 2026-10-22) | Aprovado |
 | RNF-18 | A reindexação de um assistente não deve interromper nem degradar as consultas à base vigente. | CT-12, reindex_under_load.py | V3 (146 de integração OK, nenhum pulado); V7 (`07-desempenho.md`): 2.100 buscas durante a reindexação, 0 erros, p95 2,1 s | Aprovado |
@@ -197,7 +197,7 @@ Etapas citadas: pasta desta campanha, salvo indicação.
 | RNF-27 | O processamento de ingestão deve ser idempotente e retomável: a falha ou reinício do worker… | CT-37, CT-53 | V3 (146 de integração OK, nenhum pulado); CT-53 (kill e stop do worker) | Aprovado |
 | RNF-28 | O ponto de recuperação (RPO) dos dados relacionais e vetoriais deve ser de no máximo 24 horas. | CT-47 | V8 | Aprovado |
 | RNF-29 | Toda requisição de chat deve ser rastreável de ponta a ponta por um único identificador, da… | CT-44 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
-| RNF-30 | Todo componente novo deve ser introduzido atrás de uma porta do domínio, com cobertura de… | cobertura de domínio e aplicação | V2 da rc9 (`02-cobertura.txt`) — pendente; a rc8 não mediu | Pendente (rc9) |
+| RNF-30 | Todo componente novo deve ser introduzido atrás de uma porta do domínio, com cobertura de… | cobertura de domínio e aplicação | V2 da rc9: 95% (`../2026-10-24-rc9/02-cobertura.txt`); a rc8 não mediu | Aprovado |
 | RNF-31 | Toda alteração de esquema do banco deve ser feita por migração versionada e reversível. | CT-49 | V3 (146 de integração OK, nenhum pulado) (`test_migrations`); V1 (revisão das migrações) | Aprovado |
 | RNF-32 | O ambiente completo, incluindo Keycloak e worker de ingestão, deve continuar subindo com um… | V1 | V1 da rc8 (Keycloak e worker no mesmo comando; modelos no volume de cache) | Aprovado |
-| RNF-33 | As fontes de uma resposta devem estar acessíveis em um clique, e o estado de ingestão deve ser… | E2, E4 | V5 — pendente (manual) | Pendente (rc9) |
+| RNF-33 | As fontes de uma resposta devem estar acessíveis em um clique, e o estado de ingestão deve ser… | E2, E4 | V5 — pendente (manual) | Pendente (V5) |
