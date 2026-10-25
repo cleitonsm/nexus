@@ -97,8 +97,8 @@ A regra de dependência é unidirecional: `api → application → domain`. O do
 | Embeddings | sentence-transformers | Multilíngue, local, sem custo por chamada |
 | Grafo de IA | LangGraph | Fluxo conversacional explícito e testável |
 | Extração de docs | PyPDF + python-docx | Suporte a PDF e DOCX sem dependências pesadas |
-| Frontend | Angular 17+ | Framework robusto com lazy loading e standalone components |
-| Estado | NgRx | Store reativa, rastreável e testável |
+| Frontend | Angular 20 | Framework robusto com lazy loading e standalone components (atualizado do 19 por segurança, PC-D12) |
+| Estado | NgRx 20 | Store reativa, rastreável e testável |
 | Estilo | Tailwind CSS | Utilidade-first, consistência sem CSS custom |
 | Ambiente | Docker Compose | Uma única dependência para rodar tudo localmente |
 
