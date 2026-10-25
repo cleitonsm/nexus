@@ -1,7 +1,7 @@
 # Spec: Ingestão e Ciclo de Vida de Documentos
 
 **ID**: SPEC-20261007-005
-**Status**: Aprovada em 2026-10-08 por Cleiton Medeiros, com as decisões D1 a D10 do [plano](SPEC-005-plano-de-implementacao.md) — código entregue, aguardando validação no ambiente Docker
+**Status**: **Implementada** em 2026-10-25 — validada na campanha final (`validacao-final-rc8` e `rc9`; [RESUMO](../../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). Histórico: Aprovada em 2026-10-08 por Cleiton Medeiros, com as decisões D1 a D10 do [plano](SPEC-005-plano-de-implementacao.md) — código entregue, aguardando validação no ambiente Docker.
 **Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa, pendente de revisão)
 **Data**: 2026-10-07
 **Fase**: 5 de 6 — etapa 13 do [plano incremental](../../plano-incremental.md)

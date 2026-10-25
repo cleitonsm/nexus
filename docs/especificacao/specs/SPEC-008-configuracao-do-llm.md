@@ -1,7 +1,7 @@
 # SPEC-008 — Configuração do LLM na administração (provedor, modelo e URL)
 
 **ID**: SPEC-20261014-008
-**Status**: Aprovada em 2026-10-14 (escopo, URL livre para administrador e aviso de avaliação escolhidos pelo autor); código entregue, validação no Docker pendente
+**Status**: **Implementada** em 2026-10-25 — validada na campanha final (`validacao-final-rc8` e `rc9`; [RESUMO](../../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). Histórico: Aprovada em 2026-10-14 (escopo, URL livre para administrador e aviso de avaliação escolhidos pelo autor); código entregue, validação no Docker pendente.
 **Origem**: teste rápido no Docker (E1) — chave de teste do Gemini recusada com 401 porque o destino continuava sendo `api.openai.com`; a tela só gravava a chave
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 

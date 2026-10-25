@@ -1,6 +1,6 @@
 # Plano de Conclusão — Evolução RAG Enterprise
 
-**Status**: Aprovado pelo autor em 2026-10-08, com as decisões PC-D1 a PC-D7 (seção 5); em execução (seção 8)
+**Status**: **Concluído em 2026-10-25** — campanha final aprovada (`validacao-final-rc8` e `rc9`, [RESUMO](qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)); decisões PC-D1 a PC-D13 (seção 5)
 **Autor**: Cleiton Medeiros (elaborado com apoio de IA generativa, pendente de revisão)
 **Data**: 2026-10-08
 **Abrange**: tudo o que falta para encerrar as etapas 9 a 14 do [plano incremental](plano-incremental.md)
@@ -25,17 +25,17 @@ critérios de saída e as decisões que ainda faltam.
 
 A evolução está 100% concluída quando todos os itens abaixo estiverem marcados:
 
-- [ ] Campanha V0 a V8 aprovada sobre um commit etiquetado `validacao-final-rcN`, com push feito.
-- [ ] `docs/qa/relatorios/<data>/RESUMO.md` liga cada requisito (RF-24 a RF-63, RNF-01 a RNF-33)
+- [x] Campanha V0 a V8 aprovada sobre um commit etiquetado `validacao-final-rcN`, com push feito.
+- [x] `docs/qa/relatorios/<data>/RESUMO.md` liga cada requisito (RF-24 a RF-63, RNF-01 a RNF-33)
       a um caso de teste, uma evidência e um resultado.
-- [ ] As sete metas do [escopo](negocio/escopo-rag-enterprise.md) comprovadas: recall@5 ≥ 0,80,
+- [x] As sete metas do [escopo](negocio/escopo-rag-enterprise.md) comprovadas: recall@5 ≥ 0,80,
       fidelidade ≥ 0,90, fallback fora do escopo ≥ 90%, 100% das respostas geradas com fonte,
       zero vazamento, upload ≤ 2 s e 100% de respostas rastreáveis.
-- [ ] Os seis critérios de aceite da evolução ligados a uma evidência.
-- [ ] SPEC-001 a SPEC-006 com status `Implementada`.
-- [ ] Linha de base oficial registrada em `backend/tests/evaluation/reports/`.
-- [ ] Documentação atualizada conforme a seção 6, inclusive a skill `desenvolvedor-nexus`.
-- [ ] Limitações aceitas (seção 5, PC-D7) registradas como tal, cada uma com a justificativa.
+- [x] Os seis critérios de aceite da evolução ligados a uma evidência.
+- [x] SPEC-001 a SPEC-006 com status `Implementada`.
+- [x] Linha de base oficial registrada em `backend/tests/evaluation/reports/`.
+- [x] Documentação atualizada conforme a seção 6, inclusive a skill `desenvolvedor-nexus`.
+- [x] Limitações aceitas (seção 5, PC-D7) registradas como tal, cada uma com a justificativa.
 
 ## 3. Situação de partida (2026-10-08)
 
@@ -209,6 +209,7 @@ formato, limite ou comportamento. Em 2026-10-08 o autor aceitou todas as sugest�
 | PC-D10 | (2026-10-20) Custo de LLM da campanha | — | **Aprovado** pelo autor: 600 a 900 chamadas, estimadas em US$ 2 a 6 com o `gemini-3.8-flash`, inclusive `rc2`/`rc3` |
 | PC-D11 | (2026-10-22) RNF-02 (10 MB indexados em até 60 s) no ensaio da V7 | Registrar como limitação e otimizar no ciclo 2; otimizar agora e remedir; reduzir o texto do teste; reescrever a RNF como vazão | **Limitação + otimização no ciclo 2**, decidido pelo autor. Documento de 10 MB com ~300 páginas de texto (~1,35 milhão de caracteres, ~2.750 trechos) e o resto em imagens: 145–234 s no worker. Perfil (`scripts/perf/profile_indexing.py`): vetor denso ~82 s (≈ 33 trechos/s com 6 threads na CPU do notebook), fragmentação do PDF 37 s (recontagem de tokens a cada sentença/palavra; o DOCX leva 5 s), extração ≤ 3 s. Ciclo 2: fragmentação sem recontagem (mesmos trechos), modelo de embedding otimizado (ONNX/quantizado) ou GPU e a diferença do DOCX no worker (~220 s contra 90 s isolado). A V7 continua medindo e registrando a RNF-02 como reprovada (`report.py`: "reprovado (limitação aceita, PC-D11)"), sem interromper a campanha; erro de indexação continua reprovando |
 | PC-D12 | (2026-10-24) `npm audit` da campanha `rc8`: 4 vulnerabilidades altas no Angular ≤ 19.2.25 (XSS por desvio de sanitização, vazamentos no `HttpTransferCache`, XSRF), sem correção na linha 19.x | Atualizar para o Angular 20 (primeira correção: 20.3.28); aceitar e atualizar no ciclo 2; saltar para o 21 ou 22 | **Angular 20**, decidido pelo autor, antes da V5: Angular 20.3.34, NgRx 20.1.0, TypeScript 5.9 (`ng update`, sem migração de código). `npm audit --omit=dev` com 0 vulnerabilidades, Vitest 149 testes, build de produção ok (commit `2e60c12`). A V4 e a V5 rodam sobre a versão nova |
+| PC-D13 | (2026-10-25) Evidência da V5 (E1 a E11) | Capturas de tela por cenário; registro da verificação manual do autor, sem capturas | **Sem capturas**, decidido pelo autor: a V5 fica registrada pela verificação manual dele em 2026-10-25 (`qa/relatorios/2026-10-24-rc9/05-e2e.md`), com todos os cenários aprovados |
 | PC-D7 | Limitações aceitas na conclusão | Confirmar que não bloqueiam os 100%: tabelas em PDF como texto corrido (D11); limite de uso não atômico (C2); `/metrics` na porta 8000 local (C9); backup só local (D5); sem tela de versões substituídas (D5 da SPEC-005); RNF-02 nesta máquina (PC-D11) | Aceitar todas e listá-las no `RESUMO.md` e na seção "Limitações" do README |
 
 ## 6. Atualização da documentação
@@ -282,24 +283,24 @@ refeito ao fim da semana 1.
 | E7 | Parte A escrita; V3 executada | 2026-10-20 | Escrita toda (CT-04, CT-39, CT-40, CT-49 a CT-57, FE-01 a FE-05, E1 do FE-07, `scripts/perf/*`, `scripts/validation/*`). **Executados no Docker:** CT-39, CT-40, CT-50, CT-51, CT-57, `alembic upgrade/check/downgrade` e `npm test` (149 testes) em 2026-10-15/16; CT-54 em 2026-10-19; CT-53 em 2026-10-20, depois de duas correções no Qdrant (`df8d445`: corrida na criação da collection; `95c49ff`: upsert em lotes e timeout de 60 s). Em 2026-10-20 o orquestrador `run-all.sh` foi alinhado à rodada de integração: a V3 roda toda a pasta de integração com as mesmas montagens e reprova testes pulados, o CT-56 roda no container e a V7 inclui RNF-03, RNF-16 e RNF-18. **V3 completa no Docker em 2026-10-20** ([registro](qa/relatorios/2026-10-20/LEIAME.md)): 145 testes de integração sem pulos, CT-53, CT-54 e CT-56 (zero vazamento). A rodada achou um defeito de produto, corrigido com decisão do autor: a conta de serviço `nexus-backend` só listava grupos com `view-users` (SPEC-009 D5); sem isso, todo envio com grupo recebia 422. Também corrigiu o comando de avaliação com o worker no ar (SPEC-007) e quatro testes. **A executar:** CT-47/48 (V8), CT-70, CT-77, V7 e FE-06/FE-07 (Playwright). Ver a seção 11 do [runbook](qa/runbook-itens-dependentes-do-autor.md) |
 | EP | Concluída | 2026-10-20 | `nexus-docs` (27 itens) e `nexus-docs-ampliado` (82 itens: 62 dentro e 20 fora do escopo) **validados pelo autor como curador** (RN-15; ficha em `qa/revisao-curador-nexus-docs-ampliado.md`; sha256 no commit `a247ac1`); `nexus-acesso` usado no CT-56. Prévia sem LLM no ampliado: **recall@5 0,968**, MRR 0,886 (falhas: `pl-04`; `te-07` tinha fontes incompletas, corrigido). Calibração no ampliado: com 0,10 responde 89% e recusa 90% (maior média); **decisão do autor (2026-10-20): manter `RELEVANCE_MIN_SCORE=0,10`**. Os dois fora do escopo que passam do corte são negativos "por pouco" (`fora-09` 0,48; `fora-16` 0,33); a V6 mede o fallback de ponta a ponta. Corpus de 100.000 trechos (V-D9): pendente de decisão (sintético × domínio público) |
 | E8 | Pendente | — | Antes: push de `6ec66b2`..`95c49ff` (3 commits locais em 2026-10-20) e apagar `feat/rag-enterprise-fase-1` e `chore/sync-lock` no GitHub |
-| E9 | Concluída (V5 pendente) | 2026-10-24 | Candidatos `rc1` a `rc7` interrompidos por defeitos do roteiro, dos testes e das ferramentas (evidências em `qa/relatorios/2026-10-20-rc1` a `2026-10-21-rc7`). Revisão da seção 9 do plano de validação (2026-10-21): o autor decidiu seguir e, depois da `rc7`, ensaiar a V6 a V8 antes da `rc8`. Os ensaios (2026-10-21 a 24) acharam e corrigiram dois defeitos do produto com perguntas simultâneas (tokenizador dos modelos locais e carregamento concorrente dos modelos) e motivaram as decisões PC-D11 (RNF-02) e as do RNF-17 e RNF-01. **`validacao-final-rc8` (`1bfc1fe`, 2026-10-24): V0 a V8 aprovadas**, com a RNF-02 como limitação aceita ([RESUMO](qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). O `npm audit` levou ao Angular 20 (PC-D12) e a montagem do RESUMO achou a V2 sem a cobertura do RNF-30: **`validacao-final-rc9` (`400ae33`): V2 com cobertura de 95% e V4 no Angular 20 aprovadas; falta a V5 manual** |
-| E10 | Em andamento | 2026-10-24 | Relatórios da `rc8` e linha de base oficial no repositório (`2abe55c`); `RESUMO.md`; riscos do ciclo 2 (R9 a R24) em `gestao-riscos/01-identificacao-riscos.md`; README (limitações), escopo (metas medidas) e plano incremental atualizados. V2 e V4 da `rc9` no RESUMO. Faltam a V5 e, com ela aprovada, SPEC-001 a 006 como `Implementada` |
+| E9 | Concluída | 2026-10-25 | Candidatos `rc1` a `rc7` interrompidos por defeitos do roteiro, dos testes e das ferramentas (evidências em `qa/relatorios/2026-10-20-rc1` a `2026-10-21-rc7`). Revisão da seção 9 do plano de validação (2026-10-21): o autor decidiu seguir e, depois da `rc7`, ensaiar a V6 a V8. Os ensaios (2026-10-21 a 24) acharam e corrigiram dois defeitos do produto com perguntas simultâneas (tokenizador e carregamento dos modelos locais) e motivaram a PC-D11 e as decisões do RNF-17 e do RNF-01. **`validacao-final-rc8` (`1bfc1fe`, 2026-10-24): V0 a V8 aprovadas**, com a RNF-02 como limitação aceita. **`validacao-final-rc9` (`400ae33`, 2026-10-25)**: V2 com cobertura de 95%, V4 no Angular 20 (PC-D12) e V5 aprovada pelo autor (PC-D13). Ver o [RESUMO](qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md) |
+| E10 | Concluída | 2026-10-25 | Relatórios da `rc8` e da `rc9` e linha de base oficial no repositório; RESUMO com a matriz RF-24 a RF-74 e RNF-01 a RNF-33 (84 aprovados, RNF-02 limitação aceita, RNF-11 com ressalva); riscos do ciclo 2 (R9 a R24); README, escopo, plano incremental, estratégia de testes e skill atualizados; SPEC-001 a 009 `Implementada` |
 
-### 8.1 Situação dos critérios de conclusão (2026-10-24)
+### 8.1 Situação dos critérios de conclusão (2026-10-25)
 
 | Critério da seção 2 | Situação | O que falta |
 |---|---|---|
-| Campanha V0 a V8 aprovada sobre `validacao-final-rcN`, com push | `rc8` aprovada (V0 a V8, 2026-10-24); `rc9`: V2 (cobertura 95%) e V4 (Angular 20) aprovadas, V5 pendente | Fechar a seção 11 do runbook, etiquetar `validacao-final-rc1`, `git push` com a etiqueta e rodar `scripts\validation\run-all.ps1` |
-| `RESUMO.md` ligando RF-24 a RF-63 e RNF-01 a RNF-33 a caso, evidência e resultado | Feito em `qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md` (RF-24 a RF-74, RNF-01 a RNF-33); completar com a V5 | Gerado pelo orquestrador na campanha; a matriz é completada com as evidências |
+| Campanha V0 a V8 aprovada sobre `validacao-final-rcN`, com push | Aprovada: `rc8` (V0 a V8, 2026-10-24) e `rc9` (V2, V4 e V5, 2026-10-25), tags no GitHub | — |
+| `RESUMO.md` ligando RF-24 a RF-63 e RNF-01 a RNF-33 a caso, evidência e resultado | Feito em `qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md` (RF-24 a RF-74, RNF-01 a RNF-33) | — |
 | Sete metas comprovadas (recall@5 ≥ 0,80, fidelidade ≥ 0,90, fallback ≥ 90%, 100% com fonte, zero vazamento, upload ≤ 2 s, 100% rastreáveis) | Comprovadas na `rc8`: recall@5 0,984; fidelidade média 0,994; fallback 0,90; 100% das geradas com fonte; zero vazamento (CT-56); upload máximo 1,36 s; rastreabilidade (CT-05, CT-44) | — |
-| Seis critérios de aceite ligados a uma evidência | Ligados no RESUMO; três dependem também dos cenários da V5 | Na campanha |
-| SPEC-001 a SPEC-006 com status `Implementada` | Código entregue; aguardam a campanha | Mudar o status ao aprovar a campanha |
-| Linha de base oficial em `backend/tests/evaluation/reports/` | Registrada (`2abe55c`): 3 relatórios da V6 (`nexus-docs-ampliado`) e o do portão da V8 (`nexus-docs`) | Depende da validação do curador e da recalibração no ampliado |
-| Documentação atualizada (seção 6) e skill | Riscos do ciclo 2, README, escopo, plano incremental e estratégia de testes atualizados em 2026-10-24; skill com o Angular 20 (PC-D12) | SPECs `Implementada` depois da `rc9` |
+| Seis critérios de aceite ligados a uma evidência | Ligados no RESUMO, todos aprovados | — |
+| SPEC-001 a SPEC-006 com status `Implementada` | Feito em 2026-10-25 (também SPEC-007 a 009) | — |
+| Linha de base oficial em `backend/tests/evaluation/reports/` | Registrada (`2abe55c`): 3 relatórios da V6 (`nexus-docs-ampliado`) e o do portão da V8 (`nexus-docs`) | — |
+| Documentação atualizada (seção 6) e skill | Riscos do ciclo 2, README, escopo, plano incremental e estratégia de testes atualizados em 2026-10-24; skill com o Angular 20 (PC-D12) | — |
 | Limitações aceitas registradas com justificativa | No README ("Limitações conhecidas") e no RESUMO, inclusive a RNF-02 (PC-D11) | — |
 
-Itens que dependem só do autor: validar os 55 rascunhos com o curador,
-executar o que a seção 11 do runbook lista e aprovar o custo de LLM da campanha (600 a 900 chamadas).
+Pendente só do autor, fora da definição de concluído: apagar `feat/rag-enterprise-fase-1` e
+`chore/sync-lock` no GitHub (E8).
 
 ## 9. Riscos do plano
 

@@ -12,15 +12,15 @@ testes são escritos antes da implementação.
 
 | ID | Fase | Arquivo | Status | Requisitos |
 |----|------|---------|--------|------------|
-| SPEC-20261007-001 | 1 — Avaliação e linha de base | [`SPEC-001-avaliacao-e-linha-de-base.md`](SPEC-001-avaliacao-e-linha-de-base.md) | Aprovada; código entregue, validação no Docker pendente | RF-24 a RF-27 |
-| SPEC-20261007-002 | 2 — Recuperação semântica | [`SPEC-002-recuperacao-semantica.md`](SPEC-002-recuperacao-semantica.md) | Aprovada; código entregue, validação no Docker pendente | RF-28 a RF-32 |
-| SPEC-20261007-003 | 3 — Busca híbrida, reranking e citações | [`SPEC-003-busca-hibrida-reranking-citacoes.md`](SPEC-003-busca-hibrida-reranking-citacoes.md) | Aprovada; código entregue, validação no Docker pendente | RF-33 a RF-39 |
-| SPEC-20261007-004 | 4 — Autenticação e controle de acesso | [`SPEC-004-autenticacao-e-controle-de-acesso.md`](SPEC-004-autenticacao-e-controle-de-acesso.md) | Aprovada; código entregue, validação no Docker pendente | RF-40 a RF-47 |
-| SPEC-20261007-005 | 5 — Ingestão e ciclo de vida | [`SPEC-005-ingestao-e-ciclo-de-vida.md`](SPEC-005-ingestao-e-ciclo-de-vida.md) | Aprovada; código entregue, validação no Docker pendente | RF-48 a RF-55 |
-| SPEC-20261007-006 | 6 — Operação e governança | [`SPEC-006-operacao-e-governanca.md`](SPEC-006-operacao-e-governanca.md) | Aprovada; código entregue, validação no Docker pendente | RF-56 a RF-63 |
-| SPEC-20261014-007 | Endurecimento (fix-1 a fix-4 do cartographer) | [`SPEC-007-endurecimento.md`](SPEC-007-endurecimento.md) | Aprovada; código entregue, validação no Docker pendente | RF-64 a RF-67 |
-| SPEC-20261014-008 | Configuração do LLM na administração (provedor, modelo e URL) | [`SPEC-008-configuracao-do-llm.md`](SPEC-008-configuracao-do-llm.md) | Aprovada; código entregue, validação no Docker pendente | RF-68 a RF-72 |
-| SPEC-20261014-009 | Robustez do LLM (novas tentativas), grupos de documentos validados no Keycloak e cliente Qdrant 1.11.3 | [`SPEC-009-robustez-llm-grupos-qdrant.md`](SPEC-009-robustez-llm-grupos-qdrant.md) | Aprovada; código entregue, validação no Docker pendente | RF-73, RF-74 |
+| SPEC-20261007-001 | 1 — Avaliação e linha de base | [`SPEC-001-avaliacao-e-linha-de-base.md`](SPEC-001-avaliacao-e-linha-de-base.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-24 a RF-27 |
+| SPEC-20261007-002 | 2 — Recuperação semântica | [`SPEC-002-recuperacao-semantica.md`](SPEC-002-recuperacao-semantica.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-28 a RF-32 |
+| SPEC-20261007-003 | 3 — Busca híbrida, reranking e citações | [`SPEC-003-busca-hibrida-reranking-citacoes.md`](SPEC-003-busca-hibrida-reranking-citacoes.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-33 a RF-39 |
+| SPEC-20261007-004 | 4 — Autenticação e controle de acesso | [`SPEC-004-autenticacao-e-controle-de-acesso.md`](SPEC-004-autenticacao-e-controle-de-acesso.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-40 a RF-47 |
+| SPEC-20261007-005 | 5 — Ingestão e ciclo de vida | [`SPEC-005-ingestao-e-ciclo-de-vida.md`](SPEC-005-ingestao-e-ciclo-de-vida.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-48 a RF-55 |
+| SPEC-20261007-006 | 6 — Operação e governança | [`SPEC-006-operacao-e-governanca.md`](SPEC-006-operacao-e-governanca.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-56 a RF-63 |
+| SPEC-20261014-007 | Endurecimento (fix-1 a fix-4 do cartographer) | [`SPEC-007-endurecimento.md`](SPEC-007-endurecimento.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-64 a RF-67 |
+| SPEC-20261014-008 | Configuração do LLM na administração (provedor, modelo e URL) | [`SPEC-008-configuracao-do-llm.md`](SPEC-008-configuracao-do-llm.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-68 a RF-72 |
+| SPEC-20261014-009 | Robustez do LLM (novas tentativas), grupos de documentos validados no Keycloak e cliente Qdrant 1.11.3 | [`SPEC-009-robustez-llm-grupos-qdrant.md`](SPEC-009-robustez-llm-grupos-qdrant.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-73, RF-74 |
 
 ## Status possíveis
 

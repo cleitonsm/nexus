@@ -171,7 +171,7 @@ teste for pulado.
 
 | Casos | Onde rodou | Onde |
 |-------|------------|------|
-| RNF-30 (cobertura de `domain` e `application`: 95%), CT-21, CT-32, CT-69 e FE-01 a FE-05 no Angular 20 | Campanha `validacao-final-rc9` (V2 e V4), 2026-10-25 sobre `400ae33` | `docs/qa/relatorios/2026-10-24-rc9/` |
+| RNF-30 (cobertura de `domain` e `application`: 95%), CT-21, CT-32, CT-69 e FE-01 a FE-05 no Angular 20, FE-07 (E1 a E11, manual) | Campanha `validacao-final-rc9` (V2, V4 e V5), 2026-10-25 sobre `400ae33` | `docs/qa/relatorios/2026-10-24-rc9/` |
 | Todos os CT automatizados (V2: 705 unitários; V3: 146 de integração, nenhum pulado; CT-53, CT-54, CT-56), CT-13 e CT-22 (V6, 3 execuções com o Gemini), CT-47 e CT-48 (V8), RNF-01, 02, 03, 16, 17 e 18 (V7) | Campanha `validacao-final-rc8`, 2026-10-24 sobre `1bfc1fe` | [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md) |
 | CT-01 a CT-03, CT-05 (parte unitária), CT-06 a CT-09, CT-14 a CT-17, CT-23 a CT-25, CT-33 a CT-36, CT-41 a CT-43, CT-58, CT-59, CT-61 a CT-67, CT-71 a CT-75 | Unitários (662 testes, 1 pulado; 2026-10-20 sobre `95c49ff`) | `backend/tests/unit/` |
 | CT-46 | Sem Docker e no CI | `backend/tests/integration/test_sensitive_data_leak.py` |
@@ -191,11 +191,11 @@ teste for pulado.
 | CT-70 (Gemini real: "Testar LLM" responde `OK` com a chave armazenada, modelo `gemini-4-argon`) | Manual, pelo autor, 2026-10-20 | `docs/qa/relatorios/2026-10-20/LEIAME.md` |
 | CT-77 (`qdrant-client` 1.11.3 sem aviso de versão; indexação e busca híbrida funcionam) | Docker, 2026-10-20: logs da V3 e da subida do backend e do worker sem `incompatible`/`client version`; 14 testes de busca híbrida e alias ok | `docs/qa/relatorios/2026-10-20/LEIAME.md` |
 
-### A executar (V5 da campanha `validacao-final-rc9`)
+### A executar
 
-| Casos | Observação | Onde |
-|-------|------------|------|
-| FE-07 (E1 a E11) | V5 manual, com capturas de tela; FE-06 coberto por ela (V-D3) | `docs/qa/validacao-manual-*.md` |
+Nenhum caso: a campanha final terminou em 2026-10-25. FE-07 (E1 a E11) foi feito à mão pelo autor
+na V5 da `rc9`, sem capturas (PC-D13), e cobre também o FE-06 (V-D3); o Playwright continua fora do
+`package.json`.
 
 Ferramentas de medição e orquestração: `scripts/perf/`, `scripts/validation/run-all.sh`, testadas sem Docker
 em `test_perf_tools.py` e `test_validation_runner.py`.

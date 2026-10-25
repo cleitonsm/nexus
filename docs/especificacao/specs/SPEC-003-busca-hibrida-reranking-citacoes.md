@@ -1,7 +1,7 @@
 # Spec: Busca Híbrida, Reranking e Citações
 
 **ID**: SPEC-20261007-003
-**Status**: Aprovada em 2026-10-07 por Cleiton Medeiros — código entregue, aguardando validação no ambiente Docker (ver [plano](SPEC-003-plano-de-implementacao.md))
+**Status**: **Implementada** em 2026-10-25 — validada na campanha final (`validacao-final-rc8` e `rc9`; [RESUMO](../../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). Histórico: Aprovada em 2026-10-07 por Cleiton Medeiros — código entregue, aguardando validação no ambiente Docker (ver [plano](SPEC-003-plano-de-implementacao.md)).
 **Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa)
 **Data**: 2026-10-07
 **Fase**: 3 de 6 — etapa 11 do [plano incremental](../../plano-incremental.md)

@@ -1,7 +1,7 @@
 # Plano de Implementação — SPEC-002 Recuperação Semântica
 
 **Spec**: [SPEC-20261007-002](SPEC-002-recuperacao-semantica.md) (Aprovada em 2026-10-07)
-**Status do plano**: Código de P1 a P7 entregue em 2026-10-07; P8 e a validação no Docker pendentes
+**Status do plano**: Concluído — implementação validada na campanha final (`validacao-final-rc8` e `rc9`, 2026-10-25)
 **Data**: 2026-10-07
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 

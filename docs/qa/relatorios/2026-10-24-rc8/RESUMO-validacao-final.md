@@ -4,9 +4,9 @@ Campanha oficial: **`validacao-final-rc8`** (commit `1bfc1fe`, 2026-10-24), etap
 do autor, e **`validacao-final-rc9`** (commit `400ae33`), que repete a V2 (agora com a cobertura) e a
 V4 e recebe a V5 depois da atualização do Angular 20 (PC-D12). O backend não mudou entre as duas.
 
-**Situação: falta só a V5 manual (E1 a E11).** Tudo o que é automático passou: V0 a V8 na rc8 e,
-na rc9, a V2 com a cobertura (95%) e a V4 sobre o Angular 20. Com a V5 aprovada, as SPEC-001 a 006
-passam a `Implementada`.
+**Situação: aprovada (2026-10-25).** V0 a V8 na rc8; na rc9, a V2 com a cobertura (95%), a V4
+sobre o Angular 20 e a V5 manual (E1 a E11, atestada pelo autor sem capturas, PC-D13). As SPEC-001
+a 009 passaram a `Implementada`.
 
 Ambiente: Windows 11 com Docker Desktop (12 CPUs, i7-8750H, 7,7 GiB para o Docker), modelos locais
 `paraphrase-multilingual-MiniLM-L12-v2` e `mmarco-mMiniLMv2-L12-H384-v1`, LLM `gemini-3.8-flash`
@@ -25,7 +25,7 @@ commit é o `1bfc1fe`, que aparece no nome dos relatórios da avaliação e no C
 | V3 CT-53, CT-54, CT-56 | OK; CT-56 com 0 vazamentos | `V3-CT-5*.log`, [`ct56/leakage_scan.json`](ct56/leakage_scan.json) |
 | V4 frontend (Angular 19) | OK: 149 testes, build; `npm audit`: 4 altas → PC-D12 | `V4-*.log` |
 | V4 frontend (Angular 20) | rc9: OK, 149 testes, build de produção, `npm audit` com 0 vulnerabilidades | `../2026-10-24-rc9/V4-*.log` |
-| V5 ponta a ponta (E1 a E11) | **Pendente**, manual com capturas (rc9) | — |
+| V5 ponta a ponta (E1 a E11) | rc9: aprovada pelo autor em 2026-10-25, sem capturas (PC-D13) | [`../2026-10-24-rc9/05-e2e.md`](../2026-10-24-rc9/05-e2e.md) |
 | V6 metas de qualidade (3 execuções) | OK | `V6-*.log`, linha de base abaixo |
 | V7 desempenho (100.000 trechos) | OK; RNF-02 como limitação aceita | [`07-desempenho.md`](07-desempenho.md), CSVs em `07-desempenho/` |
 | V8 CT-47, CT-48, portão de qualidade | OK | `V8-*.log`, [`../2026-10-24-ct47/resumo.md`](../2026-10-24-ct47/resumo.md), [`../2026-10-24-ct48/resumo.md`](../2026-10-24-ct48/resumo.md) |
@@ -95,18 +95,18 @@ como risco do ciclo 2.
 
 | Critério de aceite da evolução | Evidência | Resultado |
 |---|---|---|
-| Usuário só recebe respostas de documentos que seus grupos acessam | CT-27, CT-28, CT-56 (V3); E5 na V5 | Aprovado nos testes automáticos; E5 pendente |
-| Toda resposta gerada apresenta as fontes | CT-15, CT-20 (V2, V3); 100% na V6; E4 na V5 | Aprovado nos testes automáticos; E4 pendente |
+| Usuário só recebe respostas de documentos que seus grupos acessam | CT-27, CT-28, CT-56 (V3); E5 na V5 | Aprovado |
+| Toda resposta gerada apresenta as fontes | CT-15, CT-20 (V2, V3); 100% na V6; E4 na V5 | Aprovado |
 | Fora do escopo resulta em fallback explícito, sem chamar o LLM | CT-14 (V2); fallback 0,90 na V6 | Aprovado |
-| Excluir ou substituir um documento altera as respostas sem remover o assistente | CT-36, CT-38, CT-50 (V2, V3); E3 e E4 na V5 | Aprovado nos testes automáticos; E3/E4 pendentes |
+| Excluir ou substituir um documento altera as respostas sem remover o assistente | CT-36, CT-38, CT-50 (V2, V3); E3 e E4 na V5 | Aprovado |
 | Metas verificadas por um comando repetível | `scripts/eval.sh` (V6, 3 execuções); portão de qualidade e CT-48 (V8) | Aprovado |
 | Ambiente completo sobe com um único comando | V1 (`docker compose up -d --build --wait`, com Keycloak e worker) | Aprovado |
 
 ## Matriz requisito → caso → evidência → resultado
 
-Contagem (86 requisitos): 67 aprovados, 13 aprovados nos testes automáticos com o cenário da V5
-pendente, 4 pendentes da V5 (RNF-13, 14, 15 e 33, só verificáveis na tela), 1 limitação aceita
-(RNF-02) e 1 aprovado com ressalva (RNF-11). Etapas citadas: pasta da rc8, salvo indicação.
+Contagem (86 requisitos): 84 aprovados, 1 limitação aceita (RNF-02) e 1 aprovado com ressalva
+(RNF-11). A V5 (cenários E1 a E11) está em [`../2026-10-24-rc9/05-e2e.md`](../2026-10-24-rc9/05-e2e.md).
+Etapas citadas: pasta da rc8, salvo indicação.
 
 ## Requisitos funcionais (RF-24 a RF-74)
 
@@ -126,30 +126,30 @@ pendente, 4 pendentes da V5 (RNF-13, 14, 15 e 33, só verificáveis na tela), 1 
 | RF-35 | O sistema deve descartar candidatos abaixo de uma nota mínima de relevância configurável e… | CT-14 | V2 (705 unitários OK); fallback 0,90 na V6 (3 execuções, Gemini) | Aprovado |
 | RF-36 | O sistema deve reescrever a pergunta do usuário em uma consulta autônoma, usando o histórico… | CT-17 | V2 (705 unitários OK) | Aprovado |
 | RF-37 | O sistema deve devolver, junto com cada resposta gerada, as citações dos trechos utilizados… | CT-15, CT-20, CT-50 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado); geradas com citação 1,0 na V6 (3 execuções, Gemini) | Aprovado |
-| RF-38 | O sistema deve exibir no chat as fontes de cada resposta, permitindo consultar o trecho citado. | CT-21, E4 | V4 rc9 (Angular 20: 149 testes, build, 0 vulnerabilidades); V5 — pendente (manual) | Aprovado (V4); E4 pendente |
+| RF-38 | O sistema deve exibir no chat as fontes de cada resposta, permitindo consultar o trecho citado. | CT-21, E4 | V4 rc9 (Angular 20: 149 testes, build, 0 vulnerabilidades); V5 (rc9, E1–E11) | Aprovado |
 | RF-39 | O sistema deve limitar o histórico e o contexto enviados ao LLM a um orçamento de tokens… | CT-16 | V2 (705 unitários OK) | Aprovado |
 | RF-40 | O sistema deve autenticar usuários exclusivamente pelo Keycloak, via OpenID Connect… | CT-26, CT-52 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
 | RF-41 | O sistema deve reconhecer os papéis administrador, curador e usuário a partir do token emitido… | CT-30, CT-52 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
-| RF-42 | O sistema deve permitir vincular assistentes a grupos do Keycloak e exibir a cada usuário… | CT-27, E5 | V3 (146 de integração OK, nenhum pulado); V5 — pendente (manual) | Aprovado (V3); E5 pendente |
-| RF-43 | O sistema deve permitir restringir um documento a grupos específicos e aplicar essa restrição… | CT-28, CT-56, E5 | V3 (146 de integração OK, nenhum pulado); CT-56 sem vazamento; V5 — pendente (manual) | Aprovado (V3); E5 pendente |
+| RF-42 | O sistema deve permitir vincular assistentes a grupos do Keycloak e exibir a cada usuário… | CT-27, E5 | V3 (146 de integração OK, nenhum pulado); V5 (rc9, E1–E11) | Aprovado |
+| RF-43 | O sistema deve permitir restringir um documento a grupos específicos e aplicar essa restrição… | CT-28, CT-56, E5 | V3 (146 de integração OK, nenhum pulado); CT-56 sem vazamento; V5 (rc9, E1–E11) | Aprovado |
 | RF-44 | O sistema deve associar cada conversa ao usuário que a criou e permitir o acesso ao seu… | CT-29 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
-| RF-45 | O sistema deve registrar trilha de auditoria de autenticações, perguntas realizadas,… | CT-31, E6 | V3 (146 de integração OK, nenhum pulado); V5 — pendente (manual) | Aprovado (V3); E6 pendente |
-| RF-46 | O frontend deve oferecer login, logout e renovação de sessão pelo Keycloak e ocultar… | CT-32, E1 | V4 rc9 (Angular 20: 149 testes, build, 0 vulnerabilidades); V5 — pendente (manual) | Aprovado (V4); E1 pendente |
+| RF-45 | O sistema deve registrar trilha de auditoria de autenticações, perguntas realizadas,… | CT-31, E6 | V3 (146 de integração OK, nenhum pulado); V5 (rc9, E1–E11) | Aprovado |
+| RF-46 | O frontend deve oferecer login, logout e renovação de sessão pelo Keycloak e ocultar… | CT-32, E1 | V4 rc9 (Angular 20: 149 testes, build, 0 vulnerabilidades); V5 (rc9, E1–E11) | Aprovado |
 | RF-47 | O sistema deve restringir ao papel administrador a configuração e o teste da chave de API do… | CT-30 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
 | RF-48 | O sistema deve processar a ingestão de forma assíncrona: o upload registra o documento,… | CT-33, CT-50 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado) | Aprovado |
 | RF-49 | O sistema deve expor e exibir o estado de cada documento (pendente, processando, indexado,… | CT-33, CT-50 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado) | Aprovado |
 | RF-50 | O sistema deve permitir excluir um documento, removendo seus vetores e o arquivo original. | CT-38, CT-50 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
-| RF-51 | O sistema deve permitir substituir um documento por uma nova versão, mantendo a versão… | CT-36, E3 | V2 (705 unitários OK); V5 — pendente (manual) | Aprovado (V2); E3 pendente |
-| RF-52 | O sistema deve detectar o envio de arquivo idêntico a um documento já existente no mesmo… | CT-34, E3 | V2 (705 unitários OK); V5 — pendente (manual) | Aprovado (V2); E3 pendente |
+| RF-51 | O sistema deve permitir substituir um documento por uma nova versão, mantendo a versão… | CT-36, E3 | V2 (705 unitários OK); V5 (rc9, E1–E11) | Aprovado |
+| RF-52 | O sistema deve detectar o envio de arquivo idêntico a um documento já existente no mesmo… | CT-34, E3 | V2 (705 unitários OK); V5 (rc9, E1–E11) | Aprovado |
 | RF-53 | O sistema deve extrair texto de PDFs digitalizados por OCR executado localmente e preservar o… | CT-39, CT-54 | V3 (146 de integração OK, nenhum pulado); CT-54 (OCR sem internet) | Aprovado |
-| RF-54 | O sistema deve armazenar o arquivo original de cada documento e permitir reprocessá-lo sem… | CT-33, E3 | V2 (705 unitários OK); V5 — pendente (manual) | Aprovado (V2); E3 pendente |
+| RF-54 | O sistema deve armazenar o arquivo original de cada documento e permitir reprocessá-lo sem… | CT-33, E3 | V2 (705 unitários OK); V5 (rc9, E1–E11) | Aprovado |
 | RF-55 | O sistema deve repetir automaticamente o processamento de um documento em caso de falha… | CT-35 | V2 (705 unitários OK) | Aprovado |
 | RF-56 | O sistema deve registrar rastreamento distribuído de cada resposta, com um trecho (span) por… | CT-44 | V3 (146 de integração OK, nenhum pulado) | Aprovado |
-| RF-57 | O sistema deve expor métricas de latência por etapa, consumo de tokens e custo estimado por… | CT-44, E8 | V3 (146 de integração OK, nenhum pulado); V5 — pendente (manual) | Aprovado (V3); E8 pendente |
-| RF-58 | O sistema deve transmitir a resposta do chat em streaming à medida que o LLM a gera. | CT-45, CT-55, E7 | V3 (146 de integração OK, nenhum pulado); RNF-01 na V7 (`07-desempenho.md`); V5 — pendente (manual) | Aprovado (V3, V7); E7 pendente |
-| RF-59 | O sistema deve aplicar limite de uso por usuário e tamanho máximo de upload, ambos… | CT-41, CT-55, E7 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado); V5 — pendente (manual) | Aprovado (V2, V3); E7 pendente |
-| RF-60 | O sistema deve tratar o conteúdo recuperado dos documentos como dado delimitado no prompt,… | CT-42, E11 | V2 (705 unitários OK); V5 — pendente (manual) | Aprovado (V2); E11 pendente |
-| RF-61 | O sistema deve permitir ao usuário avaliar cada resposta como útil ou não útil, com comentário… | CT-43, E7 | V2 (705 unitários OK); V5 — pendente (manual) | Aprovado (V2); E7 pendente |
+| RF-57 | O sistema deve expor métricas de latência por etapa, consumo de tokens e custo estimado por… | CT-44, E8 | V3 (146 de integração OK, nenhum pulado); V5 (rc9, E1–E11) | Aprovado |
+| RF-58 | O sistema deve transmitir a resposta do chat em streaming à medida que o LLM a gera. | CT-45, CT-55, E7 | V3 (146 de integração OK, nenhum pulado); RNF-01 na V7 (`07-desempenho.md`); V5 (rc9, E1–E11) | Aprovado |
+| RF-59 | O sistema deve aplicar limite de uso por usuário e tamanho máximo de upload, ambos… | CT-41, CT-55, E7 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado); V5 (rc9, E1–E11) | Aprovado |
+| RF-60 | O sistema deve tratar o conteúdo recuperado dos documentos como dado delimitado no prompt,… | CT-42, E11 | V2 (705 unitários OK); V5 (rc9, E1–E11) | Aprovado |
+| RF-61 | O sistema deve permitir ao usuário avaliar cada resposta como útil ou não útil, com comentário… | CT-43, E7 | V2 (705 unitários OK); V5 (rc9, E1–E11) | Aprovado |
 | RF-62 | O sistema deve executar a avaliação de qualidade na integração contínua e bloquear mudanças… | CT-03, CT-48 | V2 (705 unitários OK); V8 (CT-48: a avaliação falhou com código 1) | Aprovado |
 | RF-63 | O sistema deve oferecer rotina de backup do PostgreSQL e de snapshot do Qdrant, com… | CT-47 | V8 (backup, ambiente limpo, restauração, consistência e busca) | Aprovado |
 | RF-64 | apenas mensagens user podem ser adicionadas diretamente a uma | CT-58 | V2 (705 unitários OK); V3 (146 de integração OK, nenhum pulado) | Aprovado |
@@ -180,9 +180,9 @@ pendente, 4 pendentes da V5 (RNF-13, 14, 15 e 33, só verificáveis na tela), 1 
 | RNF-10 | O sistema deve ser compatível com provedores LLM que implementam a interface OpenAI Chat… | V6, CT-70 | Gemini pelo endpoint compatível com OpenAI na V6 (3 execuções, Gemini) e na V7 | Aprovado |
 | RNF-11 | O backend deve seguir Clean Architecture, separando domínio, aplicação, infraestrutura e API,… | revisão | Domínio sem import de framework (varredura de 2026-10-24); a aplicação importa o LangGraph no chat e na inferência, divergindo da ADR 0002 (registrado para o ciclo 2) | Aprovado com ressalva |
 | RNF-12 | O frontend deve seguir o padrão NgRx com estado centralizado, garantindo que toda mutação de… | CT-21, CT-69, FE-02, FE-05 | V4 rc9 (Angular 20: 149 testes, build, 0 vulnerabilidades) | Aprovado |
-| RNF-13 | O sistema deve fornecer feedback visual (indicador de carregamento) para todas as operações… | E10 | V5 — pendente (manual) | Pendente (V5) |
-| RNF-14 | O sistema deve exibir mensagens de erro compreensíveis ao usuário para falhas de comunicação… | E9 | V5 — pendente (manual) | Pendente (V5) |
-| RNF-15 | A interface deve ser responsiva, funcionando adequadamente em telas com largura mínima de 360… | E10 | V5 — pendente (manual) | Pendente (V5) |
+| RNF-13 | O sistema deve fornecer feedback visual (indicador de carregamento) para todas as operações… | E10 | V5 (rc9, E1–E11) | Aprovado |
+| RNF-14 | O sistema deve exibir mensagens de erro compreensíveis ao usuário para falhas de comunicação… | E9 | V5 (rc9, E1–E11) | Aprovado |
+| RNF-15 | A interface deve ser responsiva, funcionando adequadamente em telas com largura mínima de 360… | E10 | V5 (rc9, E1–E11) | Aprovado |
 | RNF-16 | A recuperação (busca híbrida e reranking) deve ser concluída em até 3 segundos para 95% das… | retrieval_latency.py hybrid (100.000 trechos) | V7 (`07-desempenho.md`): p95 0,98 s com 1 usuário; 5 usuários p95 4,2 s (informativo) | Aprovado |
 | RNF-17 | O upload de um documento de até 25 MB deve responder em até 2 segundos, devolvendo o… | CT-40, upload_latency.py | V3 (146 de integração OK, nenhum pulado); V7 (`07-desempenho.md`): máximo 1,36 s, com o worker pausado (decisão de 2026-10-22) | Aprovado |
 | RNF-18 | A reindexação de um assistente não deve interromper nem degradar as consultas à base vigente. | CT-12, reindex_under_load.py | V3 (146 de integração OK, nenhum pulado); V7 (`07-desempenho.md`): 2.100 buscas durante a reindexação, 0 erros, p95 2,1 s | Aprovado |
@@ -200,4 +200,4 @@ pendente, 4 pendentes da V5 (RNF-13, 14, 15 e 33, só verificáveis na tela), 1 
 | RNF-30 | Todo componente novo deve ser introduzido atrás de uma porta do domínio, com cobertura de… | cobertura de domínio e aplicação | V2 da rc9: 95% (`../2026-10-24-rc9/02-cobertura.txt`); a rc8 não mediu | Aprovado |
 | RNF-31 | Toda alteração de esquema do banco deve ser feita por migração versionada e reversível. | CT-49 | V3 (146 de integração OK, nenhum pulado) (`test_migrations`); V1 (revisão das migrações) | Aprovado |
 | RNF-32 | O ambiente completo, incluindo Keycloak e worker de ingestão, deve continuar subindo com um… | V1 | V1 da rc8 (Keycloak e worker no mesmo comando; modelos no volume de cache) | Aprovado |
-| RNF-33 | As fontes de uma resposta devem estar acessíveis em um clique, e o estado de ingestão deve ser… | E2, E4 | V5 — pendente (manual) | Pendente (V5) |
+| RNF-33 | As fontes de uma resposta devem estar acessíveis em um clique, e o estado de ingestão deve ser… | E2, E4 | V5 (rc9, E1–E11) | Aprovado |

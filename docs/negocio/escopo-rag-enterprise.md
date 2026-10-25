@@ -90,8 +90,9 @@ segue o [plano de conclusão](../plano-de-conclusao.md), com meta em 2026-11-19.
 Em 2026-10-24 a campanha de validação final aprovou as seis fases no ambiente completo, com todas
 as metas acima atingidas. Ficou uma limitação aceita: indexar um documento grande (10 MB, cerca de
 300 páginas de texto) leva cerca de 2 minutos nesta máquina, acima do minuto previsto; a resposta
-ao envio continua imediata, e a otimização fica para o próximo ciclo. Falta a verificação manual das
-telas de ponta a ponta, depois da atualização de segurança do frontend.
+ao envio continua imediata, e a otimização fica para o próximo ciclo. Em 2026-10-25, depois da
+atualização de segurança do frontend, o responsável conferiu as telas de ponta a ponta e a evolução
+foi concluída.
 
 ## Critérios de Aceite da Evolução
 

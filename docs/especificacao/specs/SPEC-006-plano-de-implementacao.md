@@ -2,7 +2,7 @@
 
 **Spec**: [SPEC-20261007-006](SPEC-006-operacao-e-governanca.md) (Aprovada em 2026-10-08)
 **ADR**: [0010 — Observabilidade e avaliação contínua](../../arquitetura/adrs/0010-observabilidade-e-avaliacao-continua.md) (ajustada pelas decisões D1, D2 e D4)
-**Status do plano**: Código de P1 a P8 entregue em 2026-10-08; fechamento (P10, etapa E6) entregue em 2026-10-13; a validação no Docker (P9) está pendente
+**Status do plano**: Concluído — implementação validada na campanha final (`validacao-final-rc8` e `rc9`, 2026-10-25)
 **Data**: 2026-10-08
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
