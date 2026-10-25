@@ -5,6 +5,7 @@
  * parametros, entao rodam sem TestBed. Os timers usam o relogio falso do Vitest.
  */
 import { Actions } from "@ngrx/effects";
+import { Router } from "@angular/router";
 import { Store } from "@ngrx/store";
 import { Observable, Subject, of, throwError } from "rxjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -20,6 +21,7 @@ import {
 import { INTERRUPTED_ANSWER } from "./chat-stream-flow";
 import { nexusActions } from "./nexus.actions";
 import {
+  navigateToChatEffect,
   pollDocumentStatusEffect,
   refreshDocumentAccessEffect,
   sendChatQuestionEffect,
@@ -304,5 +306,53 @@ describe("sendChatQuestionEffect (RF-58, D13)", () => {
   it("falha de rede vira mensagem de erro do chat", () => {
     const { received } = send(throwError(() => ({ error: { detail: "Sem conexão." } })));
     expect(received.at(-1)!.type).toBe(nexusActions.sendChatQuestionFailure.type);
+  });
+});
+
+/** CT-80 (SPEC-010, RF-77): selecionar assistente, conversa ou nova conversa leva ao chat. */
+describe("navigateToChatEffect", () => {
+  function router(url: string) {
+    const navigateByUrl = vi.fn(() => Promise.resolve(true));
+    return { fake: { url, navigateByUrl } as unknown as Router, navigateByUrl };
+  }
+
+  const conversation = { id: "c1" } as Conversation;
+  const triggers = [
+    nexusActions.selectAssistant({ assistantId: "a1" }),
+    nexusActions.selectConversation({ conversationId: "c1" }),
+    nexusActions.createConversationSuccess({ assistantId: "a1", conversation })
+  ];
+
+  it.each(triggers.map((action) => [action.type, action]))(
+    "navigates to /chat on %s from another screen",
+    (_type, action) => {
+      const actions = new Subject<unknown>();
+      const { fake, navigateByUrl } = router("/admin/audit");
+      collect(navigateToChatEffect(actionsOf(actions), fake));
+
+      actions.next(action);
+
+      expect(navigateByUrl).toHaveBeenCalledWith("/chat");
+    }
+  );
+
+  it("does not navigate when the chat is already open", () => {
+    const actions = new Subject<unknown>();
+    const { fake, navigateByUrl } = router("/chat");
+    collect(navigateToChatEffect(actionsOf(actions), fake));
+
+    triggers.forEach((action) => actions.next(action));
+
+    expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it("ignores unrelated actions", () => {
+    const actions = new Subject<unknown>();
+    const { fake, navigateByUrl } = router("/feedback");
+    collect(navigateToChatEffect(actionsOf(actions), fake));
+
+    actions.next(nexusActions.loadAssistants());
+
+    expect(navigateByUrl).not.toHaveBeenCalled();
   });
 });

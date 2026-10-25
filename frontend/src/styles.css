@@ -3,6 +3,8 @@
 @tailwind utilities;
 
 @import "highlight.js/styles/github-dark.css";
+/* SPEC-010 (D9): posicionamento do menu Administracao (CDK Overlay). */
+@import "@angular/cdk/overlay-prebuilt.css";
 
 @layer base {
   body {

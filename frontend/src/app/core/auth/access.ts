@@ -64,6 +64,70 @@ export function menuFor(user: SessionUser | null): MenuVisibility {
   };
 }
 
+/** Destino de um item do menu Administracao: uma tela ou o modal do LLM (SPEC-010, D3). */
+export type AdministrationTarget = { kind: "route"; path: string } | { kind: "llmSettings" };
+
+export type AdministrationItemId =
+  | "documents"
+  | "audit"
+  | "archived"
+  | "feedback"
+  | "usage"
+  | "llmSettings";
+
+export interface AdministrationItem {
+  id: AdministrationItemId;
+  label: string;
+  target: AdministrationTarget;
+}
+
+/**
+ * Itens do menu Administracao que o papel enxerga, na ordem da SPEC-010 (RF-76).
+ * Lista vazia = o botao Administracao nao aparece. Os guards e a API repetem a
+ * verificacao (RNF-23).
+ */
+export function administrationMenu(menu: MenuVisibility): AdministrationItem[] {
+  const items: (AdministrationItem & { visible: boolean })[] = [
+    {
+      id: "documents",
+      label: "Documentos e permissões",
+      target: { kind: "route", path: "/assistants" },
+      visible: menu.manageDocuments
+    },
+    {
+      id: "audit",
+      label: "Auditoria",
+      target: { kind: "route", path: "/admin/audit" },
+      visible: menu.viewAudit
+    },
+    {
+      id: "archived",
+      label: "Conversas arquivadas",
+      target: { kind: "route", path: "/admin/archived" },
+      visible: menu.viewArchived
+    },
+    {
+      id: "feedback",
+      label: "Avaliações",
+      target: { kind: "route", path: "/feedback" },
+      visible: menu.reviewFeedback
+    },
+    {
+      id: "usage",
+      label: "Consumo e limites",
+      target: { kind: "route", path: "/admin/usage" },
+      visible: menu.viewUsage
+    },
+    {
+      id: "llmSettings",
+      label: "Configuração do LLM",
+      target: { kind: "llmSettings" },
+      visible: menu.configureLlm
+    }
+  ];
+  return items.filter((item) => item.visible).map(({ visible: _visible, ...item }) => item);
+}
+
 /** O que o guard faz com a decisao; isolado do Angular para ser testavel. */
 export interface NavigationPort<T> {
   /** Arvore de rota para a pagina inicial. */

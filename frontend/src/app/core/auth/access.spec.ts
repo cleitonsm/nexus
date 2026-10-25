@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  administrationMenu,
   decideAccess,
   menuFor,
   parseGroups,
@@ -132,5 +133,43 @@ describe("parseGroups", () => {
       "rh"
     ]);
     expect(parseGroups("  ")).toEqual([]);
+  });
+});
+
+/** CT-78 (SPEC-010, RF-76): itens do menu Administracao por papel, na ordem da SPEC. */
+describe("administrationMenu", () => {
+  const labels = (roles: string[] | null) =>
+    administrationMenu(menuFor(roles === null ? null : user(...roles))).map((item) => item.label);
+
+  it("lists the six items in order for the administrator", () => {
+    expect(labels([Roles.admin])).toEqual([
+      "Documentos e permissões",
+      "Auditoria",
+      "Conversas arquivadas",
+      "Avaliações",
+      "Consumo e limites",
+      "Configuração do LLM"
+    ]);
+  });
+
+  it("lists only documents and feedback for the curator", () => {
+    expect(labels([Roles.curator])).toEqual(["Documentos e permissões", "Avaliações"]);
+  });
+
+  it("is empty for a regular user and without a session", () => {
+    expect(labels([Roles.user])).toEqual([]);
+    expect(labels(null)).toEqual([]);
+  });
+
+  it("routes the screens and opens the LLM settings as an action", () => {
+    const items = administrationMenu(menuFor(user(Roles.admin)));
+    expect(items.map((item) => item.target)).toEqual([
+      { kind: "route", path: "/assistants" },
+      { kind: "route", path: "/admin/audit" },
+      { kind: "route", path: "/admin/archived" },
+      { kind: "route", path: "/feedback" },
+      { kind: "route", path: "/admin/usage" },
+      { kind: "llmSettings" }
+    ]);
   });
 });

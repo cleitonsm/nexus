@@ -2,7 +2,6 @@ import { Routes } from "@angular/router";
 
 import { roleGuard } from "./core/auth/auth.guard";
 import { Roles } from "./core/auth/auth.models";
-import { AdminPageComponent } from "./pages/admin-page.component";
 import { ArchivedConversationsPageComponent } from "./pages/archived-conversations-page.component";
 import { AssistantsPageComponent } from "./pages/assistants-page.component";
 import { AuditPageComponent } from "./pages/audit-page.component";
@@ -24,11 +23,6 @@ export const appRoutes: Routes = [
         path: "assistants",
         component: AssistantsPageComponent,
         canActivate: [roleGuard(Roles.admin, Roles.curator)]
-      },
-      {
-        path: "admin",
-        component: AdminPageComponent,
-        canActivate: [roleGuard(Roles.admin)]
       },
       {
         path: "admin/audit",

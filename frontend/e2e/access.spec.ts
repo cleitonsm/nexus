@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 
 import { login, logout } from "./helpers";
 
-const ADMIN_ROUTES = ["/admin", "/admin/audit", "/admin/archived", "/admin/usage"];
+const ADMIN_ROUTES = ["/admin/audit", "/admin/archived", "/admin/usage"];
 const CURATOR_ROUTES = ["/assistants", "/feedback"];
 
 const cases = [
@@ -35,6 +35,6 @@ for (const { user, allowed, denied } of cases) {
 }
 
 test("E1: sem sessao, qualquer rota leva ao login", async ({ page }) => {
-  await page.goto("/admin");
+  await page.goto("/admin/audit");
   await expect(page.locator("#username")).toBeVisible({ timeout: 30_000 });
 });

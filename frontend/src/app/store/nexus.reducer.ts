@@ -247,15 +247,13 @@ export const nexusReducer = createReducer(
     error
   })),
 
-  on(nexusActions.selectAssistant, (state, { assistantId }) => {
-    const selectedConversationId = state.selectedConversationByAssistant[assistantId] ?? null;
-    const firstConversationId = state.conversationHistoryByAssistant[assistantId]?.[0]?.id ?? null;
-    return {
-      ...state,
-      activeAssistantId: assistantId,
-      currentConversationId: selectedConversationId ?? firstConversationId
-    };
-  }),
+  // SPEC-010 (D5): selecionar um assistente abre o chat em branco; as recentes
+  // ficam na barra lateral e a primeira pergunta cria a conversa.
+  on(nexusActions.selectAssistant, (state, { assistantId }) => ({
+    ...state,
+    activeAssistantId: assistantId,
+    currentConversationId: null
+  })),
 
   on(nexusActions.createConversation, (state) => ({
     ...state,
@@ -288,30 +286,15 @@ export const nexusReducer = createReducer(
     ...state,
     error: null
   })),
-  on(nexusActions.loadAssistantConversationsSuccess, (state, { assistantId, conversations }) => {
-    const selectedConversationId = state.selectedConversationByAssistant[assistantId] ?? null;
-    const hasSelectedConversation = conversations.some(
-      (conversation) => conversation.id === selectedConversationId
-    );
-    const fallbackConversationId = conversations[0]?.id ?? null;
-    const nextConversationId = hasSelectedConversation
-      ? selectedConversationId
-      : fallbackConversationId;
-
-    return {
-      ...state,
-      conversationHistoryByAssistant: {
-        ...state.conversationHistoryByAssistant,
-        [assistantId]: conversations
-      },
-      selectedConversationByAssistant: {
-        ...state.selectedConversationByAssistant,
-        [assistantId]: nextConversationId
-      },
-      currentConversationId:
-        state.activeAssistantId === assistantId ? nextConversationId : state.currentConversationId
-    };
-  }),
+  // SPEC-010 (D5): recarregar as recentes nao abre nem troca a conversa atual.
+  // Assim a lista que chega depois de uma conversa recem-criada nao a fecha.
+  on(nexusActions.loadAssistantConversationsSuccess, (state, { assistantId, conversations }) => ({
+    ...state,
+    conversationHistoryByAssistant: {
+      ...state.conversationHistoryByAssistant,
+      [assistantId]: conversations
+    }
+  })),
   on(nexusActions.loadAssistantConversationsFailure, (state, { error }) => ({
     ...state,
     error
