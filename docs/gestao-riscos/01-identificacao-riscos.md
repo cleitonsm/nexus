@@ -141,7 +141,7 @@ Risco novo observado na entrega:
 ## Situação após a campanha de validação final (2026-10-24)
 
 Registro factual depois da campanha `validacao-final-rc8` (V0 a V8 no Docker; ver
-[RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO.md)). Serve de ponto de partida para os riscos do
+[RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). Serve de ponto de partida para os riscos do
 ciclo 2 e não substitui a revisão do autor.
 
 | Risco | Situação |

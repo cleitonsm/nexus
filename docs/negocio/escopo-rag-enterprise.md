@@ -62,7 +62,7 @@ O MVP comprovou o ciclo completo, mas três limitações impedem o uso corporati
 | Operação previsível | Respostas rastreáveis de ponta a ponta | 100% | Um identificador por requisição em logs e spans (CT-44, CT-05) |
 
 As metas foram mantidas após a linha de base; a medição é a da campanha `validacao-final-rc8`
-([RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO.md)).
+([RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)).
 
 ## Fases e Valor Entregue
 

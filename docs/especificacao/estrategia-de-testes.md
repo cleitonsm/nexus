@@ -162,7 +162,7 @@ Uma fase só é considerada concluída quando:
 
 ## Situação dos Casos de Teste
 
-Atualizado em 2026-10-24. A campanha oficial `validacao-final-rc8` (V0 a V8) executou todos os casos automatizados: ver o [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO.md). Antes dela, "Executado no Docker" remete ao [registro da rodada de integração](../qa/relatorios/2026-10-16-rodada-integracao/LEIAME.md)
+Atualizado em 2026-10-24. A campanha oficial `validacao-final-rc8` (V0 a V8) executou todos os casos automatizados: ver o [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md). Antes dela, "Executado no Docker" remete ao [registro da rodada de integração](../qa/relatorios/2026-10-16-rodada-integracao/LEIAME.md)
 (2026-10-15/16) ou aos logs de `docs/qa/relatorios/2026-10-19-*` e `2026-10-20-*`. Nada disso substitui a
 campanha V0 a V8: na V3 o orquestrador roda **toda** a pasta `backend/tests/integration` e reprova se algum
 teste for pulado.
@@ -171,7 +171,7 @@ teste for pulado.
 
 | Casos | Onde rodou | Onde |
 |-------|------------|------|
-| Todos os CT automatizados (V2: 705 unitários; V3: 146 de integração, nenhum pulado; CT-53, CT-54, CT-56), CT-13 e CT-22 (V6, 3 execuções com o Gemini), CT-47 e CT-48 (V8), RNF-01, 02, 03, 16, 17 e 18 (V7) | Campanha `validacao-final-rc8`, 2026-10-24 sobre `1bfc1fe` | [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO.md) |
+| Todos os CT automatizados (V2: 705 unitários; V3: 146 de integração, nenhum pulado; CT-53, CT-54, CT-56), CT-13 e CT-22 (V6, 3 execuções com o Gemini), CT-47 e CT-48 (V8), RNF-01, 02, 03, 16, 17 e 18 (V7) | Campanha `validacao-final-rc8`, 2026-10-24 sobre `1bfc1fe` | [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md) |
 | CT-01 a CT-03, CT-05 (parte unitária), CT-06 a CT-09, CT-14 a CT-17, CT-23 a CT-25, CT-33 a CT-36, CT-41 a CT-43, CT-58, CT-59, CT-61 a CT-67, CT-71 a CT-75 | Unitários (662 testes, 1 pulado; 2026-10-20 sobre `95c49ff`) | `backend/tests/unit/` |
 | CT-46 | Sem Docker e no CI | `backend/tests/integration/test_sensitive_data_leak.py` |
 | CT-48 (comparação) | Unitário | `backend/tests/unit/test_regression_gate.py` |

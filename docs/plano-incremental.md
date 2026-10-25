@@ -164,7 +164,7 @@ Estimativa: 1 a 2 semanas.
 
 Situação (2026-10-24): validada na campanha `validacao-final-rc8` (testes de integração e avaliação
 no Docker). Conjunto ampliado para 82 itens (`nexus-docs-ampliado`), validado pelo curador; linha de
-base oficial registrada (recall@5 0,984, fidelidade média 0,994). Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO.md).
+base oficial registrada (recall@5 0,984, fidelidade média 0,994). Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md).
 
 Entregáveis:
 
@@ -188,7 +188,7 @@ Especificação: [SPEC-002](especificacao/specs/SPEC-002-recuperacao-semantica.m
 Estimativa: 3 a 4 semanas.
 
 Situação (2026-10-24): validada no Docker na campanha `rc8`: modelo real, migrações e troca de alias
-(CT-10 a CT-12); recall@5 0,984. Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO.md).
+(CT-10 a CT-12); recall@5 0,984. Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md).
 
 Entregáveis:
 
@@ -213,7 +213,7 @@ Estimativa: 3 a 4 semanas.
 
 Situação (2026-10-24): validada na campanha `rc8`: busca híbrida, rerank e citações (CT-18 a CT-20);
 fidelidade média 0,994, fallback fora do escopo 0,90 e 100% das respostas geradas com citação; nota
-mínima calibrada em 0,10. A exibição das fontes no chat (RF-38) fecha com a V5. Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO.md).
+mínima calibrada em 0,10. A exibição das fontes no chat (RF-38) fecha com a V5. Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md).
 
 Entregáveis:
 
@@ -239,7 +239,7 @@ Estimativa: 3 a 4 semanas.
 
 Situação (2026-10-24): validada na campanha `rc8`: Keycloak real (CT-52), permissões (CT-26 a CT-31) e
 varredura de vazamento com zero ocorrências (CT-56). Tela de conversas arquivadas, seleção de grupos e
-origens configuráveis entregues (PC-D1, PC-D5, PC-D6). Os cenários E1, E5 e E6 fecham com a V5. Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO.md).
+origens configuráveis entregues (PC-D1, PC-D5, PC-D6). Os cenários E1, E5 e E6 fecham com a V5. Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md).
 
 Entregáveis:
 
@@ -266,7 +266,7 @@ Estimativa: 2 a 3 semanas.
 Situação (2026-10-24): validada na campanha `rc8`: ingestão assíncrona, OCR, reindexação no worker e
 conferência PostgreSQL × Qdrant (CT-37 a CT-40, CT-53, CT-57); upload de 25 MB em até 1,36 s (RNF-17).
 A indexação de 10 MB ficou acima de 60 s e foi aceita como limitação (PC-D11); tabelas em PDF seguem
-adiadas (D11). Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO.md).
+adiadas (D11). Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md).
 
 Entregáveis:
 
@@ -291,7 +291,7 @@ Estimativa: 1 a 2 semanas.
 
 Situação (2026-10-24): validada na campanha `rc8`: rastreamento e métricas, streaming, logs sem dados
 sensíveis, backup e restauração e portão de regressão (CT-44 a CT-48); primeiro texto do chat com p95
-de 7,4 s (RNF-01). Os cenários E7, E8 e E11 fecham com a V5. Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO.md).
+de 7,4 s (RNF-01). Os cenários E7, E8 e E11 fecham com a V5. Ver o [RESUMO da validação](qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md).
 
 Entregáveis:
 

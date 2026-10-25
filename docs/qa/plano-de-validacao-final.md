@@ -387,7 +387,8 @@ junto com o snapshot do ambiente.
 - `06-metas.md` (com os relatórios da avaliação)
 - `07-desempenho.md` (com os CSVs)
 - `08-operacao.md`
-- `RESUMO.md`: matriz requisito → caso → evidência → resultado, cobrindo RF-24 a RF-63 e RNF-01 a
+- `RESUMO-validacao-final.md` (não `RESUMO.md`: no Windows o nome colide com o `resumo.md` que o
+  orquestrador grava a cada execução): matriz requisito → caso → evidência → resultado, cobrindo RF-24 a RF-63 e RNF-01 a
   RNF-33
 
 Com a campanha aprovada:
