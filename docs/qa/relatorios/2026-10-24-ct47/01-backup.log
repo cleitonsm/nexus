@@ -1,0 +1,17 @@
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-backup-run-53d798005005 Creating 
+ Container nexus-backup-run-53d798005005 Created 
+2026-10-24T22:49:52Z backup inicio em /backups/20261024T224952Z
+2026-10-24T22:49:52Z backup ingestao pausada; aguardando jobs em andamento
+2026-10-24T22:49:53Z backup PostgreSQL concluido
+2026-10-24T22:49:58Z backup Qdrant: assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1
+2026-10-24T22:51:09Z backup Qdrant: assistant-perf-load
+2026-10-24T22:51:34Z backup Qdrant: assistant-a72dfa48-93f5-4b9d-b5c0-9440c2ac428f-v1
+2026-10-24T22:52:19Z backup Qdrant: assistant-0f132919-9c09-4c5f-a20e-359113a1fb57-v2
+2026-10-24T22:52:33Z backup ingestao liberada
+2026-10-24T22:52:54Z backup concluido: 853.2M

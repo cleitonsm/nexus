@@ -1,0 +1,6 @@
+ Container nexus-ct47-backend-run-36fe4b05e05d Creating 
+ Container nexus-ct47-backend-run-36fe4b05e05d Created 
+/usr/local/lib/python3.12/site-packages/qdrant_client/qdrant_remote.py:130: UserWarning: Api key is used with an insecure connection.
+  warnings.warn("Api key is used with an insecure connection.")
+/usr/local/lib/python3.12/site-packages/qdrant_client/qdrant_remote.py:130: UserWarning: Api key is used with an insecure connection.
+  warnings.warn("Api key is used with an insecure connection.")
