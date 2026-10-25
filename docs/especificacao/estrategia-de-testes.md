@@ -162,7 +162,7 @@ Uma fase só é considerada concluída quando:
 
 ## Situação dos Casos de Teste
 
-Atualizado em 2026-10-20. "Executado no Docker" remete ao [registro da rodada de integração](../qa/relatorios/2026-10-16-rodada-integracao/LEIAME.md)
+Atualizado em 2026-10-24. A campanha oficial `validacao-final-rc8` (V0 a V8) executou todos os casos automatizados: ver o [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO.md). Antes dela, "Executado no Docker" remete ao [registro da rodada de integração](../qa/relatorios/2026-10-16-rodada-integracao/LEIAME.md)
 (2026-10-15/16) ou aos logs de `docs/qa/relatorios/2026-10-19-*` e `2026-10-20-*`. Nada disso substitui a
 campanha V0 a V8: na V3 o orquestrador roda **toda** a pasta `backend/tests/integration` e reprova se algum
 teste for pulado.
@@ -171,6 +171,7 @@ teste for pulado.
 
 | Casos | Onde rodou | Onde |
 |-------|------------|------|
+| Todos os CT automatizados (V2: 705 unitários; V3: 146 de integração, nenhum pulado; CT-53, CT-54, CT-56), CT-13 e CT-22 (V6, 3 execuções com o Gemini), CT-47 e CT-48 (V8), RNF-01, 02, 03, 16, 17 e 18 (V7) | Campanha `validacao-final-rc8`, 2026-10-24 sobre `1bfc1fe` | [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO.md) |
 | CT-01 a CT-03, CT-05 (parte unitária), CT-06 a CT-09, CT-14 a CT-17, CT-23 a CT-25, CT-33 a CT-36, CT-41 a CT-43, CT-58, CT-59, CT-61 a CT-67, CT-71 a CT-75 | Unitários (662 testes, 1 pulado; 2026-10-20 sobre `95c49ff`) | `backend/tests/unit/` |
 | CT-46 | Sem Docker e no CI | `backend/tests/integration/test_sensitive_data_leak.py` |
 | CT-48 (comparação) | Unitário | `backend/tests/unit/test_regression_gate.py` |
@@ -189,17 +190,13 @@ teste for pulado.
 | CT-70 (Gemini real: "Testar LLM" responde `OK` com a chave armazenada, modelo `gemini-4-argon`) | Manual, pelo autor, 2026-10-20 | `docs/qa/relatorios/2026-10-20/LEIAME.md` |
 | CT-77 (`qdrant-client` 1.11.3 sem aviso de versão; indexação e busca híbrida funcionam) | Docker, 2026-10-20: logs da V3 e da subida do backend e do worker sem `incompatible`/`client version`; 14 testes de busca híbrida e alias ok | `docs/qa/relatorios/2026-10-20/LEIAME.md` |
 
-### Escritos, a executar (V3, V7 ou V8 da campanha, salvo indicação)
+### A executar (campanha `validacao-final-rc9`)
 
 | Casos | Observação | Onde |
 |-------|------------|------|
-| CT-47 | V8; os scripts já passaram no ensaio com PostgreSQL real e Qdrant simulado | `scripts/validation/backup-restore.sh` |
-| CT-48 (roteiro com o código de saída real) | V8 | `scripts/validation/regression-gate.sh` |
-| Lista de grupos com o Keycloak real (SPEC-009 D5) | Escrito em 2026-10-20; roda na próxima V3 | `test_keycloak_real.GroupDirectoryRealTests` |
-| CT-13 e as metas de qualidade | V6, com LLM, depois da validação dos 55 itens do `nexus-docs-ampliado` e da nova calibração | `scripts/eval.sh` |
-| RNF-03, RNF-16, RNF-18 | V7 (100.000 trechos; RNF-18 exige `NEXUS_REINDEX_ASSISTANT_ID`) | `scripts/perf/retrieval_latency.py`, `reindex_under_load.py` |
-| RNF-01 (TTFT) | Fora do orquestrador, depois da V6 | `scripts/perf/ttft.py` |
-| FE-06, FE-07 | Exigem o Playwright, que não está no `package.json` | `frontend/e2e/` |
+| RNF-30 (cobertura de `domain` e `application` ≥ 80%) | A `rc8` não mediu; a V2 passou a medir em `400ae33` | `scripts/validation/run-all.sh` (V2) |
+| CT-21, CT-32, CT-69 e FE-01 a FE-05 no Angular 20 | Repetição da V4 depois da PC-D12 | `frontend/src/**/*.spec.ts` |
+| FE-07 (E1 a E11) | V5 manual, com capturas de tela; FE-06 coberto por ela (V-D3) | `docs/qa/validacao-manual-*.md` |
 
 Ferramentas de medição e orquestração: `scripts/perf/`, `scripts/validation/run-all.sh`, testadas sem Docker
 em `test_perf_tools.py` e `test_validation_runner.py`.
@@ -207,7 +204,7 @@ em `test_perf_tools.py` e `test_validation_runner.py`.
 Os testes de integração da Fase 4 não sobem o Keycloak: usam o verificador de token real com
 tokens assinados por uma chave gerada no próprio teste.
 
-A suíte unitária soma 662 testes (2026-10-20). Fora do Docker ela roda com o LangGraph substituído por um
+A suíte unitária soma 705 testes e a de integração 146 (campanha `rc8`, 2026-10-24). Fora do Docker ela roda com o LangGraph substituído por um
 dublê local; dentro do container, na V2 da campanha.
 
 O projeto utiliza `unittest`, sem dependência adicional de framework de testes.

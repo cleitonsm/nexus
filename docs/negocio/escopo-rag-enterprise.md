@@ -51,28 +51,29 @@ O MVP comprovou o ciclo completo, mas três limitações impedem o uso corporati
 
 ## Benefícios Esperados e Como Medir
 
-| Benefício | Indicador | Meta inicial |
-|-----------|-----------|--------------|
-| Encontrar a informação certa | Recall@5 no conjunto de referência | Mínimo de 0,80 |
-| Respostas fiéis aos documentos | Fidelidade ao contexto | Mínimo de 0,90 |
-| Não inventar quando não sabe | Fallback em perguntas fora do escopo | Mínimo de 90% |
-| Resposta verificável | Respostas geradas com ao menos uma fonte | 100% |
-| Conhecimento protegido | Trechos restritos recuperados por não autorizados | Zero nos testes |
-| Curadoria sem espera | Tempo de resposta do upload | Até 2 segundos |
-| Operação previsível | Respostas rastreáveis de ponta a ponta | 100% |
+| Benefício | Indicador | Meta inicial | Medido na validação final (2026-10-24) |
+|-----------|-----------|--------------|------------------------------------------|
+| Encontrar a informação certa | Recall@5 no conjunto de referência | Mínimo de 0,80 | 0,984 nas 3 execuções |
+| Respostas fiéis aos documentos | Fidelidade ao contexto | Mínimo de 0,90 | 0,994 de média (0,983 a 1,0) |
+| Não inventar quando não sabe | Fallback em perguntas fora do escopo | Mínimo de 90% | 90% nas 3 execuções |
+| Resposta verificável | Respostas geradas com ao menos uma fonte | 100% | 100% |
+| Conhecimento protegido | Trechos restritos recuperados por não autorizados | Zero nos testes | Zero (varredura com todos os usuários) |
+| Curadoria sem espera | Tempo de resposta do upload | Até 2 segundos | Até 1,36 s (25 MB) |
+| Operação previsível | Respostas rastreáveis de ponta a ponta | 100% | Um identificador por requisição em logs e spans (CT-44, CT-05) |
 
-As metas são valores iniciais e serão calibradas após a linha de base da Fase 1.
+As metas foram mantidas após a linha de base; a medição é a da campanha `validacao-final-rc8`
+([RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO.md)).
 
 ## Fases e Valor Entregue
 
 | Fase | Entrega | Valor para o negócio | Situação |
 |------|---------|----------------------|----------|
-| 1 — Avaliação e linha de base | Conjunto de referência e relatório de qualidade | Decisões baseadas em medida, não em impressão | Código entregue; validação pendente |
-| 2 — Recuperação semântica | Busca por significado | O usuário pergunta com as próprias palavras | Código entregue; validação pendente |
-| 3 — Busca híbrida, reranking e citações | Fontes em cada resposta | O usuário confere e confia | Código entregue; validação pendente |
-| 4 — Autenticação e controle de acesso | Login e permissões | O conteúdo sensível fica protegido | Código entregue; validação pendente |
-| 5 — Ingestão e ciclo de vida | Base sempre atual | Documento desatualizado deixa de responder | Código entregue; validação pendente |
-| 6 — Operação e governança | Visibilidade, custo e backup | O serviço pode ser sustentado | Código entregue; validação pendente |
+| 1 — Avaliação e linha de base | Conjunto de referência e relatório de qualidade | Decisões baseadas em medida, não em impressão | Validada (2026-10-24) |
+| 2 — Recuperação semântica | Busca por significado | O usuário pergunta com as próprias palavras | Validada (2026-10-24) |
+| 3 — Busca híbrida, reranking e citações | Fontes em cada resposta | O usuário confere e confia | Validada (2026-10-24) |
+| 4 — Autenticação e controle de acesso | Login e permissões | O conteúdo sensível fica protegido | Validada (2026-10-24) |
+| 5 — Ingestão e ciclo de vida | Base sempre atual | Documento desatualizado deixa de responder | Validada (2026-10-24) |
+| 6 — Operação e governança | Visibilidade, custo e backup | O serviço pode ser sustentado | Validada (2026-10-24) |
 
 ### Andamento
 
@@ -85,6 +86,12 @@ piloto não localiza o documento correto. Os números oficiais serão os da exec
 Em 2026-10-08 o código das seis fases estava entregue e coberto por testes unitários, mas nenhuma
 fase tinha sido validada no ambiente completo. A conclusão, com a comprovação das metas acima,
 segue o [plano de conclusão](../plano-de-conclusao.md), com meta em 2026-11-19.
+
+Em 2026-10-24 a campanha de validação final aprovou as seis fases no ambiente completo, com todas
+as metas acima atingidas. Ficou uma limitação aceita: indexar um documento grande (10 MB, cerca de
+300 páginas de texto) leva cerca de 2 minutos nesta máquina, acima do minuto previsto; a resposta
+ao envio continua imediata, e a otimização fica para o próximo ciclo. Falta a verificação manual das
+telas de ponta a ponta, depois da atualização de segurança do frontend.
 
 ## Critérios de Aceite da Evolução
 

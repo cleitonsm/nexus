@@ -255,6 +255,7 @@ Aceitas na conclusão da evolução (decisão PC-D7), cada uma com o motivo:
 - **`/metrics` fica na porta 8000, aberto no ambiente local** (C9), por desenho: a porta só escuta em `127.0.0.1`. Em outro ambiente, restrinja no proxy.
 - **Backup só local** (D5 da SPEC-006): a cópia diária fica no volume do Docker. Replicar para fora do host é responsabilidade de quem opera.
 - **Sem tela de versões substituídas** (D5 da SPEC-005): só a versão vigente do documento é consultável.
+- **Indexação de documentos grandes em CPU** (RNF-02, PC-D11): um documento de 10 MB com ~300 páginas de texto levou 92 a 126 s na campanha (meta: 60 s); o vetor denso faz ~33 trechos/s. Otimização prevista para o ciclo 2.
 - **Nota mínima de relevância** (`RELEVANCE_MIN_SCORE`): o valor 0,10 foi calibrado com 27 itens do piloto (82% das perguntas dentro do escopo respondidas; 100% das fora do escopo em fallback). A amostra fora do escopo é pequena; refaça com `scripts\calibrate.ps1` sobre o conjunto ampliado validado e com dados reais.
 - **Validação de grupos** depende do cliente de serviço `nexus-backend` no Keycloak; sem ele a API aceita o grupo e registra um aviso.
 

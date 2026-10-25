@@ -137,3 +137,33 @@ Risco novo observado na entrega:
 | # | Risco | Descrição | Contexto de ocorrência |
 |---|---|---|---|
 | R21 | Código entregue sem execução no ambiente real | A Fase 1 foi verificada apenas por testes unitários fora do Docker; os testes de integração, o comando de avaliação e os scripts ainda não foram executados no ambiente do projeto. | Qualquer diferença entre o ambiente de desenvolvimento assistido e o container (versões de biblioteca, montagem de volumes, configuração de logs do servidor). |
+
+## Situação após a campanha de validação final (2026-10-24)
+
+Registro factual depois da campanha `validacao-final-rc8` (V0 a V8 no Docker; ver
+[RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO.md)). Serve de ponto de partida para os riscos do
+ciclo 2 e não substitui a revisão do autor.
+
+| Risco | Situação |
+|---|---|
+| R9 — Reindexação sem os originais | Tratado: o arquivo original é guardado (RF-54) e a reindexação relê os documentos do banco; RNF-18 medido com 2.100 buscas durante a reindexação, sem erro. |
+| R10 — Latência em CPU | Parcial. Busca híbrida com rerank: p95 0,98 s com 1 usuário (RNF-16) e 4,2 s com 5 (informativo). A indexação de 10 MB com ~300 páginas leva 92 a 126 s (RNF-02, limitação aceita, PC-D11). Ciclo 2: fragmentação sem recontagem, modelo otimizado ou GPU. |
+| R11 — Limite de sequência do modelo | Tratado: trechos de até 128 tokens medidos pelo tokenizador do próprio modelo (CT-07). |
+| R12 — Falha nas permissões | Tratado nesta versão: CT-28 e CT-56 (varredura com todos os usuários do realm: 0 vazamentos). Permanece como risco permanente a cada mudança no filtro. |
+| R13 — Complexidade do Keycloak | Ocorreu na campanha: faltava `view-users` à conta de serviço e a validação de grupos recusava grupos existentes (corrigido no realm, SPEC-009 D5). Realm versionado e importado na subida. |
+| R14 — Conjunto de referência | Reduzido: `nexus-docs-ampliado` com 82 itens validados pelo curador. Permanece o viés de autoria (rascunhos feitos pela IA). |
+| R15 — Conteúdo sensível no LLM externo | Permanece: os trechos recuperados vão ao Gemini; mitigado com projeto pago, que não usa o conteúdo para treino (PC-D8). |
+| R16 — Injeção de prompt | Tratado no prompt (CT-42); o cenário E11 da V5 é a prova de ponta a ponta (pendente). |
+| R17 — Infraestrutura além dos recursos | Ocorreu: o Docker Desktop perdeu o DNS depois de suspensão e caiu com cargas sintéticas pesadas (DOCX de 25 MB só com texto). Contornado na medição; a pilha completa cabe em 7,7 GiB. |
+| R18 — Divergência PostgreSQL × Qdrant | Tratado: `check_consistency` (CT-57) e conferência no CT-47 depois da restauração. |
+| R19 — Escopo para um desenvolvedor | Ocorreu: nove candidatos (`rc1` a `rc9`) até a campanha completa, sem corte de escopo. |
+| R20 — Migração dos dados do MVP | Tratado: CT-49 preserva assistentes, conversas e documentos ao migrar do esquema 0001. |
+| R21 — Código sem execução no ambiente real | Tratado: toda a suíte de integração roda no Docker sem testes pulados. A campanha achou defeitos que só aparecem com concorrência real: tokenizador dos modelos locais usado por duas threads (`Already borrowed`) e carregamento simultâneo dos modelos (`meta tensor`), corrigidos. |
+
+Riscos novos para o ciclo 2:
+
+| # | Risco | Descrição | Contexto de ocorrência |
+|---|---|---|---|
+| R22 | Fim do suporte das dependências do frontend | O Angular 19 deixou de receber correções e acumulou 4 vulnerabilidades altas; o projeto subiu para o 20 (PC-D12), que também tem prazo de suporte. | Atualizações de segurança que só saem em versões maiores. |
+| R23 | Desvio da arquitetura na camada de aplicação | `chat_with_assistant.py` e `infer_assistant.py` importam o LangGraph, que a ADR 0002 põe na infraestrutura (RNF-11 com ressalva). | Troca do orquestrador ou testes da aplicação sem o LangGraph. |
+| R24 | Vazão da ingestão em CPU | ~33 trechos/s no vetor denso; bases grandes ou envio em lote levam horas e ocupam a CPU que o chat usa. | Carga inicial de bases grandes; reindexação completa. |
