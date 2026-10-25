@@ -28,7 +28,7 @@ segredo, chave de API, token, documento real ou código confidencial.
 - LLM (SPEC-008/009): provedor, modelo e URL ficam em `app_settings` (`llm_connection`), URL livre só para administrador; o cliente repete 3 vezes (1 s e 3 s) só em 429/5xx e falha de conexão. A nota mínima do reranker vem de `RELEVANCE_MIN_SCORE` (0,10 no `.env.example`, calibrada no CT-22; o padrão em código é 0,5).
 - Endurecimento (SPEC-007): `POST /conversations/{id}/messages` só aceita `role=user`; upload lido em blocos, com 413 pelo `Content-Length` e pelo fluxo; fora de `APP_ENV=local` a API e o worker não iniciam com segredo ausente ou padrão; portas do Compose em `127.0.0.1`, exceto o frontend.
 - Banco versionado por Alembic (ADR 0011), aplicado na subida da API: migrações `0001` a `0009` em `infrastructure/database/alembic/versions/`. Nova mudança de esquema = nova migração numerada; migração existente nunca é editada (a `0009` reaplica a guarda da auditoria em vez de mudar a `0004`).
-- Frontend Angular 19 standalone. Shell com sidebar e `router-outlet`. Rotas: `/chat`, `/assistants`, `/admin`, `/admin/audit`, `/admin/archived`, `/admin/usage`, `/feedback`, protegidas por `roleGuard`. Pastas: `pages`, `features`, `store`, `core/auth`, `core/services`, `shared` (`chat`, `documents`, `models`, `pipes`), `shell`.
+- Frontend Angular 20 standalone (NgRx 20; PC-D12). Shell com sidebar e `router-outlet`. Rotas: `/chat`, `/assistants`, `/admin`, `/admin/audit`, `/admin/archived`, `/admin/usage`, `/feedback`, protegidas por `roleGuard`. Pastas: `pages`, `features`, `store`, `core/auth`, `core/services`, `shared` (`chat`, `documents`, `models`, `pipes`), `shell`.
 
 ## Tecnologias por camada
 
