@@ -363,7 +363,7 @@ Ver a seção 7.
 | RNF-03 | Busca densa top-k sobre 100.000 vetores | 200 consultas | Latência | < 2 s em todas |
 | RNF-16 | Busca híbrida + RRF + reranking de 30 candidatos, 100.000 chunks, CPU | 200 perguntas | Latência da etapa de recuperação | p95 ≤ 3 s, com 1 e com 5 usuários simultâneos (o RNF fala em 95%; com 5 simultâneos é informativo) |
 | RNF-18 | Mesma carga do RNF-16 durante a reindexação do assistente de 100.000 chunks | Durante toda a reindexação | Erros e p95 | Zero erros; p95 dentro da tolerância de V-D6 em relação ao RNF-16 |
-| RNF-01 | Pergunta com contexto pela rota de streaming, LLM externo real. Automática na V7 (decisão do autor, 2026-10-22): assistente que a V6 indexa, perguntas do escopo do conjunto validado; depende de a V6 ter rodado antes | 100 (5 simultâneos) | Tempo até o primeiro token | p95 ≤ 30 s |
+| RNF-01 | Pergunta com contexto pela rota de streaming, LLM externo real. Automática na V7 (decisão do autor, 2026-10-22): assistente que a V6 indexa, perguntas do escopo do conjunto validado; depende de a V6 ter rodado antes. Um só usuário de teste: as perguntas começam no ritmo de 15 por minuto, abaixo do limite de uso (RN-32, 20 por minuto), e se sobrepõem até 5 quando a resposta demora; um 429 que ainda escape faz a pergunta esperar 20 s e ser repetida (até 2 vezes), e só a tentativa respondida vira amostra (ensaio de 2026-10-24: sem o ritmo, 58 de 100 voltaram 429; com 18 por minuto, 5) | 100 (até 5 simultâneos) | Tempo até o primeiro token | p95 ≤ 30 s |
 | RNF-29 | 50 perguntas com o perfil `observability` | 50 | Rastreamentos completos | 100% |
 | RNF-09 / RNF-32 | Subida do zero com cache de modelos | 1 | Tempo até tudo saudável | Um comando; tempo registrado |
 | RNF-28 | Backup diário + restauração | 1 | Duração do backup e da restauração; RPO | RPO ≤ 24 h comprovado pelo agendamento e pelo CT-47 |
@@ -387,7 +387,8 @@ junto com o snapshot do ambiente.
 - `06-metas.md` (com os relatórios da avaliação)
 - `07-desempenho.md` (com os CSVs)
 - `08-operacao.md`
-- `RESUMO.md`: matriz requisito → caso → evidência → resultado, cobrindo RF-24 a RF-63 e RNF-01 a
+- `RESUMO-validacao-final.md` (não `RESUMO.md`: no Windows o nome colide com o `resumo.md` que o
+  orquestrador grava a cada execução): matriz requisito → caso → evidência → resultado, cobrindo RF-24 a RF-63 e RNF-01 a
   RNF-33
 
 Com a campanha aprovada:

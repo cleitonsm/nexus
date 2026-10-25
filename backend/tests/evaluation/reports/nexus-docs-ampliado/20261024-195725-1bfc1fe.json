@@ -1,0 +1,1267 @@
+{
+  "assistant_id": "a72dfa48-93f5-4b9d-b5c0-9440c2ac428f",
+  "created_at": "2026-10-24T19:57:25.927336+00:00",
+  "k": 5,
+  "validated": true,
+  "metrics": {
+    "recall_at_k": 0.9838709677419355,
+    "mrr": 0.9086021505376345,
+    "faithfulness": 1.0,
+    "fallback_accuracy": 0.9,
+    "citation_coverage": 0.9354838709677419
+  },
+  "parameters": {
+    "commit": "1bfc1fe",
+    "dataset": "nexus-docs-ampliado.jsonl",
+    "embedding": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "embedding_vector_size": "384",
+    "pipeline_version": "3",
+    "chunk_max_tokens": "limite do modelo",
+    "chunk_overlap_sentences": "1",
+    "chunk_prefix_max_tokens": "32",
+    "sparse": "bm25 (idf no Qdrant), fusao RRF",
+    "bm25": "k1=1.2, b=0.75, average_length=64.0",
+    "reranker": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+    "retrieval_candidates": "30",
+    "rerank_top_n": "5",
+    "relevance_min_score": "0.1",
+    "context_token_budget": "2000",
+    "history_token_budget": "1500",
+    "llm_model": "gemini-3.8-flash",
+    "judge": "LLMAnswerJudge",
+    "tolerance": "0.02",
+    "item_retries": "nenhum"
+  },
+  "items": [
+    {
+      "item_id": "neg-01",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "visao-produto.md",
+        "glossario.md",
+        "glossario.md",
+        "c4-containers.md",
+        "c4-contexto.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "neg-02",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "visao-produto.md",
+        "visao-produto.md",
+        "visao-produto.md",
+        "visao-produto.md",
+        "visao-produto.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "neg-03",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "publico-alvo.md",
+        "publico-alvo.md",
+        "escopo-mvp.md",
+        "escopo-rag-enterprise.md",
+        "escopo-rag-enterprise.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "neg-04",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "escopo-mvp.md",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "neg-05",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "visao-produto.md",
+        "visao-produto.md",
+        "c4-contexto.md",
+        "problema-e-solucao.md",
+        "visao-geral.md"
+      ],
+      "first_relevant_rank": 4,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": false
+    },
+    {
+      "item_id": "neg-06",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "visao-produto.md",
+        "c4-contexto.md",
+        "problema-e-solucao.md",
+        "c4-containers.md",
+        "visao-geral.md"
+      ],
+      "first_relevant_rank": 3,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "neg-07",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "publico-alvo.md",
+        "publico-alvo.md",
+        "c4-contexto.md",
+        "frontend-angular-ngrx.md",
+        "c4-contexto.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "neg-08",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "glossario.md",
+        "glossario.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": 2,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "neg-09",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "c4-containers.md",
+        "c4-containers.md",
+        "problema-e-solucao.md",
+        "c4-containers.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-01",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "escopo-rag-enterprise.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "escopo-mvp.md",
+        "visao-produto.md",
+        "c4-contexto.md"
+      ],
+      "first_relevant_rank": 2,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-02",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "glossario.md",
+        "langgraph-fluxo-conversacional.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "escopo-rag-enterprise.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": false
+    },
+    {
+      "item_id": "arq-03",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "glossario.md",
+        "escopo-mvp.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-04",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "langgraph-fluxo-conversacional.md",
+        "glossario.md",
+        "langgraph-fluxo-conversacional.md",
+        "escopo-mvp.md",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-05",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "langgraph-fluxo-conversacional.md",
+        "problema-e-solucao.md",
+        "glossario.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "frontend-angular-ngrx.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-06",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "clean-architecture-backend.md",
+        "c4-componentes-backend.md",
+        "clean-architecture-backend.md",
+        "c4-componentes-frontend.md",
+        "clean-architecture-backend.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-07",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "clean-architecture-backend.md",
+        "clean-architecture-backend.md",
+        "clean-architecture-backend.md",
+        "clean-architecture-backend.md",
+        "clean-architecture-backend.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-08",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "frontend-angular-ngrx.md",
+        "frontend-angular-ngrx.md",
+        "c4-componentes-frontend.md",
+        "c4-componentes-backend.md",
+        "visao-geral.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-09",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "frontend-angular-ngrx.md",
+        "escopo-mvp.md",
+        "clean-architecture-backend.md",
+        "c4-componentes-frontend.md",
+        "clean-architecture-backend.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-10",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "c4-contexto.md",
+        "c4-contexto.md",
+        "c4-contexto.md",
+        "visao-geral.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-11",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "visao-geral.md",
+        "c4-containers.md",
+        "langgraph-fluxo-conversacional.md",
+        "c4-componentes-backend.md",
+        "visao-geral.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": false
+    },
+    {
+      "item_id": "arq-12",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "visao-geral.md",
+        "visao-geral.md",
+        "visao-geral.md",
+        "visao-produto.md",
+        "rag-e-isolamento-de-conhecimento.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "arq-13",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "c4-componentes-frontend.md",
+        "c4-componentes-frontend.md",
+        "frontend-angular-ngrx.md",
+        "frontend-angular-ngrx.md",
+        "c4-componentes-frontend.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "fora-01",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "politica-viagens.docx",
+        "visao-geral.md",
+        "politica-viagens.docx",
+        "escopo-rag-enterprise.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-02",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "beneficios-e-suporte.docx",
+        "beneficios-e-suporte.docx",
+        "politica-viagens.docx",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-03",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "beneficios-e-suporte.docx",
+        "c4-containers.md",
+        "c4-containers.md",
+        "visao-geral.md",
+        "escopo-rag-enterprise.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-04",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "frontend-angular-ngrx.md",
+        "publico-alvo.md",
+        "escopo-mvp.md",
+        "frontend-angular-ngrx.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-05",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "clean-architecture-backend.md",
+        "c4-componentes-backend.md",
+        "c4-containers.md",
+        "escopo-rag-enterprise.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "te-01",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "frontend-angular-ngrx.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "te-02",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "langgraph-fluxo-conversacional.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "c4-componentes-backend.md",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "te-03",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "c4-containers.md",
+        "frontend-angular-ngrx.md",
+        "beneficios-e-suporte.docx",
+        "c4-componentes-frontend.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "te-04",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "c4-contexto.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "te-05",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "glossario.md",
+        "langgraph-fluxo-conversacional.md",
+        "visao-geral.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "te-06",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "escopo-rag-enterprise.md",
+        "glossario.md",
+        "visao-geral.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "te-07",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "visao-geral.md",
+        "c4-contexto.md",
+        "escopo-rag-enterprise.md",
+        "visao-geral.md",
+        "escopo-rag-enterprise.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "te-08",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "glossario.md",
+        "glossario.md",
+        "glossario.md",
+        "rag-e-isolamento-de-conhecimento.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "te-09",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "c4-componentes-backend.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "te-10",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "langgraph-fluxo-conversacional.md",
+        "clean-architecture-backend.md",
+        "c4-componentes-backend.md",
+        "c4-componentes-backend.md",
+        "visao-geral.md"
+      ],
+      "first_relevant_rank": 2,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "te-11",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "langgraph-fluxo-conversacional.md",
+        "c4-containers.md",
+        "c4-componentes-frontend.md",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "co-01",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "glossario.md",
+        "problema-e-solucao.md",
+        "langgraph-fluxo-conversacional.md",
+        "rag-e-isolamento-de-conhecimento.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "co-02",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "langgraph-fluxo-conversacional.md",
+        "glossario.md",
+        "langgraph-fluxo-conversacional.md",
+        "problema-e-solucao.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "co-03",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "c4-containers.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "c4-containers.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "co-04",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "clean-architecture-backend.md",
+        "c4-componentes-backend.md",
+        "visao-geral.md",
+        "clean-architecture-backend.md",
+        "clean-architecture-backend.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "co-05",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "escopo-rag-enterprise.md",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "co-06",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "escopo-rag-enterprise.md",
+        "clean-architecture-backend.md",
+        "glossario.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "co-07",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "visao-geral.md",
+        "escopo-rag-enterprise.md",
+        "escopo-rag-enterprise.md",
+        "visao-geral.md",
+        "escopo-rag-enterprise.md"
+      ],
+      "first_relevant_rank": 2,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "co-08",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "c4-containers.md",
+        "escopo-mvp.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "co-09",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "c4-componentes-backend.md",
+        "clean-architecture-backend.md",
+        "glossario.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "visao-geral.md"
+      ],
+      "first_relevant_rank": 4,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "tb-01",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "publico-alvo.md",
+        "politica-viagens.docx",
+        "glossario.md",
+        "escopo-mvp.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "tb-02",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "politica-viagens.docx",
+        "publico-alvo.md",
+        "publico-alvo.md",
+        "visao-produto.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "tb-03",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "politica-viagens.docx",
+        "beneficios-e-suporte.docx",
+        "politica-viagens.docx",
+        "escopo-rag-enterprise.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "tb-04",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "visao-produto.md",
+        "escopo-mvp.md",
+        "c4-containers.md",
+        "visao-produto.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "tb-05",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "beneficios-e-suporte.docx",
+        "politica-viagens.docx",
+        "publico-alvo.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "beneficios-e-suporte.docx"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "tb-06",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "beneficios-e-suporte.docx",
+        "visao-geral.md",
+        "publico-alvo.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "escopo-mvp.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "tb-07",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "beneficios-e-suporte.docx",
+        "politica-viagens.docx",
+        "publico-alvo.md",
+        "langgraph-fluxo-conversacional.md",
+        "beneficios-e-suporte.docx"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "tb-08",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "beneficios-e-suporte.docx",
+        "politica-viagens.docx",
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "escopo-rag-enterprise.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "tb-09",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "politica-viagens.docx",
+        "escopo-rag-enterprise.md",
+        "visao-geral.md",
+        "visao-produto.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "pl-01",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "problema-e-solucao.md",
+        "glossario.md",
+        "visao-geral.md",
+        "visao-geral.md",
+        "visao-geral.md"
+      ],
+      "first_relevant_rank": 2,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "pl-02",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "glossario.md",
+        "visao-geral.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "clean-architecture-backend.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "pl-03",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "glossario.md",
+        "glossario.md",
+        "escopo-rag-enterprise.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "pl-04",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "c4-containers.md",
+        "c4-containers.md",
+        "visao-geral.md",
+        "problema-e-solucao.md",
+        "c4-contexto.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": false
+    },
+    {
+      "item_id": "pl-05",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "escopo-rag-enterprise.md",
+        "publico-alvo.md",
+        "visao-produto.md",
+        "problema-e-solucao.md",
+        "rag-e-isolamento-de-conhecimento.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "pl-06",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "escopo-rag-enterprise.md",
+        "visao-produto.md",
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "visao-produto.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "pl-07",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "c4-containers.md",
+        "c4-contexto.md",
+        "c4-containers.md",
+        "c4-containers.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "pl-08",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "langgraph-fluxo-conversacional.md",
+        "escopo-rag-enterprise.md",
+        "langgraph-fluxo-conversacional.md",
+        "visao-produto.md",
+        "problema-e-solucao.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "pl-09",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "langgraph-fluxo-conversacional.md",
+        "glossario.md",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "pl-10",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "problema-e-solucao.md",
+        "visao-produto.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "pl-11",
+      "out_of_scope": false,
+      "retrieved_sources": [
+        "glossario.md",
+        "problema-e-solucao.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "glossario.md",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": 1,
+      "fallback_used": false,
+      "faithful": true,
+      "cited": true
+    },
+    {
+      "item_id": "fora-06",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "publico-alvo.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "visao-geral.md",
+        "escopo-mvp.md",
+        "politica-viagens.docx"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-07",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "escopo-mvp.md",
+        "clean-architecture-backend.md",
+        "escopo-mvp.md",
+        "c4-componentes-backend.md",
+        "frontend-angular-ngrx.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-08",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "beneficios-e-suporte.docx",
+        "politica-viagens.docx",
+        "beneficios-e-suporte.docx",
+        "publico-alvo.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-09",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "beneficios-e-suporte.docx",
+        "escopo-mvp.md",
+        "langgraph-fluxo-conversacional.md",
+        "politica-viagens.docx",
+        "glossario.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": false,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-10",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "beneficios-e-suporte.docx",
+        "visao-produto.md",
+        "escopo-rag-enterprise.md",
+        "escopo-rag-enterprise.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-11",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "beneficios-e-suporte.docx",
+        "publico-alvo.md",
+        "visao-produto.md",
+        "visao-produto.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-12",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "c4-componentes-backend.md",
+        "c4-containers.md",
+        "c4-containers.md",
+        "visao-produto.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-13",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "c4-containers.md",
+        "publico-alvo.md",
+        "escopo-rag-enterprise.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-14",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "beneficios-e-suporte.docx",
+        "politica-viagens.docx",
+        "escopo-rag-enterprise.md",
+        "escopo-rag-enterprise.md",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-15",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "visao-produto.md",
+        "glossario.md",
+        "frontend-angular-ngrx.md",
+        "glossario.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-16",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "politica-viagens.docx",
+        "beneficios-e-suporte.docx",
+        "politica-viagens.docx",
+        "politica-viagens.docx",
+        "beneficios-e-suporte.docx"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": false,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-17",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "beneficios-e-suporte.docx",
+        "politica-viagens.docx",
+        "escopo-rag-enterprise.md",
+        "politica-viagens.docx",
+        "escopo-rag-enterprise.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-18",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "beneficios-e-suporte.docx",
+        "politica-viagens.docx",
+        "escopo-rag-enterprise.md",
+        "escopo-rag-enterprise.md",
+        "langgraph-fluxo-conversacional.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-19",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "publico-alvo.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "publico-alvo.md",
+        "visao-produto.md",
+        "glossario.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    },
+    {
+      "item_id": "fora-20",
+      "out_of_scope": true,
+      "retrieved_sources": [
+        "rag-e-isolamento-de-conhecimento.md",
+        "visao-geral.md",
+        "visao-geral.md",
+        "rag-e-isolamento-de-conhecimento.md",
+        "problema-e-solucao.md"
+      ],
+      "first_relevant_rank": null,
+      "fallback_used": true,
+      "faithful": null,
+      "cited": null
+    }
+  ]
+}

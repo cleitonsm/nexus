@@ -1,7 +1,7 @@
 # Spec: Operação e Governança
 
 **ID**: SPEC-20261007-006
-**Status**: Aprovada em 2026-10-08; código entregue em 2026-10-08, validação no Docker pendente ([plano de implementação](SPEC-006-plano-de-implementacao.md))
+**Status**: **Implementada** em 2026-10-25 — validada na campanha final (`validacao-final-rc8` e `rc9`; [RESUMO](../../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). Histórico: Aprovada em 2026-10-08; código entregue em 2026-10-08, validação no Docker pendente ([plano de implementação](SPEC-006-plano-de-implementacao.md)).
 **Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa, pendente de revisão)
 **Data**: 2026-10-07
 **Fase**: 6 de 6 — etapa 14 do [plano incremental](../../plano-incremental.md)

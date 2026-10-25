@@ -1,7 +1,7 @@
 # Spec: Avaliação e Linha de Base
 
 **ID**: SPEC-20261007-001
-**Status**: Aprovada em 2026-10-07 por Cleiton Medeiros — implementação entregue, aguardando validação no ambiente Docker
+**Status**: **Implementada** em 2026-10-25 — validada na campanha final (`validacao-final-rc8` e `rc9`; [RESUMO](../../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). Histórico: Aprovada em 2026-10-07 por Cleiton Medeiros — implementação entregue, aguardando validação no ambiente Docker.
 **Autor**: Cleiton Medeiros (elaborada com apoio de IA generativa; aprovada pelo autor)
 **Data**: 2026-10-07
 **Fase**: 1 de 6 — etapa 9 do [plano incremental](../../plano-incremental.md)

@@ -454,6 +454,18 @@ class TtftAutomationTestCase(unittest.TestCase):
             )
             self.assertEqual(ttft.dataset_questions(str(path)), ["Dentro?"])
 
+    def test_pacer_spaces_question_starts_for_the_usage_limit(self) -> None:
+        now = [0.0]
+        sleeps: list[float] = []
+
+        def sleep(seconds: float) -> None:
+            sleeps.append(round(seconds, 3))
+
+        pacer = ttft.Pacer(20, clock=lambda: now[0], sleep=sleep)
+        for _ in range(3):
+            pacer.wait()
+        self.assertEqual(sleeps, [3.0, 6.0])  # 20 por minuto: uma a cada 3 s
+
     def test_finds_the_v6_assistant_by_name_or_explains(self) -> None:
         original = ttft.request
         listing = json.dumps([{"id": "a9", "name": "Nexus Docs Ampliado (avaliacao)"}]).encode()

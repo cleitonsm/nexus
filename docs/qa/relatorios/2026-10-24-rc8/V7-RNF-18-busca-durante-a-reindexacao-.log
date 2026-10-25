@@ -1,0 +1,20 @@
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-keycloak-1 Running 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-backend-run-71885e45104f Creating 
+ Container nexus-backend-run-71885e45104f Created 
+reindexacao iniciada; medindo consultas
+/usr/local/lib/python3.12/site-packages/qdrant_client/qdrant_remote.py:130: UserWarning: Api key is used with an insecure connection.
+  warnings.warn("Api key is used with an insecure connection.")
+job terminou com estado 'succeeded'
+2100 consultas durante a reindexacao, 0 erros; CSV em /app/out/07-desempenho/rnf18.csv

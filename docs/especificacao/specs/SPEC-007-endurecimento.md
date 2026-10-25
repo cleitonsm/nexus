@@ -1,7 +1,7 @@
 # SPEC-007 — Endurecimento (P0 do cartographer)
 
 **ID**: SPEC-20261014-007
-**Status**: Aprovada em 2026-10-14 (escopo e política de fix-4 escolhidos pelo autor: "P0 do cartographer, depois E7" e "Só local, com aviso"); código entregue, validação no Docker pendente
+**Status**: **Implementada** em 2026-10-25 — validada na campanha final (`validacao-final-rc8` e `rc9`; [RESUMO](../../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). Histórico: Aprovada em 2026-10-14 (escopo e política de fix-4 escolhidos pelo autor: "P0 do cartographer, depois E7" e "Só local, com aviso"); código entregue, validação no Docker pendente.
 **Origem**: `.cartographer/backlog.md`, itens fix-1 a fix-4 (prioridade P0)
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 

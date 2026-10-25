@@ -147,9 +147,16 @@ stage_v1() {
 stage_v2() {
   # /app e a pasta backend do repositorio; os testes que leem scripts/ e docs/ procuram a
   # raiz do repositorio um nivel acima (/), onde as duas pastas sao montadas.
-  run V2 "testes unitarios no container" docker compose run --rm --no-deps \
+  # RNF-30 (V-D1): os mesmos testes sob o coverage, instalado so neste container (sem mudar o
+  # requirements.txt); reprova abaixo de 80% em src/domain e src/application. O relatorio
+  # fica em 02-cobertura.txt.
+  run V2 "testes unitarios e cobertura (RNF-30)" docker compose run --rm --no-deps \
     -v ./backend/tests:/app/tests -v ./scripts:/scripts:ro -v ./docs:/docs:ro \
-    backend python -m unittest discover -s tests/unit -v
+    -v "$OUT_MOUNT:/app/out" backend sh -c \
+    'pip install --quiet --no-cache-dir "coverage==7.6.10" \
+      && python -m coverage run --source=src/domain,src/application -m unittest discover -s tests/unit -v \
+      && { python -m coverage report --skip-empty --fail-under=80 > /app/out/02-cobertura.txt; \
+           s=$?; cat /app/out/02-cobertura.txt; exit $s; }'
 }
 
 stage_v3() {

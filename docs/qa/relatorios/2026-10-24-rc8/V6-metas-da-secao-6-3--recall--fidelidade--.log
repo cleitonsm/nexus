@@ -1,0 +1,21 @@
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-keycloak-1 Running 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-backend-run-7cc171397ccd Creating 
+ Container nexus-backend-run-7cc171397ccd Created 
+| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261024-194709-1bfc1fe.json | 0.984 | 0.901 | 0.983 | 0.900 | 1.000 | 0.935 |
+| 20261024-195725-1bfc1fe.json | 0.984 | 0.909 | 1.000 | 0.900 | 1.000 | 0.935 |
+| 20261024-200715-1bfc1fe.json | 0.984 | 0.901 | 1.000 | 0.900 | 1.000 | 0.935 |
+OK: metas de qualidade atingidas nas execucoes

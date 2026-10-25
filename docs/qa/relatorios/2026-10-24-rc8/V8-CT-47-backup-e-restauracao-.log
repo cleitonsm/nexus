@@ -1,0 +1,6 @@
+[OK] Backup - pasta 20261024T224952Z (01-backup.log)
+[OK] Ambiente limpo - PostgreSQL e Qdrant vazios (03-ambiente-limpo.log)
+[OK] Restauração e contagens - restore.sh compara com counts.txt (04-restauracao.log)
+[OK] Consistência PostgreSQL x Qdrant - check_consistency (05-consistencia.log)
+[OK] Busca nos dados restaurados - restored_search (06-busca.json)
+Evidencias em docs/qa/relatorios/2026-10-24-ct47

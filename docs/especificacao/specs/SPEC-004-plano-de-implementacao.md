@@ -1,7 +1,7 @@
 # Plano de Implementação — SPEC-004 Autenticação e Controle de Acesso
 
 **Spec**: [SPEC-20261007-004](SPEC-004-autenticacao-e-controle-de-acesso.md) (Aprovada em 2026-10-07)
-**Status do plano**: Código de P1 a P8 entregue em 2026-10-07; decisões D6 a D8 aplicadas em 2026-10-08; a validação no Docker está pendente
+**Status do plano**: Concluído — implementação validada na campanha final (`validacao-final-rc8` e `rc9`, 2026-10-25)
 **Data**: 2026-10-07
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 

@@ -1,0 +1,49 @@
+{
+  "checks": [
+    {
+      "document_id": "0396d37c-d33d-41d8-9f3c-66052b4bdddd",
+      "found": true,
+      "candidates": 30
+    },
+    {
+      "document_id": "2dbc14f9-5ccf-41a4-99f9-57076cc44309",
+      "found": true,
+      "candidates": 30
+    },
+    {
+      "document_id": "ae932e35-73c8-4246-b0eb-7d2113395d0e",
+      "found": true,
+      "candidates": 30
+    },
+    {
+      "document_id": "8eee9821-b649-40d2-90af-2f0d07f4e29d",
+      "found": true,
+      "candidates": 30
+    },
+    {
+      "document_id": "bcd82a07-b636-47a5-99a4-adcf3738bce5",
+      "found": true,
+      "candidates": 30
+    },
+    {
+      "document_id": "d790e5c5-0f39-4d43-bae1-c2f87fc794a1",
+      "found": true,
+      "candidates": 30
+    },
+    {
+      "document_id": "6ebfd388-ebff-4291-936b-317a66e1e4e4",
+      "found": true,
+      "candidates": 30
+    },
+    {
+      "document_id": "7dd2c375-53d9-4d4c-853d-a20866e40717",
+      "found": true,
+      "candidates": 30
+    },
+    {
+      "document_id": "56b4c455-3a78-40d6-9334-2b2d9a5df9be",
+      "found": true,
+      "candidates": 30
+    }
+  ]
+}

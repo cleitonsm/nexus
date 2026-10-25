@@ -1,7 +1,7 @@
 # SPEC-009 — Robustez do LLM, grupos de documentos e versão do cliente Qdrant
 
 **ID**: SPEC-20261014-009
-**Status**: Aprovada em 2026-10-14 (decisões D1 a D4 escolhidas pelo autor); código entregue, validação no Docker pendente
+**Status**: **Implementada** em 2026-10-25 — validada na campanha final (`validacao-final-rc8` e `rc9`; [RESUMO](../../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). Histórico: Aprovada em 2026-10-14 (decisões D1 a D4 escolhidas pelo autor); código entregue, validação no Docker pendente.
 **Origem**: teste rápido no Docker (E1): 503 passageiro do Google ao testar o LLM; documento enviado com o grupo literal "Sem restrição" que ficou invisível a todos; aviso de incompatibilidade `qdrant-client` 1.19.1 × servidor 1.11.3
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 

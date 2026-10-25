@@ -1,0 +1,309 @@
+== Subindo a pilha na rede interna
+ Container nexus-postgres-1 Recreate 
+ Container nexus-qdrant-1 Recreate 
+ Container nexus-qdrant-1 Recreated 
+ Container nexus-postgres-1 Recreated 
+ Container nexus-keycloak-db-init-1 Recreate 
+ Container nexus-keycloak-db-init-1 Recreated 
+ Container nexus-keycloak-1 Recreate 
+ Container nexus-keycloak-1 Recreated 
+ Container nexus-backend-1 Recreate 
+ Container nexus-backend-1 Recreated 
+ Container nexus-worker-1 Recreate 
+ Container nexus-worker-1 Recreated 
+ Container nexus-qdrant-1 Starting 
+ Container nexus-postgres-1 Starting 
+ Container nexus-qdrant-1 Started 
+ Container nexus-postgres-1 Started 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-keycloak-1 Starting 
+ Container nexus-keycloak-1 Started 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-backend-1 Starting 
+ Container nexus-backend-1 Started 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-worker-1 Starting 
+ Container nexus-worker-1 Started 
+== A internet deve estar inacessivel
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/urllib/request.py", line 1344, in do_open
+    h.request(req.get_method(), req.selector, req.data, headers,
+  File "/usr/local/lib/python3.12/http/client.py", line 1358, in request
+    self._send_request(method, url, body, headers, encode_chunked)
+  File "/usr/local/lib/python3.12/http/client.py", line 1404, in _send_request
+    self.endheaders(body, encode_chunked=encode_chunked)
+  File "/usr/local/lib/python3.12/http/client.py", line 1353, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/usr/local/lib/python3.12/http/client.py", line 1113, in _send_output
+    self.send(msg)
+  File "/usr/local/lib/python3.12/http/client.py", line 1057, in send
+    self.connect()
+  File "/usr/local/lib/python3.12/http/client.py", line 1492, in connect
+    super().connect()
+  File "/usr/local/lib/python3.12/http/client.py", line 1023, in connect
+    self.sock = self._create_connection(
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/socket.py", line 841, in create_connection
+    for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/socket.py", line 978, in getaddrinfo
+    for res in _socket.getaddrinfo(host, port, family, type, proto, flags):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+socket.gaierror: [Errno -3] Temporary failure in name resolution
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/usr/local/lib/python3.12/urllib/request.py", line 215, in urlopen
+    return opener.open(url, data, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 515, in open
+    response = self._open(req, data)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 532, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 492, in _call_chain
+    result = func(*args)
+             ^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 1392, in https_open
+    return self.do_open(http.client.HTTPSConnection, req,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/urllib/request.py", line 1347, in do_open
+    raise URLError(err)
+urllib.error.URLError: <urlopen error [Errno -3] Temporary failure in name resolution>
+OK: sem saida para a internet
+== Ingestao, busca e reranking (avaliacao sem LLM)
+ Container nexus-backend-run-d1b9bcab29fd Creating 
+ Container nexus-backend-run-d1b9bcab29fd Created 
+{"timestamp": "2026-10-24T19:23:48.928088+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "request_id": null, "event": "Context impl PostgresqlImpl."}
+{"timestamp": "2026-10-24T19:23:48.928337+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "request_id": null, "event": "Will assume transactional DDL."}
+{"timestamp": "2026-10-24T19:23:53.633693+00:00", "level": "INFO", "logger": "sentence_transformers.SentenceTransformer", "request_id": null, "event": "Load pretrained SentenceTransformer: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"}
+/usr/local/lib/python3.12/site-packages/qdrant_client/qdrant_remote.py:130: UserWarning: Api key is used with an insecure connection.
+  warnings.warn("Api key is used with an insecure connection.")
+{"timestamp": "2026-10-24T19:23:54.707680+00:00", "level": "INFO", "logger": "nexus.evaluation", "request_id": null, "event": "evaluation.assistant.created", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054"}
+{"timestamp": "2026-10-24T19:23:54.717509+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:54.720256+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:54.743086+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:54.885828+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:54.934683+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:54.935882+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:54.963517+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:54.965089+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:54.991586+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:54.992942+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.020430+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.021591+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.047615+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.049007+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.086027+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.087453+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.115085+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.116401+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.143438+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.144878+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.173180+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.174518+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.201611+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.202970+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.232542+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.233935+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.261599+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.263996+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.288744+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.289982+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.315440+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.316646+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.347420+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "4fd77166-edcb-4f25-ba86-baca28a7095d", "document_id": "98fa6cf3-dcd6-4a27-9e0b-7595b5022278", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1}
+{"timestamp": "2026-10-24T19:23:55.350636+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.352134+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.355434+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/collections \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:55.883388+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1 \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:56.128063+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:56.388968+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:56.680121+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:56.682175+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:56.713614+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:56.975279+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:56.996252+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.005858+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.023968+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.042348+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.047737+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.064087+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "4fd77166-edcb-4f25-ba86-baca28a7095d", "document_id": "98fa6cf3-dcd6-4a27-9e0b-7595b5022278", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1, "chunk_count": 4}
+{"timestamp": "2026-10-24T19:23:57.080899+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "178cfd99-7727-479f-a5e7-fb2b6780fca5", "document_id": "d6685b1a-a2d0-4fe1-9054-594cd98fdd43", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1}
+{"timestamp": "2026-10-24T19:23:57.084491+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+Token indices sequence length is longer than the specified maximum sequence length for this model (149 > 128). Running this sequence through the model will result in indexing errors
+{"timestamp": "2026-10-24T19:23:57.685060+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.700798+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.706468+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.718398+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.732735+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.736712+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.748716+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "178cfd99-7727-479f-a5e7-fb2b6780fca5", "document_id": "d6685b1a-a2d0-4fe1-9054-594cd98fdd43", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1, "chunk_count": 13}
+{"timestamp": "2026-10-24T19:23:57.761204+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "a3e5041e-8082-4807-b2a1-6617eb6db4d5", "document_id": "2ad73f81-dc12-422a-bfc1-8786045f4fb6", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1}
+{"timestamp": "2026-10-24T19:23:57.763664+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.956541+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.970906+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.979407+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:57.994008+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.010187+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.019872+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.032157+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "a3e5041e-8082-4807-b2a1-6617eb6db4d5", "document_id": "2ad73f81-dc12-422a-bfc1-8786045f4fb6", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1, "chunk_count": 6}
+{"timestamp": "2026-10-24T19:23:58.047625+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "4186b08c-4b74-4306-84aa-1de353f26aa3", "document_id": "8ea62769-0ec0-4f5d-a996-d7d47393d347", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1}
+{"timestamp": "2026-10-24T19:23:58.050577+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.310493+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.319762+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.325784+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.338800+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.352266+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.377302+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.392342+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "4186b08c-4b74-4306-84aa-1de353f26aa3", "document_id": "8ea62769-0ec0-4f5d-a996-d7d47393d347", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1, "chunk_count": 7}
+{"timestamp": "2026-10-24T19:23:58.412073+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "0d16900b-9320-40d9-86fb-f46dcd00ed07", "document_id": "f2521a3f-7a76-4d21-9650-d3f98bcb1daa", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1}
+{"timestamp": "2026-10-24T19:23:58.416514+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.961048+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.976926+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:58.986001+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.002633+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.018861+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.025324+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.038574+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "0d16900b-9320-40d9-86fb-f46dcd00ed07", "document_id": "f2521a3f-7a76-4d21-9650-d3f98bcb1daa", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1, "chunk_count": 11}
+{"timestamp": "2026-10-24T19:23:59.052353+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "b932814d-e82e-45a2-8267-f4b1834eb434", "document_id": "5723cdf9-ad3d-460d-9195-cedd2cfa86de", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1}
+{"timestamp": "2026-10-24T19:23:59.054727+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.619712+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.634305+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.640936+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.674355+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.697883+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.703614+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:23:59.719656+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "b932814d-e82e-45a2-8267-f4b1834eb434", "document_id": "5723cdf9-ad3d-460d-9195-cedd2cfa86de", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1, "chunk_count": 13}
+{"timestamp": "2026-10-24T19:23:59.734472+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "428079eb-4838-430f-a6da-d92f0f9d9575", "document_id": "4a2ee855-8105-4750-a744-91fa73a3a0af", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1}
+{"timestamp": "2026-10-24T19:23:59.738021+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:00.336502+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:00.353316+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:00.361994+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:00.377877+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:00.391945+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:00.396524+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:00.405066+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "428079eb-4838-430f-a6da-d92f0f9d9575", "document_id": "4a2ee855-8105-4750-a744-91fa73a3a0af", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1, "chunk_count": 13}
+{"timestamp": "2026-10-24T19:24:00.413748+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "2d3c90c5-3694-4fe0-8bdd-b86aa0172eef", "document_id": "56b4c455-3a78-40d6-9334-2b2d9a5df9be", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1}
+{"timestamp": "2026-10-24T19:24:00.415932+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:01.200768+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:01.219167+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:01.226634+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:01.291751+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:01.341287+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:01.346678+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:01.357434+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "2d3c90c5-3694-4fe0-8bdd-b86aa0172eef", "document_id": "56b4c455-3a78-40d6-9334-2b2d9a5df9be", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1, "chunk_count": 18}
+{"timestamp": "2026-10-24T19:24:01.372324+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.started", "job_id": "8c4a35eb-6fd9-4a90-983e-345f46ab53be", "document_id": "6ebfd388-ebff-4291-936b-317a66e1e4e4", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1}
+{"timestamp": "2026-10-24T19:24:01.374838+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:02.494571+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/delete?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:02.536770+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:02.551486+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:02.582037+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:02.603740+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: PUT http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/index?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:02.611108+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1/points/payload?wait=true \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:02.622276+00:00", "level": "INFO", "logger": "src.application.use_cases.process_ingestion", "request_id": null, "event": "ingestion.job.indexed", "job_id": "8c4a35eb-6fd9-4a90-983e-345f46ab53be", "document_id": "6ebfd388-ebff-4291-936b-317a66e1e4e4", "assistant_id": "b4b74175-97a8-449a-98a4-31d69d437054", "attempt": 1, "chunk_count": 36}
+{"timestamp": "2026-10-24T19:24:02.635190+00:00", "level": "INFO", "logger": "nexus.evaluation", "request_id": null, "event": "evaluation.documents.seeded", "documents": 15}
+{"timestamp": "2026-10-24T19:24:03.759379+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:05.151792+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:06.332308+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:07.490786+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:08.446894+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:09.474434+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:10.374607+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:11.346293+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:12.287146+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:13.183781+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:14.150109+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:15.108289+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:16.085928+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:17.214317+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:18.211746+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:19.212752+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:20.165728+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:21.191416+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:22.185492+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:23.116868+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:24.004383+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:24.987760+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:25.856181+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:26.943417+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:27.910925+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:28.977266+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:29.918914+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-b4b74175-97a8-449a-98a4-31d69d437054/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:24:30.915498+00:00", "level": "INFO", "logger": "nexus.evaluation", "request_id": null, "event": "evaluation.finished", "recall_at_k": 1.0, "mrr": 0.8901515151515151, "faithfulness": null, "fallback_accuracy": null, "citation_coverage": null, "report": "/app/evaluation/reports/nexus-docs/20261024-192430-ct54.json", "regressions": "nenhuma", "validated": true}
+OK: avaliacao sem LLM terminou (codigo 0)
+== OCR de PDF digitalizado
+ Container nexus-backend-run-54603651f9c2 Creating 
+ Container nexus-backend-run-54603651f9c2 Created 
+test_scanned_portuguese_pdf_is_indexed_and_retrievable (test_ocr_container.OcrContainerTests.test_scanned_portuguese_pdf_is_indexed_and_retrievable) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 18.737s
+
+OK
+OK: OCR
+(o assistente 'CT-54 offline' pode ser excluido pela interface)
+CT-54: APROVADO
+ Container nexus-qdrant-1 Recreate 
+ Container nexus-postgres-1 Recreate 
+ Container nexus-qdrant-1 Recreated 
+ Container nexus-postgres-1 Recreated 
+ Container nexus-keycloak-db-init-1 Recreate 
+ Container nexus-keycloak-db-init-1 Recreated 
+ Container nexus-keycloak-1 Recreate 
+ Container nexus-keycloak-1 Recreated 
+ Container nexus-backend-1 Recreate 
+ Container nexus-backend-1 Recreated 
+ Container nexus-frontend-1 Running 
+ Container nexus-worker-1 Recreate 
+ Container nexus-worker-1 Recreated 
+ Container nexus-qdrant-1 Starting 
+ Container nexus-postgres-1 Starting 
+ Container nexus-qdrant-1 Started 
+ Container nexus-postgres-1 Started 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-keycloak-1 Starting 
+ Container nexus-keycloak-1 Started 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-backend-1 Starting 
+ Container nexus-backend-1 Started 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-worker-1 Starting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-worker-1 Started 
+ Container nexus-worker-1 Waiting 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-keycloak-1 Waiting 
+ Container nexus-backend-1 Waiting 
+ Container nexus-frontend-1 Waiting 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-backend-1 Healthy 
+ Container nexus-frontend-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-worker-1 Healthy 
+ Container nexus-keycloak-1 Healthy 

@@ -1,7 +1,7 @@
 # Plano de Implementação — SPEC-003 Busca Híbrida, Reranking e Citações
 
 **Spec**: [SPEC-20261007-003](SPEC-003-busca-hibrida-reranking-citacoes.md) (Aprovada em 2026-10-07)
-**Status do plano**: Código de P1 a P8 entregue em 2026-10-07; P9 e a validação no Docker pendentes
+**Status do plano**: Concluído — implementação validada na campanha final (`validacao-final-rc8` e `rc9`, 2026-10-25)
 **Data**: 2026-10-07
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 

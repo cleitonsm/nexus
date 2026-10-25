@@ -1,0 +1,21 @@
+ Volume nexus-ct47_documents_data Creating 
+ Volume nexus-ct47_documents_data Created 
+ Container nexus-ct47-qdrant-1 Running 
+ Container nexus-ct47-postgres-1 Running 
+ Container nexus-ct47-postgres-1 Waiting 
+ Container nexus-ct47-qdrant-1 Waiting 
+ Container nexus-ct47-qdrant-1 Healthy 
+ Container nexus-ct47-postgres-1 Healthy 
+ Container nexus-ct47-backup-run-b4b0a5357a3d Creating 
+ Container nexus-ct47-backup-run-b4b0a5357a3d Created 
+2026-10-24T22:53:06Z restore conferindo as somas de verificacao
+2026-10-24T22:53:22Z restore PostgreSQL: nexus restaurado
+2026-10-24T22:53:27Z restore PostgreSQL: keycloak restaurado
+2026-10-24T22:54:14Z restore Qdrant: assistant-0f132919-9c09-4c5f-a20e-359113a1fb57-v2 restaurada
+2026-10-24T22:54:22Z restore Qdrant: assistant-a72dfa48-93f5-4b9d-b5c0-9440c2ac428f-v1 restaurada
+2026-10-24T22:54:34Z restore Qdrant: assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1 restaurada
+2026-10-24T22:55:54Z restore Qdrant: assistant-perf-load restaurada
+2026-10-24T22:55:54Z restore Qdrant: aliases recriados
+2026-10-24T22:56:14Z restore documentos originais restaurados
+2026-10-24T22:56:14Z restore contagens conferem com o backup
+2026-10-24T22:56:14Z restore concluido; suba de novo com: docker compose up -d
