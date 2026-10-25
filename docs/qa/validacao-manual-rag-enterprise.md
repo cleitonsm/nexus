@@ -10,8 +10,12 @@ existem.
 ## Pré-condições
 
 - Ambiente completo em execução, incluindo Keycloak e worker (a partir das fases 4 e 5).
-- Realm de desenvolvimento importado, com os usuários fictícios: `ana` (administradora), `carlos`
-  (curador, grupo `rh`), `bia` (usuária, grupo `rh`) e `davi` (usuário, grupo `financeiro`).
+- Realm de desenvolvimento importado, com os usuários fictícios (senha `nexus-dev`): `admin.nexus`
+  (administrador), `curadora.rh` (curadora, grupo `rh`), `usuario.rh` (usuário, grupo `rh`),
+  `usuario.financeiro` (usuário, grupo `financeiro`) e `diretora` (usuária, grupos `rh` e `diretoria`).
+- Só o administrador cria assistentes e define os grupos (RN-21); a curadora envia e gerencia os
+  documentos dos assistentes dos grupos dela. Crie o assistente "RH" (passo 16) antes de enviar
+  documentos como curadora.
 - Chave do LLM configurada.
 - Documentos de teste fictícios ou públicos: um manual com seções e tabela, um PDF digitalizado e
   um documento contendo um código exato (por exemplo, "NR-35").
@@ -43,17 +47,17 @@ existem.
 ## Fase 4 — Autenticação e controle de acesso
 
 15. Acesse o frontend sem sessão e confirme o redirecionamento para o Keycloak.
-16. Entre como `ana`, crie o assistente "RH" e vincule-o ao grupo `rh`.
-17. Entre como `davi` e confirme que o assistente "RH" não aparece.
-18. Entre como `carlos`, envie um documento ao assistente "RH" e restrinja-o ao grupo `diretoria`.
-19. Entre como `bia`, faça uma pergunta respondida apenas por esse documento e confirme o fallback.
-20. Entre como `bia`, crie uma conversa; entre como `carlos` e confirme que a conversa não é visível.
-21. Entre como `bia` e confirme que a tela de administração não está disponível.
-22. Entre como `ana` e confirme, na auditoria, os eventos dos passos anteriores.
+16. Entre como `admin.nexus`, crie o assistente "RH" e vincule-o ao grupo `rh`.
+17. Entre como `usuario.financeiro` e confirme que o assistente "RH" não aparece.
+18. Entre como `curadora.rh`, envie um documento ao assistente "RH" e restrinja-o ao grupo `diretoria`.
+19. Entre como `usuario.rh`, faça uma pergunta respondida apenas por esse documento e confirme o fallback.
+20. Entre como `usuario.rh`, crie uma conversa; entre como `curadora.rh` e confirme que a conversa não é visível.
+21. Entre como `usuario.rh` e confirme que a tela de administração não está disponível.
+22. Entre como `admin.nexus` e confirme, na auditoria, os eventos dos passos anteriores.
 
 ## Fase 5 — Ingestão e ciclo de vida
 
-23. Como `carlos`, envie um arquivo grande e confirme a resposta imediata com estado "pendente".
+23. Como `curadora.rh`, envie um arquivo grande e confirme a resposta imediata com estado "pendente".
 24. Acompanhe a mudança para "processando" e "indexado" sem recarregar a página.
 25. Envie o mesmo arquivo novamente e confirme o aviso de duplicidade.
 26. Envie o PDF digitalizado e confirme que chega ao estado "indexado".
@@ -65,9 +69,9 @@ existem.
 ## Fase 6 — Operação e governança
 
 31. Envie uma pergunta e confirme que a resposta aparece progressivamente.
-32. Avalie uma resposta como "não útil" com comentário e, como `carlos`, confirme que ela aparece para revisão.
+32. Avalie uma resposta como "não útil" com comentário e, como `curadora.rh`, confirme que ela aparece para revisão.
 33. Localize o rastreamento da resposta pelo identificador e confira a duração de cada etapa.
-34. Como `ana`, consulte o consumo e o custo estimado por conversa.
+34. Como `admin.nexus`, consulte o consumo e o custo estimado por conversa.
 35. Exceda o limite de uso e confirme a mensagem com o momento em que será possível perguntar de novo.
 36. Indexe um documento com uma instrução maliciosa e confirme que o assistente não a segue.
 37. Execute o backup, recrie o ambiente do zero, execute a restauração e repita os passos 7 e 11.
