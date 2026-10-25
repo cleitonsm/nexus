@@ -1,0 +1,34 @@
+
+> nexus-frontend@0.1.0 test
+> vitest run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.5 [39m[90m/app[39m
+
+ [32m✓[39m src/app/shared/documents/index-status.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/app/shared/documents/document-lifecycle.spec.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/app/core/auth/access.spec.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m src/app/shared/chat/chat-stream.spec.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 107[2mms[22m[39m
+ [32m✓[39m src/app/core/auth/oidc-client.spec.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 69[2mms[22m[39m
+ [32m✓[39m src/app/core/auth/pkce.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/app/shared/pipes/markdown-safety.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/app/shared/groups/group-selection.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m src/app/core/auth/http-auth.spec.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/app/store/chat-stream-flow.spec.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/app/store/auth.reducer.spec.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/app/store/selectors.spec.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/app/store/nexus.reducer.spec.ts [2m([22m[2m39 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m src/app/store/nexus.effects.spec.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 62[2mms[22m[39m
+ [32m✓[39m src/app/core/auth/auth.interceptor.spec.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m src/app/shared/pipes/markdown.pipe.spec.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m16 passed[39m[22m[90m (16)[39m
+[2m      Tests [22m [1m[32m149 passed[39m[22m[90m (149)[39m
+[2m   Start at [22m 19:32:42
+[2m   Duration [22m 17.67s[2m (transform 16.94s, setup 8.94s, import 81.28s, tests 473ms, environment 3ms)[22m
+
+npm notice
+npm notice New major version of npm available! 10.9.9 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

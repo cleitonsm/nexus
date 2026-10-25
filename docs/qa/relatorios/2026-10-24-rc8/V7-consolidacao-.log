@@ -1,0 +1,25 @@
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-keycloak-1 Running 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-backend-run-1057e6c2555d Creating 
+ Container nexus-backend-run-1057e6c2555d Created 
+| Cenário | Amostras | p50 (s) | p95 (s) | p99 (s) | Máx. (s) | Erros | Critério | Veredito |
+|---------|---------:|--------:|--------:|--------:|---------:|------:|----------|----------|
+| ttft | 100 | 4.521 | 7.424 | 9.262 | 10.078 | 0.0% | p95 ≤ 30 s | aprovado |
+| upload | 20 | 0.236 | 1.046 | 1.361 | 1.361 | 0.0% | todas ≤ 2 s | aprovado |
+| indexacao | 20 | 91.553 | 125.989 | 126.297 | 126.297 | 0.0% | todas ≤ 60 s | reprovado (limitação aceita, PC-D11) |
+| rnf03 | 200 | 0.010 | 0.013 | 0.020 | 0.039 | 0.0% | todas ≤ 2 s | aprovado |
+| rnf16-u1 | 200 | 0.819 | 0.984 | 1.160 | 3.518 | 0.0% | p95 ≤ 3 s | aprovado |
+| rnf16-u5 | 200 | 3.862 | 4.249 | 5.931 | 6.050 | 0.0% | — | informativo |
+| rnf18 | 2100 | 1.623 | 2.070 | 2.249 | 5.948 | 0.0% | — | informativo |
+

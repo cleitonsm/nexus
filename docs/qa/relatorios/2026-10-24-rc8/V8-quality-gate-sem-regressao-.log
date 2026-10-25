@@ -1,0 +1,144 @@
+== testes unitarios
+ Container nexus-backend-run-4a6b4051d25e Creating 
+ Container nexus-backend-run-4a6b4051d25e Created 
+..................................................................groups.validation.skipped
+.....................................................................| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261020-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.950 | 1.000 | 1.000 |
+OK: metas de qualidade atingidas nas execucoes
+.| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261020-000000-abc.json | 0.790 | 0.880 | 0.930 | 0.950 | 1.000 | 1.000 |
+METAS NAO ATINGIDAS:
+20261020-000000-abc.json: recall@5 0.790 < 0.8
+| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261020-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.850 | 1.000 | 1.000 |
+METAS NAO ATINGIDAS:
+20261020-000000-abc.json: fallback 0.85 < 0.9
+| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261020-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.950 | 0.900 | 1.000 |
+METAS NAO ATINGIDAS:
+20261020-000000-abc.json: respostas geradas com citacao 0.9 < 1.0
+.| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261020-000001-abc.json | 0.950 | 0.880 | 0.950 | 0.950 | 1.000 | 1.000 |
+| 20261020-000002-abc.json | 0.950 | 0.880 | 0.950 | 0.950 | 1.000 | 1.000 |
+| 20261020-000003-abc.json | 0.950 | 0.880 | 0.870 | 0.950 | 1.000 | 1.000 |
+METAS NAO ATINGIDAS:
+20261020-000003-abc.json: fidelidade 0.870 < 0.88
+.| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261021-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.950 | 1.000 | 0.935 |
+OK: metas de qualidade atingidas nas execucoes
+.| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261020-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.950 | 1.000 | 1.000 |
+INVALIDO:
+esperados 3 relatorios, encontrados 1
+.| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261020-000000-abc.json | 0.950 | 0.880 | n/d | 0.950 | 1.000 | 1.000 |
+INVALIDO:
+20261020-000000-abc.json: sem geracao (fidelidade ausente); cadastre a chave do LLM na tela de Administracao e repita a V6
+.| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261021-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.950 | 1.000 | 1.000 |
+INVALIDO:
+20261021-000000-abc.json: gerado com o modelo 'modelo-simulado', nao com o oficial 'gemini-3.8-flash' (confira a conexao do LLM na tela de Administracao)
+| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261021-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.950 | 1.000 | 1.000 |
+.| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261020-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.950 | 1.000 | 1.000 |
+| 20261021-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.950 | 1.000 | 1.000 |
+| 20261022-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.950 | 1.000 | 1.000 |
+OK: metas de qualidade atingidas nas execucoes
+.| Relatorio | recall@5 | MRR | fidelidade | fallback (fora) | geradas com citacao | taxa de resposta (informativa) |
+|---|---|---|---|---|---|---|
+| 20261020-000000-abc.json | 0.950 | 0.880 | 0.930 | 0.950 | 1.000 | 1.000 |
+INVALIDO:
+20261020-000000-abc.json: conjunto nao validado pelo curador
+.......................................................................................................................evaluation.item.retrying
+........evaluation.item.retrying
+.................................ocr.command_timeout
+ocr.command_failed
+...............................................................................................................llm.request.rejected
+llm.request.rejected
+llm.request.rejected
+.llm.request.rejected
+llm.request.rejected
+llm.request.rejected
+llm.request.rejected
+.llm.request.rejected
+llm.request.rejected
+.llm.request.unreachable
+.llm.request.rejected
+.llm.request.rejected
+..llm.request.rejected
+.llm.request.unreachable
+llm.request.unreachable
+llm.request.unreachable
+.llm.request.timeout
+..............tracing.export.failed
+..........EOF marker not found
+.......ocr.command_failed
+.chat.prompt_injection.suspected
+.chat.prompt_injection.suspected
+.chat.prompt_injection.suspected
+.........................................................documentos ainda em processamento; nova tentativa em breve
+....documentos ainda em processamento; nova tentativa em breve
+documentos ainda em processamento; nova tentativa em breve
+..| Cenário | Amostras | p50 (s) | p95 (s) | p99 (s) | Máx. (s) | Erros | Critério | Veredito |
+|---------|---------:|--------:|--------:|--------:|---------:|------:|----------|----------|
+| upload | 1 | 3.000 | 3.000 | 3.000 | 3.000 | 0.0% | todas ≤ 2 s | reprovado |
+
+........2 documentos na fila; nova verificacao em breve
+.3 documentos na fila; nova verificacao em breve
+1 documentos na fila; nova verificacao em breve
+....................................................................................................................................................................55 itens aprovados por Curadora; restam 0
+............
+----------------------------------------------------------------------
+Ran 705 tests in 16.614s
+
+OK
+== avaliacao de recuperacao (nexus-docs)
+ Container nexus-backend-run-416b35418d6e Creating 
+ Container nexus-backend-run-416b35418d6e Created 
+{"timestamp": "2026-10-24T22:59:11.196686+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "request_id": null, "event": "Context impl PostgresqlImpl."}
+{"timestamp": "2026-10-24T22:59:11.196928+00:00", "level": "INFO", "logger": "alembic.runtime.migration", "request_id": null, "event": "Will assume transactional DDL."}
+{"timestamp": "2026-10-24T22:59:16.120235+00:00", "level": "INFO", "logger": "sentence_transformers.SentenceTransformer", "request_id": null, "event": "Load pretrained SentenceTransformer: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"}
+/usr/local/lib/python3.12/site-packages/qdrant_client/qdrant_remote.py:130: UserWarning: Api key is used with an insecure connection.
+  warnings.warn("Api key is used with an insecure connection.")
+{"timestamp": "2026-10-24T22:59:19.626314+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:21.745701+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:22.855776+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:23.811134+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:24.768195+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:25.675998+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:26.690451+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:27.548364+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:28.453486+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:29.373887+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:30.438284+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:31.399337+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:32.543124+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:33.475619+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:34.528353+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:35.448379+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:36.413964+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:37.395741+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:38.326429+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:39.258634+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:40.295881+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:41.198005+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:42.306141+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:43.228641+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:44.301940+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:45.174256+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:46.149761+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:47.166340+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-167472e3-4f62-4df5-9b11-74a53786f3ef/points/query \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T22:59:48.088145+00:00", "level": "INFO", "logger": "nexus.evaluation", "request_id": null, "event": "evaluation.finished", "recall_at_k": 1.0, "mrr": 0.8901515151515151, "faithfulness": null, "fallback_accuracy": null, "citation_coverage": null, "report": "/app/evaluation/reports/nexus-docs/20261024-225948-1bfc1fe.json", "regressions": "nenhuma", "validated": true}
+== portao de qualidade aprovado

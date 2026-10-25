@@ -1,0 +1,18 @@
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-keycloak-1 Running 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-backend-run-f33d3b48e506 Creating 
+ Container nexus-backend-run-f33d3b48e506 Created 
+/usr/local/lib/python3.12/site-packages/qdrant_client/qdrant_remote.py:130: UserWarning: Api key is used with an insecure connection.
+  warnings.warn("Api key is used with an insecure connection.")
+200 consultas, mediana 3.862s, p95 4.249s, maximo 6.050s, erros 0; CSV em /app/out/07-desempenho/rnf16-u5.csv

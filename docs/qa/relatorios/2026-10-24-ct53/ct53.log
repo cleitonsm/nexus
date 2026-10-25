@@ -1,0 +1,106 @@
+== Parte 1: kill -9 no worker durante o job
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-keycloak-1 Running 
+ Container nexus-backend-1 Running 
+ Container nexus-worker-1 Recreate 
+ Container nexus-worker-1 Recreated 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-worker-1 Starting 
+ Container nexus-worker-1 Started 
+ Container nexus-backend-run-ec62745b7107 Creating 
+ Container nexus-backend-run-ec62745b7107 Created 
+ASSISTANT=81b2c065-3ce7-44c8-ad9b-7b588cdcd47b
+DOCUMENT=437297bf-e349-4f3d-834b-2de2996de864
+ Container nexus-worker-1 Killing 
+ Container nexus-worker-1 Killed 
+worker encerrado a forca; aguardando o limite de 30 s
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-keycloak-1 Running 
+ Container nexus-backend-1 Running 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-worker-1 Starting 
+ Container nexus-worker-1 Started 
+ Container nexus-backend-run-e30421a525a3 Creating 
+ Container nexus-backend-run-e30421a525a3 Created 
+estado final: indexado, trechos: 1070
+/usr/local/lib/python3.12/site-packages/qdrant_client/qdrant_remote.py:130: UserWarning: Api key is used with an insecure connection.
+  warnings.warn("Api key is used with an insecure connection.")
+{"timestamp": "2026-10-24T19:20:03.189123+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: GET http://qdrant:6333/aliases \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:20:03.262664+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-81b2c065-3ce7-44c8-ad9b-7b588cdcd47b-v1/points/scroll \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:20:03.275598+00:00", "level": "INFO", "logger": "httpx", "request_id": null, "event": "HTTP Request: POST http://qdrant:6333/collections/assistant-81b2c065-3ce7-44c8-ad9b-7b588cdcd47b-v1/points/scroll \"HTTP/1.1 200 OK\""}
+{"timestamp": "2026-10-24T19:20:03.318564+00:00", "level": "INFO", "logger": "nexus.consistency", "request_id": null, "event": "consistency.finished", "assistants": 1, "skipped": 0, "documents_checked": 1, "divergences": 0, "consistent": true}
+OK
+OK: job reprocessado sem duplicidade
+ Container nexus-backend-run-45a83ab230d9 Creating 
+ Container nexus-backend-run-45a83ab230d9 Created 
+== Parte 2: SIGTERM (docker compose stop) durante o job
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-keycloak-1 Running 
+ Container nexus-backend-1 Running 
+ Container nexus-worker-1 Running 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-backend-run-c5131d394e6a Creating 
+ Container nexus-backend-run-c5131d394e6a Created 
+ASSISTANT=7ffc7e77-a880-4d16-a271-d6e31d84ae3c
+DOCUMENT=ccac6cc0-6cb4-41a9-9dd5-516dbd2e5a09
+ Container nexus-worker-1 Stopping 
+ Container nexus-worker-1 Stopped 
+estado depois do stop: indexado
+OK: o job em andamento foi concluido antes de o worker sair
+ Container nexus-backend-run-f81df935f684 Creating 
+ Container nexus-backend-run-f81df935f684 Created 
+ Container nexus-qdrant-1 Running 
+ Container nexus-postgres-1 Running 
+ Container nexus-keycloak-1 Running 
+ Container nexus-backend-1 Running 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-keycloak-db-init-1 Starting 
+ Container nexus-keycloak-db-init-1 Started 
+ Container nexus-keycloak-db-init-1 Waiting 
+ Container nexus-keycloak-db-init-1 Exited 
+ Container nexus-qdrant-1 Waiting 
+ Container nexus-postgres-1 Waiting 
+ Container nexus-postgres-1 Healthy 
+ Container nexus-qdrant-1 Healthy 
+ Container nexus-backend-1 Waiting 
+ Container nexus-backend-1 Healthy 
+ Container nexus-worker-1 Starting 
+ Container nexus-worker-1 Started 
+CT-53: APROVADO

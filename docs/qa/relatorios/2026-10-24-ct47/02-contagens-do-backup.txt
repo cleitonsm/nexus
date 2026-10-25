@@ -1,0 +1,14 @@
+documents.files=72
+postgres.assistant_groups=0
+postgres.assistants=3
+postgres.audit_events=373
+postgres.conversations=100
+postgres.document_groups=0
+postgres.documents=52
+postgres.message_feedback=0
+postgres.messages=119
+postgres.usage_records=120
+qdrant.assistant-0f132919-9c09-4c5f-a20e-359113a1fb57-v2=55235
+qdrant.assistant-a72dfa48-93f5-4b9d-b5c0-9440c2ac428f-v1=216
+qdrant.assistant-b4b74175-97a8-449a-98a4-31d69d437054-v1=210
+qdrant.assistant-perf-load=100000
