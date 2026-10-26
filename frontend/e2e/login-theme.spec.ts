@@ -43,7 +43,11 @@ test.describe("tema de login do Keycloak (SPEC-011)", () => {
 
   test("CT-88: troca para ingles mantendo o layout", async ({ page }) => {
     await expect(page.locator("#kc-login")).toHaveText("Entrar");
-    await page.locator("#login-select-toggle").selectOption({ label: "English" });
+    // O rótulo da opção é traduzido ("Inglês (English)" em pt-BR); o kc_locale da URL não.
+    const english = await page
+      .locator('#login-select-toggle option[value*="kc_locale=en"]')
+      .getAttribute("value");
+    await page.locator("#login-select-toggle").selectOption(english ?? "");
     await expect(page.locator("#kc-login")).toHaveText("Sign in");
     await expect(page.locator("#kc-page-title")).toHaveText("Sign in to Nexus");
     await expect(page.locator("#kc-login")).toHaveCSS("background-color", "rgb(79, 70, 229)");
