@@ -48,6 +48,12 @@ docker compose exec keycloak /opt/keycloak/bin/kcadm.sh config credentials --ser
 docker compose exec keycloak /opt/keycloak/bin/kcadm.sh update realms/nexus -s loginTheme=nexus -s 'displayNameHtml=<span class="nexus-brand">Nexus</span> <span class="nexus-badge">desenvolvimento</span>'
 ```
 
+Se o seletor de idioma não aparecer no login, o realm foi importado só com `pt-BR`. Inclua o inglês:
+
+```powershell
+docker compose exec keycloak /opt/keycloak/bin/kcadm.sh update realms/nexus -s internationalizationEnabled=true -s 'supportedLocales=["pt-BR","en"]' -s defaultLocale=pt-BR
+```
+
 ## Usuários de exemplo
 
 Todos com a senha `nexus-dev`.

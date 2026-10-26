@@ -239,8 +239,12 @@ Nenhuma.
 | Imagem e realm | `infra/docker/keycloak.Dockerfile`; `compose.yaml` constrói a imagem; `nexus-realm.json` com `loginTheme` e `displayNameHtml`; o CI confere o tema |
 | Frontend | D8 em `shell.component.html`; `favicon.svg` e `favicon.ico` em `frontend/public`, referenciados no `index.html` |
 | Defeito encontrado na validação | O `index.html` não tinha `<base href="/">`: abrir uma rota com dois níveis (`/admin/audit`) carregava `/admin/main-*.js`, o Nginx devolvia o `index.html` e o app não iniciava. Isso fazia o CT-86 (`access.spec.ts`) falhar para curador, usuário e sem sessão. Corrigido com `<base href="/">` e favicons com caminho absoluto |
-| CT-85 | Pendente: sem Docker no ambiente de implementação |
-| CT-86 a CT-88 | `frontend/e2e/login-theme.spec.ts` (CT-87, CT-88 e RNF-36) escrito, não executado; `helpers.ts` não muda, porque os ids do formulário continuam os do `keycloak.v2` |
+| CT-85 | Aprovado em 2026-10-26 na máquina do autor: imagem construída, Keycloak saudável, `loginTheme=nexus` no realm |
+| CT-86 | Aprovado em 2026-10-26: `access.spec.ts` com 5 de 5, depois da correção do `base href` |
+| CT-87 e RNF-36 | Aprovados em 2026-10-26 contra a pilha real |
+| Ajustes após a pilha real | A imagem `keycloak:26.0` em uso difere da tag 26.0.17: o rótulo fica em `div.pf-v5-c-form__label` e o erro de credencial vai para `#input-error-password`. O CSS passou a cobrir as duas classes, zera as margens que o PatternFly dá ao botão (estava 8 px à direita dos campos), esconde o grupo "lembrar-me" e o rodapé vazios (só espaços ou comentário, então `:empty` não bastava) e afasta o rótulo do campo. Conferido sobre o HTML e o PatternFly servidos pela pilha real, extraídos do trace do Playwright. O CT-88 aceita o erro em qualquer dos dois campos |
+| CT-88 (idioma) | O realm do ambiente do autor foi importado só com `pt-BR`; o seletor só aparece com dois idiomas. Comando para incluir `en` no `infra/keycloak/README.md` |
+| CT-86 a CT-88 | `frontend/e2e/login-theme.spec.ts` (CT-87, CT-88 e RNF-36); `helpers.ts` não muda, porque os ids do formulário continuam os do `keycloak.v2` |
 | CT-89 | Prévia: o HTML que o `keycloak.v2` 26.0.17 gera para `login`, credencial inválida, inglês, `logout-confirm` e `error`, com o `nexus.css`, renderizado no Chromium a 1280 px e 360 px, sem rolagem horizontal. Feita sem o CSS do PatternFly (registro npm inacessível), então a conferência na pilha real continua pendente |
 | CT-90 | Pendente: depende do build do frontend (registro npm inacessível) |
 | Contraste (RNF-35) | Medido: rótulos 12,0:1, texto secundário 7,0:1, erro 6,6:1, links 9,0:1, botão 6,3:1, borda dos campos 3,8:1, foco 6,8:1 |

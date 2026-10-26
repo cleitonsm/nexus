@@ -29,7 +29,9 @@ test.describe("tema de login do Keycloak (SPEC-011)", () => {
     await page.locator("#password").fill("senha-errada");
     await page.locator("#kc-login").click();
 
-    const error = page.locator("#input-error-username");
+    // A versão da imagem decide em qual campo o Keycloak prende o erro de credencial
+    // (#input-error-username na 26.0.17, #input-error-password na imagem 26.0 em uso).
+    const error = page.locator("#input-error-username, #input-error-password").first();
     await expect(error).toBeVisible();
     await expect(error).toHaveCSS("color", "rgb(251, 113, 133)");
     await expect(page.locator(".pf-v5-c-login__main")).toContainText(/inv[aá]lid/i);
