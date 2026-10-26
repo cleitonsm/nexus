@@ -1,7 +1,7 @@
 # SPEC-011 — Tema de login do Keycloak no padrão visual do Nexus
 
 **ID**: SPEC-20261025-011
-**Status**: **Aprovada** em 2026-10-25 — decisões D1 a D9 escolhidas pelo autor; código entregue em 2026-10-25; CT-85 a CT-88 aprovados em 2026-10-26 na pilha real; CT-89 e CT-90 (conferência visual manual) pendentes.
+**Status**: **Aprovada** em 2026-10-25 — decisões D1 a D9 escolhidas pelo autor; código entregue em 2026-10-25. **Implementada** em 2026-10-26: CT-85 a CT-90 aprovados na pilha real.
 **Origem**: pedido do autor para a tela de login ter o mesmo padrão de layout do Nexus
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
@@ -246,6 +246,6 @@ Nenhuma.
 | Ajustes após a pilha real | A imagem `keycloak:26.0` em uso difere da tag 26.0.17: o rótulo fica em `div.pf-v5-c-form__label` e o erro de credencial vai para `#input-error-password`. O CSS passou a cobrir as duas classes, zera as margens que o PatternFly dá ao botão (estava 8 px à direita dos campos), esconde o grupo "lembrar-me" e o rodapé vazios (só espaços ou comentário, então `:empty` não bastava) e afasta o rótulo do campo. Conferido sobre o HTML e o PatternFly servidos pela pilha real, extraídos do trace do Playwright. O CT-88 aceita o erro em qualquer dos dois campos |
 | CT-88 (idioma) | O realm do ambiente do autor foi importado só com `pt-BR`; o seletor só aparece com dois idiomas. Comando para incluir `en` no `infra/keycloak/README.md`. Com `en` no realm, o teste passou a fixar `locale: pt-BR`, porque o Chromium do Playwright envia `Accept-Language: en-US` |
 | CT-86 a CT-88 | `frontend/e2e/login-theme.spec.ts` (CT-87, CT-88 e RNF-36); `helpers.ts` não muda, porque os ids do formulário continuam os do `keycloak.v2` |
-| CT-89 | Prévia: o HTML que o `keycloak.v2` 26.0.17 gera para `login`, credencial inválida, inglês, `logout-confirm` e `error`, com o `nexus.css`, renderizado no Chromium a 1280 px e 360 px, sem rolagem horizontal. Feita sem o CSS do PatternFly (registro npm inacessível), então a conferência na pilha real continua pendente |
-| CT-90 | Pendente: depende do build do frontend (registro npm inacessível) |
+| CT-89 | Aprovado em 2026-10-26 pelo autor na pilha real (login, credencial inválida, saída e erro, em tela larga e a 360 px). Antes, prévia: o HTML que o `keycloak.v2` 26.0.17 gera para `login`, credencial inválida, inglês, `logout-confirm` e `error`, com o `nexus.css`, renderizado no Chromium a 1280 px e 360 px, sem rolagem horizontal. Feita sem o CSS do PatternFly (registro npm inacessível), então a conferência na pilha real continua pendente |
+| CT-90 | Aprovado em 2026-10-26 pelo autor: fundo do app continua `#0f172a` após a troca das classes `gemini-*` |
 | Contraste (RNF-35) | Medido: rótulos 12,0:1, texto secundário 7,0:1, erro 6,6:1, links 9,0:1, botão 6,3:1, borda dos campos 3,8:1, foco 6,8:1 |
