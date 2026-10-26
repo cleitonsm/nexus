@@ -4,6 +4,10 @@ import { expect, test } from "@playwright/test";
 // Roda contra a pilha do Compose com o realm de desenvolvimento importado.
 
 test.describe("tema de login do Keycloak (SPEC-011)", () => {
+  // O Keycloak escolhe o idioma pelo Accept-Language; o Chromium do Playwright manda
+  // en-US por padrão. Fixa pt-BR para o ponto de partida ser o idioma padrão do Nexus.
+  test.use({ locale: "pt-BR" });
+
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("#username")).toBeVisible({ timeout: 30_000 });

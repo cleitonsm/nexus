@@ -66,7 +66,8 @@ as cobre.
 - RF-80: o cabeçalho do login mostra o símbolo e a marca Nexus; no realm de desenvolvimento,
   também o selo "desenvolvimento" (D2, D6).
 - RF-81: os textos do login aparecem em pt-BR por padrão e em inglês quando o usuário escolhe
-  `en` no seletor de idioma (D5).
+  `en` no seletor de idioma (D5). Como em qualquer realm do Keycloak, um navegador configurado
+  em inglês já abre o login em inglês; o pt-BR vale quando o idioma do navegador não é suportado.
 
 ## Requisitos não funcionais
 
@@ -243,7 +244,7 @@ Nenhuma.
 | CT-86 | Aprovado em 2026-10-26: `access.spec.ts` com 5 de 5, depois da correção do `base href` |
 | CT-87 e RNF-36 | Aprovados em 2026-10-26 contra a pilha real |
 | Ajustes após a pilha real | A imagem `keycloak:26.0` em uso difere da tag 26.0.17: o rótulo fica em `div.pf-v5-c-form__label` e o erro de credencial vai para `#input-error-password`. O CSS passou a cobrir as duas classes, zera as margens que o PatternFly dá ao botão (estava 8 px à direita dos campos), esconde o grupo "lembrar-me" e o rodapé vazios (só espaços ou comentário, então `:empty` não bastava) e afasta o rótulo do campo. Conferido sobre o HTML e o PatternFly servidos pela pilha real, extraídos do trace do Playwright. O CT-88 aceita o erro em qualquer dos dois campos |
-| CT-88 (idioma) | O realm do ambiente do autor foi importado só com `pt-BR`; o seletor só aparece com dois idiomas. Comando para incluir `en` no `infra/keycloak/README.md` |
+| CT-88 (idioma) | O realm do ambiente do autor foi importado só com `pt-BR`; o seletor só aparece com dois idiomas. Comando para incluir `en` no `infra/keycloak/README.md`. Com `en` no realm, o teste passou a fixar `locale: pt-BR`, porque o Chromium do Playwright envia `Accept-Language: en-US` |
 | CT-86 a CT-88 | `frontend/e2e/login-theme.spec.ts` (CT-87, CT-88 e RNF-36); `helpers.ts` não muda, porque os ids do formulário continuam os do `keycloak.v2` |
 | CT-89 | Prévia: o HTML que o `keycloak.v2` 26.0.17 gera para `login`, credencial inválida, inglês, `logout-confirm` e `error`, com o `nexus.css`, renderizado no Chromium a 1280 px e 360 px, sem rolagem horizontal. Feita sem o CSS do PatternFly (registro npm inacessível), então a conferência na pilha real continua pendente |
 | CT-90 | Pendente: depende do build do frontend (registro npm inacessível) |
