@@ -82,6 +82,10 @@ jobs:
           grep -q 'NEXUS_FRONTEND_URL' compose.yaml
           grep -q 'NEXUS_BACKEND_CLIENT_SECRET' infra/keycloak/nexus-realm.json
           grep -q 'NEXUS_BACKEND_CLIENT_SECRET' compose.yaml
+          # Tema de login (SPEC-011): realm aponta para ele e o pai e o keycloak.v2.
+          grep -q '"loginTheme": "nexus"' infra/keycloak/nexus-realm.json
+          grep -qx 'parent=keycloak.v2' infra/keycloak/themes/nexus/login/theme.properties
+          test -f infra/keycloak/themes/nexus/login/resources/css/nexus.css
       - name: Compose valido, com os perfis opcionais
         run: |
           docker compose config -q

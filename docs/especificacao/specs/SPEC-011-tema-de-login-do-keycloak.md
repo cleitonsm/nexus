@@ -1,7 +1,7 @@
 # SPEC-011 — Tema de login do Keycloak no padrão visual do Nexus
 
 **ID**: SPEC-20261025-011
-**Status**: **Aprovada** em 2026-10-25 — decisões D1 a D8 escolhidas pelo autor; implementação pendente.
+**Status**: **Aprovada** em 2026-10-25 — decisões D1 a D9 escolhidas pelo autor; código entregue em 2026-10-25. **Implementada** em 2026-10-26: CT-85 a CT-90 aprovados na pilha real.
 **Origem**: pedido do autor para a tela de login ter o mesmo padrão de layout do Nexus
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
@@ -30,6 +30,7 @@ realm. Não há onde colocar um tema.
 | D6 | Um **símbolo da marca** (SVG simples, original) aparece à esquerda de "Nexus" no cabeçalho do login e serve de favicon do login e do frontend. |
 | D7 | A decisão de tema próprio e imagem derivada fica na **ADR 0012**, separada da ADR 0008. |
 | D8 | `shell.component.html` troca `bg-gemini-bg text-gemini-text` por `bg-nexus-bg text-nexus-text`. |
+| D9 | Contraste (decidido pelo autor na implementação): os tokens do app não atingem o AA do RNF-35 — indigo-500 com texto branco dá 4,47:1 e a borda slate-700 sobre o cartão dá 1,72:1. No login, o botão primário usa **indigo-600** `#4f46e5` (6,29:1; hover indigo-700) e a borda dos campos usa **slate-500** `#64748b` (3,75:1). O app não muda nesta SPEC. |
 
 ### Padrão visual de referência
 
@@ -38,11 +39,11 @@ Valores tirados do código do frontend, para o tema reproduzir:
 | Elemento | No Nexus | No tema |
 |----------|----------|---------|
 | Fundo da página | `bg-nexus-bg` | `#0f172a` |
-| Cartão | `max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6` (`app.component.html`) | largura máxima 28rem, raio 1.5rem, borda `#1e293b`, fundo `#0f172a` mais claro (`slate-900`), espaçamento 1.5rem |
+| Cartão | `max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-6` (`app.component.html`) | largura máxima 28rem, raio 1.5rem, fundo `#0f172a` (`slate-900`, a mesma cor da página), destacado pela borda `#1e293b` e por sombra, espaçamento 1.5rem |
 | Marca | `text-xl font-medium tracking-tight` | idem, fonte do sistema (sem webfont) |
 | Rótulo | `text-sm text-slate-300` | `#cbd5e1`, 0.875rem |
-| Campo | `rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-indigo-400` | raio 1rem, borda `#334155`, foco `#818cf8` |
-| Botão primário | `rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white` | pílula `#6366f1`, texto branco |
+| Campo | `rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm focus:border-indigo-400` | raio 1rem, fundo `#020617`, borda `#64748b` (D9), foco `#818cf8` com anel |
+| Botão primário | `rounded-full bg-indigo-500 px-5 py-2 text-sm font-medium text-white` | pílula `#4f46e5` (D9), texto branco |
 | Texto secundário | `text-slate-400` | `#94a3b8` |
 | Erro | `text-rose-400` | `#fb7185` |
 
@@ -54,8 +55,9 @@ depender menos de seletores internos do Keycloak.
 
 Com `registrationAllowed` e `resetPasswordAllowed` desligados e sem OTP configurado, o fluxo do
 realm passa por: `login` (inclusive credencial inválida e conta bloqueada por força bruta),
-`login-page-expired`, `logout-confirm`, `info` e `error`. Todas usam o `template.ftl` do pai, então
-a mesma folha de estilos as cobre.
+`login-page-expired`, `logout-confirm`, `info` e `error`. Todas usam o `template.ftl` do `keycloak.v2` (as quatro últimas vêm do tema `base`, que o
+`keycloak.v2` não redefine, mas importam o mesmo `template.ftl`), então a mesma folha de estilos
+as cobre.
 
 ## Requisitos funcionais
 
@@ -64,7 +66,8 @@ a mesma folha de estilos as cobre.
 - RF-80: o cabeçalho do login mostra o símbolo e a marca Nexus; no realm de desenvolvimento,
   também o selo "desenvolvimento" (D2, D6).
 - RF-81: os textos do login aparecem em pt-BR por padrão e em inglês quando o usuário escolhe
-  `en` no seletor de idioma (D5).
+  `en` no seletor de idioma (D5). Como em qualquer realm do Keycloak, um navegador configurado
+  em inglês já abre o login em inglês; o pt-BR vale quando o idioma do navegador não é suportado.
 
 ## Requisitos não funcionais
 
@@ -82,7 +85,7 @@ a mesma folha de estilos as cobre.
 Cenário: aparência do login (RF-79, RF-80)
   Dado o realm de desenvolvimento importado
   Quando um usuário abre o Nexus sem sessão
-  Então o Keycloak mostra o fundo #0f172a, um cartão escuro arredondado, campos escuros e o botão Entrar em pílula indigo
+  Então o Keycloak mostra o fundo #0f172a, um cartão escuro arredondado, campos escuros e o botão Entrar em pílula indigo-600
   E o cabeçalho mostra o símbolo, "Nexus" e o selo "desenvolvimento"
 
 Cenário: credencial inválida (RF-79)
@@ -126,16 +129,15 @@ infra/keycloak/themes/nexus/login/
 ├── theme.properties
 ├── resources/css/nexus.css
 ├── resources/img/nexus-mark.svg
-├── resources/img/favicon.ico   (ou .svg, conforme o template do pai)
+├── resources/img/favicon.ico   (o template do pai referencia img/favicon.ico)
 └── messages/
     ├── messages_pt_BR.properties
     └── messages_en.properties
 ```
 
 - `theme.properties`: `parent=keycloak.v2`. A chave `styles` do filho substitui a do pai, então
-  ela repete os estilos declarados no `keycloak.v2` da imagem 26.0 e acrescenta `css/nexus.css`
-  no fim. Os nomes exatos são conferidos na imagem durante a implementação
-  (`/opt/keycloak/lib/lib/main/org.keycloak.keycloak-themes-*.jar`).
+  ela repete o `css/styles.css` do `keycloak.v2` (conferido na tag 26.0.17) e acrescenta
+  `css/nexus.css` no fim; `stylesCommon` (PatternFly 5) e `meta` continuam herdados.
 - `nexus.css`: variáveis da tabela acima; sobrescritas do fundo, do cartão, do cabeçalho (símbolo
   por `background-image` em pseudo-elemento), dos campos, do botão primário, dos alertas, do
   seletor de idioma e do botão de mostrar senha; regra para o selo (`.nexus-badge`).
@@ -149,8 +151,9 @@ infra/keycloak/themes/nexus/login/
 ```
 
 O `keycloak.v2` exibe o `displayNameHtml` no cabeçalho depois de passá-lo pelo sanitizador do
-Keycloak. Se o sanitizador remover o atributo `class`, a alternativa, registrada aqui antes do
-código, é sobrescrever só o trecho do cabeçalho no `template.ftl` e ler o selo de uma
+Keycloak (`KeycloakSanitizerPolicy`), que aceita `span` com `class` de letras, dígitos, hífen e
+sublinhado: `nexus-brand` e `nexus-badge` passam. Se uma versão futura deixar de aceitar, a
+alternativa é sobrescrever só o trecho do cabeçalho no `template.ftl` e ler o selo de uma
 propriedade do tema.
 
 **Mensagens (D5).** Só as chaves que mudam: título da página ("Entrar no Nexus" / "Sign in to
@@ -228,3 +231,21 @@ Nenhuma.
 
 - Tema `account` e e-mails do Keycloak no mesmo padrão.
 - Subida de produção com `start --optimized` e cache de tema ligado.
+
+## Entrega (2026-10-25)
+
+| Item | Situação |
+|------|----------|
+| Tema | `infra/keycloak/themes/nexus/login/`: `theme.properties`, `nexus.css`, `nexus-mark.svg`, `favicon.ico` e mensagens pt-BR e en; nenhum template sobrescrito (D1) |
+| Imagem e realm | `infra/docker/keycloak.Dockerfile`; `compose.yaml` constrói a imagem; `nexus-realm.json` com `loginTheme` e `displayNameHtml`; o CI confere o tema |
+| Frontend | D8 em `shell.component.html`; `favicon.svg` e `favicon.ico` em `frontend/public`, referenciados no `index.html` |
+| Defeito encontrado na validação | O `index.html` não tinha `<base href="/">`: abrir uma rota com dois níveis (`/admin/audit`) carregava `/admin/main-*.js`, o Nginx devolvia o `index.html` e o app não iniciava. Isso fazia o CT-86 (`access.spec.ts`) falhar para curador, usuário e sem sessão. Corrigido com `<base href="/">` e favicons com caminho absoluto |
+| CT-85 | Aprovado em 2026-10-26 na máquina do autor: imagem construída, Keycloak saudável, `loginTheme=nexus` no realm |
+| CT-86 | Aprovado em 2026-10-26: `access.spec.ts` com 5 de 5, depois da correção do `base href` |
+| CT-87, CT-88 e RNF-36 | Aprovados em 2026-10-26 contra a pilha real: `login-theme.spec.ts` e `access.spec.ts` com 9 de 9 |
+| Ajustes após a pilha real | A imagem `keycloak:26.0` em uso difere da tag 26.0.17: o rótulo fica em `div.pf-v5-c-form__label` e o erro de credencial vai para `#input-error-password`. O CSS passou a cobrir as duas classes, zera as margens que o PatternFly dá ao botão (estava 8 px à direita dos campos), esconde o grupo "lembrar-me" e o rodapé vazios (só espaços ou comentário, então `:empty` não bastava) e afasta o rótulo do campo. Conferido sobre o HTML e o PatternFly servidos pela pilha real, extraídos do trace do Playwright. O CT-88 aceita o erro em qualquer dos dois campos |
+| CT-88 (idioma) | O realm do ambiente do autor foi importado só com `pt-BR`; o seletor só aparece com dois idiomas. Comando para incluir `en` no `infra/keycloak/README.md`. Com `en` no realm, o teste passou a fixar `locale: pt-BR`, porque o Chromium do Playwright envia `Accept-Language: en-US` |
+| CT-86 a CT-88 | `frontend/e2e/login-theme.spec.ts` (CT-87, CT-88 e RNF-36); `helpers.ts` não muda, porque os ids do formulário continuam os do `keycloak.v2` |
+| CT-89 | Aprovado em 2026-10-26 pelo autor na pilha real (login, credencial inválida, saída e erro, em tela larga e a 360 px). Antes, prévia: o HTML que o `keycloak.v2` 26.0.17 gera para `login`, credencial inválida, inglês, `logout-confirm` e `error`, com o `nexus.css`, renderizado no Chromium a 1280 px e 360 px, sem rolagem horizontal. Feita sem o CSS do PatternFly (registro npm inacessível), então a conferência na pilha real continua pendente |
+| CT-90 | Aprovado em 2026-10-26 pelo autor: fundo do app continua `#0f172a` após a troca das classes `gemini-*` |
+| Contraste (RNF-35) | Medido: rótulos 12,0:1, texto secundário 7,0:1, erro 6,6:1, links 9,0:1, botão 6,3:1, borda dos campos 3,8:1, foco 6,8:1 |

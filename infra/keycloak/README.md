@@ -16,6 +16,47 @@ arquivo fora do ambiente local. Segredos de ambientes reais ficam fora do reposi
 | Papéis de realm | `nexus-admin`, `nexus-curador`, `nexus-usuario` |
 | Grupos | `rh`, `financeiro`, `diretoria`, publicados na claim `groups` (sem o caminho) |
 | Eventos de login | Ligados, guardados por 12 meses no próprio Keycloak |
+| Tema de login | `nexus` (ver abaixo) |
+
+## Tema de login
+
+O realm usa o tema `nexus` (SPEC-011, ADR 0012), em `themes/nexus/login/`. Ele herda o
+`keycloak.v2` e muda só a aparência e alguns textos:
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| `theme.properties` | `parent=keycloak.v2`; acrescenta `css/nexus.css` aos estilos do pai |
+| `resources/css/nexus.css` | Tokens do `frontend/tailwind.config.js` como variáveis CSS e sobrescritas do PatternFly 5 |
+| `resources/img/` | Símbolo da marca (`nexus-mark.svg`) e `favicon.ico` |
+| `messages/` | Textos em pt-BR e en que diferem do padrão |
+
+O tema vai dentro da imagem (`infra/docker/keycloak.Dockerfile`). Depois de editar qualquer
+arquivo dele, reconstrua o serviço: `docker compose up -d --build keycloak`.
+
+O cabeçalho mostra o `displayNameHtml` do realm. No realm de desenvolvimento ele tem a marca e o
+selo "desenvolvimento"; num realm de outro ambiente, use só `<span class="nexus-brand">Nexus</span>`.
+
+O botão primário e a borda dos campos são um tom mais fortes que no app (indigo-600 e slate-500),
+para atingir o contraste AA (SPEC-011, D9).
+
+Num realm importado antes de 2026-10-25, aplique o tema sem recriar o banco (PowerShell,
+credenciais de administrador do `.env`, padrão `admin`/`admin`):
+
+```powershell
+docker compose up -d --build --wait keycloak   # --wait: só volta com o Keycloak saudável
+docker compose exec keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin --password admin
+docker compose exec keycloak /opt/keycloak/bin/kcadm.sh update realms/nexus -s loginTheme=nexus -s 'displayNameHtml=<span class="nexus-brand">Nexus</span> <span class="nexus-badge">desenvolvimento</span>'
+```
+
+Se o seletor de idioma não aparecer no login, o realm foi importado só com `pt-BR`. Inclua o inglês:
+
+```powershell
+'{"internationalizationEnabled":true,"supportedLocales":["pt-BR","en"],"defaultLocale":"pt-BR"}' | docker compose exec -T keycloak /opt/keycloak/bin/kcadm.sh update realms/nexus -f -
+docker compose exec keycloak /opt/keycloak/bin/kcadm.sh get realms/nexus --fields supportedLocales
+```
+
+O JSON vai pela entrada padrão (`-f -`) porque o Windows PowerShell 5.1 remove as aspas internas de
+argumentos como `-s 'supportedLocales=["pt-BR","en"]'` ao repassá-los ao `docker`.
 
 ## Usuários de exemplo
 

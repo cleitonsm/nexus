@@ -1,6 +1,8 @@
 {
   "realm": "nexus",
   "displayName": "Nexus (desenvolvimento)",
+  "displayNameHtml": "<span class=\"nexus-brand\">Nexus</span> <span class=\"nexus-badge\">desenvolvimento</span>",
+  "loginTheme": "nexus",
   "enabled": true,
   "sslRequired": "external",
   "registrationAllowed": false,

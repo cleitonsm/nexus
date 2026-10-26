@@ -122,3 +122,6 @@ Requisitos do MVP revisados por esta evolução:
 | ID     | Descrição |
 |--------|-----------|
 | RNF-33 | As fontes de uma resposta devem estar acessíveis em um clique, e o estado de ingestão deve ser atualizado na interface sem recarregar a página. |
+| RNF-34 | O formulário de login do Keycloak deve manter os ids `username`, `password` e `kc-login` (SPEC-011). |
+| RNF-35 | A tela de login deve ter contraste WCAG 2.1 AA (4,5:1 em texto; 3:1 em bordas de campo e foco) e foco visível pelo teclado (SPEC-011). |
+| RNF-36 | A tela de login deve funcionar de 360 px de largura até desktop, sem rolagem horizontal (SPEC-011). |

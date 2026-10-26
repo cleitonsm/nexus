@@ -1,0 +1,565 @@
+/*
+ * Tema de login do Nexus (SPEC-011, ADR 0012).
+ *
+ * Carregado depois do PatternFly 5 e do css/styles.css do keycloak.v2. Os tokens
+ * repetem os nomes de frontend/tailwind.config.js; quem mudar a paleta muda os dois.
+ * Os seletores começam por html.login-pf para vencer as regras do PatternFly, inclusive
+ * as do modo escuro (.pf-v5-theme-dark), que o template liga conforme o sistema: o
+ * tema é sempre escuro, como o app.
+ *
+ * Desvio registrado na SPEC-011 (RNF-35): o botão primário usa indigo-600 e a borda
+ * dos campos usa slate-500, porque indigo-500 com texto branco (4,47:1) e slate-700
+ * sobre o cartão (1,72:1) não atingem o contraste AA.
+ */
+
+:root {
+  --nexus-bg: #0f172a;            /* bg-nexus-bg */
+  --nexus-sidebar: #1e293b;       /* bg-nexus-sidebar / slate-800 */
+  --nexus-hover: #334155;         /* bg-nexus-hover / slate-700 */
+  --nexus-text: #f1f5f9;          /* text-nexus-text / slate-100 */
+  --nexus-label: #cbd5e1;         /* text-slate-300 */
+  --nexus-dim: #94a3b8;           /* text-nexus-dim / slate-400 */
+  --nexus-accent: #6366f1;        /* nexus-accent / indigo-500 */
+  --nexus-focus: #818cf8;         /* focus:border-indigo-400 */
+  --nexus-link: #a5b4fc;          /* indigo-300 */
+  --nexus-card: #0f172a;          /* bg-slate-900 */
+  --nexus-card-border: #1e293b;   /* border-slate-800 */
+  --nexus-field: #020617;         /* bg-slate-950 */
+  --nexus-field-border: #64748b;  /* slate-500 (AA; o app usa slate-700) */
+  --nexus-primary: #4f46e5;       /* indigo-600 (AA; o app usa indigo-500) */
+  --nexus-primary-hover: #4338ca; /* indigo-700 */
+  --nexus-danger: #fb7185;        /* text-rose-400 */
+  --nexus-font: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  --nexus-radius-card: 1.5rem;    /* rounded-3xl */
+  --nexus-radius-field: 1rem;     /* rounded-2xl */
+
+  --pf-v5-global--FontFamily--text: var(--nexus-font);
+  --pf-v5-global--FontFamily--heading: var(--nexus-font);
+  --pf-v5-global--link--Color: var(--nexus-link);
+  --pf-v5-global--link--Color--hover: var(--nexus-text);
+  color-scheme: dark;
+}
+
+/* ---------- Página ---------- */
+
+html.login-pf,
+html.login-pf body {
+  min-height: 100%;
+  background: var(--nexus-bg);
+}
+
+html.login-pf body {
+  margin: 0;
+  background:
+    radial-gradient(60rem 30rem at 50% -10%, rgba(99, 102, 241, 0.14), transparent 70%),
+    var(--nexus-bg);
+  background-attachment: fixed;
+  color: var(--nexus-text);
+  font-family: var(--nexus-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html.login-pf .pf-v5-c-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
+  background: transparent;
+}
+
+html.login-pf .pf-v5-c-login__container {
+  display: grid;
+  grid-template-columns: minmax(0, 28rem); /* max-w-md */
+  grid-template-areas: "header" "main";
+  justify-content: center;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+
+/* ---------- Cabeçalho: símbolo, marca e selo ---------- */
+
+html.login-pf .pf-v5-c-login__header {
+  grid-area: header;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+html.login-pf #kc-header-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 1.25rem;            /* text-xl */
+  font-weight: 500;              /* font-medium */
+  letter-spacing: -0.025em;      /* tracking-tight */
+  line-height: 1.75rem;
+  text-transform: none;
+  color: var(--nexus-text) !important; /* o keycloak.v2 usa !important */
+}
+
+html.login-pf #kc-header-wrapper::before {
+  content: "";
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: url("../img/nexus-mark.svg") center / contain no-repeat;
+}
+
+html.login-pf .nexus-brand {
+  color: var(--nexus-text);
+}
+
+html.login-pf .nexus-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  border-radius: 9999px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #c7d2fe;                /* indigo-200 */
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  line-height: 1.25rem;
+  text-transform: uppercase;
+}
+
+/* ---------- Cartão ---------- */
+
+html.login-pf .pf-v5-c-login__main {
+  grid-area: main;
+  margin: 0;
+  border: 1px solid var(--nexus-card-border);
+  border-radius: var(--nexus-radius-card);
+  background: var(--nexus-card);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); /* shadow-2xl */
+  color: var(--nexus-text);
+}
+
+html.login-pf .pf-v5-c-login__main-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1.5rem 1.5rem 0;
+}
+
+html.login-pf #kc-page-title {
+  margin: 0;
+  color: var(--nexus-text);
+  font-family: var(--nexus-font);
+  font-size: 1.125rem;           /* text-lg */
+  font-weight: 600;              /* font-semibold */
+  line-height: 1.75rem;
+}
+
+html.login-pf .pf-v5-c-login__main-body {
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+/* Sem provedores sociais o rodapé só tem um comentário do template. */
+html.login-pf .pf-v5-c-login__main-footer:empty,
+html.login-pf .pf-v5-c-login__main-footer:not(:has(*)) {
+  display: none;
+}
+
+html.login-pf .pf-v5-c-login__main-footer {
+  padding: 0 1.5rem 1.5rem;
+}
+
+/* ---------- Formulário ---------- */
+
+html.login-pf .pf-v5-c-form {
+  display: grid;
+  gap: 1rem;
+}
+
+/* Grupo sem filhos (ex.: "lembrar-me" desligado no realm); o FreeMarker deixa espaços
+   dentro dele, então :empty não basta. */
+html.login-pf .pf-v5-c-form__group:empty,
+html.login-pf .pf-v5-c-form__group:not(:has(*)) {
+  display: none;
+}
+
+/* O keycloak.v2 envolve o rótulo num div com pf-v5-c-form__group-label ou, na 26.0,
+   pf-v5-c-form__label (kcFormGroupLabelClass é redefinida no theme.properties do pai). */
+html.login-pf .pf-v5-c-form__group > .pf-v5-c-form__group-label,
+html.login-pf .pf-v5-c-form__group > .pf-v5-c-form__label {
+  padding: 0 0 0.375rem;
+  text-align: start;
+}
+
+html.login-pf .pf-v5-c-form__label,
+html.login-pf .pf-v5-c-form__label-text {
+  color: var(--nexus-label);
+  font-size: 0.875rem;           /* text-sm */
+  font-weight: 400;
+}
+
+/* Campo: o PatternFly desenha as bordas em ::before/::after; o tema desenha no próprio
+   contêiner, com cantos arredondados como os campos do app. */
+html.login-pf .pf-v5-c-form-control {
+  --pf-v5-c-form-control--BackgroundColor: var(--nexus-field);
+  --pf-v5-c-form-control--Color: var(--nexus-text);
+  --pf-v5-c-form-control--FontSize: 0.875rem;
+  --pf-v5-c-form-control--LineHeight: 1.25rem;
+  --pf-v5-c-form-control--inset--base: 1rem;
+  --pf-v5-c-form-control--PaddingTop: 0.75rem;
+  --pf-v5-c-form-control--PaddingBottom: 0.75rem;
+  --pf-v5-c-form-control__icon--PaddingTop: 0.75rem;
+  --pf-v5-c-form-control__toggle-icon--PaddingTop: 0.75rem;
+  --pf-v5-c-form-control--m-error__icon--m-status--Color: var(--nexus-danger);
+  --pf-v5-c-form-control__toggle-icon--Color: var(--nexus-dim);
+  position: relative;
+  border: 1px solid var(--nexus-field-border);
+  border-radius: var(--nexus-radius-field);
+  background-color: var(--nexus-field);
+  color: var(--nexus-text);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+html.login-pf .pf-v5-c-form-control::before,
+html.login-pf .pf-v5-c-form-control::after,
+html.login-pf .pf-v5-c-button.pf-m-control::after {
+  border: 0 !important;
+  content: none;
+}
+
+html.login-pf .pf-v5-c-form-control > input,
+html.login-pf .pf-v5-c-form-control > select {
+  width: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--nexus-text);
+  font-family: var(--nexus-font);
+  font-size: 0.875rem;
+  outline: none;
+  padding: 0.75rem 1rem;
+}
+
+html.login-pf .pf-v5-c-form-control:focus-within {
+  border-color: var(--nexus-focus);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.3);
+}
+
+html.login-pf .pf-v5-c-form-control.pf-m-error {
+  border-color: var(--nexus-danger);
+}
+
+html.login-pf .pf-v5-c-form-control.pf-m-readonly {
+  background-color: var(--nexus-sidebar);
+}
+
+/* Senha: campo e botão de mostrar formam uma só caixa arredondada. */
+html.login-pf .pf-v5-c-input-group {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--nexus-field-border);
+  border-radius: var(--nexus-radius-field);
+  background-color: var(--nexus-field);
+  overflow: hidden;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+html.login-pf .pf-v5-c-input-group:focus-within {
+  border-color: var(--nexus-focus);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.3);
+}
+
+html.login-pf .pf-v5-c-input-group:has(.pf-m-error) {
+  border-color: var(--nexus-danger);
+}
+
+html.login-pf .pf-v5-c-input-group .pf-v5-c-form-control,
+html.login-pf .pf-v5-c-input-group .pf-v5-c-form-control:focus-within {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+html.login-pf .pf-v5-c-input-group__item.pf-m-fill {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+html.login-pf .pf-v5-c-button.pf-m-control {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--nexus-dim);
+  cursor: pointer;
+}
+
+html.login-pf .pf-v5-c-button.pf-m-control:hover {
+  color: var(--nexus-text);
+}
+
+html.login-pf .pf-v5-c-button.pf-m-control:focus-visible {
+  outline: 2px solid var(--nexus-focus);
+  outline-offset: -4px;
+  border-radius: 0.75rem;
+}
+
+/* Mensagens de validação por campo */
+html.login-pf .pf-v5-c-form__helper-text {
+  margin-top: 0.375rem;
+}
+
+html.login-pf .pf-v5-c-helper-text__item.pf-m-error,
+html.login-pf .pf-v5-c-helper-text__item-text.pf-m-error,
+html.login-pf .kc-feedback-text.pf-m-error {
+  color: var(--nexus-danger);
+  font-size: 0.875rem;
+}
+
+/* ---------- Seletor de idioma ---------- */
+
+html.login-pf .pf-v5-c-login__main-header-utilities .pf-v5-c-form-control {
+  border-color: var(--nexus-field-border);
+  border-radius: 9999px;
+  background-color: transparent;
+}
+
+html.login-pf .pf-v5-c-login__main-header-utilities .pf-v5-c-form-control > select {
+  padding: 0.375rem 2.25rem 0.375rem 0.875rem;
+  color: var(--nexus-label);
+  font-size: 0.75rem;
+  cursor: pointer;
+  appearance: none;
+}
+
+html.login-pf .pf-v5-c-login__main-header-utilities option {
+  background: var(--nexus-sidebar);
+  color: var(--nexus-text);
+}
+
+html.login-pf .pf-v5-c-login__main-header-utilities .pf-v5-c-form-control__utilities {
+  position: absolute;
+  inset: 0 0.875rem 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  pointer-events: none;
+}
+
+html.login-pf .pf-v5-c-login__main-header-utilities .pf-v5-c-form-control__toggle-icon {
+  padding: 0;
+  color: var(--nexus-dim);
+  font-size: 0.75rem;
+}
+
+/* ---------- Botões ---------- */
+
+/* O PatternFly dá margens negativas ao contêiner e margens aos filhos; zera as duas
+   para o botão ter a mesma largura dos campos. */
+html.login-pf .pf-v5-c-form__actions {
+  display: grid;
+  margin: 0.5rem 0 0;
+}
+
+html.login-pf .pf-v5-c-form__actions > * {
+  margin: 0;
+}
+
+html.login-pf .pf-v5-c-button.pf-m-primary,
+html.login-pf .pf-v5-c-button.pf-m-secondary {
+  --pf-v5-c-button--BorderRadius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 9999px;         /* rounded-full */
+  font-family: var(--nexus-font);
+  font-size: 0.875rem;           /* text-sm */
+  font-weight: 500;              /* font-medium */
+  line-height: 1.25rem;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+html.login-pf .pf-v5-c-button.pf-m-primary {
+  border: 1px solid transparent;
+  background-color: var(--nexus-primary);
+  color: #ffffff;
+}
+
+html.login-pf .pf-v5-c-button.pf-m-primary:hover,
+html.login-pf .pf-v5-c-button.pf-m-primary:focus-visible {
+  background-color: var(--nexus-primary-hover);
+}
+
+html.login-pf .pf-v5-c-button.pf-m-secondary {
+  border: 1px solid var(--nexus-field-border);
+  background-color: transparent;
+  color: var(--nexus-label);
+}
+
+html.login-pf .pf-v5-c-button.pf-m-secondary::after {
+  border: 0;
+}
+
+html.login-pf .pf-v5-c-button.pf-m-secondary:hover {
+  background-color: var(--nexus-hover);
+  color: var(--nexus-text);
+}
+
+html.login-pf .pf-v5-c-button.pf-m-primary:focus-visible,
+html.login-pf .pf-v5-c-button.pf-m-secondary:focus-visible {
+  outline: 2px solid var(--nexus-focus);
+  outline-offset: 2px;
+}
+
+html.login-pf .pf-v5-c-button:disabled,
+html.login-pf .pf-v5-c-button.pf-m-disabled {
+  opacity: 0.5;                  /* disabled:opacity-50 */
+  cursor: not-allowed;
+}
+
+html.login-pf .pf-m-block {
+  width: 100%;
+}
+
+/* ---------- Alertas ---------- */
+
+html.login-pf .pf-v5-c-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: var(--nexus-radius-field);
+  background: rgba(148, 163, 184, 0.08);
+  box-shadow: none;
+  color: var(--nexus-text);
+  font-size: 0.875rem;
+}
+
+html.login-pf .pf-v5-c-alert::before {
+  content: none;
+}
+
+html.login-pf .pf-v5-c-alert__title {
+  margin: 0;
+  color: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+html.login-pf .pf-v5-c-alert.pf-m-danger {
+  border-color: rgba(251, 113, 133, 0.45);
+  background: rgba(251, 113, 133, 0.1);
+  color: #fecdd3;                /* rose-200 */
+}
+
+html.login-pf .pf-v5-c-alert.pf-m-warning {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fde68a;                /* amber-200 */
+}
+
+html.login-pf .pf-v5-c-alert.pf-m-success {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: rgba(52, 211, 153, 0.1);
+  color: #a7f3d0;                /* emerald-200 */
+}
+
+html.login-pf .pf-v5-c-alert.pf-m-info {
+  border-color: rgba(129, 140, 248, 0.45);
+  background: rgba(99, 102, 241, 0.12);
+  color: #c7d2fe;                /* indigo-200 */
+}
+
+html.login-pf .pf-v5-c-alert__icon:empty {
+  display: none;
+}
+
+/* ---------- Textos de páginas simples (info, error, logout, página expirada) ---------- */
+
+html.login-pf .instruction,
+html.login-pf #kc-error-message,
+html.login-pf #kc-info-message,
+html.login-pf .pf-v5-c-login__main-body p {
+  margin: 0;
+  color: var(--nexus-label);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+}
+
+html.login-pf .pf-v5-c-login__main-body p + p {
+  margin-top: 0.75rem;
+}
+
+html.login-pf .pf-v5-c-login__main a:not(.pf-v5-c-button) {
+  color: var(--nexus-link);
+  text-decoration: none;
+}
+
+html.login-pf .pf-v5-c-login__main a:not(.pf-v5-c-button):hover {
+  color: var(--nexus-text);
+  text-decoration: underline;
+}
+
+html.login-pf .pf-v5-c-login__main a:focus-visible {
+  outline: 2px solid var(--nexus-focus);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+#kc-logout-confirm .pf-v5-c-form__group {
+  margin-top: 1rem;
+}
+
+#kc-logout-confirm #kc-info-message:not(:empty) {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+/* ---------- Tooltip de reiniciar login (keycloak.v2) ---------- */
+
+html.login-pf .kc-login-tooltip .kc-tooltip-text {
+  background-color: var(--nexus-sidebar);
+  color: var(--nexus-text);
+  border-radius: 0.5rem;
+}
+
+html.login-pf .kc-login-tooltip .kc-tooltip-text::after {
+  border-color: transparent var(--nexus-sidebar) transparent transparent;
+}
+
+/* ---------- Telas pequenas ---------- */
+
+@media (max-width: 480px) {
+  html.login-pf .pf-v5-c-login {
+    align-items: flex-start;
+    padding: 1.5rem 1rem;
+  }
+
+  html.login-pf .pf-v5-c-login__main-header {
+    padding: 1.25rem 1.25rem 0;
+  }
+
+  html.login-pf .pf-v5-c-login__main-body {
+    padding: 1rem 1.25rem 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.login-pf * {
+    transition: none !important;
+  }
+}
