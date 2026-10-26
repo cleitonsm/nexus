@@ -43,7 +43,7 @@ Num realm importado antes de 2026-10-25, aplique o tema sem recriar o banco (Pow
 credenciais de administrador do `.env`, padrão `admin`/`admin`):
 
 ```powershell
-docker compose up -d --build keycloak
+docker compose up -d --build --wait keycloak   # --wait: só volta com o Keycloak saudável
 docker compose exec keycloak /opt/keycloak/bin/kcadm.sh config credentials --server http://localhost:8080 --realm master --user admin --password admin
 docker compose exec keycloak /opt/keycloak/bin/kcadm.sh update realms/nexus -s loginTheme=nexus -s 'displayNameHtml=<span class="nexus-brand">Nexus</span> <span class="nexus-badge">desenvolvimento</span>'
 ```
@@ -51,8 +51,12 @@ docker compose exec keycloak /opt/keycloak/bin/kcadm.sh update realms/nexus -s l
 Se o seletor de idioma não aparecer no login, o realm foi importado só com `pt-BR`. Inclua o inglês:
 
 ```powershell
-docker compose exec keycloak /opt/keycloak/bin/kcadm.sh update realms/nexus -s internationalizationEnabled=true -s 'supportedLocales=["pt-BR","en"]' -s defaultLocale=pt-BR
+'{"internationalizationEnabled":true,"supportedLocales":["pt-BR","en"],"defaultLocale":"pt-BR"}' | docker compose exec -T keycloak /opt/keycloak/bin/kcadm.sh update realms/nexus -f -
+docker compose exec keycloak /opt/keycloak/bin/kcadm.sh get realms/nexus --fields supportedLocales
 ```
+
+O JSON vai pela entrada padrão (`-f -`) porque o Windows PowerShell 5.1 remove as aspas internas de
+argumentos como `-s 'supportedLocales=["pt-BR","en"]'` ao repassá-los ao `docker`.
 
 ## Usuários de exemplo
 
