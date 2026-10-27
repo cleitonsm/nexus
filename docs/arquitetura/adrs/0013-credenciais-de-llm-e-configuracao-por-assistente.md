@@ -32,9 +32,12 @@ os assistentes, embora uma base normativa (SPEC-012) peça valores diferentes de
    ligado e decidindo o fallback; os filtros de `user_groups` e `active` não são configuráveis.
    Busca só densa = vetor esparso vazio; o adaptador do Qdrant faz só a pré-busca densa, com os
    mesmos filtros.
-5. **Acesso.** Credenciais e escolha do LLM do assistente só pelo administrador; parâmetros de
+5. **Fora de um assistente.** A sugestão de assistente (`/assistants/infer`) usa a credencial
+   padrão e envia a ela a pergunta e o catálogo (nome, descrição e prompt inicial) dos
+   assistentes que o usuário pode usar (D13).
+6. **Acesso.** Credenciais e escolha do LLM do assistente só pelo administrador; parâmetros de
    recuperação também pelo curador do assistente; o curador consulta o LLM efetivo (T8).
-6. **Fim da configuração global.** Saem as rotas, os casos de uso e o repositório da SPEC-008
+7. **Fim da configuração global.** Saem as rotas, os casos de uso e o repositório da SPEC-008
    (`/admin/api-key*`, `/admin/llm-settings`); a migração `0011` apaga a chave global e o
    `llm_connection` depois de a `0010` copiá-los para a credencial "Padrão".
 
