@@ -24,6 +24,7 @@ testes são escritos antes da implementação.
 | SPEC-20261025-010 | Navegação da barra lateral e menu de Administração | [`SPEC-010-navegacao-e-menu-de-administracao.md`](SPEC-010-navegacao-e-menu-de-administracao.md) | Aprovada (2026-10-25); código entregue, validação pendente | RF-75 a RF-78 |
 | SPEC-20261025-011 | Tema de login do Keycloak no padrão visual do Nexus | [`SPEC-011-tema-de-login-do-keycloak.md`](SPEC-011-tema-de-login-do-keycloak.md) | Implementada (2026-10-26) | RF-79 a RF-81 |
 | SPEC-20261026-012 | Dispositivos normativos na recuperação e formato da resposta | [`SPEC-012-dispositivos-normativos-e-formato-de-resposta.md`](SPEC-012-dispositivos-normativos-e-formato-de-resposta.md) | Implementada (2026-10-27); D11 a D13 para continuação | RF-82 a RF-86 |
+| SPEC-20261027-013 | Várias chaves de LLM, modelo e parâmetros de recuperação por assistente | [`SPEC-013-chaves-de-llm-e-parametros-por-assistente.md`](SPEC-013-chaves-de-llm-e-parametros-por-assistente.md) | Aprovada (2026-10-27); implementação não iniciada | RF-87 a RF-95 |
 
 ## Status possíveis
 
