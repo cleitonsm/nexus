@@ -112,6 +112,18 @@ from .llm_settings import (
     LLMProvider,
     provider_for_url,
 )
+from .legal_references import (
+    NORMATIVE_MIN_ARTICLES,
+    LegalReference,
+    StructuralHeading,
+    article_from_section_path,
+    describe_items,
+    is_normative,
+    mentions_part,
+    parse_legal_reference,
+    starts_legal_item,
+    structural_heading,
+)
 from .maintenance import IngestionPause
 from .prompt_injection import detect_prompt_injection
 from .usage import (
@@ -251,6 +263,16 @@ __all__ = [
     "VectorStoreGateway",
     "cited_numbers",
     "detect_prompt_injection",
+    "NORMATIVE_MIN_ARTICLES",
+    "LegalReference",
+    "StructuralHeading",
+    "article_from_section_path",
+    "describe_items",
+    "is_normative",
+    "mentions_part",
+    "parse_legal_reference",
+    "starts_legal_item",
+    "structural_heading",
     "evaluate_usage_limits",
     "first_relevant_rank",
     "mean_reciprocal_rank",

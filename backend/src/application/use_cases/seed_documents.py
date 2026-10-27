@@ -32,7 +32,7 @@ def seed_documents(
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
 ) -> int:
-    """Envia os ``*.md`` e ``*.docx`` dos diretorios, processa a fila e confere o resultado.
+    """Envia os ``*.md``, ``*.txt`` e ``*.docx`` dos diretorios, processa a fila e confere o resultado.
 
     ``upload(nome, conteudo)`` devolve o documento pendente (``id`` e
     ``source_name``); ``process_pending()`` devolve um resultado enquanto houver
@@ -44,7 +44,11 @@ def seed_documents(
         upload(path.name, path.read_bytes())
         for directory in directories
         for path in sorted(
-            [*Path(directory).glob("*.md"), *Path(directory).glob("*.docx")]
+            [
+                *Path(directory).glob("*.md"),
+                *Path(directory).glob("*.txt"),
+                *Path(directory).glob("*.docx"),
+            ]
         )
     ]
     status_by_id: dict[object, str | None] = {getattr(item, "id", None): None for item in sent}

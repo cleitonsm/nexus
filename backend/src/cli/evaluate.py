@@ -55,6 +55,7 @@ from src.infrastructure.composition import (
     build_document_indexer,
     build_embedding_gateway,
     llm_connection_defaults,
+    llm_timeout_seconds,
     build_file_storage,
     build_reranker_gateway,
     build_sparse_embedding_gateway,
@@ -290,6 +291,15 @@ def _discard_outdated_index(
     )
 
 
+def _seed_content_type(name: str) -> str:
+    lowered = name.lower()
+    if lowered.endswith(".docx"):
+        return _DOCX_CONTENT_TYPE
+    if lowered.endswith(".txt"):
+        return "text/plain"
+    return "text/markdown"
+
+
 def _seed_documents(
     seed_directories: list[Path],
     assistant_id: AssistantId,
@@ -314,11 +324,7 @@ def _seed_documents(
                 assistant_id=assistant_id.value,
                 source_name=name,
                 raw_content=content,
-                content_type=(
-                    _DOCX_CONTENT_TYPE
-                    if name.lower().endswith(".docx")
-                    else "text/markdown"
-                ),
+                content_type=_seed_content_type(name),
             )
         )
 
@@ -357,6 +363,7 @@ def _build_llm_gateway(session: Session) -> LLMGateway | None:
         api_url=connection.api_url,
         model=connection.model,
         api_key=credential,
+        timeout_seconds=llm_timeout_seconds(),
     )
 
 
@@ -386,6 +393,9 @@ def _parameters(
         "relevance_min_score": str(settings.min_score),
         "context_token_budget": str(settings.context_token_budget),
         "history_token_budget": str(settings.history_token_budget),
+        "structural_context_token_budget": str(
+            settings.structural_context_token_budget
+        ),
         "llm_model": (
             getattr(llm_gateway, "model", None) or "nao utilizado"
             if llm_gateway

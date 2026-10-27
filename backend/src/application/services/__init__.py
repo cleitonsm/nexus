@@ -4,12 +4,14 @@ from .group_validation import UnknownGroupsError, ensure_known_groups
 from .grounded_answer import (
     CITATION_INSTRUCTION,
     DEFAULT_ANSWER_INSTRUCTION,
+    FORMAT_INSTRUCTION,
     REWRITE_INSTRUCTION,
     GroundedAnswer,
     GroundedAnswerGenerator,
     build_answer_instruction,
     build_answer_prompt,
     fit_context,
+    fit_structural_context,
     trim_history,
 )
 from .ingestion import (
@@ -31,12 +33,21 @@ from .index_state import (
     read_index_state,
     record_sparse_parameters,
 )
-from .retrieval import ContextRetriever, RetrievalSettings
+from .retrieval import (
+    ARTICLE_MAX_CHUNKS,
+    ContextRetriever,
+    RetrievalSettings,
+    StructuralContext,
+)
 from .usage import UsageGovernance, UsageSettings
 
 __all__ = [
     "CITATION_INSTRUCTION",
     "DEFAULT_ANSWER_INSTRUCTION",
+    "ARTICLE_MAX_CHUNKS",
+    "FORMAT_INSTRUCTION",
+    "StructuralContext",
+    "fit_structural_context",
     "MISSING_ORIGINAL_REASON",
     "OUTDATED_INDEX_REASON",
     "PIPELINE_VERSION",

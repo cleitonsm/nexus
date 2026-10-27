@@ -139,6 +139,24 @@ class TracedVectorStore:
             span.set_attribute("qdrant.results", len(results))
             return results
 
+    def fetch_article(
+        self,
+        collection_name: CollectionName,
+        article: str,
+        limit: int,
+        *,
+        user_groups: frozenset[str] | None,
+    ) -> list[SearchResult]:
+        with self._tracer.span(
+            "qdrant.fetch_article",
+            {"db.system": "qdrant", "qdrant.limit": limit},
+        ) as span:
+            results = self._inner.fetch_article(
+                collection_name, article, limit, user_groups=user_groups
+            )
+            span.set_attribute("qdrant.results", len(results))
+            return results
+
     def __getattr__(self, name: str):
         return getattr(self._inner, name)
 

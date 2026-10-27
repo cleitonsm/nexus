@@ -22,6 +22,8 @@ SPARSE_VECTOR = "sparse"
 # o trecho segue o acesso do assistente.
 ALLOWED_GROUPS = "allowed_groups"
 DOCUMENT_ID = "document_id"
+# Artigo de documento normativo (SPEC-012, RF-83); ausente fora de artigo.
+LEGAL_ARTICLE = "legal_article"
 _SCROLL_PAGE = 1024
 # Falso enquanto o documento esta em processamento (RN-27, RN-28). Trechos
 # gravados antes da SPEC-005 nao tem o campo e contam como ativos.
@@ -88,10 +90,11 @@ class QdrantVectorStoreGateway:
         self._ensure_lifecycle_indexes(collection_name)
 
     def _ensure_lifecycle_indexes(self, collection_name: CollectionName) -> None:
-        """Indices dos filtros por documento e por trecho ativo (SPEC-005)."""
+        """Indices dos filtros por documento, trecho ativo e artigo (SPEC-005, 012)."""
         for field_name, schema in (
             (DOCUMENT_ID, models.PayloadSchemaType.KEYWORD),
             (ACTIVE, models.PayloadSchemaType.BOOL),
+            (LEGAL_ARTICLE, models.PayloadSchemaType.KEYWORD),
         ):
             self._client.create_payload_index(
                 collection_name=collection_name.value,
@@ -177,6 +180,48 @@ class QdrantVectorStoreGateway:
             for result in (_to_result(point) for point in response.points)
             if result is not None
         ]
+
+    def fetch_article(
+        self,
+        collection_name: CollectionName,
+        article: str,
+        limit: int,
+        *,
+        user_groups: frozenset[str] | None,
+    ) -> list[SearchResult]:
+        """Varre os trechos do artigo com os filtros da busca (RF-43, RN-27).
+
+        O Qdrant 1.11 so ordena o ``scroll`` por campo com indice de intervalo;
+        os trechos de um artigo sao poucos, entao a ordem e feita aqui.
+        """
+        if limit <= 0:
+            return []
+        query_filter = _filter({LEGAL_ARTICLE: article}, user_groups)
+        results: list[SearchResult] = []
+        offset = None
+        try:
+            while len(results) < limit:
+                points, offset = self._client.scroll(
+                    collection_name=collection_name.value,
+                    scroll_filter=query_filter,
+                    limit=min(_SCROLL_PAGE, limit - len(results)),
+                    offset=offset,
+                    with_payload=True,
+                    with_vectors=False,
+                )
+                results.extend(
+                    result
+                    for result in (_to_result(point) for point in points)
+                    if result is not None
+                )
+                if offset is None:
+                    break
+        except UnexpectedResponse as exc:
+            if exc.status_code == _NOT_FOUND:
+                return []
+            raise
+        results.sort(key=lambda item: (item.document_id.value, item.chunk_index or 0))
+        return results[:limit]
 
     def _legacy_dense_search(
         self,
@@ -411,7 +456,8 @@ def _access_filter(user_groups: frozenset[str]) -> models.Filter:
     return models.Filter(should=conditions)
 
 
-def _to_result(point: models.ScoredPoint) -> SearchResult | None:
+def _to_result(point: models.ScoredPoint | models.Record) -> SearchResult | None:
+    """Ponto da busca (com nota) ou da varredura (sem nota: vale 1,0)."""
     payload = point.payload or {}
     document_id = payload.get("document_id")
     chunk_id = payload.get("chunk_id", str(point.id))
@@ -423,14 +469,17 @@ def _to_result(point: models.ScoredPoint) -> SearchResult | None:
     ):
         return None
     page = payload.get("page")
+    chunk_index = payload.get("chunk_index")
+    score = getattr(point, "score", None)
     return SearchResult(
         chunk_id=chunk_id,
         document_id=DocumentId(document_id),
-        score=float(point.score),
+        score=float(score) if score is not None else 1.0,
         text=text,
         source_name=str(payload.get("source_name") or ""),
         section_path=str(payload.get("section_path") or ""),
         page=page if isinstance(page, int) and page >= 1 else None,
+        chunk_index=chunk_index if isinstance(chunk_index, int) else None,
     )
 
 
@@ -449,4 +498,5 @@ def _payload(chunk: VectorChunk) -> dict[str, object]:
         "pipeline_version": chunk.pipeline_version,
         ALLOWED_GROUPS: list(chunk.allowed_groups),
         ACTIVE: chunk.active,
+        LEGAL_ARTICLE: chunk.legal_article,
     }

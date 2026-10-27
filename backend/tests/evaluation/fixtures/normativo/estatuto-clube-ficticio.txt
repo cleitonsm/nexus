@@ -1,0 +1,27 @@
+ESTATUTO DO CLUBE DE XADREZ TORRE BRANCA
+Documento fictício, criado para a avaliação do Nexus (SPEC-012).
+
+CAPÍTULO I
+Da Denominação
+
+Art. 1º O Clube de Xadrez Torre Branca é uma associação recreativa dedicada ao ensino e à prática do xadrez.
+
+Art. 2º O clube funciona às terças e quintas-feiras, das dezenove às vinte e duas horas.
+
+CAPÍTULO II
+Dos Sócios
+
+Art. 3º São categorias de sócios:
+I - fundador;
+II - efetivo;
+III - aluno.
+
+Art. 4º O sócio aluno paga metade da mensalidade durante o primeiro ano.
+
+Art. 5º São deveres do sócio:
+I - manter os tabuleiros e relógios em bom estado;
+II - registrar as partidas oficiais no livro do clube;
+III - respeitar o silêncio na sala de jogo.
+Parágrafo único. O sócio que danificar um relógio de xadrez deve repô-lo em até trinta dias.
+
+Art. 6º O torneio interno anual é disputado em sistema suíço de sete rodadas.

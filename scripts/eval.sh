@@ -23,6 +23,11 @@ EXTRA=()
 if [ "$DATASET" = "nexus-docs-ampliado" ]; then
   EXTRA=(--assistant-name "Nexus Docs Ampliado (avaliacao)" --seed-dir /app/evaluation/fixtures)
 fi
+# SPEC-012: leis e regulamentos ficticios (backend/tests/evaluation/fixtures/normativo),
+# tambem com assistente proprio.
+if [ "$DATASET" = "normativo-ficticio" ]; then
+  EXTRA=(--assistant-name "Nexus Normativo (avaliacao)" --seed-dir /app/evaluation/fixtures/normativo)
+fi
 
 docker compose run --rm --no-deps \
   -e GIT_COMMIT="$GIT_COMMIT" \

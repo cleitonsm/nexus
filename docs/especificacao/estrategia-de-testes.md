@@ -149,6 +149,14 @@ infraestrutura e poucos roteiros ponta a ponta.
 | CT-88 | E2E (Playwright) | Senha errada mostra o erro no cartão; trocar para `en` mostra "Sign in" | RF-79, RF-81 |
 | CT-89 | Manual (visual) | Capturas a 360 px e 1280 px de login, erro, `logout-confirm` e `error`; contraste AA | RNF-35, RNF-36 |
 | CT-90 | Manual (visual) | O shell mantém o fundo `#0f172a` depois da troca das classes `gemini-*` | SPEC-011 D8 |
+| CT-91 | Unitário | Títulos normativos e seus níveis (D4), limiar de 5 artigos (D3), `Art. N` no prefixo de todo trecho do artigo e `legal_article` no trecho | RF-82, RF-83 |
+| CT-92 | Unitário | Tokenização BM25 da D5: `5º`/`5o`/`5ª` → `5`, `artigo`/`art`, `§`/`parágrafo`; documento e pergunta geram os mesmos termos | RF-84 |
+| CT-93 | Unitário | Referência na pergunta (artigo, `-A`, inciso em romano, parágrafo, parágrafo único); perguntas sem referência não disparam | RF-85 |
+| CT-94 | Unitário | Contexto estrutural: artigo inteiro em ordem, grupos do usuário, escolha do documento (D7), orçamento e intervalo omitido (D8), chat com e sem streaming e avaliação | RF-85, RN-34 a RN-36 |
+| CT-95 | Unitário | Instrução de sistema com a regra de formato depois do prompt inicial; aviso de omissão por último | RF-86 |
+| CT-96 | Integração (Docker) | `fetch_article` no Qdrant real: filtro de grupos, `active`, ordem por `chunk_index`, limite e collection inexistente | RF-83, RN-34 |
+| CT-97 | Avaliação | Conjunto `normativo-ficticio`: recall@k e MRR por dispositivo; sem regressão em `nexus-docs` e `nexus-docs-ampliado` | SPEC-012 |
+| CT-98 | Manual | Constituição real no ambiente do autor: "Explique o artigo 5" lista os incisos e parágrafos com citações e resumo; "inciso XI do art. 5º" responde sucinto | SPEC-012 |
 
 ---
 
@@ -216,7 +224,7 @@ em `test_perf_tools.py` e `test_validation_runner.py`.
 Os testes de integração da Fase 4 não sobem o Keycloak: usam o verificador de token real com
 tokens assinados por uma chave gerada no próprio teste.
 
-A suíte unitária soma 705 testes e a de integração 146 (campanha `rc8`, 2026-10-24). Fora do Docker ela roda com o LangGraph substituído por um
+A suíte unitária soma 705 testes e a de integração 146 (campanha `rc8`, 2026-10-24); a SPEC-012 elevou a unitária para 769 e acrescentou 3 de integração (CT-96), em 2026-10-26. Fora do Docker ela roda com o LangGraph substituído por um
 dublê local; dentro do container, na V2 da campanha.
 
 O projeto utiliza `unittest`, sem dependência adicional de framework de testes.

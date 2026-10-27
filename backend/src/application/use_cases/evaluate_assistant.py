@@ -9,7 +9,9 @@ from src.application.dto import EvaluationReportDTO
 from src.application.services import (
     ContextRetriever,
     GroundedAnswerGenerator,
+    StructuralContext,
     fit_context,
+    fit_structural_context,
 )
 from src.domain import (
     AnswerJudge,
@@ -135,17 +137,13 @@ class EvaluateAssistantUseCase:
         source_names: dict[str, str],
         data: EvaluateAssistantInput,
     ) -> EvaluationItemResult:
-        ranked = self._retrieve(self._search_query(item), assistant_id, data)
+        ranked, structural = self._retrieve(self._search_query(item), assistant_id, data)
         sources = tuple(
             source_names.get(hit.document_id.value, "")
             for hit in ranked[: data.k]
         )
-        context = fit_context(
-            self._retriever.select_relevant(ranked),
-            self._token_counter,
-            self._retriever.settings.context_token_budget,
-        )
-        answer, fallback_used = self._answer(item, context)
+        context, notice = self._context(ranked, structural)
+        answer, fallback_used = self._answer(item, context, notice)
         return EvaluationItemResult(
             item_id=item.id,
             out_of_scope=item.out_of_scope,
@@ -187,7 +185,8 @@ class EvaluateAssistantUseCase:
         question: str,
         assistant_id: AssistantId,
         data: EvaluateAssistantInput,
-    ) -> list[SearchResult]:
+    ) -> tuple[list[SearchResult], StructuralContext | None]:
+        """Mesmo caminho do chat: dispositivo citado (SPEC-012) ou reranking."""
         # A avaliacao mede a base inteira e nao tem usuario: sem restricao
         # por documento.
         candidates = self._retriever.search(
@@ -195,16 +194,43 @@ class EvaluateAssistantUseCase:
             question,
             user_groups=None,
         )
-        return self._retriever.rerank(
+        structural = self._retriever.structural_context(
+            assistant_id, question, candidates, user_groups=None
+        )
+        if structural is not None:
+            return structural.results, structural
+        ranked = self._retriever.rerank(
             question,
             candidates,
             limit=max(data.k, self._retriever.settings.top_n),
         )
+        return ranked, None
+
+    def _context(
+        self,
+        ranked: list[SearchResult],
+        structural: StructuralContext | None,
+    ) -> tuple[list[ContextChunk], str | None]:
+        settings = self._retriever.settings
+        if structural is not None:
+            return fit_structural_context(
+                structural.results,
+                structural.reference,
+                self._token_counter,
+                settings.structural_context_token_budget,
+            )
+        context = fit_context(
+            self._retriever.select_relevant(ranked),
+            self._token_counter,
+            settings.context_token_budget,
+        )
+        return context, None
 
     def _answer(
         self,
         item: EvaluationItem,
         context: list[ContextChunk],
+        notice: str | None = None,
     ) -> tuple[str | None, bool | None]:
         """Reproduz a decisao de fallback do grafo do chat, sem persistir nada."""
         if self._answer_generator is None:
@@ -213,6 +239,7 @@ class EvaluateAssistantUseCase:
             question=item.question,
             context_chunks=context,
             history=_history_messages(item),
+            notice=notice,
         )
         if grounded is None:
             return None, True

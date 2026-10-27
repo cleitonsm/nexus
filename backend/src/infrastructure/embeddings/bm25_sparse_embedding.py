@@ -12,6 +12,20 @@ from src.domain import SparseEncodingParameters, SparseVector
 _WORD = re.compile(r"[a-z0-9]+")
 _COMPOUND = re.compile(r"[a-z0-9]+(?:[-./][a-z0-9]+)+")
 
+# SPEC-012 (D5): "Art. 5º" e "artigo 5" precisam gerar os mesmos termos. O
+# ordinal sai antes do NFKD, que transformaria "º" em "o"; "5o" digitado na
+# pergunta vira "5" depois. Mudar estas regras exige reindexar (PIPELINE_VERSION).
+_ORDINAL_MARK = re.compile(r"(\d)\s*[º°ª]")
+_TYPED_ORDINAL = re.compile(r"^(\d+)[oa]$")
+_SECTION_SIGN = re.compile(r"§")
+_LEGAL_SYNONYMS = {
+    "artigo": "art",
+    "artigos": "art",
+    "arts": "art",
+    "paragrafo": "par",
+    "paragrafos": "par",
+}
+
 _STOPWORDS = frozenset(
     """
     a ao aos as à às com como da das de do dos e é em entre essa esse esta
@@ -37,12 +51,26 @@ _FOLDED_STOPWORDS = frozenset(_fold(word) for word in _STOPWORDS)
 
 
 def tokenize(text: str) -> list[str]:
-    """Termos em minusculas e sem acento, mais os compostos inteiros."""
-    folded = _fold(text)
+    """Termos em minusculas e sem acento, mais os compostos inteiros.
+
+    Referencias normativas sao normalizadas (D5 da SPEC-012): ordinais perdem
+    o marcador, ``artigo`` vira ``art`` e ``§``/``paragrafo`` viram ``par``.
+    """
+    marked = _SECTION_SIGN.sub(" par ", _ORDINAL_MARK.sub(r"\1", text))
+    folded = _fold(marked)
     words = [
-        word for word in _WORD.findall(folded) if word not in _FOLDED_STOPWORDS
+        _normalize_word(word)
+        for word in _WORD.findall(folded)
+        if word not in _FOLDED_STOPWORDS
     ]
     return words + _COMPOUND.findall(folded)
+
+
+def _normalize_word(word: str) -> str:
+    ordinal = _TYPED_ORDINAL.match(word)
+    if ordinal is not None:
+        return ordinal.group(1)
+    return _LEGAL_SYNONYMS.get(word, word)
 
 
 def _term_index(term: str) -> int:

@@ -44,6 +44,24 @@ class SeedDocumentsTestCase(IndexingTestCase):
         self.assertEqual({d.status for d in documents}, {DocumentStatus.INDEXED})
         self.assertTrue(all(d.chunk_count > 0 for d in documents))
 
+    def test_text_files_are_uploaded_too(self) -> None:
+        """SPEC-012: o regulamento ficticio do conjunto normativo e ``.txt``."""
+        (self.seed_dir / "regulamento.txt").write_text("Art. 1º Texto.", encoding="utf-8")
+        sent: list[str] = []
+        s = self.scenario
+
+        def upload(name, content):
+            sent.append(name)
+            return s.upload(source_name=name, document_id=name, raw_content=content)
+
+        try:
+            seed_documents(
+                [self.seed_dir], "a1", upload=upload, process_pending=lambda: None
+            )
+        except SeedDocumentsError:
+            pass
+        self.assertIn("regulamento.txt", sent)
+
     def test_docx_files_are_uploaded_too(self) -> None:
         (self.seed_dir / "tabela.docx").write_bytes(b"PK")
         sent: list[str] = []

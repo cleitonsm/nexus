@@ -160,6 +160,10 @@ def retrieval_settings() -> RetrievalSettings:
         history_token_budget=_int_env(
             "HISTORY_TOKEN_BUDGET", defaults.history_token_budget
         ),
+        structural_context_token_budget=_int_env(
+            "STRUCTURAL_CONTEXT_TOKEN_BUDGET",
+            defaults.structural_context_token_budget,
+        ),
     )
 
 
@@ -374,6 +378,19 @@ def _int_env(name: str, default: int) -> int:
         return int(raw)
     except ValueError as exc:
         raise ValueError(f"{name} must be an integer.") from exc
+
+
+# SPEC-012 D14: tempo limite das chamadas ao LLM no chat e na avaliacao. A
+# resposta com um artigo inteiro (dezenas de incisos) pode levar mais de 30 s
+# ate o primeiro trecho; o teste da chave na administracao mantem 15 s.
+DEFAULT_LLM_TIMEOUT_SECONDS = 30.0
+
+
+def llm_timeout_seconds() -> float:
+    value = _float_env("LLM_TIMEOUT_SECONDS", DEFAULT_LLM_TIMEOUT_SECONDS)
+    if value <= 0:
+        raise ValueError("LLM_TIMEOUT_SECONDS must be positive.")
+    return value
 
 
 def _float_env(name: str, default: float) -> float:

@@ -56,6 +56,19 @@ python backend\tests\evaluation\validate_items.py backend\tests\evaluation\datas
 não alterar a base do piloto, e indexa também os arquivos de `fixtures/`. Para testar antes de validar,
 acrescente `--allow-unvalidated` (o relatório registra que o conjunto não foi validado).
 
+## Conjunto normativo (SPEC-012)
+
+`datasets/normativo-ficticio.jsonl` tem **16 itens** redigidos com apoio de IA em 2026-10-26 e 27
+(12 dentro e 4 fora do escopo), **validados pelo autor, como curador, em 2026-10-27**, sobre dois documentos normativos fictícios em `fixtures/normativo/`:
+um regulamento interno (14 artigos, o Art. 5º com 20 incisos e 2 parágrafos) e um estatuto de clube
+com outro Art. 5º, para medir a escolha do documento (D7). As perguntas citam artigo, inciso e
+parágrafo em grafias diferentes ("artigo 5", "art. 5º", "Art 7o") e há perguntas sem número.
+
+Limitação conhecida: `nor-fora-02` (rodadas do campeonato estadual) fica perto do torneio interno de
+sete rodadas do estatuto; foi mantida de propósito, e `nor-fora-04` cobre o mesmo caso sem
+ambiguidade. `scripts\eval.ps1 normativo-ficticio` usa o assistente "Nexus Normativo
+(avaliacao)" e indexa também `fixtures/normativo/` (arquivos `.txt`).
+
 ## Como executar
 
 Com o ambiente no ar (`docker compose up -d --build`):
