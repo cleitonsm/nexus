@@ -116,7 +116,7 @@ def update_assistant_llm(
         # A credencial informada no corpo nao existe: entrada invalida.
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="credential not found",
+            detail={"code": "llm_credential_not_found", "message": "credential not found"},
         ) from exc
     except DomainValidationError as exc:
         raise HTTPException(

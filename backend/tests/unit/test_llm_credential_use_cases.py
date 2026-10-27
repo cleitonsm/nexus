@@ -32,6 +32,7 @@ from src.application.use_cases import (
     GetAssistantRetrievalUseCase,
     GetDefaultChangeImpactUseCase,
     LLMCredentialKeyMissingError,
+    LLMCredentialKeyUnreadableError,
     LLMCredentialNotFoundError,
     LLMCredentialRefInput,
     ListLLMCredentialOptionsUseCase,
@@ -413,6 +414,18 @@ class TestCredentialTestCase(_Base):
         self.credentials.keys.clear()
         with self.assertRaises(LLMCredentialKeyMissingError):
             self.run_test()
+
+    def test_key_that_cannot_be_decrypted_is_not_a_provider_failure(self) -> None:
+        # Chave mestra trocada: erro do servidor, sem chamar o provedor nem auditar o teste.
+        class BrokenCipher(PrefixCipher):
+            def decrypt(self, ciphertext: str) -> str:
+                raise ValueError("Unable to decrypt stored secret.")
+
+        self.cipher = BrokenCipher()
+        with self.assertRaises(LLMCredentialKeyUnreadableError):
+            self.run_test()
+        self.assertEqual(self.calls, [])
+        self.assertNotIn(AuditAction.LLM_CREDENTIAL_TESTED, self.access.audit.actions())
 
     def test_provider_failure_propagates(self) -> None:
         self.gateway.error = RuntimeError("401 do provedor")

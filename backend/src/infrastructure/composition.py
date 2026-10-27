@@ -6,21 +6,29 @@ indexem e recuperem com exatamente o mesmo pipeline e os mesmos parametros.
 
 from __future__ import annotations
 
+import logging
 import os
+from collections.abc import Iterator
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 
 from src.application.services import (
     DocumentIndexer,
     IngestionSettings,
+    ResolvedLLM,
     RetrievalSettings,
     UsageSettings,
 )
 from src.application.use_cases.reindex_assistant import ReindexSettings
 from src.domain import (
     PROVIDER_ENDPOINTS,
+    ChatMessage,
+    ContextChunk,
+    LLMCompletion,
     LLMConnection,
+    LLMGateway,
     LLMPricing,
+    LLMStreamChunk,
     LLMProvider,
     SparseEncodingParameters,
     UsageLimits,
@@ -46,13 +54,17 @@ from src.infrastructure.embeddings import (
     SentenceTransformerEmbeddingGateway,
     SentenceTransformerTokenCounter,
 )
+from src.infrastructure.llm import HttpChatCompletionsLLM
 from src.infrastructure.observability import (
     MetricsRegistry,
     OtlpJsonSpanExporter,
     SpanTracer,
+    TracedLLMGateway,
 )
 from src.infrastructure.reranking import CrossEncoderRerankerGateway
 from src.infrastructure.storage import LocalDocumentFileStorage
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_EMBEDDING_MODEL = (
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -401,3 +413,66 @@ def _float_env(name: str, default: float) -> float:
         return float(raw)
     except ValueError as exc:
         raise ValueError(f"{name} must be a number.") from exc
+
+
+# --- SPEC-013: gateways de LLM a partir da credencial resolvida -------------
+
+
+class UnconfiguredLLMGateway(LLMGateway):
+    MESSAGE = (
+        "No LLM credential with an API key is configured. "
+        "Register one in /admin/llm-credentials first."
+    )
+
+    def generate(
+        self,
+        *,
+        prompt: str,
+        context_chunks: list[ContextChunk],
+        conversation_history: list[ChatMessage],
+    ) -> str:
+        raise ValueError(self.MESSAGE)
+
+    def generate_with_usage(self, **kwargs: object) -> LLMCompletion:
+        raise ValueError(self.MESSAGE)
+
+    def generate_stream(self, **kwargs: object) -> Iterator[LLMStreamChunk]:
+        raise ValueError(self.MESSAGE)
+
+
+def build_llm_gateway_for(resolved: ResolvedLLM) -> LLMGateway:
+    """SPEC-013: gateway da credencial resolvida; a chave so vive em memoria."""
+    connection = resolved.connection
+    logger.info(
+        "llm.gateway.resolved",
+        extra={
+            "has_llm_credential": bool(resolved.api_key),
+            "llm_source": resolved.source.value,
+            "llm_credential_id": resolved.credential_id or "",
+            "llm_provider": connection.provider.value,
+            "llm_model": connection.model,
+            "llm_model_fell_back": resolved.model_fell_back,
+        },
+    )
+    if not resolved.api_key or not connection.model:
+        return UnconfiguredLLMGateway()
+    return TracedLLMGateway(
+        HttpChatCompletionsLLM(
+            api_url=connection.api_url,
+            model=connection.model,
+            api_key=resolved.api_key,
+            timeout_seconds=llm_timeout_seconds(),
+        ),
+        build_tracer(),
+        model=connection.model,
+    )
+
+
+def build_llm_test_gateway(connection: LLMConnection, api_key: str) -> LLMGateway:
+    """RF-89: chamada curta, sem novas tentativas longas."""
+    return HttpChatCompletionsLLM(
+        api_url=connection.api_url,
+        model=connection.model,
+        api_key=api_key,
+        timeout_seconds=15.0,
+    )

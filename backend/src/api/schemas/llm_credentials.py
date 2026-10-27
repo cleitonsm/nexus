@@ -25,7 +25,7 @@ class CreateLLMCredentialRequest(BaseModel):
     api_url: str | None = Field(default=None, max_length=2048)
     models: list[LLMModelPayload] = Field(min_length=1)
     default_model: str = Field(min_length=1, max_length=200)
-    api_key: str = Field(min_length=1, repr=False)
+    api_key: str = Field(min_length=1, max_length=4096, repr=False)
     make_default: bool = False
 
 
@@ -36,7 +36,7 @@ class UpdateLLMCredentialRequest(BaseModel):
     models: list[LLMModelPayload] = Field(min_length=1)
     default_model: str = Field(min_length=1, max_length=200)
     # Vazia mantem a chave; obrigatoria quando provedor ou URL mudam (D12).
-    api_key: str | None = Field(default=None, repr=False)
+    api_key: str | None = Field(default=None, max_length=4096, repr=False)
 
 
 class LLMModelResponse(BaseModel):

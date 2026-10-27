@@ -9,6 +9,11 @@ sairiam de uso e a chave ficaria guardada em dois lugares. As tabelas ficam:
 O ``downgrade`` recria as duas linhas a partir da credencial padrao vigente,
 para o codigo da SPEC-008 voltar a funcionar.
 
+Banco sem chave global: a 0010 nao criou credencial, entao provedor, modelo e
+URL gravados em ``llm_connection`` nao tem para onde ir e saem aqui. Sem chave
+eles nao eram usados; com as rotas da SPEC-008 removidas, nao ha como gravar a
+chave nesse destino. O administrador cadastra a credencial na tela nova.
+
 Revision ID: 0011_drop_global_llm_settings
 Revises: 0010_llm_credentials
 """
@@ -76,6 +81,13 @@ def downgrade() -> None:
     if row is None:
         return
     now = datetime.now(UTC)
+    # Idempotente: substitui o que existir com o mesmo nome.
+    bind.execute(
+        _secret_settings.delete().where(_secret_settings.c.key_name == GLOBAL_KEY_NAME)
+    )
+    bind.execute(
+        _app_settings.delete().where(_app_settings.c.key_name == CONNECTION_KEY_NAME)
+    )
     if row.encrypted_key:
         bind.execute(
             _secret_settings.insert().values(

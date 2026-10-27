@@ -50,6 +50,10 @@ class LLMCredentialKeyMissingError(RuntimeError):
     """A credencial nao tem chave gravada (servico nao configurado)."""
 
 
+class LLMCredentialKeyUnreadableError(RuntimeError):
+    """A chave gravada nao decifra: a chave mestra (NEXUS_SECRETS_KEY) mudou."""
+
+
 # --- DTOs -------------------------------------------------------------------
 
 
@@ -542,13 +546,19 @@ class TestLLMCredentialUseCase(_CredentialUseCase):
         if not encrypted:
             raise LLMCredentialKeyMissingError("credential has no API key configured.")
         connection = credential.connection_for(option.name)
+        try:
+            api_key = self._cipher.decrypt(encrypted)
+        except Exception as exc:  # noqa: BLE001 - chave mestra trocada
+            raise LLMCredentialKeyUnreadableError(
+                "the stored API key cannot be decrypted."
+            ) from exc
         self._audit(
             data.user,
             AuditAction.LLM_CREDENTIAL_TESTED,
             credential.id.value,
             {"llm_model": option.name, "llm_provider": credential.provider.value},
         )
-        gateway = self._gateway_factory(connection, self._cipher.decrypt(encrypted))
+        gateway = self._gateway_factory(connection, api_key)
         answer = gateway.generate(
             prompt=TEST_PROMPT, context_chunks=[], conversation_history=[]
         )

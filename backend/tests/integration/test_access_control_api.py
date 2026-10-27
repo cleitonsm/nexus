@@ -715,6 +715,13 @@ class LLMCredentialsApiTestCase(ApiAccessTestCase):
                 self.assertEqual(response.status_code, 422, response.text)
         self.assertEqual(self.credentials.items, {})
 
+    def test_validation_error_never_echoes_the_key(self) -> None:
+        # RN-39: no Pydantic 2 o erro de campo ausente traz o corpo em ``input``.
+        body = {key: value for key, value in OPENAI_CREDENTIAL.items() if key != "models"}
+        response = self.acting_as(self.admin).post("/admin/llm-credentials", json=body)
+        self.assertEqual(response.status_code, 422)
+        self.assertNotIn("sk-live-ficticia", response.text)
+
     def test_default_cannot_be_deleted_and_answers_409_with_followers(self) -> None:
         created = self.create()
         response = self.acting_as(self.admin).delete(f"/admin/llm-credentials/{created['id']}")

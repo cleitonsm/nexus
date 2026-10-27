@@ -55,7 +55,8 @@ def scan(data: Path) -> tuple[list[dict], list[str]]:
     assistant_id = assistant["id"]
     findings: list[dict] = []
     errors: list[str] = []
-    credential_id: str | None = None
+    # Guardado logo apos o POST: a limpeza remove mesmo se algo falhar depois.
+    created_credentials: list[str] = []
     try:
         status, _ = admin.json(
             "PUT",
@@ -77,7 +78,7 @@ def scan(data: Path) -> tuple[list[dict], list[str]]:
         with FakeLLMServer() as llm:
             # SPEC-013: credencial temporaria so neste assistente; a padrao da
             # pilha nao muda e nenhum texto de teste vai ao provedor real.
-            credential_id = _use_fake_llm(admin, assistant_id, llm.url)
+            _use_fake_llm(admin, assistant_id, llm.url, created_credentials)
             for username, groups in manifest["users"].items():
                 api = Api(token_for(username))
                 for item in documents:
@@ -89,21 +90,33 @@ def scan(data: Path) -> tuple[list[dict], list[str]]:
                         findings, errors,
                     )
     finally:
-        cleanup = Api(token_for("admin.nexus"))
-        cleanup.request("DELETE", f"/assistants/{assistant_id}")
-        if credential_id:
-            cleanup.request("DELETE", f"/admin/llm-credentials/{credential_id}")
+        errors.extend(_cleanup(assistant_id, created_credentials))
     return findings, errors
 
 
-def _use_fake_llm(admin: Api, assistant_id: str, url: str) -> str:
+def _cleanup(assistant_id: str, credentials: list[str]) -> list[str]:
+    """Desfaz a escolha, exclui a credencial e depois o assistente (FK RESTRICT)."""
+    api = Api(token_for("admin.nexus"))
+    problems: list[str] = []
+    for credential_id in credentials:
+        api.json("PUT", f"/assistants/{assistant_id}/llm", payload={})
+        status, _, _ = api.request("DELETE", f"/admin/llm-credentials/{credential_id}")
+        if status not in (204, 404):
+            problems.append(f"limpeza: credencial simulada {credential_id} ficou ({status})")
+    status, _, _ = api.request("DELETE", f"/assistants/{assistant_id}")
+    if status not in (204, 404):
+        problems.append(f"limpeza: assistente {assistant_id} ficou ({status})")
+    return problems
+
+
+def _use_fake_llm(admin: Api, assistant_id: str, url: str, created: list[str]) -> None:
     status, listed = admin.json("GET", "/admin/llm-credentials")
     if status != 200 or not listed["items"]:
         # A simulada viraria a padrao e nao poderia ser excluida (RN-37/RN-38).
         raise RuntimeError(
             "a pilha nao tem credencial de LLM: cadastre a real antes do CT-56."
         )
-    status, created = admin.json(
+    status, credential = admin.json(
         "POST",
         "/admin/llm-credentials",
         payload={
@@ -116,15 +129,15 @@ def _use_fake_llm(admin: Api, assistant_id: str, url: str) -> str:
         },
     )
     if status != 201:
-        raise RuntimeError(f"credencial simulada: {status} {created}")
+        raise RuntimeError(f"credencial simulada: {status} {credential}")
+    created.append(credential["id"])
     status, data = admin.json(
         "PUT",
         f"/assistants/{assistant_id}/llm",
-        payload={"credential_id": created["id"], "model": "modelo-simulado"},
+        payload={"credential_id": credential["id"], "model": "modelo-simulado"},
     )
     if status != 200:
         raise RuntimeError(f"LLM do assistente: {status} {data}")
-    return created["id"]
 
 
 def _check(api, assistant_id, llm, username, item, allowed, findings, errors) -> None:

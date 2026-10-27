@@ -195,7 +195,12 @@ def use_fake_llm(test, api: "Api", url: str, *assistant_ids: str) -> str:
     def remove() -> None:
         for assistant_id in assistant_ids:
             api.json("PUT", f"/assistants/{assistant_id}/llm", payload={})
-        api.request("DELETE", f"/admin/llm-credentials/{credential_id}")
+        status, _, body = api.request("DELETE", f"/admin/llm-credentials/{credential_id}")
+        if status not in (204, 404):
+            # Sobra na pilha: falha visivel, para ninguem rodar a V6 com ela.
+            raise RuntimeError(
+                f"credencial simulada {credential_id} nao foi removida ({status}): {body!r}"
+            )
 
     test.addCleanup(remove)
     for assistant_id in assistant_ids:

@@ -36,10 +36,16 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
+        # RN-39: ``input`` (o corpo recebido) e ``ctx`` podem trazer a chave de
+        # API digitada; o 422 so diz onde e por que, nunca o valor.
+        errors = [
+            {key: value for key, value in item.items() if key not in ("input", "ctx")}
+            for item in exc.errors()
+        ]
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=jsonable_encoder(
-                error_body(status.HTTP_422_UNPROCESSABLE_ENTITY, exc.errors())
+                error_body(status.HTTP_422_UNPROCESSABLE_ENTITY, errors)
             ),
         )
 

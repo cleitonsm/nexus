@@ -43,6 +43,7 @@ from src.application.use_cases import (
     GetDefaultChangeImpactUseCase,
     LLMCredentialDTO,
     LLMCredentialKeyMissingError,
+    LLMCredentialKeyUnreadableError,
     LLMCredentialNotFoundError,
     LLMCredentialRefInput,
     ListLLMCredentialOptionsUseCase,
@@ -230,7 +231,26 @@ def test_llm_credential(
         except LLMCredentialKeyMissingError as exc:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="A credencial não tem chave gravada.",
+                detail={
+                    "code": "llm_credential_key_missing",
+                    "message": "A credencial não tem chave gravada.",
+                },
+            ) from exc
+        except LLMCredentialKeyUnreadableError as exc:
+            # Erro do servidor (chave mestra trocada), nao do provedor.
+            logger.error(
+                "admin.llm_credential_test.decrypt_failed",
+                extra={"credential_id": credential_id},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "llm_credential_key_unreadable",
+                    "message": (
+                        "A chave gravada não pôde ser decifrada. A NEXUS_SECRETS_KEY "
+                        "mudou? Grave a chave de novo."
+                    ),
+                },
             ) from exc
         except DomainValidationError:
             raise
@@ -280,7 +300,8 @@ class _translated:
             return False
         if isinstance(exc, LLMCredentialNotFoundError):
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="credential not found"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "llm_credential_not_found", "message": "credential not found"},
             ) from exc
         if isinstance(exc, DomainValidationError):
             raise HTTPException(

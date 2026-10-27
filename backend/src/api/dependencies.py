@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Callable, Generator, Iterator
+from collections.abc import Callable, Generator
 
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,7 +13,6 @@ from src.application.services import (
     AssistantRuntimeResolver,
     AuditTrail,
     LLMGatewayBuilder,
-    ResolvedLLM,
     build_assistant_runtime,
     resolve_default_llm,
     retrieval_defaults,
@@ -28,16 +27,12 @@ from src.domain import (
     Assistant,
     AuthenticatedUser,
     AuthenticationError,
-    ChatMessage,
-    ContextChunk,
     DocumentFileStorage,
     EmbeddingGateway,
     GroupDirectory,
-    LLMCompletion,
     LLMConnection,
     LLMCredentialRepository,
     LLMGateway,
-    LLMStreamChunk,
     MetricsRecorder,
     RetrievalDefaults,
     SecretCipher,
@@ -47,6 +42,9 @@ from src.domain import (
     Tracer,
 )
 from src.infrastructure.composition import (
+    UnconfiguredLLMGateway,
+    build_llm_gateway_for,
+    build_llm_test_gateway,
     build_document_indexer,
     build_embedding_gateway,
     build_file_storage,
@@ -55,7 +53,6 @@ from src.infrastructure.composition import (
     build_tracer,
     allow_insecure_llm_http,
     llm_connection_defaults,
-    llm_timeout_seconds,
     usage_settings,
     build_reranker_gateway,
     build_sparse_embedding_gateway,
@@ -84,9 +81,7 @@ from src.infrastructure.database import (
 from src.infrastructure.database.llm_credential_repository import (
     PostgresLLMCredentialRepository,
 )
-from src.infrastructure.llm import HttpChatCompletionsLLM
 from src.infrastructure.observability import (
-    TracedLLMGateway,
     TracedTokenVerifier,
     TracedVectorStore,
 )
@@ -274,28 +269,6 @@ def build_context_retriever(
     )
 
 
-class UnconfiguredLLMGateway(LLMGateway):
-    MESSAGE = (
-        "No LLM credential with an API key is configured. "
-        "Register one in /admin/llm-credentials first."
-    )
-
-    def generate(
-        self,
-        *,
-        prompt: str,
-        context_chunks: list[ContextChunk],
-        conversation_history: list[ChatMessage],
-    ) -> str:
-        raise ValueError(self.MESSAGE)
-
-    def generate_with_usage(self, **kwargs: object) -> LLMCompletion:
-        raise ValueError(self.MESSAGE)
-
-    def generate_stream(self, **kwargs: object) -> Iterator[LLMStreamChunk]:
-        raise ValueError(self.MESSAGE)
-
-
 def get_llm_connection_default() -> LLMConnection:
     return llm_connection_defaults()
 
@@ -308,34 +281,6 @@ def get_llm_credential_repository(
     session: Session = Depends(get_session),
 ) -> PostgresLLMCredentialRepository:
     return PostgresLLMCredentialRepository(session=session)
-
-
-def build_llm_gateway_for(resolved: ResolvedLLM) -> LLMGateway:
-    """SPEC-013: gateway da credencial resolvida; a chave so vive em memoria."""
-    connection = resolved.connection
-    logger.info(
-        "llm.gateway.resolved",
-        extra={
-            "has_llm_credential": bool(resolved.api_key),
-            "llm_source": resolved.source.value,
-            "llm_credential_id": resolved.credential_id or "",
-            "llm_provider": connection.provider.value,
-            "llm_model": connection.model,
-            "llm_model_fell_back": resolved.model_fell_back,
-        },
-    )
-    if not resolved.api_key or not connection.model:
-        return UnconfiguredLLMGateway()
-    return TracedLLMGateway(
-        HttpChatCompletionsLLM(
-            api_url=connection.api_url,
-            model=connection.model,
-            api_key=resolved.api_key,
-            timeout_seconds=llm_timeout_seconds(),
-        ),
-        build_tracer(),
-        model=connection.model,
-    )
 
 
 def get_llm_gateway_builder() -> LLMGatewayBuilder:
@@ -385,16 +330,6 @@ def get_assistant_runtime_resolver(
 
 
 LLMTestGatewayFactory = Callable[[LLMConnection, str], LLMGateway]
-
-
-def build_llm_test_gateway(connection: LLMConnection, api_key: str) -> LLMGateway:
-    """RF-89: chamada curta, sem novas tentativas longas."""
-    return HttpChatCompletionsLLM(
-        api_url=connection.api_url,
-        model=connection.model,
-        api_key=api_key,
-        timeout_seconds=15.0,
-    )
 
 
 def get_llm_test_gateway_factory() -> LLMTestGatewayFactory:
