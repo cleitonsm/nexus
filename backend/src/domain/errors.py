@@ -74,3 +74,20 @@ class UsageLimitExceededError(Exception):
         self.window = window
         self.limit = limit
         self.retry_at = retry_at
+
+
+class LLMCredentialInUseError(Exception):
+    """RN-38: credencial padrao, credencial escolhida ou modelo em uso."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        assistant_ids: tuple[str, ...] = (),
+        is_default: bool = False,
+        models: tuple[str, ...] = (),
+    ) -> None:
+        super().__init__(message)
+        self.assistant_ids = assistant_ids
+        self.is_default = is_default
+        self.models = models

@@ -6,12 +6,15 @@ from enum import StrEnum
 
 from .citations import Citation
 from .errors import DomainValidationError, InvalidDocumentStateError
+from .llm_settings import validate_model_name
+from .retrieval_profile import RetrievalProfile
 from .value_objects import (
     AssistantId,
     AssistantName,
     ConversationId,
     DocumentId,
     DocumentMetadata,
+    LLMCredentialId,
     MessageId,
 )
 
@@ -33,8 +36,16 @@ class Assistant:
     description: str | None = None
     initial_prompt: str | None = None
     created_at: datetime = field(default_factory=_utc_now)
+    # SPEC-013: sem credencial, segue a padrao do sistema (RN-40). Seguindo a
+    # padrao, o modelo escolhido tem recuo para o modelo padrao dela quando a
+    # padrao nova nao o tem (D11). Perfil vazio = padrao global (RN-41).
+    llm_credential_id: LLMCredentialId | None = None
+    llm_model: str | None = None
+    retrieval_profile: RetrievalProfile = field(default_factory=RetrievalProfile)
 
     def __post_init__(self) -> None:
+        if self.llm_model is not None:
+            object.__setattr__(self, "llm_model", validate_model_name(self.llm_model))
         if self.description is not None and not self.description.strip():
             raise DomainValidationError(
                 "assistant description must not be empty when provided."

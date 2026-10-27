@@ -27,6 +27,15 @@ class AuditAction(StrEnum):
     LLM_API_KEY_CHANGED = "llm_api_key.changed"
     LLM_API_KEY_TESTED = "llm_api_key.tested"
     LLM_SETTINGS_CHANGED = "llm_settings.changed"
+    # SPEC-013 (as tres acima ficam para a trilha ja gravada)
+    LLM_CREDENTIAL_CREATED = "llm_credential.created"
+    LLM_CREDENTIAL_UPDATED = "llm_credential.updated"
+    LLM_CREDENTIAL_DELETED = "llm_credential.deleted"
+    LLM_CREDENTIAL_DEFAULT_CHANGED = "llm_credential.default_changed"
+    LLM_CREDENTIAL_KEY_ROTATED = "llm_credential.key_rotated"
+    LLM_CREDENTIAL_TESTED = "llm_credential.tested"
+    ASSISTANT_LLM_CHANGED = "assistant.llm_changed"
+    ASSISTANT_RETRIEVAL_SETTINGS_CHANGED = "assistant.retrieval_settings_changed"
     AUDIT_CONSULTED = "audit.consulted"
     AUDIT_PURGED = "audit.purged"
     # SPEC-006

@@ -11,6 +11,7 @@ from .chunking import DocumentChunk, ExtractedDocument
 from .citations import ContextChunk
 from .errors import DomainValidationError
 from .feedback import FeedbackQuery, MessageFeedback
+from .llm_credentials import LLMCredential
 from .llm_settings import LLMConnection
 from .maintenance import IngestionPause
 from .usage import (
@@ -35,6 +36,7 @@ from .value_objects import (
     CollectionName,
     ConversationId,
     DocumentId,
+    LLMCredentialId,
 )
 
 
@@ -206,6 +208,34 @@ class LLMConnectionRepository(Protocol):
     def get(self) -> LLMConnection | None: ...
 
     def save(self, connection: LLMConnection, *, updated_by: str) -> LLMConnection: ...
+
+
+class LLMCredentialRepository(Protocol):
+    """Credenciais de LLM (SPEC-013); a chave so entra e sai cifrada (RN-39)."""
+
+    def list_all(self) -> list[LLMCredential]: ...
+
+    def get(self, credential_id: LLMCredentialId) -> LLMCredential | None: ...
+
+    def get_default(self) -> LLMCredential | None: ...
+
+    def get_encrypted_key(self, credential_id: LLMCredentialId) -> str | None: ...
+
+    def save(
+        self,
+        credential: LLMCredential,
+        *,
+        encrypted_key: str | None,
+        updated_by: str,
+    ) -> LLMCredential:
+        """Cria ou altera; ``encrypted_key=None`` mantem a chave gravada."""
+        ...
+
+    def set_default(self, credential_id: LLMCredentialId, *, updated_by: str) -> None:
+        """RN-37: marca a padrao e desmarca as outras na mesma transacao."""
+        ...
+
+    def delete(self, credential_id: LLMCredentialId) -> bool: ...
 
 
 class EmbeddingGateway(Protocol):

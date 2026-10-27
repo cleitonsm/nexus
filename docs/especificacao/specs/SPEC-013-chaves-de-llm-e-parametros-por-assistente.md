@@ -1,7 +1,7 @@
 # SPEC-013 — Várias chaves de LLM, modelo por assistente e parâmetros de recuperação por assistente
 
 **ID**: SPEC-20261027-013
-**Status**: **Aprovada** em 2026-10-27 por Cleiton Medeiros (D1 a D10 escolhidas pelo autor; todas as recomendações).
+**Status**: **Aprovada** em 2026-10-27 por Cleiton Medeiros (D1 a D10 escolhidas pelo autor; todas as recomendações). D11 acrescentada pelo autor no mesmo dia, na revisão do domínio.
 **Origem**: pedido do autor (2026-10-27): cadastrar quantas chaves de API quiser, com uma padrão;
 cada assistente escolhe a chave e o modelo; híbrida, reranker, candidatos, top_k, limiar e filtros
 configuráveis na tela, sem editar o `.env`.
@@ -44,13 +44,14 @@ configuráveis na tela, sem editar o `.env`.
 | D8 | **Preço opcional por modelo** (autor): entrada e saída por 1K tokens em cada modelo da credencial; sem preço, o consumo usa `LLM_PRICE_*` e a tela avisa. |
 | D9 | **Rotas da SPEC-008 removidas** (autor): `GET/PUT /admin/llm-settings`, `PUT /admin/api-key`, o status e `POST /admin/api-key/test` deixam de existir; a tela "Chaves de LLM" substitui o formulário atual. |
 | D10 | **Migração para a credencial "Padrão"** (autor). A migração `0010` cria a credencial "Padrão" com o ciphertext existente (sem decifrar), o provedor/URL/modelo de `llm_connection` (ou do ambiente) e a marca como padrão. Sem chave gravada, nenhuma credencial é criada e o chat responde como hoje sem chave. |
+| D11 | **Modelo com recuo para quem segue a padrão** (autor, 2026-10-27, revisão do domínio). O assistente sem credencial própria pode guardar um modelo; ao gravar, o modelo precisa existir na credencial padrão vigente. Se a padrão mudar e não tiver esse modelo, a pergunta usa o modelo padrão da nova credencial e registra o recuo; a tela avisa no assistente e, antes de confirmar a troca da padrão ou a remoção de um modelo dela, lista os assistentes que vão recuar. Quem escolheu a credencial continua protegido pela RN-38. |
 
 ## Regras de negócio
 
 - RN-37: existe no máximo uma credencial padrão; havendo pelo menos uma credencial, existe exatamente uma padrão. Marcar outra como padrão desmarca a anterior na mesma transação.
 - RN-38: credencial em uso (padrão do sistema ou escolhida por algum assistente) não pode ser excluída: 409 com a lista de assistentes afetados. Modelo em uso por algum assistente não pode ser removido da lista: 409.
 - RN-39: a chave é gravada só cifrada (`FernetSecretCipher`), nunca volta em resposta, log, span ou auditoria; a API e a tela mostram só nome, provedor, URL, modelos e se a chave está configurada. A rotação troca o ciphertext sem mudar o id.
-- RN-40: resolução do LLM por pergunta: credencial do assistente → credencial padrão → ambiente (`LLM_MODEL`, `LLM_API_URL`, sem chave = comportamento atual). Modelo: o do assistente → o padrão da credencial.
+- RN-40: resolução do LLM por pergunta: credencial do assistente → credencial padrão → ambiente (`LLM_MODEL`, `LLM_API_URL`, sem chave = comportamento atual). Modelo: o do assistente → o padrão da credencial; seguindo a padrão, o modelo ausente nela recua ao padrão dela (D11).
 - RN-41: resolução dos parâmetros de recuperação por pergunta: valor do assistente → ambiente → padrão em código. O `top_k` da requisição (`payload.top_k`) continua sendo só um teto abaixo do `top_k` efetivo.
 - RN-42: os filtros `user_groups` e `active` são aplicados em toda busca, com híbrida ligada ou desligada, e não são configuráveis.
 - RN-43: os parâmetros desta SPEC são todos de consulta; alterá-los não exige reindexação. Tamanho de trecho e parâmetros do BM25 continuam de indexação e fora do escopo.
@@ -60,7 +61,7 @@ configuráveis na tela, sem editar o `.env`.
 - RF-87: o administrador lista, cria, altera (nome, URL em `Personalizado`, modelos, modelo padrão, chave opcional) e exclui credenciais; nome único, até 100 caracteres.
 - RF-88: o administrador marca uma credencial como padrão do sistema (RN-37).
 - RF-89: o administrador testa uma credencial com um dos modelos dela (substitui `POST /admin/api-key/test`).
-- RF-90: o assistente guarda a credencial (opcional, vazio = padrão) e o modelo (opcional, vazio = padrão da credencial); chat, streaming, teste, consumo e avaliação usam a resolução da RN-40.
+- RF-90: o assistente guarda a credencial (opcional, vazio = padrão) e o modelo (opcional, vazio = padrão da credencial; sem credencial, com o recuo da D11); chat, streaming, teste, consumo e avaliação usam a resolução da RN-40.
 - RF-91: o assistente guarda os parâmetros de recuperação opcionais (híbrida, candidatos, top_k, limiar); a consulta mostra valor efetivo e origem de cada um; "restaurar padrão" apaga o valor gravado.
 - RF-92: a tela do assistente ganha a seção "Modelo de linguagem" (credencial e modelo) e a seção "Recuperação" (D3), com o aviso fixo dos filtros de segurança (D2), o aviso de que mudar o limiar exige recalibração e o de que a troca de modelo ou parâmetro invalida a comparação com a linha de base.
 - RF-93: o menu Administração ganha a tela "Chaves de LLM" (lista, padrão, criar, editar, testar, excluir).
