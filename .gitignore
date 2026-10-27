@@ -14,6 +14,9 @@ __pycache__/
 node_modules/
 dist/
 .angular/
+# Saida dos testes e2e do Playwright (frontend/e2e)
+frontend/test-results/
+frontend/playwright-report/
 
 # Docker and local data
 *.log
