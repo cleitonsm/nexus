@@ -39,6 +39,14 @@ from .retrieval import (
     RetrievalSettings,
     StructuralContext,
 )
+from .assistant_runtime import (
+    AssistantRuntime,
+    AssistantRuntimeResolver,
+    LLMGatewayBuilder,
+    assistant_retrieval_settings,
+    build_assistant_runtime,
+    retrieval_defaults,
+)
 from .llm_resolution import (
     LLMSource,
     ResolvedLLM,
@@ -48,6 +56,12 @@ from .llm_resolution import (
 from .usage import UsageGovernance, UsageSettings
 
 __all__ = [
+    "AssistantRuntime",
+    "AssistantRuntimeResolver",
+    "LLMGatewayBuilder",
+    "assistant_retrieval_settings",
+    "build_assistant_runtime",
+    "retrieval_defaults",
     "LLMSource",
     "ResolvedLLM",
     "resolve_llm_for_assistant",

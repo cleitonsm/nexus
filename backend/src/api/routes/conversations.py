@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from src.api.dependencies import (
     get_access_control,
     get_answer_generator,
+    get_assistant_runtime_resolver,
     get_assistant_repository,
     get_context_retriever,
     get_conversation_repository,
@@ -39,6 +40,7 @@ from src.api.schemas import (
 )
 from src.application.dto import ChatStreamEvent, ChatTurnResult, MessageDTO
 from src.application.services import (
+    AssistantRuntimeResolver,
     AccessControl,
     ContextRetriever,
     GroundedAnswerGenerator,
@@ -261,6 +263,7 @@ def chat_with_assistant(
     ),
     context_retriever: ContextRetriever = Depends(get_context_retriever),
     answer_generator: GroundedAnswerGenerator = Depends(get_answer_generator),
+    runtime_resolver: AssistantRuntimeResolver = Depends(get_assistant_runtime_resolver),
     token_counter: TokenCounter = Depends(get_token_counter),
     usage_governance: UsageGovernance | None = Depends(get_usage_governance),
     tracer: Tracer = Depends(get_tracer),
@@ -277,6 +280,7 @@ def chat_with_assistant(
         usage_governance=usage_governance,
         tracer=tracer,
         metrics=metrics,
+        runtime_resolver=runtime_resolver,
     )
     try:
         result = use_case.execute(_chat_input(user, conversation_id, payload))
@@ -304,6 +308,7 @@ def chat_with_assistant_stream(
     ),
     context_retriever: ContextRetriever = Depends(get_context_retriever),
     answer_generator: GroundedAnswerGenerator = Depends(get_answer_generator),
+    runtime_resolver: AssistantRuntimeResolver = Depends(get_assistant_runtime_resolver),
     token_counter: TokenCounter = Depends(get_token_counter),
     usage_governance: UsageGovernance | None = Depends(get_usage_governance),
     tracer: Tracer = Depends(get_tracer),
@@ -327,6 +332,7 @@ def chat_with_assistant_stream(
         usage_governance=usage_governance,
         tracer=tracer,
         metrics=metrics,
+        runtime_resolver=runtime_resolver,
     )
     try:
         events = _in_one_context(

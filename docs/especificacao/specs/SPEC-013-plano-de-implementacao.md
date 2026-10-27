@@ -1,7 +1,7 @@
 # Plano de Implementação — SPEC-013 Várias chaves de LLM, modelo e parâmetros por assistente
 
 **Spec**: [SPEC-20261027-013](SPEC-013-chaves-de-llm-e-parametros-por-assistente.md) (Aprovada em 2026-10-27)
-**Status do plano**: Em andamento — P1 a P3 entregues
+**Status do plano**: Em andamento — P1 a P4 entregues; P4 e P5 vão juntos para o Docker
 **Data**: 2026-10-27
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
@@ -13,14 +13,14 @@
 | P1 Domínio | Entregue: `LLMCredentialId` em `domain/value_objects.py`; `domain/llm_credentials.py` (`LLMModelOption`, `LLMCredential`, regras RN-37/RN-38, recuo da D11), `domain/retrieval_profile.py` (`RetrievalProfile`, `RetrievalDefaults`, `ResolvedRetrievalProfile`, `ParameterOrigin`), `Assistant` com credencial, modelo e perfil, porta `LLMCredentialRepository`, erro `LLMCredentialInUseError`, ações de auditoria novas | `test_llm_credentials` (42), `test_retrieval_profile` (15) |
 | P2 Persistência | Entregue: migração `0010_llm_credentials` (tabela, nome único sem diferenciar maiúsculas, índice único parcial da padrão, FK `RESTRICT`, colunas no assistente, cópia da chave e do `llm_connection` para a credencial "Padrão" e volta no `downgrade`; as linhas antigas ficam até o P5, T9), `LLMCredentialModel`, `PostgresLLMCredentialRepository` (troca da padrão em duas instruções na mesma transação, com a linha travada; a padrão nunca sai pelo próprio `DELETE`; violação de índice ou FK vira erro de domínio, nunca 500), assistente com `update_llm_choice` e `update_retrieval_profile` (sem atualização perdida); conversão JSON em `infrastructure/llm_credential_mapping.py`, fora do pacote `database` para ser testada sem SQLAlchemy | `test_llm_credential_mapping` (9); CT-107 escrito em `tests/integration/test_llm_credentials_storage.py` (6 testes, inclusive as corridas que o banco fecha), a rodar no Docker |
 | P3 Aplicação | Entregue: `manage_llm_credentials.py` (listar, opções para o assistente, criar, alterar com rotação e chave nova obrigatória quando o destino muda (D12), excluir, marcar padrão, impacto da troca da padrão para a D11, testar), `configure_assistant.py` (LLM e recuperação do assistente, com valor efetivo e origem), `services/llm_resolution.py` (RN-40, RN-41, D8, D11; chave decifrada só aqui), porta `SecretCipher` movida para o domínio. Os casos de uso da SPEC-008 saem junto com as rotas, no P5, para a API continuar importável até lá | `test_llm_credential_use_cases` (47) |
-| P4 Pipeline do chat | Pendente | — |
+| P4 Pipeline do chat | Entregue: `services/assistant_runtime.py` (`AssistantRuntime`, `build_assistant_runtime`, `assistant_retrieval_settings`) monta, a cada pergunta, o LLM resolvido e os parâmetros do assistente; `ChatWithAssistantUseCase` recebe `runtime_resolver` (com e sem streaming), troca o recuperador e o gerador da pergunta e registra `chat.runtime.resolved` sem a chave; `RetrievalSettings.hybrid_enabled` e `ContextRetriever.with_settings`: híbrida desligada manda o vetor esparso vazio e o adaptador do Qdrant já faz só a pré-busca densa, com os mesmos filtros (sem mudança no Qdrant); consumo com modelo e preço do assistente (D8); `get_assistant_runtime_resolver` e `get_llm_gateway_builder` nas rotas do chat; `evaluate` e `calibrate_relevance` usam o mesmo caminho e o relatório registra fonte, credencial, recuo e híbrida (RF-95). Testes de integração que trocavam o LLM passam a trocar `get_llm_gateway_builder`. Os testes de pilha real e o `leakage_scan` ainda configuram o LLM pelas rotas da SPEC-008: migram no P5 | `test_assistant_runtime` (13); CT-108 pendente no Docker |
 | P5 API | Pendente | — |
 | P6 Frontend | Pendente | — |
 | P7 Documentação | Pendente | — |
 | P8 Validação no Docker | Pendente | — |
 
 Verificação feita fora do Docker, em Python 3.13 com o LangGraph substituído por um dublê:
-**891 testes unitários passam** (778 anteriores e 113 novos). `ruff` não pôde ser instalado (sem
+**904 testes unitários passam** (778 anteriores e 126 novos). `ruff` não pôde ser instalado (sem
 acesso ao PyPI); uma verificação equivalente à regra F401 (imports sem uso) não achou problemas.
 Revisões do `architecture-guard`: P1 e P2/P3 sem bloqueantes; os achados importantes foram
 corrigidos (P1: T3, T6, T7 e D11; P2/P3: T9, atualização perdida, corridas traduzidas, chave fora

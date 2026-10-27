@@ -15,6 +15,8 @@ from fastapi.testclient import TestClient
 
 from access_support import AccessHarness, TokenFactory, bearer, member
 from src.api.dependencies import (
+    get_llm_credential_repository,
+    get_llm_gateway_builder,
     get_answer_generator,
     get_usage_governance,
     get_assistant_repository,
@@ -77,6 +79,22 @@ ALL_ROUTERS = (
     index_router,
     me_router,
 )
+
+
+class NoCredentials:
+    """SPEC-013: sem credencial gravada; o LLM vem de ``get_llm_gateway_builder``."""
+
+    def list_all(self) -> list:
+        return []
+
+    def get(self, credential_id: object) -> None:
+        return None
+
+    def get_default(self) -> None:
+        return None
+
+    def get_encrypted_key(self, credential_id: object) -> None:
+        return None
 
 
 class AssistantRepository:
@@ -260,6 +278,9 @@ class ApiAccessTestCase(unittest.TestCase):
         overrides[get_answer_generator] = lambda: GroundedAnswerGenerator(
             llm_gateway=FakeContextAwareLLM()
         )
+        # SPEC-013: o LLM e resolvido por assistente; troca-se o construtor.
+        overrides[get_llm_credential_repository] = NoCredentials
+        overrides[get_llm_gateway_builder] = lambda: lambda _resolved: FakeContextAwareLLM()
         overrides[get_token_counter] = WordTokenCounter
         overrides[get_secret_settings_repository] = lambda: self.secrets
         overrides[get_secret_cipher] = Cipher

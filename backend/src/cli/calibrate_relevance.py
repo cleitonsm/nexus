@@ -5,6 +5,9 @@ Uso: python -m src.cli.calibrate_relevance --dataset <arquivo.jsonl>
 Usa a base do assistente piloto ja indexada pelo comando de avaliacao e nao
 chama o LLM. O comando so mostra os numeros: o valor de RELEVANCE_MIN_SCORE
 continua sendo uma decisao de quem opera o sistema.
+
+SPEC-013 (RF-95): com ``--assistant-name`` calibra qualquer assistente, com os
+candidatos, o top_k e a busca hibrida dele; a nota atual mostrada e a dele.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ import os
 import sys
 from pathlib import Path
 
-from src.application.services import ContextRetriever
+from src.application.services import ContextRetriever, assistant_retrieval_settings
 from src.application.use_cases import (
     DEFAULT_THRESHOLDS,
     CalibrateRelevanceInput,
@@ -85,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
                     api_key=os.getenv("QDRANT_API_KEY", "") or None,
                 ),
                 reranker_gateway=build_reranker_gateway(),
-                settings=retrieval_settings(),
+                settings=assistant_retrieval_settings(assistant, retrieval_settings()),
             ),
         ).execute(
             CalibrateRelevanceInput(

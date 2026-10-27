@@ -97,15 +97,19 @@ class UsageGovernance:
         usage: TokenUsage,
         fallback_used: bool = False,
         failed: bool = False,
+        model: str | None = None,
+        pricing: LLMPricing | None = None,
     ) -> UsageRecord:
-        model = self._settings.model
+        """SPEC-013: modelo e preco do assistente; sem eles, os do ambiente (D8)."""
+        model = model or self._settings.model
+        pricing = pricing or self._settings.pricing
         record = self._records.append(
             UsageRecord(
                 id=str(uuid4()),
                 user_id=user.id,
                 model=model,
                 usage=usage,
-                estimated_cost=self._settings.pricing.estimate(usage),
+                estimated_cost=pricing.estimate(usage),
                 conversation_id=conversation_id,
                 assistant_id=assistant_id,
                 user_name=user.name,
@@ -128,6 +132,6 @@ class UsageGovernance:
         self._metrics.increment(
             "nexus_llm_estimated_cost_total",
             float(record.estimated_cost),
-            {**labels, "currency": self._settings.pricing.currency},
+            {**labels, "currency": pricing.currency},
         )
         return record

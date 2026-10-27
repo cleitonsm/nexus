@@ -13,6 +13,7 @@ from src.application.dto import ChatStreamEvent, ChatTurnResult, MessageDTO
 from src.application.services import (
     DEFAULT_ANSWER_INSTRUCTION,
     AccessControl,
+    AssistantRuntimeResolver,
     ContextRetriever,
     GroundedAnswerGenerator,
     StructuralContext,
@@ -33,6 +34,7 @@ from src.domain import (
     ContextChunk,
     ConversationId,
     ConversationRepository,
+    LLMPricing,
     MessageId,
     MessageRole,
     MetricsRecorder,
@@ -118,6 +120,10 @@ class ChatWithAssistantUseCase:
     SPEC-012: se a pergunta cita um artigo que a base tem, o contexto e o
     artigo inteiro, em ordem; reranking e nota minima nao se aplicam a ele.
 
+    SPEC-013: com ``runtime_resolver``, cada pergunta usa a credencial, o modelo
+    e os parametros de recuperacao do assistente (RN-40, RN-41); sem ele, os
+    gateways e parametros injetados (testes e chamadas antigas).
+
     SPEC-004: a conversa precisa ser de quem pergunta (RN-24), o assistente
     precisa estar ao alcance dos seus grupos (RF-42) e a busca so devolve
     documentos que esses grupos podem ler (RF-43). Cada pergunta fica na
@@ -136,8 +142,15 @@ class ChatWithAssistantUseCase:
         usage_governance: UsageGovernance | None = None,
         tracer: Tracer | None = None,
         metrics: MetricsRecorder | None = None,
+        runtime_resolver: AssistantRuntimeResolver | None = None,
     ) -> None:
         self._access = access_control
+        self._runtime_resolver = runtime_resolver
+        self._base_retriever = context_retriever
+        self._base_answer_generator = answer_generator
+        # Modelo e preco do consumo desta pergunta (D8); ``None`` = ambiente.
+        self._usage_model: str | None = None
+        self._usage_pricing: LLMPricing | None = None
         self._usage = usage_governance
         self._tracer = tracer or NoopTracer()
         self._metrics = metrics or NoopMetrics()
@@ -192,6 +205,7 @@ class ChatWithAssistantUseCase:
         assistant = self._assistant_repository.get_by_id(
             conversation.assistant_id
         )
+        self._apply_runtime(assistant)
 
         # Trechos ja ranqueados e tokens ja gastos: se a pergunta falhar
         # depois, a auditoria e o consumo ainda registram o que houve (C9).
@@ -199,6 +213,24 @@ class ChatWithAssistantUseCase:
         self._usage_so_far = TokenUsage()
         return self._initial_state(
             data, conversation_id, conversation.assistant_id, question, assistant
+        )
+
+    def _apply_runtime(self, assistant: Assistant | None) -> None:
+        """SPEC-013: configuracao do assistente para esta pergunta."""
+        self._retriever = self._base_retriever
+        self._answer_generator = self._base_answer_generator
+        self._usage_model = None
+        self._usage_pricing = None
+        if self._runtime_resolver is None or assistant is None:
+            return
+        runtime = self._runtime_resolver(assistant)
+        self._retriever = self._base_retriever.with_settings(runtime.retrieval)
+        self._answer_generator = GroundedAnswerGenerator(llm_gateway=runtime.llm_gateway)
+        self._usage_model = runtime.usage_model
+        self._usage_pricing = runtime.usage_pricing
+        logger.info(
+            "chat.runtime.resolved",
+            extra={"assistant_id": assistant.id.value, **runtime.log_fields()},
         )
 
     def _check_usage_limit(
@@ -364,6 +396,8 @@ class ChatWithAssistantUseCase:
                 usage=usage,
                 fallback_used=fallback_used,
                 failed=failed,
+                model=self._usage_model,
+                pricing=self._usage_pricing,
             )
         except Exception as exc:  # noqa: BLE001 - consumo nao derruba a resposta
             logger.warning(

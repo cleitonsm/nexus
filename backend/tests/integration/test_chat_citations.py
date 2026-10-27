@@ -15,6 +15,8 @@ from fastapi.testclient import TestClient
 
 from access_support import AccessHarness, member
 from src.api.dependencies import (
+    get_llm_credential_repository,
+    get_llm_gateway_builder,
     get_answer_generator,
     get_assistant_repository,
     get_context_retriever,
@@ -52,6 +54,22 @@ from src.infrastructure.llm import FakeContextAwareLLM
 ASSISTANT = AssistantId("assistant-1")
 CONVERSATION = ConversationId("conv-1")
 OWNER = member("user-1", "rh")
+
+
+class NoCredentials:
+    """SPEC-013: sem credencial gravada; o LLM vem de ``get_llm_gateway_builder``."""
+
+    def list_all(self) -> list:
+        return []
+
+    def get(self, credential_id: object) -> None:
+        return None
+
+    def get_default(self) -> None:
+        return None
+
+    def get_encrypted_key(self, credential_id: object) -> None:
+        return None
 
 
 class InMemoryAssistantRepository:
@@ -180,6 +198,9 @@ class ChatCitationsApiTestCase(unittest.TestCase):
         overrides[get_answer_generator] = lambda: GroundedAnswerGenerator(
             llm_gateway=FakeContextAwareLLM()
         )
+        # SPEC-013: o LLM e resolvido por assistente; troca-se o construtor.
+        overrides[get_llm_credential_repository] = NoCredentials
+        overrides[get_llm_gateway_builder] = lambda: lambda _resolved: FakeContextAwareLLM()
         overrides[get_token_counter] = WordTokenCounter
         overrides[get_document_repository] = lambda: KnownDocuments(existing_documents)
         # Limite e consumo tem testes proprios (test_operations_api.py).

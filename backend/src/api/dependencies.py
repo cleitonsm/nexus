@@ -9,10 +9,16 @@ from sqlalchemy.orm import Session
 
 from src.application.services import (
     AccessControl,
+    AssistantRuntime,
+    AssistantRuntimeResolver,
     AuditTrail,
+    LLMGatewayBuilder,
+    ResolvedLLM,
+    build_assistant_runtime,
     ContextRetriever,
     DocumentIndexer,
     GroundedAnswerGenerator,
+    RetrievalSettings,
     UsageGovernance,
     UsageSettings,
 )
@@ -21,6 +27,7 @@ from src.application.use_cases import (
     resolve_llm_connection,
 )
 from src.domain import (
+    Assistant,
     AuthenticatedUser,
     AuthenticationError,
     ChatMessage,
@@ -30,9 +37,11 @@ from src.domain import (
     GroupDirectory,
     LLMCompletion,
     LLMConnection,
+    LLMCredentialRepository,
     LLMGateway,
     LLMStreamChunk,
     MetricsRecorder,
+    SecretCipher,
     SparseEncodingParameters,
     TokenCounter,
     TokenVerifier,
@@ -74,6 +83,9 @@ from src.infrastructure.database import (
     PostgresUsageRecordRepository,
     PostgresUsageSettingsRepository,
     get_db_session,
+)
+from src.infrastructure.database.llm_credential_repository import (
+    PostgresLLMCredentialRepository,
 )
 from src.infrastructure.llm import HttpChatCompletionsLLM
 from src.infrastructure.observability import (
@@ -272,7 +284,10 @@ def build_context_retriever(
 
 
 class UnconfiguredLLMGateway(LLMGateway):
-    MESSAGE = "Global LLM API key is not configured. Set it in /admin/api-key first."
+    MESSAGE = (
+        "No LLM credential with an API key is configured. "
+        "Register one in /admin/llm-credentials first."
+    )
 
     def generate(
         self,
@@ -358,6 +373,86 @@ def build_llm_gateway(
     )
 
 
+def get_llm_credential_repository(
+    session: Session = Depends(get_session),
+) -> PostgresLLMCredentialRepository:
+    return PostgresLLMCredentialRepository(session=session)
+
+
+def build_llm_gateway_for(resolved: ResolvedLLM) -> LLMGateway:
+    """SPEC-013: gateway da credencial resolvida; a chave so vive em memoria."""
+    connection = resolved.connection
+    logger.info(
+        "llm.gateway.resolved",
+        extra={
+            "has_llm_credential": bool(resolved.api_key),
+            "llm_source": resolved.source.value,
+            "llm_credential_id": resolved.credential_id or "",
+            "llm_provider": connection.provider.value,
+            "llm_model": connection.model,
+            "llm_model_fell_back": resolved.model_fell_back,
+        },
+    )
+    if not resolved.api_key or not connection.model:
+        return UnconfiguredLLMGateway()
+    return TracedLLMGateway(
+        HttpChatCompletionsLLM(
+            api_url=connection.api_url,
+            model=connection.model,
+            api_key=resolved.api_key,
+            timeout_seconds=llm_timeout_seconds(),
+        ),
+        build_tracer(),
+        model=connection.model,
+    )
+
+
+def get_llm_gateway_builder() -> LLMGatewayBuilder:
+    """Ponto de troca do LLM nos testes de integracao."""
+    return build_llm_gateway_for
+
+
+def build_assistant_runtime_resolver(
+    *,
+    base_settings: RetrievalSettings,
+    credentials: LLMCredentialRepository,
+    cipher: SecretCipher,
+    gateway_builder: LLMGatewayBuilder,
+) -> AssistantRuntimeResolver:
+    """RN-40/RN-41 a cada pergunta, sobre o padrao do ambiente."""
+    environment = llm_connection_defaults()
+    currency = usage_settings().pricing.currency
+
+    def resolve(assistant: Assistant) -> AssistantRuntime:
+        return build_assistant_runtime(
+            assistant,
+            base_settings=base_settings,
+            credentials=credentials,
+            cipher=cipher,
+            environment=environment,
+            currency=currency,
+            gateway_builder=gateway_builder,
+        )
+
+    return resolve
+
+
+def get_assistant_runtime_resolver(
+    context_retriever: ContextRetriever = Depends(get_context_retriever),
+    credentials: PostgresLLMCredentialRepository = Depends(
+        get_llm_credential_repository
+    ),
+    cipher: FernetSecretCipher = Depends(get_secret_cipher),
+    gateway_builder: LLMGatewayBuilder = Depends(get_llm_gateway_builder),
+) -> AssistantRuntimeResolver:
+    return build_assistant_runtime_resolver(
+        base_settings=context_retriever.settings,
+        credentials=credentials,
+        cipher=cipher,
+        gateway_builder=gateway_builder,
+    )
+
+
 def get_usage_settings(
     connection: LLMConnection = Depends(get_effective_llm_connection),
 ) -> UsageSettings:
@@ -403,7 +498,7 @@ def get_usage_governance(
     return build_usage_governance(session)
 
 
-def get_answer_generator(
-    llm_gateway: LLMGateway = Depends(get_llm_gateway),
-) -> GroundedAnswerGenerator:
-    return GroundedAnswerGenerator(llm_gateway=llm_gateway)
+def get_answer_generator() -> GroundedAnswerGenerator:
+    """Base do chat sem assistente resolvido; com assistente, vale o
+    ``get_assistant_runtime_resolver`` (SPEC-013)."""
+    return GroundedAnswerGenerator(llm_gateway=UnconfiguredLLMGateway())

@@ -15,14 +15,12 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from src.application.use_cases import (
-    resolve_llm_connection,
     CompareEvaluationReportsInput,
     CompareEvaluationReportsUseCase,
     CreateAssistantInput,
     CreateAssistantUseCase,
     EvaluateAssistantInput,
     EvaluateAssistantUseCase,
-    GetGlobalApiKeyValueUseCase,
     IngestDocumentInput,
     IngestDocumentUseCase,
     ProcessNextIngestionJobUseCase,
@@ -32,10 +30,13 @@ from src.application.use_cases import (
 from src.application.services import (
     PIPELINE_VERSION,
     AccessControl,
+    AssistantRuntime,
     AuditTrail,
     ContextRetriever,
     GroundedAnswerGenerator,
+    ResolvedLLM,
     RetrievalSettings,
+    build_assistant_runtime,
     is_index_outdated,
     read_index_state,
 )
@@ -65,19 +66,21 @@ from src.infrastructure.composition import (
     max_file_bytes,
     reranker_model_name,
     retrieval_settings,
+    usage_settings,
 )
 from src.infrastructure.database import (
     PostgresAssistantPermissionRepository,
     PostgresAssistantRepository,
     PostgresAuditLogRepository,
-    PostgresLLMConnectionRepository,
     PostgresDocumentRepository,
     PostgresIndexParametersRepository,
     PostgresIngestionJobQueue,
     PostgresReindexJobRepository,
-    PostgresSecretSettingsRepository,
     SessionLocal,
     run_migrations,
+)
+from src.infrastructure.database.llm_credential_repository import (
+    PostgresLLMCredentialRepository,
 )
 from src.infrastructure.evaluation import (
     EvaluationDatasetError,
@@ -206,8 +209,10 @@ def _run(
         logger.error("evaluation.seed.failed", extra={"problem": str(exc)})
         return EXIT_SEED_FAILED
 
-    llm_gateway = None if args.no_generation else _build_llm_gateway(session)
-    settings = retrieval_settings()
+    # SPEC-013 (RF-95): a mesma configuracao que o chat usaria para o assistente.
+    runtime = _assistant_runtime(session, assistant_id)
+    llm_gateway = None if args.no_generation else _generation_gateway(runtime)
+    settings = runtime.retrieval
     report = EvaluateAssistantUseCase(
         document_repository=document_repository,
         context_retriever=ContextRetriever(
@@ -232,7 +237,7 @@ def _run(
             items=tuple(items),
             k=args.k,
             parameters=_parameters(
-                args, embedding_gateway, llm_gateway, settings
+                args, embedding_gateway, llm_gateway, settings, runtime
             ),
         )
     )
@@ -344,27 +349,58 @@ def _seed_documents(
     logger.info("evaluation.documents.seeded", extra={"documents": indexed})
 
 
-def _build_llm_gateway(session: Session) -> LLMGateway | None:
-    credential = GetGlobalApiKeyValueUseCase(
-        secret_repository=PostgresSecretSettingsRepository(session=session),
-        secret_cipher=FernetSecretCipher(
-            master_key=os.getenv("NEXUS_SECRETS_KEY", "")
-        ),
-    ).execute()
-    if not credential:
-        logger.warning("evaluation.generation.skipped", extra={"reason": "no_llm_credential"})
-        return None
-    # SPEC-008 RF-70: a mesma conexao do chat (tela de administracao ou ambiente).
-    connection = resolve_llm_connection(
-        PostgresLLMConnectionRepository(session=session),
-        llm_connection_defaults(),
+def _assistant_runtime(session: Session, assistant_id: AssistantId) -> AssistantRuntime:
+    assistant = PostgresAssistantRepository(session=session).get_by_id(assistant_id)
+    if assistant is None:  # pragma: no cover - _ensure_assistant acabou de garantir
+        raise RuntimeError("evaluation assistant not found.")
+    return build_assistant_runtime(
+        assistant,
+        base_settings=retrieval_settings(),
+        credentials=PostgresLLMCredentialRepository(session=session),
+        cipher=_cipher(),
+        environment=llm_connection_defaults(),
+        currency=usage_settings().pricing.currency,
+        gateway_builder=_http_gateway,
     )
+
+
+class _NoSecretsKey:
+    """Sem ``NEXUS_SECRETS_KEY`` nao ha como decifrar: segue sem geracao."""
+
+    def encrypt(self, plaintext: str) -> str:  # pragma: no cover - nao usado aqui
+        raise RuntimeError("NEXUS_SECRETS_KEY is not set.")
+
+    def decrypt(self, ciphertext: str) -> str:
+        return ""
+
+
+def _cipher() -> FernetSecretCipher | _NoSecretsKey:
+    master_key = os.getenv("NEXUS_SECRETS_KEY", "")
+    return FernetSecretCipher(master_key=master_key) if master_key.strip() else _NoSecretsKey()
+
+
+class _MissingCredentialLLM:
+    """Sem chave: a avaliacao roda sem geracao (aviso no log)."""
+
+    model = "nao utilizado"
+
+
+def _http_gateway(resolved: ResolvedLLM) -> LLMGateway:
+    if not resolved.api_key:
+        return _MissingCredentialLLM()  # type: ignore[return-value]
     return HttpChatCompletionsLLM(
-        api_url=connection.api_url,
-        model=connection.model,
-        api_key=credential,
+        api_url=resolved.connection.api_url,
+        model=resolved.connection.model,
+        api_key=resolved.api_key,
         timeout_seconds=llm_timeout_seconds(),
     )
+
+
+def _generation_gateway(runtime: AssistantRuntime) -> LLMGateway | None:
+    if not runtime.llm.api_key:
+        logger.warning("evaluation.generation.skipped", extra={"reason": "no_llm_credential"})
+        return None
+    return runtime.llm_gateway
 
 
 def _parameters(
@@ -372,6 +408,7 @@ def _parameters(
     embedding_gateway: EmbeddingGateway,
     llm_gateway: LLMGateway | None,
     settings: RetrievalSettings,
+    runtime: AssistantRuntime,
 ) -> dict[str, str]:
     return {
         "commit": os.getenv("GIT_COMMIT", "unknown"),
@@ -390,17 +427,18 @@ def _parameters(
         "reranker": reranker_model_name(),
         "retrieval_candidates": str(settings.candidates),
         "rerank_top_n": str(settings.top_n),
+        "retrieval_hybrid": "sim" if settings.hybrid_enabled else "nao (so densa)",
         "relevance_min_score": str(settings.min_score),
         "context_token_budget": str(settings.context_token_budget),
         "history_token_budget": str(settings.history_token_budget),
         "structural_context_token_budget": str(
             settings.structural_context_token_budget
         ),
-        "llm_model": (
-            getattr(llm_gateway, "model", None) or "nao utilizado"
-            if llm_gateway
-            else "nao utilizado"
-        ),
+        "llm_model": runtime.llm.connection.model if llm_gateway else "nao utilizado",
+        # SPEC-013 (RF-95): de onde vieram o LLM e os parametros.
+        "llm_source": runtime.llm.source.value,
+        "llm_credential": runtime.llm.credential_name or "ambiente",
+        "llm_model_fell_back": "sim" if runtime.llm.model_fell_back else "nao",
         "judge": "LLMAnswerJudge" if llm_gateway else "nao utilizado",
         "tolerance": str(args.tolerance),
     }
