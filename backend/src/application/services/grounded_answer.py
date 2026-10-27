@@ -8,11 +8,13 @@ from src.domain import (
     ChatMessage,
     Citation,
     ContextChunk,
+    LegalReference,
     LLMCompletion,
     LLMGateway,
     LLMStreamChunk,
     SearchResult,
     TokenCounter,
+    describe_items,
     resolve_citations,
     strip_unknown_markers,
 )
@@ -28,6 +30,27 @@ CITATION_INSTRUCTION = (
     "indique o trecho que a sustenta com o marcador [n], por exemplo [1] ou "
     "[1][3]. Use somente os numeros dos trechos fornecidos e nao afirme nada "
     "que nao esteja neles."
+)
+
+# SPEC-012 (D1, D2): vale para todos os assistentes, depois do prompt inicial.
+# Validacao de 2026-10-27: com "resumo explicativo" solto, o LLM acrescentava
+# finalidades e consequencias fora dos trechos (fidelidade 0,5 no conjunto
+# normativo). O resumo so pode sintetizar o que os trechos dizem (RN-18).
+# Na mesma validacao, o resumo do Art. 7º trocou "quadro social" da associacao
+# por "clube" (termo de outro documento): os termos do texto ficam mantidos.
+FORMAT_INSTRUCTION = (
+    "Seja sucinto: responda primeiro ao que foi perguntado, em poucos "
+    "paragrafos, sem repetir o texto dos trechos. Quando o conteudo pedido for "
+    "enumerado (incisos, alineas, itens, requisitos, etapas), liste todos os "
+    "itens na ordem original, um por linha, com o identificador do item (por "
+    "exemplo \"I -\", \"a)\", \"§ 1º\") e uma frase curta que resuma o "
+    "proprio texto do item, cada um com sua citacao. Depois da lista, escreva "
+    "um resumo explicativo de ate cinco frases que apenas agrupe e sintetize o "
+    "que os trechos dizem, tambem com citacoes. Nunca acrescente finalidades, "
+    "exemplos, consequencias, interpretacoes ou conhecimento que nao estejam "
+    "nos trechos, nem no resumo. Nos itens e no resumo, use os termos do "
+    "proprio texto: nao troque termos tecnicos por sinonimos nem use palavras "
+    "de outro documento."
 )
 
 REWRITE_INSTRUCTION = (
@@ -90,6 +113,25 @@ def fit_context(
     return chunks
 
 
+def fit_structural_context(
+    results: list[SearchResult],
+    reference: LegalReference,
+    token_counter: TokenCounter,
+    budget: int,
+) -> tuple[list[ContextChunk], str | None]:
+    """D8 e RN-36: o dispositivo ate o orcamento e o aviso do que ficou de fora."""
+    chunks = fit_context(results, token_counter, budget)
+    omitted = results[len(chunks):]
+    if not omitted:
+        return chunks, None
+    items = describe_items(item.text for item in omitted) or "os trechos finais"
+    notice = (
+        f"Aviso: o contexto nao inclui todo o Art. {reference.article}; ficaram "
+        f"de fora {items}. Diga isso ao usuario na resposta."
+    )
+    return chunks, notice
+
+
 class GroundedAnswerGenerator:
     """Reescreve a pergunta e gera respostas com citacoes validadas."""
 
@@ -139,12 +181,14 @@ class GroundedAnswerGenerator:
         context_chunks: list[ContextChunk],
         history: list[ChatMessage],
         instruction: str | None = None,
+        notice: str | None = None,
     ) -> str:
         return self.generate_completion(
             question=question,
             context_chunks=context_chunks,
             history=history,
             instruction=instruction,
+            notice=notice,
         ).text
 
     def generate_completion(
@@ -154,6 +198,7 @@ class GroundedAnswerGenerator:
         context_chunks: list[ContextChunk],
         history: list[ChatMessage],
         instruction: str | None = None,
+        notice: str | None = None,
     ) -> LLMCompletion:
         """RN-31: instrucoes no sistema; trechos e pergunta, fora dele."""
         if not context_chunks:
@@ -162,7 +207,7 @@ class GroundedAnswerGenerator:
             prompt=build_answer_prompt(question),
             context_chunks=context_chunks,
             conversation_history=history,
-            system_instruction=build_answer_instruction(instruction),
+            system_instruction=build_answer_instruction(instruction, notice),
         )
         return LLMCompletion(text=completion.text.strip(), usage=completion.usage)
 
@@ -173,6 +218,7 @@ class GroundedAnswerGenerator:
         context_chunks: list[ContextChunk],
         history: list[ChatMessage],
         instruction: str | None = None,
+        notice: str | None = None,
     ) -> Iterator[LLMStreamChunk]:
         """RF-58: mesma chamada da geracao completa, entregue em partes."""
         if not context_chunks:
@@ -181,7 +227,7 @@ class GroundedAnswerGenerator:
             prompt=build_answer_prompt(question),
             context_chunks=context_chunks,
             conversation_history=history,
-            system_instruction=build_answer_instruction(instruction),
+            system_instruction=build_answer_instruction(instruction, notice),
         )
 
     def validate(
@@ -209,6 +255,7 @@ class GroundedAnswerGenerator:
         context_chunks: list[ContextChunk],
         history: list[ChatMessage],
         instruction: str | None = None,
+        notice: str | None = None,
     ) -> GroundedAnswer | None:
         """Gera e valida; usado onde nao ha grafo (avaliacao)."""
         text = self.generate(
@@ -216,14 +263,24 @@ class GroundedAnswerGenerator:
             context_chunks=context_chunks,
             history=history,
             instruction=instruction,
+            notice=notice,
         )
         return self.validate(text, context_chunks)
 
 
-def build_answer_instruction(instruction: str | None) -> str:
-    """Prompt inicial do assistente e regra de citacao: vao no sistema."""
+def build_answer_instruction(
+    instruction: str | None,
+    notice: str | None = None,
+) -> str:
+    """Prompt inicial, regra de formato e regra de citacao vao no sistema.
+
+    ``notice`` e o aviso de conteudo omitido pelo orcamento (RN-36).
+    """
     base = (instruction or "").strip() or DEFAULT_ANSWER_INSTRUCTION
-    return f"{base}\n{CITATION_INSTRUCTION}"
+    parts = [base, FORMAT_INSTRUCTION, CITATION_INSTRUCTION]
+    if notice:
+        parts.append(notice.strip())
+    return "\n".join(parts)
 
 
 def build_answer_prompt(question: str) -> str:

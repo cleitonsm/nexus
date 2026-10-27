@@ -320,6 +320,9 @@ class VectorChunk:
     # Trecho fora das buscas ate o documento terminar de ser indexado
     # (RN-27, RN-28).
     active: bool = True
+    # Artigo de documento normativo a que o trecho pertence ("5", "5-A");
+    # None fora de artigo (SPEC-012, RF-83).
+    legal_article: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -333,6 +336,9 @@ class SearchResult:
     source_name: str = ""
     section_path: str = ""
     page: int | None = None
+    # Posicao do trecho no documento; preenchida pela leitura de artigo
+    # (SPEC-012), que precisa devolver os trechos em ordem.
+    chunk_index: int | None = None
 
 
 class VectorStoreGateway(Protocol):
@@ -370,6 +376,22 @@ class VectorStoreGateway(Protocol):
         voltam (RN-27). Collection inexistente devolve lista vazia. Collection
         anterior a busca hibrida e consultada so pelo vetor denso; se nem isso
         for possivel, levanta ``IndexOutdatedError``.
+        """
+        ...
+
+    def fetch_article(
+        self,
+        collection_name: CollectionName,
+        article: str,
+        limit: int,
+        *,
+        user_groups: frozenset[str] | None,
+    ) -> list[SearchResult]:
+        """Trechos marcados com o artigo, por documento e ``chunk_index`` (RF-83).
+
+        Mesmos filtros da busca hibrida: acesso por ``user_groups`` (RF-43) e
+        so trechos ativos (RN-27). ``score`` e 1,0: a correspondencia e exata.
+        Collection inexistente devolve lista vazia.
         """
         ...
 

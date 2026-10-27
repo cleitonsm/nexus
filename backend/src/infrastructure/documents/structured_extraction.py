@@ -9,7 +9,11 @@ from src.domain import (
     DocumentBlock,
     ExtractedDocument,
     UnreadableDocumentError,
+    is_normative,
+    starts_legal_item,
+    structural_heading,
 )
+from src.domain.legal_references import ARTICLE_LEVEL
 
 from .text_extraction import (
     _extract_doc_text,
@@ -33,6 +37,11 @@ _DOCX_LIST_STYLE = re.compile(r"^list", re.IGNORECASE)
 _PDF_HEADING = re.compile(r"^(\d+(?:\.\d+)*)\.?\s+([^\W\d_].*)$")
 _PDF_HEADING_MAX_WORDS = 12
 _SENTENCE_END = ".;:,!?"
+
+# SPEC-012 (D4): linha logo abaixo de "TITULO II" que o nomeia, como "DOS
+# DIREITOS E GARANTIAS FUNDAMENTAIS" ou "Dos Prazos".
+_SUBTITLE_START = re.compile(r"^D[aeo]s?\s")
+_SUBTITLE_MAX_WORDS = 15
 
 
 class PdfPageOcr(Protocol):
@@ -59,7 +68,11 @@ def extract_supported_document(
         raise ValueError("uploaded file is empty.")
 
     if document_type == ".pdf":
-        blocks = _parse_pdf_pages(_read_pdf_pages(raw_content, ocr))
+        pages = _read_pdf_pages(raw_content, ocr)
+        if _normative_pages(pages):
+            blocks = _parse_normative_pages(pages)
+        else:
+            blocks = _parse_pdf_pages(pages)
     else:
         blocks = _BLOCK_EXTRACTORS[document_type](raw_content)
     if not blocks:
@@ -77,6 +90,15 @@ class _SectionStack:
         while self._entries and self._entries[-1][0] >= level:
             self._entries.pop()
         self._entries.append((level, title))
+
+    def rename_innermost(self, title: str) -> None:
+        if self._entries:
+            level, _ = self._entries[-1]
+            self._entries[-1] = (level, title)
+
+    @property
+    def innermost(self) -> str:
+        return self._entries[-1][1] if self._entries else ""
 
     @property
     def path(self) -> tuple[str, ...]:
@@ -195,6 +217,104 @@ def _parse_plain_text(text: str) -> list[DocumentBlock]:
     return blocks
 
 
+class _NormativeParser:
+    """SPEC-012 (D3, D4): leis e regulamentos, linha a linha.
+
+    TITULO, CAPITULO, Secao, Subsecao e Art. viram o caminho de secoes; o
+    texto do caput, apos o rotulo do artigo, abre o primeiro bloco do artigo.
+    Cada inciso, paragrafo ou alinea abre um bloco; as demais linhas continuam
+    o bloco anterior (quebras de linha do PDF).
+    """
+
+    def __init__(self) -> None:
+        self._sections = _SectionStack()
+        self._builder = _BlockBuilder(self._sections)
+        self._awaiting_subtitle = False
+
+    def page(self, number: int | None) -> None:
+        self._builder.flush()
+        self._builder.page = number
+
+    def boundary(self) -> None:
+        """Fim de paragrafo (linha em branco ou paragrafo do DOCX)."""
+        self._builder.flush()
+
+    def line(self, raw_line: str) -> None:
+        text = " ".join(raw_line.split())
+        if not text:
+            self.boundary()
+            return
+        heading = structural_heading(text)
+        if heading is not None:
+            self._enter(heading.level, heading.title, heading.remainder)
+            return
+        if self._awaiting_subtitle:
+            self._awaiting_subtitle = False
+            if _is_subtitle(text):
+                self._sections.rename_innermost(
+                    f"{self._sections.innermost} - {text}"
+                )
+                return
+        if starts_legal_item(text):
+            self._builder.start(BlockType.PARAGRAPH, text)
+        else:
+            self._builder.add(BlockType.PARAGRAPH, text)
+
+    def table(self, text: str, header_lines: int) -> None:
+        self._builder.flush()
+        self._awaiting_subtitle = False
+        self._builder.blocks.append(
+            DocumentBlock(
+                type=BlockType.TABLE,
+                text=text,
+                section_path=self._sections.path,
+                page=self._builder.page,
+                header_lines=header_lines,
+            )
+        )
+
+    def finish(self) -> list[DocumentBlock]:
+        self._builder.flush()
+        return self._builder.blocks
+
+    def _enter(self, level: int, title: str, remainder: str) -> None:
+        self._builder.flush()
+        self._sections.enter(level, title)
+        # So o rotulo puro ("TITULO II") espera o nome na linha seguinte.
+        self._awaiting_subtitle = level < ARTICLE_LEVEL and len(title.split()) == 2
+        if remainder:
+            self._builder.add(BlockType.PARAGRAPH, remainder)
+
+
+def _is_subtitle(text: str) -> bool:
+    if starts_legal_item(text) or text[-1] in _SENTENCE_END:
+        return False
+    if len(text.split()) > _SUBTITLE_MAX_WORDS:
+        return False
+    uppercase = text.upper() == text and any(char.isalpha() for char in text)
+    return uppercase or _SUBTITLE_START.match(text) is not None
+
+
+def _normative_pages(pages: list[str]) -> bool:
+    return is_normative(line for page in pages for line in page.splitlines())
+
+
+def _parse_normative_pages(pages: list[str]) -> list[DocumentBlock]:
+    parser = _NormativeParser()
+    for page_number, page_text in enumerate(pages, start=1):
+        parser.page(page_number)
+        for line in page_text.splitlines():
+            parser.line(line)
+    return parser.finish()
+
+
+def _parse_normative_text(text: str) -> list[DocumentBlock]:
+    parser = _NormativeParser()
+    for line in text.splitlines():
+        parser.line(line)
+    return parser.finish()
+
+
 def _parse_pdf_pages(pages: list[str]) -> list[DocumentBlock]:
     sections = _SectionStack()
     builder = _BlockBuilder(sections)
@@ -269,9 +389,13 @@ def _read_pdf_pages(
 
 
 def _parse_docx(raw_content: bytes) -> list[DocumentBlock]:
+    items = list(_iter_docx_items(raw_content))
+    paragraphs = (text for kind, text, _ in items if kind is not BlockType.TABLE)
+    if is_normative(paragraphs):
+        return _parse_normative_docx(items)
     sections = _SectionStack()
     blocks: list[DocumentBlock] = []
-    for kind, text, style_name in _iter_docx_items(raw_content):
+    for kind, text, style_name in items:
         if not text.strip():
             continue
         level = _docx_heading_level(style_name)
@@ -288,6 +412,23 @@ def _parse_docx(raw_content: bytes) -> list[DocumentBlock]:
             )
         )
     return blocks
+
+
+def _parse_normative_docx(
+    items: list[tuple[BlockType, str, str]],
+) -> list[DocumentBlock]:
+    """SPEC-012: no DOCX normativo, o texto decide a estrutura, nao o estilo."""
+    parser = _NormativeParser()
+    for kind, text, _ in items:
+        if not text.strip():
+            continue
+        if kind is BlockType.TABLE:
+            rows = text.count("\n") + 1
+            parser.table(text, 1 if rows > 1 else 0)
+            continue
+        parser.line(text)
+        parser.boundary()
+    return parser.finish()
 
 
 def _iter_docx_items(
@@ -347,11 +488,17 @@ def _markdown_blocks(raw_content: bytes) -> list[DocumentBlock]:
 
 
 def _plain_blocks(raw_content: bytes) -> list[DocumentBlock]:
-    return _parse_plain_text(_extract_plain_text(raw_content))
+    return _text_blocks(_extract_plain_text(raw_content))
 
 
 def _doc_blocks(raw_content: bytes) -> list[DocumentBlock]:
-    return _parse_plain_text(_extract_doc_text(raw_content))
+    return _text_blocks(_extract_doc_text(raw_content))
+
+
+def _text_blocks(text: str) -> list[DocumentBlock]:
+    if is_normative(text.splitlines()):
+        return _parse_normative_text(text)
+    return _parse_plain_text(text)
 
 
 _BLOCK_EXTRACTORS: dict[str, Callable[[bytes], list[DocumentBlock]]] = {

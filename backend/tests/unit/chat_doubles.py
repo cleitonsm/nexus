@@ -41,11 +41,39 @@ class SingleVectorEmbeddingGateway:
 
 
 class ScriptedVectorStore:
-    """Devolve, a cada busca, a proxima lista de candidatos roteirizada."""
+    """Devolve, a cada busca, a proxima lista de candidatos roteirizada.
 
-    def __init__(self, results: list[list[SearchResult]]) -> None:
+    ``articles`` roteiriza a leitura de artigo (SPEC-012): trechos por artigo,
+    devolvidos na ordem dada.
+    """
+
+    def __init__(
+        self,
+        results: list[list[SearchResult]],
+        articles: dict[str, list[SearchResult]] | None = None,
+    ) -> None:
         self._results = list(results)
+        self._articles = dict(articles or {})
         self.calls: list[dict[str, object]] = []
+        self.article_calls: list[dict[str, object]] = []
+
+    def fetch_article(
+        self,
+        collection_name: CollectionName,
+        article: str,
+        limit: int,
+        *,
+        user_groups: frozenset[str] | None,
+    ) -> list[SearchResult]:
+        self.article_calls.append(
+            {
+                "collection": collection_name.value,
+                "article": article,
+                "limit": limit,
+                "user_groups": user_groups,
+            }
+        )
+        return list(self._articles.get(article, []))[:limit]
 
     def hybrid_search(
         self,
@@ -179,6 +207,7 @@ def hit(
     source_name: str = "",
     section_path: str = "",
     page: int | None = None,
+    chunk_index: int | None = None,
 ) -> SearchResult:
     return SearchResult(
         chunk_id=f"{document_id}:{index}",
@@ -188,6 +217,27 @@ def hit(
         source_name=source_name,
         section_path=section_path,
         page=page,
+        chunk_index=chunk_index,
+    )
+
+
+def article_hit(
+    document_id: str,
+    index: int,
+    text: str,
+    *,
+    article: str = "5",
+    source_name: str = "regulamento.txt",
+) -> SearchResult:
+    """Trecho como a leitura de artigo devolve: nota 1,0 e ``chunk_index``."""
+    return hit(
+        document_id,
+        text,
+        score=1.0,
+        index=index,
+        source_name=source_name,
+        section_path=f"Art. {article}º",
+        chunk_index=index,
     )
 
 

@@ -16,6 +16,9 @@ $datasetArgs = @()
 if ($dataset -eq "nexus-docs-ampliado") {
     $datasetArgs = @("--assistant-name", "Nexus Docs Ampliado (avaliacao)")
 }
+if ($dataset -eq "normativo-ficticio") {
+    $datasetArgs = @("--assistant-name", "Nexus Normativo (avaliacao)")
+}
 
 docker compose run --rm --no-deps `
     -v ./backend/tests/evaluation:/app/evaluation `

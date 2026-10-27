@@ -12,12 +12,15 @@ from src.domain import (
     SparseEmbeddingGateway,
     SparseEncodingParameters,
     VectorChunk,
+    article_from_section_path,
 )
 
 # Muda sempre que extracao, chunking ou metadados dos chunks mudarem de forma
 # que exija reindexar (RF-32).
 # "3": chunks passam a levar o vetor esparso da busca hibrida (SPEC-003).
-PIPELINE_VERSION = "3"
+# "4": estrutura de documentos normativos, campo ``legal_article`` e nova
+# tokenizacao do BM25 (SPEC-012).
+PIPELINE_VERSION = "4"
 
 
 def hash_content(raw_content: bytes) -> str:
@@ -109,6 +112,7 @@ class DocumentIndexer:
                 sparse_vector=sparse_vector,
                 allowed_groups=groups,
                 active=active,
+                legal_article=article_from_section_path(chunk.section_path),
             )
             for chunk, vector, sparse_vector in zip(chunks, vectors, sparse_vectors)
         ]

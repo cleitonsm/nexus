@@ -15,8 +15,10 @@ from src.application.services import (
     AccessControl,
     ContextRetriever,
     GroundedAnswerGenerator,
+    StructuralContext,
     UsageGovernance,
     fit_context,
+    fit_structural_context,
     trim_history,
 )
 from src.domain import (
@@ -88,6 +90,10 @@ class ChatState(TypedDict):
     user_message: ChatMessage
     search_query: str
     candidates: list[SearchResult]
+    # SPEC-012 (D6): o dispositivo citado na pergunta, quando encontrado.
+    structural: StructuralContext | None
+    # RN-36: aviso de conteudo que o orcamento deixou de fora.
+    context_notice: str | None
     ranked: list[SearchResult]
     relevant: list[SearchResult]
     context_chunks: list[ContextChunk]
@@ -104,9 +110,13 @@ class ChatState(TypedDict):
 class ChatWithAssistantUseCase:
     """Grafo conversacional da SPEC-003.
 
-    historico -> pergunta -> reescrita -> busca hibrida -> reranking ->
-    nota minima -> orcamento -> geracao -> validacao das citacoes -> gravacao.
-    Sem trecho acima da nota minima, ou sem citacao valida, vale o fallback.
+    historico -> pergunta -> reescrita -> busca hibrida -> dispositivo citado
+    -> reranking -> nota minima -> orcamento -> geracao -> validacao das
+    citacoes -> gravacao. Sem trecho acima da nota minima, ou sem citacao
+    valida, vale o fallback.
+
+    SPEC-012: se a pergunta cita um artigo que a base tem, o contexto e o
+    artigo inteiro, em ordem; reranking e nota minima nao se aplicam a ele.
 
     SPEC-004: a conversa precisa ser de quem pergunta (RN-24), o assistente
     precisa estar ao alcance dos seus grupos (RF-42) e a busca so devolve
@@ -251,6 +261,7 @@ class ChatWithAssistantUseCase:
                 context_chunks=state["context_chunks"],
                 history=state["conversation_history"],
                 instruction=state["assistant_initial_prompt"],
+                notice=state["context_notice"],
             ):
                 if chunk.usage is not None:
                     usage = usage + chunk.usage
@@ -381,6 +392,8 @@ class ChatWithAssistantUseCase:
             ),
             "usage": TokenUsage(),
             "injection_flags": 0,
+            "structural": None,
+            "context_notice": None,
         }
 
     def _audit_failure(
@@ -485,6 +498,7 @@ class ChatWithAssistantUseCase:
             ("persist_user_message", self._persist_user_message),
             ("rewrite_question", self._rewrite_question),
             ("retrieve_context", self._retrieve_context),
+            ("structural_context", self._structural_context),
             ("rerank_context", self._rerank_context),
             ("evaluate_context", self._evaluate_context),
             ("build_context", self._build_context),
@@ -493,7 +507,8 @@ class ChatWithAssistantUseCase:
         graph.add_edge("load_conversation_history", "persist_user_message")
         graph.add_edge("persist_user_message", "rewrite_question")
         graph.add_edge("rewrite_question", "retrieve_context")
-        graph.add_edge("retrieve_context", "rerank_context")
+        graph.add_edge("retrieve_context", "structural_context")
+        graph.add_edge("structural_context", "rerank_context")
         graph.add_edge("rerank_context", "evaluate_context")
 
     def _add_finalization(self, graph) -> None:
@@ -597,7 +612,21 @@ class ChatWithAssistantUseCase:
             "candidates": candidates,
         }
 
+    def _structural_context(self, state: ChatState) -> ChatState:
+        structural = self._retriever.structural_context(
+            state["assistant_id"],
+            state["search_query"],
+            state["candidates"],
+            user_groups=state["user_groups"],
+        )
+        return {**state, "structural": structural}
+
     def _rerank_context(self, state: ChatState) -> ChatState:
+        structural = state["structural"]
+        if structural is not None:
+            # D6: o artigo ja vem em ordem; a nota do reranking nao decide.
+            self._ranked_so_far = structural.results
+            return {**state, "ranked": structural.results}
         started_at = time.perf_counter()
         ranked = self._retriever.rerank(
             state["search_query"],
@@ -619,7 +648,11 @@ class ChatWithAssistantUseCase:
         }
 
     def _evaluate_context(self, state: ChatState) -> ChatState:
-        relevant = self._retriever.select_relevant(state["ranked"])
+        structural = state["structural"]
+        if structural is not None:
+            relevant = structural.results
+        else:
+            relevant = self._retriever.select_relevant(state["ranked"])
         logger.info(
             "chat.context.evaluated",
             extra={
@@ -641,14 +674,30 @@ class ChatWithAssistantUseCase:
         return "build_context"
 
     def _build_context(self, state: ChatState) -> ChatState:
-        context_chunks = fit_context(
-            state["relevant"],
-            self._token_counter,
-            self._retriever.settings.context_token_budget,
-        )
+        structural = state["structural"]
+        notice: str | None = None
+        if structural is None:
+            context_chunks = fit_context(
+                state["relevant"],
+                self._token_counter,
+                self._retriever.settings.context_token_budget,
+            )
+        else:
+            context_chunks, notice = fit_structural_context(
+                structural.results,
+                structural.reference,
+                self._token_counter,
+                self._retriever.settings.structural_context_token_budget,
+            )
+            _log_structural(structural, len(context_chunks))
+            # Auditoria (RF-45) so com os trechos que entraram no contexto.
+            used = structural.results[: len(context_chunks)]
+            self._ranked_so_far = used
+            state = {**state, "ranked": used}
         return {
             **state,
             "context_chunks": context_chunks,
+            "context_notice": notice,
             "injection_flags": self._flag_injection(state, context_chunks),
         }
 
@@ -702,6 +751,7 @@ class ChatWithAssistantUseCase:
             context_chunks=state["context_chunks"],
             history=state["conversation_history"],
             instruction=state["assistant_initial_prompt"],
+            notice=state["context_notice"],
         )
         usage = state["usage"] + completion.usage
         self._usage_so_far = usage
@@ -792,3 +842,20 @@ def _turn_attributes(state: ChatState, mode: str) -> dict[str, str]:
 
 def _elapsed_ms(started_at: float) -> int:
     return round((time.perf_counter() - started_at) * 1000)
+
+
+def _log_structural(structural: StructuralContext, context_chunks: int) -> None:
+    """RF-85: so identificadores e contagens; nenhum texto da norma no log."""
+    reference = structural.reference
+    logger.info(
+        "chat.context.structural",
+        extra={
+            "article": reference.article,
+            "item": reference.item,
+            "paragraph": reference.paragraph,
+            "documents": structural.documents,
+            "chunks_read": len(structural.results),
+            "context_chunks": context_chunks,
+            "omitted_chunks": len(structural.results) - context_chunks,
+        },
+    )

@@ -17,6 +17,9 @@ EXTRA=()
 if [ "$DATASET" = "nexus-docs-ampliado" ]; then
   EXTRA=(--assistant-name "Nexus Docs Ampliado (avaliacao)")
 fi
+if [ "$DATASET" = "normativo-ficticio" ]; then
+  EXTRA=(--assistant-name "Nexus Normativo (avaliacao)")
+fi
 
 docker compose run --rm --no-deps \
   -v ./backend/tests/evaluation:/app/evaluation \
