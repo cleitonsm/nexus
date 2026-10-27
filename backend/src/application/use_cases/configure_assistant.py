@@ -8,7 +8,7 @@ auditoria com o antes e o depois (RF-94).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from src.application.services import AccessControl
 from src.domain import (
@@ -28,6 +28,9 @@ from src.domain import (
 
 from .manage_assistant_access import AssistantNotFoundError
 from .manage_llm_credentials import LLMCredentialNotFoundError
+
+READ_LLM_ATTEMPT = "assistant.llm_viewed"
+READ_RETRIEVAL_ATTEMPT = "assistant.retrieval_settings_viewed"
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +101,12 @@ class _AssistantConfiguration:
         self._assistants = assistants
         self._access = access_control
 
+    def _require_curation(self, data: AssistantRefInput | UpdateAssistantRetrievalInput, action: AuditAction) -> None:
+        """Acesso antes da busca: sem acesso, 403 mesmo se o assistente nao existe."""
+        self._access.require_document_management(
+            data.user, AssistantId(data.assistant_id), action
+        )
+
     def _get(self, assistant_id: str) -> Assistant:
         assistant = self._assistants.get_by_id(AssistantId(assistant_id))
         if assistant is None:
@@ -121,10 +130,9 @@ class GetAssistantLLMUseCase(_AssistantConfiguration):
         self._environment = environment
 
     def execute(self, data: AssistantRefInput) -> AssistantLLMDTO:
+        # T8: o curador do assistente consulta; so o administrador altera (D7).
+        self._require_curation(data, READ_LLM_ATTEMPT)
         assistant = self._get(data.assistant_id)
-        self._access.require_document_management(
-            data.user, assistant.id, AuditAction.ASSISTANT_LLM_CHANGED
-        )
         return describe_assistant_llm(
             assistant, credentials=self._credentials, environment=self._environment
         )
@@ -164,12 +172,13 @@ class UpdateAssistantLLMUseCase(_AssistantConfiguration):
             # Escolhida: o modelo precisa estar nela. Seguindo a padrao: na
             # padrao vigente, ao gravar (D11); depois pode recuar.
             credential.model(model)
-        updated = replace(
-            assistant,
-            llm_credential_id=LLMCredentialId(credential_id) if credential_id else None,
-            llm_model=model,
+        saved = self._assistants.update_llm_choice(
+            assistant.id,
+            credential_id=LLMCredentialId(credential_id) if credential_id else None,
+            model=model,
         )
-        saved = self._assistants.save(updated)
+        if saved is None:
+            raise AssistantNotFoundError("assistant not found.")
         self._access.audit(
             data.user,
             AuditAction.ASSISTANT_LLM_CHANGED,
@@ -206,10 +215,8 @@ class GetAssistantRetrievalUseCase(_AssistantConfiguration):
         self._defaults = defaults
 
     def execute(self, data: AssistantRefInput) -> AssistantRetrievalDTO:
+        self._require_curation(data, READ_RETRIEVAL_ATTEMPT)
         assistant = self._get(data.assistant_id)
-        self._access.require_document_management(
-            data.user, assistant.id, AuditAction.ASSISTANT_RETRIEVAL_SETTINGS_CHANGED
-        )
         return describe_retrieval(assistant.retrieval_profile, self._defaults)
 
 
@@ -227,10 +234,8 @@ class UpdateAssistantRetrievalUseCase(_AssistantConfiguration):
         self._defaults = defaults
 
     def execute(self, data: UpdateAssistantRetrievalInput) -> AssistantRetrievalDTO:
+        self._require_curation(data, AuditAction.ASSISTANT_RETRIEVAL_SETTINGS_CHANGED)
         assistant = self._get(data.assistant_id)
-        self._access.require_document_management(
-            data.user, assistant.id, AuditAction.ASSISTANT_RETRIEVAL_SETTINGS_CHANGED
-        )
         profile = RetrievalProfile(
             hybrid_enabled=data.hybrid_enabled,
             candidates=data.candidates,
@@ -238,7 +243,9 @@ class UpdateAssistantRetrievalUseCase(_AssistantConfiguration):
             min_score=data.min_score,
         )
         profile.validate_against(self._defaults)
-        saved = self._assistants.save(replace(assistant, retrieval_profile=profile))
+        saved = self._assistants.update_retrieval_profile(assistant.id, profile)
+        if saved is None:
+            raise AssistantNotFoundError("assistant not found.")
         self._access.audit(
             data.user,
             AuditAction.ASSISTANT_RETRIEVAL_SETTINGS_CHANGED,

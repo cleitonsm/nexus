@@ -1,7 +1,7 @@
 # Plano de Implementação — SPEC-013 Várias chaves de LLM, modelo e parâmetros por assistente
 
 **Spec**: [SPEC-20261027-013](SPEC-013-chaves-de-llm-e-parametros-por-assistente.md) (Aprovada em 2026-10-27)
-**Status do plano**: Em andamento — P1 entregue
+**Status do plano**: Em andamento — P1 a P3 entregues
 **Data**: 2026-10-27
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
@@ -11,8 +11,8 @@
 |--------|------------------------|----------------|
 | P0 Decisões | D1 a D10 escolhidas pelo autor em 2026-10-27 (todas as recomendações) | Registro na SPEC |
 | P1 Domínio | Entregue: `LLMCredentialId` em `domain/value_objects.py`; `domain/llm_credentials.py` (`LLMModelOption`, `LLMCredential`, regras RN-37/RN-38, recuo da D11), `domain/retrieval_profile.py` (`RetrievalProfile`, `RetrievalDefaults`, `ResolvedRetrievalProfile`, `ParameterOrigin`), `Assistant` com credencial, modelo e perfil, porta `LLMCredentialRepository`, erro `LLMCredentialInUseError`, ações de auditoria novas | `test_llm_credentials` (42), `test_retrieval_profile` (15) |
-| P2 Persistência | Entregue: migração `0010_llm_credentials` (tabela, índice único parcial da padrão, FK `RESTRICT`, colunas no assistente, cópia da chave e do `llm_connection` para a credencial "Padrão" e volta no `downgrade`), `LLMCredentialModel`, `PostgresLLMCredentialRepository` (troca da padrão em duas instruções na mesma transação), mapeamento do assistente; conversão JSON em `infrastructure/llm_credential_mapping.py`, fora do pacote `database` para ser testada sem SQLAlchemy | `test_llm_credential_mapping` (9); CT-107 escrito em `tests/integration/test_llm_credentials_storage.py` (6 testes), a rodar no Docker |
-| P3 Aplicação | Entregue: `manage_llm_credentials.py` (listar, opções para o assistente, criar, alterar com rotação, excluir, marcar padrão, impacto da troca da padrão para a D11, testar), `configure_assistant.py` (LLM e recuperação do assistente, com valor efetivo e origem), `services/llm_resolution.py` (RN-40, RN-41, D8, D11; chave decifrada só aqui), porta `SecretCipher` movida para o domínio. Os casos de uso da SPEC-008 saem junto com as rotas, no P5, para a API continuar importável até lá | `test_llm_credential_use_cases` (41) |
+| P2 Persistência | Entregue: migração `0010_llm_credentials` (tabela, nome único sem diferenciar maiúsculas, índice único parcial da padrão, FK `RESTRICT`, colunas no assistente, cópia da chave e do `llm_connection` para a credencial "Padrão" e volta no `downgrade`; as linhas antigas ficam até o P5, T9), `LLMCredentialModel`, `PostgresLLMCredentialRepository` (troca da padrão em duas instruções na mesma transação, com a linha travada; a padrão nunca sai pelo próprio `DELETE`; violação de índice ou FK vira erro de domínio, nunca 500), assistente com `update_llm_choice` e `update_retrieval_profile` (sem atualização perdida); conversão JSON em `infrastructure/llm_credential_mapping.py`, fora do pacote `database` para ser testada sem SQLAlchemy | `test_llm_credential_mapping` (9); CT-107 escrito em `tests/integration/test_llm_credentials_storage.py` (6 testes, inclusive as corridas que o banco fecha), a rodar no Docker |
+| P3 Aplicação | Entregue: `manage_llm_credentials.py` (listar, opções para o assistente, criar, alterar com rotação, excluir, marcar padrão, impacto da troca da padrão para a D11, testar), `configure_assistant.py` (LLM e recuperação do assistente, com valor efetivo e origem), `services/llm_resolution.py` (RN-40, RN-41, D8, D11; chave decifrada só aqui), porta `SecretCipher` movida para o domínio. Os casos de uso da SPEC-008 saem junto com as rotas, no P5, para a API continuar importável até lá | `test_llm_credential_use_cases` (46) |
 | P4 Pipeline do chat | Pendente | — |
 | P5 API | Pendente | — |
 | P6 Frontend | Pendente | — |
@@ -20,10 +20,13 @@
 | P8 Validação no Docker | Pendente | — |
 
 Verificação feita fora do Docker, em Python 3.13 com o LangGraph substituído por um dublê:
-**835 testes unitários passam** (778 anteriores e 57 novos). `ruff` não pôde ser instalado (sem
-acesso ao PyPI); uma verificação equivalente à regra F401 (imports sem uso) não achou problemas. Revisão do `architecture-guard`: sem bloqueantes; os quatro achados importantes e os menores foram corrigidos (T3, T6, T7 e D11).
-**Não verificado**: nada de persistência, API ou tela existe ainda; o domínio novo não é usado
-pelo restante do código até o P2 e o P3.
+**890 testes unitários passam** (778 anteriores e 112 novos). `ruff` não pôde ser instalado (sem
+acesso ao PyPI); uma verificação equivalente à regra F401 (imports sem uso) não achou problemas.
+Revisões do `architecture-guard`: P1 e P2/P3 sem bloqueantes; os achados importantes foram
+corrigidos (P1: T3, T6, T7 e D11; P2/P3: T9, atualização perdida, corridas traduzidas, chave fora
+do `repr` das entradas, 403 antes de 404, nome único sem diferenciar maiúsculas).
+**Não verificado**: migração e repositórios no PostgreSQL real (CT-107, no Docker); nada do P2 e
+do P3 é usado pelo chat, pela API ou pela tela até o P4 e o P5.
 
 ## 1. Ordem de execução
 
@@ -70,3 +73,6 @@ Escolhas de implementação que não mudam comportamento visível; ficam aqui pa
 | T5 | As ações de auditoria antigas ficam no enum. | A trilha já gravada continua legível na tela de auditoria. |
 | T6 | `LLMCredential` recusa, em qualquer construção, URL com usuário/senha, parâmetros ou fragmento, e preset com URL diferente da do provedor. | RN-39: o repositório e a migração `0010` constroem sem passar por `build`; uma chave na URL vazaria na API e na auditoria. |
 | T7 | Ao recusar a remoção da credencial padrão, o 409 lista também os assistentes que a seguem sem escolha. | A tela mostra quem seria afetado (risco da SPEC). |
+| T8 | O curador do assistente consulta a credencial e o modelo efetivos (sem a chave); só o administrador altera. | A D7 restringe a escolha; a seção "Modelo de linguagem" (RF-92) aparece na tela que o curador já usa. |
+| T9 | A `0010` só copia a chave e o `llm_connection`; as linhas antigas saem numa migração própria no P5, junto com as rotas da SPEC-008 (D9). A `0010` foi ajustada antes de ser aplicada em qualquer banco (só existe neste branch). | Até o P4 o chat ainda lê o caminho antigo; apagar antes deixaria o chat sem chave. |
+| T10 | A migração lê `LLM_API_URL` e `LLM_MODEL` quando não há `llm_connection` gravado: o container que roda o Alembic (a API, na subida) precisa do mesmo ambiente. | D10. Registrar no P7/P8. |

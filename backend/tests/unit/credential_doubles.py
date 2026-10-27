@@ -102,8 +102,21 @@ class InMemoryAssistants:
     def delete(self, assistant_id: AssistantId) -> bool:
         return self.items.pop(assistant_id.value, None) is not None
 
-    def update(self, assistant_id: str, **changes: object) -> None:
-        self.items[assistant_id] = replace(self.items[assistant_id], **changes)
+    def update_llm_choice(self, assistant_id, *, credential_id, model):
+        if assistant_id.value not in self.items:
+            return None
+        self.items[assistant_id.value] = replace(
+            self.items[assistant_id.value], llm_credential_id=credential_id, llm_model=model
+        )
+        return self.items[assistant_id.value]
+
+    def update_retrieval_profile(self, assistant_id, profile):
+        if assistant_id.value not in self.items:
+            return None
+        self.items[assistant_id.value] = replace(
+            self.items[assistant_id.value], retrieval_profile=profile
+        )
+        return self.items[assistant_id.value]
 
 
 class RecordingGateway:

@@ -26,11 +26,13 @@ from src.domain import (
     IngestionJobStatus,
     MessageId,
     MessageRole,
+    ConcurrentChangeError,
     JobOwnershipLostError,
     LLMCredentialId,
     ReindexInProgressError,
     ReindexJob,
     ReindexStatus,
+    RetrievalProfile,
 )
 
 from src.infrastructure.llm_credential_mapping import (
@@ -65,21 +67,65 @@ class PostgresAssistantRepository:
                 description=assistant.description,
                 initial_prompt=assistant.initial_prompt,
                 created_at=assistant.created_at,
+                # SPEC-013: so na criacao; depois, pelos metodos proprios.
+                llm_credential_id=(
+                    assistant.llm_credential_id.value
+                    if assistant.llm_credential_id is not None
+                    else None
+                ),
+                llm_model=assistant.llm_model,
+                retrieval_profile=profile_to_json(assistant.retrieval_profile),
             )
             self._session.add(model)
         else:
             model.name = assistant.name.value
             model.description = assistant.description
             model.initial_prompt = assistant.initial_prompt
-        # SPEC-013: credencial, modelo e perfil de recuperacao.
-        model.llm_credential_id = (
-            assistant.llm_credential_id.value
-            if assistant.llm_credential_id is not None
-            else None
-        )
-        model.llm_model = assistant.llm_model
-        model.retrieval_profile = profile_to_json(assistant.retrieval_profile)
         commit_or_rollback(self._session)
+        self._session.refresh(model)
+        return _assistant_to_entity(model)
+
+    def update_llm_choice(
+        self,
+        assistant_id: AssistantId,
+        *,
+        credential_id: LLMCredentialId | None,
+        model: str | None,
+    ) -> Assistant | None:
+        """So as duas colunas: nao desfaz o perfil gravado ao mesmo tempo."""
+        values = {
+            "llm_credential_id": credential_id.value if credential_id else None,
+            "llm_model": model,
+        }
+        try:
+            return self._update_columns(assistant_id, values)
+        except IntegrityError as exc:
+            # A credencial foi excluida entre a conferencia e a gravacao.
+            raise ConcurrentChangeError("credential changed concurrently.") from exc
+
+    def update_retrieval_profile(
+        self, assistant_id: AssistantId, profile: RetrievalProfile
+    ) -> Assistant | None:
+        return self._update_columns(
+            assistant_id, {"retrieval_profile": profile_to_json(profile)}
+        )
+
+    def _update_columns(
+        self, assistant_id: AssistantId, values: dict[str, object]
+    ) -> Assistant | None:
+        try:
+            result = self._session.execute(
+                update(AssistantModel)
+                .where(AssistantModel.id == assistant_id.value)
+                .values(**values)
+            )
+        except BaseException:
+            self._session.rollback()
+            raise
+        commit_or_rollback(self._session)
+        if result.rowcount == 0:
+            return None
+        model = self._session.get(AssistantModel, assistant_id.value)
         self._session.refresh(model)
         return _assistant_to_entity(model)
 

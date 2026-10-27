@@ -12,6 +12,7 @@ from .citations import ContextChunk
 from .errors import DomainValidationError
 from .feedback import FeedbackQuery, MessageFeedback
 from .llm_credentials import LLMCredential
+from .retrieval_profile import RetrievalProfile
 from .llm_settings import LLMConnection
 from .maintenance import IngestionPause
 from .usage import (
@@ -41,7 +42,26 @@ from .value_objects import (
 
 
 class AssistantRepository(Protocol):
-    def save(self, assistant: Assistant) -> Assistant: ...
+    def save(self, assistant: Assistant) -> Assistant:
+        """Cria ou altera nome, descricao e prompt; credencial, modelo e perfil
+        so entram na criacao (os metodos abaixo os alteram, sem atualizacao perdida)."""
+        ...
+
+    def update_llm_choice(
+        self,
+        assistant_id: AssistantId,
+        *,
+        credential_id: LLMCredentialId | None,
+        model: str | None,
+    ) -> Assistant | None:
+        """SPEC-013: grava so credencial e modelo; ``None`` se o assistente nao existe."""
+        ...
+
+    def update_retrieval_profile(
+        self, assistant_id: AssistantId, profile: RetrievalProfile
+    ) -> Assistant | None:
+        """SPEC-013: grava so o perfil de recuperacao."""
+        ...
 
     def list_all(self) -> list[Assistant]: ...
 

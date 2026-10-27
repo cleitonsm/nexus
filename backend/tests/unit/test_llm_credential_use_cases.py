@@ -171,6 +171,23 @@ class CreateCredentialTestCase(_Base):
             self.create(default_model="gpt-5")
         self.assertEqual(self.credentials.items, {})
 
+    def test_inputs_never_show_the_key_in_repr(self) -> None:
+        # RN-39: tracebacks e logs de entrada nao podem carregar a chave.
+        create = CreateLLMCredentialInput(
+            user=admin(), name="x", provider="openai",
+            models=(LLMModelInput(name="m"),), default_model="m", api_key=FAKE_KEY,
+        )
+        update = UpdateLLMCredentialInput(
+            user=admin(), credential_id="c", name="x", provider="openai",
+            models=(LLMModelInput(name="m"),), default_model="m", api_key=FAKE_KEY,
+        )
+        self.assertNotIn(FAKE_KEY, repr(create))
+        self.assertNotIn(FAKE_KEY, repr(update))
+
+    def test_created_default_lists_its_followers(self) -> None:
+        self.assistants.save(assistant("rh"))
+        self.assertEqual(self.create().following_assistant_ids, ("rh",))
+
     def test_only_admin(self) -> None:
         # CT-105: negativa auditada.
         with self.assertRaises(AccessDeniedError):
@@ -329,6 +346,13 @@ class DeleteAndDefaultTestCase(_Base):
         self.assertEqual(
             self.access.audit.actions().count(AuditAction.ACCESS_DENIED), 4
         )
+        attempted = [
+            event.details["attempted_action"]
+            for event in self.access.audit.events
+            if event.action == AuditAction.ACCESS_DENIED
+        ]
+        # Leituras negadas aparecem como leitura, nao como alteracao.
+        self.assertEqual(attempted[:2], ["llm_credential.listed", "llm_credential.listed"])
 
 
 class TestCredentialTestCase(_Base):
@@ -455,6 +479,16 @@ class AssistantLLMTestCase(_Base):
                 credentials=self.credentials, environment=ENVIRONMENT,
             ).execute(UpdateAssistantLLMInput(user=admin(), assistant_id="nada"))
 
+    def test_llm_change_keeps_the_retrieval_profile(self) -> None:
+        # Sem atualizacao perdida: cada caso de uso grava so as proprias colunas.
+        self.assistants.update_retrieval_profile(
+            AssistantId("rh"), RetrievalProfile(min_score=0.3)
+        )
+        self.set_llm(credential_id=self.gemini_id)
+        stored = self.assistants.get_by_id(AssistantId("rh"))
+        self.assertEqual(stored.retrieval_profile, RetrievalProfile(min_score=0.3))
+        self.assertEqual(stored.llm_credential_id, LLMCredentialId(self.gemini_id))
+
     def test_curator_reads_but_cannot_change_the_llm(self) -> None:
         # D7: a curadora do assistente ve o modelo, mas so o administrador escolhe.
         user = curator("curadora", "rh")
@@ -502,6 +536,21 @@ class AssistantRetrievalTestCase(_Base):
         restored = self.set_retrieval(user)
         self.assertEqual(restored.min_score.origin, "default")
         self.assertTrue(self.assistants.get_by_id(AssistantId("rh")).retrieval_profile.is_empty)
+
+    def test_access_is_checked_before_existence(self) -> None:
+        # Quem nao tem acesso recebe 403 tambem para assistente inexistente.
+        with self.assertRaises(AccessDeniedError):
+            self.set_retrieval(curator("curadora", "rh"), assistant_id="nao-existe", top_k=8)
+        with self.assertRaises(AssistantNotFoundError):
+            self.set_retrieval(admin(), assistant_id="nao-existe", top_k=8)
+
+    def test_retrieval_change_keeps_the_llm_choice(self) -> None:
+        self.assistants.update_llm_choice(
+            AssistantId("rh"), credential_id=LLMCredentialId("cred-x"), model="m"
+        )
+        self.set_retrieval(min_score=0.3)
+        stored = self.assistants.get_by_id(AssistantId("rh"))
+        self.assertEqual((stored.llm_credential_id.value, stored.llm_model), ("cred-x", "m"))
 
     def test_curator_of_another_assistant_is_denied(self) -> None:
         with self.assertRaises(AccessDeniedError):

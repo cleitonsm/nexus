@@ -8,12 +8,13 @@ alteracao vai para a auditoria com o antes e o depois, sem a chave.
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from uuid import uuid4
 
 from src.application.services import AccessControl
 from src.domain import (
+    Assistant,
     AssistantRepository,
     AuditAction,
     AuditResource,
@@ -35,6 +36,9 @@ from src.domain import (
 )
 
 LLMGatewayFactory = Callable[[LLMConnection, str], LLMGateway]
+# Leituras negadas ficam na auditoria como leitura, nao como alteracao.
+LIST_ATTEMPT = "llm_credential.listed"
+IMPACT_ATTEMPT = "llm_credential.impact_viewed"
 TEST_PROMPT = "Teste de conectividade do Nexus. Responda apenas: OK"
 
 
@@ -153,7 +157,8 @@ class CreateLLMCredentialInput:
     provider: str
     models: tuple[LLMModelInput, ...]
     default_model: str
-    api_key: str
+    # RN-39: nunca em repr, log ou traceback.
+    api_key: str = field(repr=False)
     api_url: str | None = None
     make_default: bool = False
 
@@ -167,8 +172,8 @@ class UpdateLLMCredentialInput:
     models: tuple[LLMModelInput, ...]
     default_model: str
     api_url: str | None = None
-    # Preenchida = rotacao da chave; vazia = mantem a gravada.
-    api_key: str | None = None
+    # Preenchida = rotacao da chave; vazia = mantem a gravada. Nunca em repr.
+    api_key: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,7 +212,7 @@ class _CredentialUseCase:
         self._assistants = assistants
         self._access = access_control
 
-    def _require_admin(self, user: AuthenticatedUser, action: AuditAction) -> None:
+    def _require_admin(self, user: AuthenticatedUser, action: AuditAction | str) -> None:
         self._access.require_llm_configuration(user, action)
 
     def _get(self, credential_id: str) -> LLMCredential:
@@ -215,6 +220,11 @@ class _CredentialUseCase:
         if credential is None:
             raise LLMCredentialNotFoundError("credential not found.")
         return credential
+
+    def _followers(self, credential: LLMCredential, assistants: Sequence[Assistant]) -> list[str]:
+        if not credential.is_default:
+            return []
+        return [item.value for item in assistants_following_default(assistants)]
 
     def _ensure_unique_name(self, name: str, *, except_id: str | None = None) -> None:
         wanted = name.strip().casefold()
@@ -265,7 +275,7 @@ class ListLLMCredentialsUseCase(_CredentialUseCase):
     """RF-87: lista com quem usa cada credencial."""
 
     def execute(self, user: AuthenticatedUser) -> list[LLMCredentialDTO]:
-        self._require_admin(user, AuditAction.LLM_CREDENTIAL_UPDATED)
+        self._require_admin(user, LIST_ATTEMPT)
         assistants = self._assistants.list_all()
         followers = tuple(
             item.value for item in assistants_following_default(assistants)
@@ -286,7 +296,7 @@ class ListLLMCredentialOptionsUseCase(_CredentialUseCase):
     """Opcoes do formulario do assistente; so quem escolhe o LLM (D7) consulta."""
 
     def execute(self, user: AuthenticatedUser) -> list[LLMCredentialOptionDTO]:
-        self._require_admin(user, AuditAction.ASSISTANT_LLM_CHANGED)
+        self._require_admin(user, LIST_ATTEMPT)
         return [
             LLMCredentialOptionDTO(
                 id=item.id.value,
@@ -353,7 +363,9 @@ class CreateLLMCredentialUseCase(_CredentialUseCase):
                 saved.id.value,
                 {"previous_default_id": previous_default.id.value},
             )
-        return LLMCredentialDTO.from_credential(saved)
+        return LLMCredentialDTO.from_credential(
+            saved, following_assistant_ids=self._followers(saved, self._assistants.list_all())
+        )
 
 
 class UpdateLLMCredentialUseCase(_CredentialUseCase):
@@ -410,6 +422,7 @@ class UpdateLLMCredentialUseCase(_CredentialUseCase):
         return LLMCredentialDTO.from_credential(
             saved,
             assistant_ids=[item.value for item in assistants_using(saved.id, assistants)],
+            following_assistant_ids=self._followers(saved, assistants),
         )
 
 
@@ -467,7 +480,7 @@ class GetDefaultChangeImpactUseCase(_CredentialUseCase):
     """D11: antes de confirmar, quem segue a padrao e quem vai recuar."""
 
     def execute(self, data: DefaultChangeImpactInput) -> DefaultChangeImpactDTO:
-        self._require_admin(data.user, AuditAction.LLM_CREDENTIAL_DEFAULT_CHANGED)
+        self._require_admin(data.user, IMPACT_ATTEMPT)
         candidate = self._get(data.credential_id)
         if data.model_names is not None:
             names = tuple(dict.fromkeys(name.strip() for name in data.model_names))

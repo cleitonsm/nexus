@@ -296,11 +296,12 @@ class LLMCredentialModel(Base):
 
     __tablename__ = "llm_credentials"
     __table_args__ = (
-        UniqueConstraint("name", name="uq_llm_credentials_name"),
         CheckConstraint(
             "provider IN ('openai', 'gemini', 'custom')",
             name="ck_llm_credentials_provider",
         ),
+        # Nome unico sem diferenciar maiusculas.
+        Index("uq_llm_credentials_name_lower", text("lower(name)"), unique=True),
         # RN-37: no maximo uma padrao.
         Index(
             "uq_llm_credentials_single_default",

@@ -7,10 +7,13 @@ RN-38), o modelo e o perfil de recuperacao (D1, D3).
 D10: a chave global da SPEC-008 (``secret_settings.global_llm_api_key``) vira a
 credencial "Padrão", com o mesmo ciphertext (nada e decifrado aqui) e o
 provedor, URL e modelo de ``app_settings.llm_connection``; sem esse registro,
-valem ``LLM_API_URL`` e ``LLM_MODEL`` do ambiente, como hoje. Sem chave
-gravada, nenhuma credencial e criada. As linhas antigas saem, para a chave nao
-ficar guardada em dois lugares; o ``downgrade`` as devolve a partir da
-credencial padrao.
+valem ``LLM_API_URL`` e ``LLM_MODEL`` do ambiente, como hoje (o container que
+roda a migracao precisa do mesmo ambiente da API). Sem chave gravada, nenhuma
+credencial e criada.
+
+As linhas antigas ficam: ate o P4 o chat ainda as le. Elas saem numa migracao
+propria junto com as rotas da SPEC-008 (D9, P5). O ``downgrade`` regrava as
+linhas antigas a partir da credencial padrao, que pode ter sido alterada.
 
 Revision ID: 0010_llm_credentials
 Revises: 0009_reassert_audit_guard
@@ -90,11 +93,17 @@ def upgrade() -> None:
         sa.Column("updated_by", sa.String(128), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint("name", name="uq_llm_credentials_name"),
         sa.CheckConstraint(
             "provider IN ('openai', 'gemini', 'custom')",
             name="ck_llm_credentials_provider",
         ),
+    )
+    # Nome unico sem diferenciar maiusculas, como a aplicacao compara.
+    op.create_index(
+        "uq_llm_credentials_name_lower",
+        "llm_credentials",
+        [sa.text("lower(name)")],
+        unique=True,
     )
     # RN-37: no maximo uma padrao, garantido pelo banco.
     op.create_index(
@@ -104,36 +113,40 @@ def upgrade() -> None:
         unique=True,
         postgresql_where=sa.text("is_default"),
     )
-    with op.batch_alter_table("assistants") as batch:
-        batch.add_column(sa.Column("llm_credential_id", sa.String(64), nullable=True))
-        batch.add_column(sa.Column("llm_model", sa.String(200), nullable=True))
-        batch.add_column(sa.Column("retrieval_profile", sa.JSON(), nullable=True))
-        batch.create_foreign_key(
-            "fk_assistants_llm_credential_id",
-            "llm_credentials",
-            ["llm_credential_id"],
-            ["id"],
-            ondelete="RESTRICT",
-        )
+    op.add_column(
+        "assistants", sa.Column("llm_credential_id", sa.String(64), nullable=True)
+    )
+    op.add_column("assistants", sa.Column("llm_model", sa.String(200), nullable=True))
+    op.add_column("assistants", sa.Column("retrieval_profile", sa.JSON(), nullable=True))
+    op.create_foreign_key(
+        "fk_assistants_llm_credential_id",
+        "assistants",
+        "llm_credentials",
+        ["llm_credential_id"],
+        ["id"],
+        ondelete="RESTRICT",
+    )
     op.create_index(
         "ix_assistants_llm_credential_id", "assistants", ["llm_credential_id"]
     )
-    _move_global_key_to_default_credential()
+    _copy_global_key_to_default_credential()
 
 
 def downgrade() -> None:
     _restore_global_key_from_default_credential()
     op.drop_index("ix_assistants_llm_credential_id", table_name="assistants")
-    with op.batch_alter_table("assistants") as batch:
-        batch.drop_constraint("fk_assistants_llm_credential_id", type_="foreignkey")
-        batch.drop_column("retrieval_profile")
-        batch.drop_column("llm_model")
-        batch.drop_column("llm_credential_id")
+    op.drop_constraint(
+        "fk_assistants_llm_credential_id", "assistants", type_="foreignkey"
+    )
+    op.drop_column("assistants", "retrieval_profile")
+    op.drop_column("assistants", "llm_model")
+    op.drop_column("assistants", "llm_credential_id")
     op.drop_index("uq_llm_credentials_single_default", table_name="llm_credentials")
+    op.drop_index("uq_llm_credentials_name_lower", table_name="llm_credentials")
     op.drop_table("llm_credentials")
 
 
-def _move_global_key_to_default_credential() -> None:
+def _copy_global_key_to_default_credential() -> None:
     bind = op.get_bind()
     ciphertext = bind.execute(
         sa.select(_secret_settings.c.encrypted_value).where(
@@ -164,12 +177,6 @@ def _move_global_key_to_default_credential() -> None:
             created_at=now,
             updated_at=now,
         )
-    )
-    bind.execute(
-        _secret_settings.delete().where(_secret_settings.c.key_name == GLOBAL_KEY_NAME)
-    )
-    bind.execute(
-        _app_settings.delete().where(_app_settings.c.key_name == CONNECTION_KEY_NAME)
     )
 
 

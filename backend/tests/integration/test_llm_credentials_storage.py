@@ -27,6 +27,8 @@ except ImportError:  # pragma: no cover
 
 from src.domain import (
     PROVIDER_ENDPOINTS,
+    DomainValidationError,
+    LLMCredentialInUseError,
     Assistant,
     AssistantId,
     AssistantName,
@@ -112,7 +114,7 @@ class LLMCredentialsStorageTests(unittest.TestCase):
 
     # --- D10: dados da SPEC-008 viram a credencial "Padrão" -----------------
 
-    def test_upgrade_moves_the_global_key_and_connection_to_the_default(self) -> None:
+    def test_upgrade_copies_the_global_key_and_connection_to_the_default(self) -> None:
         self._alembic("upgrade", "0009_reassert_audit_guard")
         self._seed_spec_008_settings(with_connection=True)
         self._alembic("upgrade", "head")
@@ -130,15 +132,16 @@ class LLMCredentialsStorageTests(unittest.TestCase):
         self.assertTrue(row.is_default)
         self.assertEqual(row.encrypted_key, FAKE_CIPHERTEXT)
         self.assertEqual(row.models[0]["name"], "gemini-3.8-flash")
+        # As linhas antigas ficam ate o P5: o chat ainda as le ate o P4.
         self.assertEqual(
             self._scalar(
                 "SELECT count(*) FROM secret_settings WHERE key_name = 'global_llm_api_key'"
             ),
-            0,
+            1,
         )
         self.assertEqual(
             self._scalar("SELECT count(*) FROM app_settings WHERE key_name = 'llm_connection'"),
-            0,
+            1,
         )
 
     def test_upgrade_without_stored_connection_uses_the_environment(self) -> None:
@@ -279,6 +282,35 @@ class LLMCredentialsStorageTests(unittest.TestCase):
             self.assertEqual(
                 [item.name for item in repository.list_all()], ["Gemini", "OpenAI"]
             )
+
+            # O banco fecha as corridas: nome sem diferenciar maiusculas e a padrao.
+            clash = LLMCredential.build(
+                credential_id="cred-clash",
+                name="gemini",
+                provider="openai",
+                api_url=None,
+                models=(LLMModelOption(name="gpt-4o-mini"),),
+                default_model="gpt-4o-mini",
+            )
+            with self.assertRaises(DomainValidationError):
+                repository.save(clash, encrypted_key=None, updated_by="admin")
+            with self.assertRaises(LLMCredentialInUseError):
+                repository.delete(LLMCredentialId("cred-gemini"))
+            # Credencial escolhida por assistente: a FK vira erro de dominio.
+            with self.assertRaises(LLMCredentialInUseError):
+                repository.delete(LLMCredentialId("cred-openai"))
+            self.assertEqual(len(repository.list_all()), 2)
+
+            # Atualizacoes por coluna nao se desfazem.
+            assistants.update_retrieval_profile(
+                AssistantId("juridico"), RetrievalProfile(top_k=8)
+            )
+            assistants.update_llm_choice(
+                AssistantId("juridico"), credential_id=None, model=None
+            )
+            loaded = assistants.get_by_id(AssistantId("juridico"))
+            self.assertEqual(loaded.retrieval_profile, RetrievalProfile(top_k=8))
+            self.assertIsNone(loaded.llm_credential_id)
 
 
 if __name__ == "__main__":

@@ -91,3 +91,7 @@ class LLMCredentialInUseError(Exception):
         self.assistant_ids = assistant_ids
         self.is_default = is_default
         self.models = models
+
+
+class ConcurrentChangeError(Exception):
+    """Outra alteracao simultanea venceu; repetir com o estado atual resolve."""
