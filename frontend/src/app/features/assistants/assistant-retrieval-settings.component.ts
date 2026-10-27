@@ -8,7 +8,7 @@ import {
   retrievalDraftFrom,
   retrievalInputFrom
 } from "../../shared/llm/llm-config";
-import { RetrievalOrigin } from "../../shared/models/nexus.models";
+import { AssistantRetrieval, RetrievalOrigin } from "../../shared/models/nexus.models";
 import { llmConfigActions } from "../../store/llm-config.actions";
 import {
   selectAssistantRetrievalById,
@@ -16,6 +16,45 @@ import {
 } from "../../store/llm-config.selectors";
 
 const EMPTY_DRAFT: RetrievalDraft = { hybrid: "", candidates: "", topK: "", minScore: "" };
+
+type NumericField = "candidates" | "topK" | "minScore";
+type NumericParameter = "candidates" | "top_k" | "min_score";
+
+interface RetrievalSlider {
+  field: NumericField;
+  limit: NumericParameter;
+  label: string;
+  hint: string;
+  step: number;
+  decimals: number;
+}
+
+const SLIDERS: readonly RetrievalSlider[] = [
+  {
+    field: "candidates",
+    limit: "candidates",
+    label: "Candidatos",
+    hint: "Trechos buscados antes do reranker.",
+    step: 1,
+    decimals: 0
+  },
+  {
+    field: "topK",
+    limit: "top_k",
+    label: "Top k (até os candidatos)",
+    hint: "Trechos enviados ao LLM.",
+    step: 1,
+    decimals: 0
+  },
+  {
+    field: "minScore",
+    limit: "min_score",
+    label: "Nota mínima",
+    hint: 'Abaixo dela, a resposta é "não encontrei".',
+    step: 0.01,
+    decimals: 2
+  }
+];
 
 /**
  * "Recuperacao" do assistente (SPEC-013, RF-91, RF-92): busca hibrida,
@@ -31,7 +70,8 @@ const EMPTY_DRAFT: RetrievalDraft = { hybrid: "", candidates: "", topK: "", minS
     <article class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4">
       <h2 class="text-lg font-semibold">Recuperação</h2>
       <p class="mt-1 text-sm text-slate-400">
-        Como os trechos são buscados antes de chegar ao LLM. Campo vazio segue o padrão do ambiente.
+        Como os trechos são buscados antes de chegar ao LLM. Marque "Seguir o padrão do ambiente"
+        para usar o valor do servidor.
         Vale a partir da próxima pergunta, sem reindexar.
       </p>
       <p class="mt-2 rounded-2xl border border-sky-400/40 bg-sky-500/10 px-4 py-2 text-xs text-sky-100">
@@ -63,48 +103,41 @@ const EMPTY_DRAFT: RetrievalDraft = { hybrid: "", candidates: "", topK: "", minS
               ({{ originLabel(current.hybrid_enabled.origin) }})
             </span>
           </label>
-          <label class="block text-xs text-slate-300">
-            Candidatos ({{ current.limits.candidates[0] }} a {{ current.limits.candidates[1] }})
+          <div *ngFor="let slider of sliders" class="block text-xs text-slate-300">
+            <div class="flex items-center justify-between gap-2">
+              <label [attr.for]="sliderId(slider.field)">
+                {{ slider.label }} ({{ current.limits[slider.limit][0] }} a
+                {{ current.limits[slider.limit][1] }})
+              </label>
+              <span class="rounded-full bg-slate-800 px-2 py-0.5 text-sm font-semibold text-slate-100">
+                {{ format(slider, sliderValue(slider, current)) }}
+              </span>
+            </div>
             <input
-              inputmode="numeric"
-              class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-              [value]="draft().candidates"
-              [placeholder]="'padrão'"
-              (input)="update('candidates', $any($event.target).value)"
+              type="range"
+              [id]="sliderId(slider.field)"
+              class="mt-3 w-full accent-indigo-500 disabled:opacity-40"
+              [min]="current.limits[slider.limit][0]"
+              [max]="current.limits[slider.limit][1]"
+              [step]="slider.step"
+              [value]="sliderValue(slider, current)"
+              [disabled]="followsDefault(slider)"
+              (input)="update(slider.field, $any($event.target).value)"
             />
+            <label class="mt-1 flex items-center gap-2 text-slate-400">
+              <input
+                type="checkbox"
+                class="accent-indigo-500"
+                [checked]="followsDefault(slider)"
+                (change)="toggleDefault(slider, current, $any($event.target).checked)"
+              />
+              Seguir o padrão do ambiente
+            </label>
             <span class="mt-1 block text-slate-500">
-              Trechos buscados antes do reranker. Em uso: {{ current.candidates.effective }}
-              ({{ originLabel(current.candidates.origin) }})
+              {{ slider.hint }} Em uso: {{ format(slider, current[slider.limit].effective) }}
+              ({{ originLabel(current[slider.limit].origin) }})
             </span>
-          </label>
-          <label class="block text-xs text-slate-300">
-            Top k ({{ current.limits.top_k[0] }} a {{ current.limits.top_k[1] }}, até os candidatos)
-            <input
-              inputmode="numeric"
-              class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-              [value]="draft().topK"
-              [placeholder]="'padrão'"
-              (input)="update('topK', $any($event.target).value)"
-            />
-            <span class="mt-1 block text-slate-500">
-              Trechos enviados ao LLM. Em uso: {{ current.top_k.effective }}
-              ({{ originLabel(current.top_k.origin) }})
-            </span>
-          </label>
-          <label class="block text-xs text-slate-300">
-            Nota mínima ({{ current.limits.min_score[0] }} a {{ current.limits.min_score[1] }})
-            <input
-              inputmode="decimal"
-              class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-              [value]="draft().minScore"
-              [placeholder]="'padrão'"
-              (input)="update('minScore', $any($event.target).value)"
-            />
-            <span class="mt-1 block text-slate-500">
-              Abaixo dela, a resposta é "não encontrei". Em uso: {{ current.min_score.effective }}
-              ({{ originLabel(current.min_score.origin) }})
-            </span>
-          </label>
+          </div>
         </div>
         <p class="mt-3 text-xs text-amber-200">
           Mudar a nota mínima sem medir pode aumentar respostas sem base ou recusas. Calibre com
@@ -152,6 +185,8 @@ export class AssistantRetrievalSettingsComponent {
   protected readonly draft = signal<RetrievalDraft>({ ...EMPTY_DRAFT });
   protected readonly errors = signal<string[]>([]);
 
+  protected readonly sliders = SLIDERS;
+
   constructor() {
     effect(() => {
       const assistantId = this.assistantId();
@@ -170,6 +205,37 @@ export class AssistantRetrievalSettingsComponent {
 
   protected originLabel(origin: RetrievalOrigin): string {
     return origin === "assistant" ? "deste assistente" : "padrão";
+  }
+
+  protected sliderId(field: NumericField): string {
+    return `retrieval-${field}-${this.assistantId()}`;
+  }
+
+  protected followsDefault(slider: RetrievalSlider): boolean {
+    return this.draft()[slider.field].trim() === "";
+  }
+
+  /** Valor mostrado no slider: o do rascunho ou, seguindo o padrao, o efetivo. */
+  protected sliderValue(slider: RetrievalSlider, current: AssistantRetrieval): number {
+    const text = this.draft()[slider.field].trim().replace(",", ".");
+    const value = text === "" ? Number.NaN : Number(text);
+    return Number.isFinite(value) ? value : current[slider.limit].effective;
+  }
+
+  protected format(slider: RetrievalSlider, value: number): string {
+    return value.toFixed(slider.decimals);
+  }
+
+  /** Desmarcar o padrao parte do valor em uso, para o slider nao saltar. */
+  protected toggleDefault(
+    slider: RetrievalSlider,
+    current: AssistantRetrieval,
+    followDefault: boolean
+  ): void {
+    this.update(
+      slider.field,
+      followDefault ? "" : this.format(slider, current[slider.limit].effective)
+    );
   }
 
   protected update(field: keyof RetrievalDraft, value: string): void {
