@@ -13,8 +13,10 @@ from .chat_with_assistant import (
     ConversationNotFoundError,
 )
 from .compare_evaluation_reports import (
+    COMPARABLE_PARAMETERS,
     CompareEvaluationReportsInput,
     CompareEvaluationReportsUseCase,
+    configuration_differences,
 )
 from .create_assistant import CreateAssistantInput, CreateAssistantUseCase
 from .calibrate_relevance import (
@@ -109,19 +111,6 @@ from .manage_llm_credentials import (
     UpdateLLMCredentialInput,
     UpdateLLMCredentialUseCase,
 )
-from .manage_llm_connection import (
-    GetLLMConnectionUseCase,
-    LLMConnectionDTO,
-    UpdateLLMConnectionInput,
-    UpdateLLMConnectionUseCase,
-    resolve_llm_connection,
-)
-from .manage_api_key import (
-    GetGlobalApiKeyStatusUseCase,
-    GetGlobalApiKeyValueUseCase,
-    SaveGlobalApiKeyInput,
-    SaveGlobalApiKeyUseCase,
-)
 from .manage_feedback import (
     ExportFeedbackInput,
     ExportValidatedFeedbackUseCase,
@@ -179,6 +168,8 @@ from .reindex_assistant import (
 
 __all__ = [
     # SPEC-013
+    "COMPARABLE_PARAMETERS",
+    "configuration_differences",
     "AssistantLLMDTO",
     "AssistantRefInput",
     "AssistantRetrievalDTO",
@@ -253,13 +244,6 @@ __all__ = [
     "FeedbackNotFoundError",
     "GetConversationUseCase",
     "GetDocumentUseCase",
-    "GetGlobalApiKeyStatusUseCase",
-    "GetLLMConnectionUseCase",
-    "LLMConnectionDTO",
-    "UpdateLLMConnectionInput",
-    "UpdateLLMConnectionUseCase",
-    "resolve_llm_connection",
-    "GetGlobalApiKeyValueUseCase",
     "GetIndexStatusInput",
     "GetIndexStatusUseCase",
     "ProcessNextReindexJobUseCase",
@@ -303,8 +287,6 @@ __all__ = [
     "ReviewFeedbackUseCase",
     "RunReindexInput",
     "RunReindexUseCase",
-    "SaveGlobalApiKeyInput",
-    "SaveGlobalApiKeyUseCase",
     "SetAssistantGroupsInput",
     "SetAssistantGroupsUseCase",
     "SetDocumentGroupsInput",

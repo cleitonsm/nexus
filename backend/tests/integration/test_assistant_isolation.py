@@ -15,7 +15,7 @@ from stack_support import (
     Api,
     FakeLLMServer,
     call,
-    preserve_llm_settings,
+    use_fake_llm,
     stack_available,
     token_for,
 )
@@ -43,7 +43,6 @@ class AssistantIsolationTests(unittest.TestCase):
         if not stack_available():
             self.skipTest("pilha do Compose indisponivel")
         self.admin = Api(token_for("admin.nexus"))
-        preserve_llm_settings(self, self.admin)
         self.ids: list[str] = []
         self.addCleanup(self._cleanup)
 
@@ -80,15 +79,7 @@ class AssistantIsolationTests(unittest.TestCase):
         first, _ = self._assistant_with("ferias.md", DOCS["ferias.md"])
         second, _ = self._assistant_with("estacionamento.md", DOCS["estacionamento.md"])
         with FakeLLMServer() as llm:
-            self.admin.json(
-                "PUT",
-                "/admin/llm-settings",
-                payload={
-                    "provider": "custom",
-                    "model": "modelo-simulado",
-                    "api_url": llm.url,
-                },
-            )
+            use_fake_llm(self, self.admin, llm.url, first, second)
             first_answer = self._ask(first, "Que horas abre o estacionamento?")
             second_answer = self._ask(second, "Quantos dias de ferias?")
         for answer, foreign in (

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
@@ -50,7 +50,6 @@ from .models import (
     IngestionJobModel,
     MessageModel,
     ReindexJobModel,
-    SecretSettingModel,
 )
 
 
@@ -716,38 +715,6 @@ class PostgresAuditRetentionRepository:
             self._session.rollback()
             raise
         return int(result.rowcount or 0)
-
-
-class PostgresSecretSettingsRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def set_encrypted_value(
-        self,
-        *,
-        key_name: str,
-        encrypted_value: str,
-    ) -> None:
-        now = datetime.now(UTC)
-        model = self._session.get(SecretSettingModel, key_name)
-        if model is None:
-            model = SecretSettingModel(
-                key_name=key_name,
-                encrypted_value=encrypted_value,
-                created_at=now,
-                updated_at=now,
-            )
-            self._session.add(model)
-        else:
-            model.encrypted_value = encrypted_value
-            model.updated_at = now
-        commit_or_rollback(self._session)
-
-    def get_encrypted_value(self, *, key_name: str) -> str | None:
-        model = self._session.get(SecretSettingModel, key_name)
-        if model is None:
-            return None
-        return model.encrypted_value
 
 
 def _assistant_to_entity(model: AssistantModel) -> Assistant:

@@ -64,7 +64,8 @@ def resolve_llm_for_assistant(
         if chosen is not None:
             return _from_credential(
                 chosen,
-                assistant=assistant,
+                model=assistant.llm_model,
+                assistant_id=assistant.id.value,
                 source=LLMSource.ASSISTANT,
                 credentials=credentials,
                 cipher=cipher,
@@ -78,11 +79,49 @@ def resolve_llm_for_assistant(
                 "credential_id": assistant.llm_credential_id.value,
             },
         )
+    return _default_or_environment(
+        credentials=credentials,
+        cipher=cipher,
+        environment=environment,
+        currency=currency,
+        model=assistant.llm_model,
+        assistant_id=assistant.id.value,
+    )
+
+
+def resolve_default_llm(
+    *,
+    credentials: LLMCredentialRepository,
+    cipher: SecretCipher,
+    environment: LLMConnection,
+    currency: str,
+) -> ResolvedLLM:
+    """Fora de um assistente (sugestao de assistente): padrao -> ambiente."""
+    return _default_or_environment(
+        credentials=credentials,
+        cipher=cipher,
+        environment=environment,
+        currency=currency,
+        model=None,
+        assistant_id=None,
+    )
+
+
+def _default_or_environment(
+    *,
+    credentials: LLMCredentialRepository,
+    cipher: SecretCipher,
+    environment: LLMConnection,
+    currency: str,
+    model: str | None,
+    assistant_id: str | None,
+) -> ResolvedLLM:
     default = credentials.get_default()
     if default is not None:
         return _from_credential(
             default,
-            assistant=assistant,
+            model=model,
+            assistant_id=assistant_id,
             source=LLMSource.DEFAULT,
             credentials=credentials,
             cipher=cipher,
@@ -111,24 +150,36 @@ def resolve_retrieval_settings(
 def _from_credential(
     credential: LLMCredential,
     *,
-    assistant: Assistant,
+    model: str | None,
+    assistant_id: str | None,
     source: LLMSource,
     credentials: LLMCredentialRepository,
     cipher: SecretCipher,
     currency: str,
 ) -> ResolvedLLM:
-    option, fell_back = credential.model_with_fallback(assistant.llm_model)
+    option, fell_back = credential.model_with_fallback(model)
     if fell_back:
         logger.warning(
             "llm.resolution.model_fallback",
             extra={
-                "assistant_id": assistant.id.value,
+                "assistant_id": assistant_id,
                 "credential_id": credential.id.value,
-                "requested_model": assistant.llm_model,
+                "requested_model": model,
                 "used_model": option.name,
             },
         )
     encrypted = credentials.get_encrypted_key(credential.id)
+    api_key: str | None = None
+    if encrypted:
+        try:
+            api_key = cipher.decrypt(encrypted)
+        except Exception:  # noqa: BLE001 - chave mestra trocada: segue sem chave
+            # Erro do servidor, nao do cliente: o chat responde como "sem chave"
+            # e o log aponta a credencial (nunca o ciphertext).
+            logger.error(
+                "llm.credential.decrypt_failed",
+                extra={"credential_id": credential.id.value},
+            )
     return ResolvedLLM(
         connection=credential.connection_for(option.name),
         source=source,
@@ -136,5 +187,5 @@ def _from_credential(
         credential_name=credential.name,
         model_fell_back=fell_back,
         pricing=option.pricing(currency),
-        api_key=cipher.decrypt(encrypted) if encrypted else None,
+        api_key=api_key,
     )

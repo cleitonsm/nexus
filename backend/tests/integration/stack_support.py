@@ -159,25 +159,54 @@ class Api:
         raise TimeoutError(f"document {document_id} did not finish indexing.")
 
 
-def preserve_llm_settings(test, api: "Api") -> None:
-    """Guarda a conexao do LLM da pilha e a restaura no fim do teste.
+FAKE_LLM_MODEL = "modelo-simulado"
 
-    Os testes que apontam o chat para o ``FakeLLMServer`` alteram a configuracao
-    real da pilha (``app_settings``). Sem restaurar, a etapa seguinte da campanha
-    (V6, avaliacao com o LLM oficial) falava com o servidor simulado, que ja nao
-    existe (2026-10-21, candidato rc4).
+
+def use_fake_llm(test, api: "Api", url: str, *assistant_ids: str) -> str:
+    """SPEC-013: credencial temporaria so para os assistentes do teste.
+
+    Nada global muda: a credencial padrao da pilha continua a mesma, entao a
+    etapa seguinte da campanha (V6, avaliacao com o LLM oficial) nao fala com o
+    servidor simulado (licao de 2026-10-21, candidato rc4). A URL e ``http``:
+    exige ``APP_ENV=local``, como antes. A chave e ficticia.
     """
-    status, original = api.json("GET", "/admin/llm-settings")
+    status, listed = api.json("GET", "/admin/llm-credentials")
     if status != 200:
-        raise RuntimeError(f"llm-settings: {status}")
+        raise RuntimeError(f"llm-credentials: {status} {listed}")
+    if not listed["items"]:
+        # A simulada nasceria padrao e nao poderia ser excluida (RN-37/RN-38).
+        test.skipTest("pilha sem credencial de LLM: cadastre a real antes")
+    status, created = api.json(
+        "POST",
+        "/admin/llm-credentials",
+        payload={
+            "name": f"LLM simulado {uuid.uuid4().hex[:8]}",
+            "provider": "custom",
+            "api_url": url,
+            "models": [{"name": FAKE_LLM_MODEL}],
+            "default_model": FAKE_LLM_MODEL,
+            "api_key": "chave-ficticia-de-teste",
+        },
+    )
+    if status != 201:
+        raise RuntimeError(f"llm-credentials: {status} {created}")
+    credential_id = created["id"]
 
-    def restore() -> None:
-        payload = {"provider": original["provider"], "model": original["model"]}
-        if original["provider"] == "custom":
-            payload["api_url"] = original["api_url"]
-        api.json("PUT", "/admin/llm-settings", payload=payload)
+    def remove() -> None:
+        for assistant_id in assistant_ids:
+            api.json("PUT", f"/assistants/{assistant_id}/llm", payload={})
+        api.request("DELETE", f"/admin/llm-credentials/{credential_id}")
 
-    test.addCleanup(restore)
+    test.addCleanup(remove)
+    for assistant_id in assistant_ids:
+        status, data = api.json(
+            "PUT",
+            f"/assistants/{assistant_id}/llm",
+            payload={"credential_id": credential_id, "model": FAKE_LLM_MODEL},
+        )
+        if status != 200:
+            raise RuntimeError(f"assistant llm: {status} {data}")
+    return credential_id
 
 
 class FakeLLMServer:

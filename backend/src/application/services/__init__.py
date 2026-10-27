@@ -50,6 +50,7 @@ from .assistant_runtime import (
 from .llm_resolution import (
     LLMSource,
     ResolvedLLM,
+    resolve_default_llm,
     resolve_llm_for_assistant,
     resolve_retrieval_settings,
 )
@@ -64,6 +65,7 @@ __all__ = [
     "retrieval_defaults",
     "LLMSource",
     "ResolvedLLM",
+    "resolve_default_llm",
     "resolve_llm_for_assistant",
     "resolve_retrieval_settings",
     "CITATION_INSTRUCTION",

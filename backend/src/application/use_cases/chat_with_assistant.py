@@ -122,7 +122,9 @@ class ChatWithAssistantUseCase:
 
     SPEC-013: com ``runtime_resolver``, cada pergunta usa a credencial, o modelo
     e os parametros de recuperacao do assistente (RN-40, RN-41); sem ele, os
-    gateways e parametros injetados (testes e chamadas antigas).
+    gateways e parametros injetados (testes e chamadas antigas). A configuracao
+    da pergunta fica na instancia: use uma instancia por pergunta (as rotas ja
+    fazem isso) e consuma um ``start_stream`` antes de iniciar outro.
 
     SPEC-004: a conversa precisa ser de quem pergunta (RN-24), o assistente
     precisa estar ao alcance dos seus grupos (RF-42) e a busca so devolve
@@ -223,7 +225,12 @@ class ChatWithAssistantUseCase:
         self._usage_pricing = None
         if self._runtime_resolver is None or assistant is None:
             return
-        runtime = self._runtime_resolver(assistant)
+        with self._tracer.span(
+            "chat.resolve_runtime", {"assistant_id": assistant.id.value}
+        ) as span:
+            runtime = self._runtime_resolver(assistant)
+            for key, value in runtime.log_fields().items():
+                span.set_attribute(key, value)
         self._retriever = self._base_retriever.with_settings(runtime.retrieval)
         self._answer_generator = GroundedAnswerGenerator(llm_gateway=runtime.llm_gateway)
         self._usage_model = runtime.usage_model

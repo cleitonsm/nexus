@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Generator, Iterator
+from collections.abc import Callable, Generator, Iterator
 
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
@@ -15,16 +15,14 @@ from src.application.services import (
     LLMGatewayBuilder,
     ResolvedLLM,
     build_assistant_runtime,
+    resolve_default_llm,
+    retrieval_defaults,
     ContextRetriever,
     DocumentIndexer,
     GroundedAnswerGenerator,
     RetrievalSettings,
     UsageGovernance,
     UsageSettings,
-)
-from src.application.use_cases import (
-    GetGlobalApiKeyValueUseCase,
-    resolve_llm_connection,
 )
 from src.domain import (
     Assistant,
@@ -41,6 +39,7 @@ from src.domain import (
     LLMGateway,
     LLMStreamChunk,
     MetricsRecorder,
+    RetrievalDefaults,
     SecretCipher,
     SparseEncodingParameters,
     TokenCounter,
@@ -77,8 +76,6 @@ from src.infrastructure.database import (
     PostgresIndexParametersRepository,
     PostgresIngestionJobQueue,
     PostgresReindexJobRepository,
-    PostgresSecretSettingsRepository,
-    PostgresLLMConnectionRepository,
     PostgresUsageLimiter,
     PostgresUsageRecordRepository,
     PostgresUsageSettingsRepository,
@@ -183,12 +180,6 @@ def get_document_repository(
     session: Session = Depends(get_session),
 ) -> PostgresDocumentRepository:
     return PostgresDocumentRepository(session=session)
-
-
-def get_secret_settings_repository(
-    session: Session = Depends(get_session),
-) -> PostgresSecretSettingsRepository:
-    return PostgresSecretSettingsRepository(session=session)
 
 
 def get_secret_cipher() -> FernetSecretCipher:
@@ -305,72 +296,12 @@ class UnconfiguredLLMGateway(LLMGateway):
         raise ValueError(self.MESSAGE)
 
 
-def get_llm_connection_repository(
-    session: Session = Depends(get_session),
-) -> PostgresLLMConnectionRepository:
-    return PostgresLLMConnectionRepository(session=session)
-
-
 def get_llm_connection_default() -> LLMConnection:
     return llm_connection_defaults()
 
 
 def get_llm_insecure_http_allowed() -> bool:
     return allow_insecure_llm_http()
-
-
-def get_effective_llm_connection(
-    repository: PostgresLLMConnectionRepository = Depends(
-        get_llm_connection_repository
-    ),
-) -> LLMConnection:
-    """SPEC-008 RF-70: valor gravado pela tela, ou o do ambiente."""
-    return resolve_llm_connection(repository, llm_connection_defaults())
-
-
-def get_llm_gateway(
-    secret_repository: PostgresSecretSettingsRepository = Depends(
-        get_secret_settings_repository
-    ),
-    secret_cipher: FernetSecretCipher = Depends(get_secret_cipher),
-    connection: LLMConnection = Depends(get_effective_llm_connection),
-) -> LLMGateway:
-    return build_llm_gateway(secret_repository, secret_cipher, connection)
-
-
-def build_llm_gateway(
-    secret_repository: PostgresSecretSettingsRepository,
-    secret_cipher: FernetSecretCipher,
-    connection: LLMConnection,
-) -> LLMGateway:
-    """A chave e decifrada so em memoria, a cada requisicao (ADR 0005)."""
-    api_key = GetGlobalApiKeyValueUseCase(
-        secret_repository=secret_repository,
-        secret_cipher=secret_cipher,
-    ).execute()
-    logger.info(
-        "llm.gateway.resolved",
-        extra={
-            "has_llm_credential": bool(api_key),
-            "llm_provider": connection.provider.value,
-            "llm_model": connection.model,
-            "api_url_configured": bool(connection.api_url.strip()),
-        },
-    )
-    if not api_key:
-        return UnconfiguredLLMGateway()
-    if not connection.model:
-        return UnconfiguredLLMGateway()
-    return TracedLLMGateway(
-        HttpChatCompletionsLLM(
-            api_url=connection.api_url,
-            model=connection.model,
-            api_key=api_key,
-            timeout_seconds=llm_timeout_seconds(),
-        ),
-        build_tracer(),
-        model=connection.model,
-    )
 
 
 def get_llm_credential_repository(
@@ -453,10 +384,50 @@ def get_assistant_runtime_resolver(
     )
 
 
-def get_usage_settings(
-    connection: LLMConnection = Depends(get_effective_llm_connection),
-) -> UsageSettings:
-    return usage_settings(model=connection.model)
+LLMTestGatewayFactory = Callable[[LLMConnection, str], LLMGateway]
+
+
+def build_llm_test_gateway(connection: LLMConnection, api_key: str) -> LLMGateway:
+    """RF-89: chamada curta, sem novas tentativas longas."""
+    return HttpChatCompletionsLLM(
+        api_url=connection.api_url,
+        model=connection.model,
+        api_key=api_key,
+        timeout_seconds=15.0,
+    )
+
+
+def get_llm_test_gateway_factory() -> LLMTestGatewayFactory:
+    return build_llm_test_gateway
+
+
+def get_retrieval_defaults() -> RetrievalDefaults:
+    """Padrao global (ambiente) dos parametros de recuperacao (RN-41)."""
+    return retrieval_defaults(retrieval_settings())
+
+
+def get_default_llm_gateway(
+    credentials: PostgresLLMCredentialRepository = Depends(
+        get_llm_credential_repository
+    ),
+    cipher: FernetSecretCipher = Depends(get_secret_cipher),
+    gateway_builder: LLMGatewayBuilder = Depends(get_llm_gateway_builder),
+) -> LLMGateway:
+    """LLM da credencial padrao, para o que nao pertence a um assistente."""
+    return gateway_builder(
+        resolve_default_llm(
+            credentials=credentials,
+            cipher=cipher,
+            environment=llm_connection_defaults(),
+            currency=usage_settings().pricing.currency,
+        )
+    )
+
+
+def get_usage_settings() -> UsageSettings:
+    """Precos e modelo do ambiente; o chat registra o modelo e o preco do
+    assistente quando houver (SPEC-013, D8)."""
+    return usage_settings()
 
 
 def get_usage_record_repository(
@@ -482,12 +453,7 @@ def build_usage_governance(session: Session) -> UsageGovernance:
         limiter=PostgresUsageLimiter(session=session),
         record_repository=PostgresUsageRecordRepository(session=session),
         settings_repository=PostgresUsageSettingsRepository(session=session),
-        settings=usage_settings(
-            model=resolve_llm_connection(
-                PostgresLLMConnectionRepository(session=session),
-                llm_connection_defaults(),
-            ).model
-        ),
+        settings=usage_settings(),
         metrics=build_metrics(),
     )
 

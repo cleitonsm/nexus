@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from src.application.use_cases import (
     CompareEvaluationReportsInput,
+    configuration_differences,
     CompareEvaluationReportsUseCase,
     CreateAssistantInput,
     CreateAssistantUseCase,
@@ -380,7 +381,9 @@ def _cipher() -> FernetSecretCipher | _NoSecretsKey:
 
 
 class _MissingCredentialLLM:
-    """Sem chave: a avaliacao roda sem geracao (aviso no log)."""
+    """Sem chave: ``build_assistant_runtime`` ainda pede um gateway, e o
+    ``HttpChatCompletionsLLM`` recusa chave vazia. Nunca e chamado: a avaliacao
+    roda sem geracao (``_generation_gateway``)."""
 
     model = "nao utilizado"
 
@@ -398,7 +401,12 @@ def _http_gateway(resolved: ResolvedLLM) -> LLMGateway:
 
 def _generation_gateway(runtime: AssistantRuntime) -> LLMGateway | None:
     if not runtime.llm.api_key:
-        logger.warning("evaluation.generation.skipped", extra={"reason": "no_llm_credential"})
+        reason = (
+            "no_llm_credential"
+            if os.getenv("NEXUS_SECRETS_KEY", "").strip()
+            else "no_secrets_key"
+        )
+        logger.warning("evaluation.generation.skipped", extra={"reason": reason})
         return None
     return runtime.llm_gateway
 
@@ -420,7 +428,11 @@ def _parameters(
         or "limite do modelo",
         "chunk_overlap_sentences": os.getenv("CHUNK_OVERLAP_SENTENCES", "1"),
         "chunk_prefix_max_tokens": os.getenv("CHUNK_PREFIX_MAX_TOKENS", "32"),
-        "sparse": "bm25 (idf no Qdrant), fusao RRF",
+        "sparse": (
+            "bm25 (idf no Qdrant), fusao RRF"
+            if settings.hybrid_enabled
+            else "desligada (so densa)"
+        ),
         "bm25": ", ".join(
             f"{name}={value}" for name, value in bm25_parameters().items()
         ),
@@ -440,6 +452,12 @@ def _parameters(
         "llm_credential": runtime.llm.credential_name or "ambiente",
         "llm_model_fell_back": "sim" if runtime.llm.model_fell_back else "nao",
         "judge": "LLMAnswerJudge" if llm_gateway else "nao utilizado",
+        # O juiz usa o mesmo LLM do assistente: trocar o modelo troca o juiz.
+        "judge_model": runtime.llm.connection.model if llm_gateway else "nao utilizado",
+        "retrieval_origins": ", ".join(
+            f"{name}={origin}" for name, origin in sorted(runtime.retrieval_origins.items())
+        ),
+        "retrieval_top_k_clamped": "sim" if runtime.top_k_clamped else "nao",
         "tolerance": str(args.tolerance),
     }
 
@@ -459,6 +477,17 @@ def _store_and_compare(
             tolerance=args.tolerance,
         )
     )
+    # SPEC-013 (RF-92): comparar com outra configuracao e comparar outra coisa.
+    differences = configuration_differences(
+        report.get("parameters"), previous.get("parameters") if previous else None
+    )
+    report["baseline_comparable"] = not differences
+    report["baseline_differences"] = differences
+    if differences:
+        logger.warning(
+            "evaluation.baseline.not_comparable",
+            extra={"parameters": ",".join(differences)},
+        )
     commit = os.getenv("GIT_COMMIT", "unknown")
     label = f"{datetime.now(UTC):%Y%m%d-%H%M%S}-{commit}"
     path = store.save(

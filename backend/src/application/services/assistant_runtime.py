@@ -7,7 +7,7 @@ calibracao usam o mesmo caminho, para medirem o que o usuario recebe.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 from src.domain import (
@@ -16,6 +16,7 @@ from src.domain import (
     LLMCredentialRepository,
     LLMGateway,
     LLMPricing,
+    ResolvedRetrievalProfile,
     RetrievalDefaults,
     SecretCipher,
 )
@@ -36,6 +37,9 @@ class AssistantRuntime:
     retrieval: RetrievalSettings
     llm: ResolvedLLM
     llm_gateway: LLMGateway = field(repr=False)
+    # RN-41: de onde veio cada parametro ("assistant" ou "default").
+    retrieval_origins: Mapping[str, str] = field(default_factory=dict)
+    top_k_clamped: bool = False
 
     @property
     def usage_model(self) -> str:
@@ -80,6 +84,12 @@ def assistant_retrieval_settings(
 ) -> RetrievalSettings:
     """RN-41: parametros do assistente sobre o padrao; orcamentos do ambiente."""
     profile = resolve_retrieval_settings(assistant, retrieval_defaults(base_settings))
+    return _settings_from(profile, base_settings)
+
+
+def _settings_from(
+    profile: ResolvedRetrievalProfile, base_settings: RetrievalSettings
+) -> RetrievalSettings:
     return RetrievalSettings(
         candidates=profile.candidates,
         top_n=profile.top_k,
@@ -108,5 +118,11 @@ def build_assistant_runtime(
         environment=environment,
         currency=currency,
     )
-    retrieval = assistant_retrieval_settings(assistant, base_settings)
-    return AssistantRuntime(retrieval=retrieval, llm=llm, llm_gateway=gateway_builder(llm))
+    profile = resolve_retrieval_settings(assistant, retrieval_defaults(base_settings))
+    return AssistantRuntime(
+        retrieval=_settings_from(profile, base_settings),
+        llm=llm,
+        llm_gateway=gateway_builder(llm),
+        retrieval_origins={name: origin.value for name, origin in profile.origins.items()},
+        top_k_clamped=profile.top_k_clamped,
+    )

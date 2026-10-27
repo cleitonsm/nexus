@@ -1,4 +1,4 @@
-"""CT-107 (SPEC-013): migracao 0010 e repositorio de credenciais no PostgreSQL.
+"""CT-107 (SPEC-013): migracoes 0010 e 0011 e repositorio de credenciais no PostgreSQL.
 
 Mesmo arranjo do CT-49 (``test_migrations``): banco temporario no PostgreSQL
 do Compose e Alembic em subprocesso. Sem PostgreSQL, o teste e pulado.
@@ -117,7 +117,7 @@ class LLMCredentialsStorageTests(unittest.TestCase):
     def test_upgrade_copies_the_global_key_and_connection_to_the_default(self) -> None:
         self._alembic("upgrade", "0009_reassert_audit_guard")
         self._seed_spec_008_settings(with_connection=True)
-        self._alembic("upgrade", "head")
+        self._alembic("upgrade", "0010_llm_credentials")
         with self.engine.connect() as connection:
             row = connection.execute(
                 sa.text(
@@ -132,16 +132,15 @@ class LLMCredentialsStorageTests(unittest.TestCase):
         self.assertTrue(row.is_default)
         self.assertEqual(row.encrypted_key, FAKE_CIPHERTEXT)
         self.assertEqual(row.models[0]["name"], "gemini-3.8-flash")
-        # As linhas antigas ficam ate o P5: o chat ainda as le ate o P4.
+        # T9: a 0010 so copia; a 0011 apaga as linhas antigas (D9).
+        old_key = "SELECT count(*) FROM secret_settings WHERE key_name = 'global_llm_api_key'"
+        old_connection = "SELECT count(*) FROM app_settings WHERE key_name = 'llm_connection'"
+        self.assertEqual((self._scalar(old_key), self._scalar(old_connection)), (1, 1))
+        self._alembic("upgrade", "head")
+        self.assertEqual((self._scalar(old_key), self._scalar(old_connection)), (0, 0))
         self.assertEqual(
-            self._scalar(
-                "SELECT count(*) FROM secret_settings WHERE key_name = 'global_llm_api_key'"
-            ),
-            1,
-        )
-        self.assertEqual(
-            self._scalar("SELECT count(*) FROM app_settings WHERE key_name = 'llm_connection'"),
-            1,
+            self._scalar("SELECT encrypted_key FROM llm_credentials WHERE is_default"),
+            FAKE_CIPHERTEXT,
         )
 
     def test_upgrade_without_stored_connection_uses_the_environment(self) -> None:

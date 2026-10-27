@@ -13,7 +13,6 @@ from .errors import DomainValidationError
 from .feedback import FeedbackQuery, MessageFeedback
 from .llm_credentials import LLMCredential
 from .retrieval_profile import RetrievalProfile
-from .llm_settings import LLMConnection
 from .maintenance import IngestionPause
 from .usage import (
     LLMCompletion,
@@ -209,25 +208,6 @@ class ConversationRepository(Protocol):
     def get_message(self, message_id: str) -> ChatMessage | None:
         """Mensagem pelo id, de qualquer conversa; quem chama confere o dono."""
         ...
-
-
-class SecretSettingsRepository(Protocol):
-    def set_encrypted_value(
-        self,
-        *,
-        key_name: str,
-        encrypted_value: str,
-    ) -> None: ...
-
-    def get_encrypted_value(self, *, key_name: str) -> str | None: ...
-
-
-class LLMConnectionRepository(Protocol):
-    """Conexao com o LLM definida na tela; sem valor gravado, vale o ambiente."""
-
-    def get(self) -> LLMConnection | None: ...
-
-    def save(self, connection: LLMConnection, *, updated_by: str) -> LLMConnection: ...
 
 
 class SecretCipher(Protocol):

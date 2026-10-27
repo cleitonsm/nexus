@@ -5,13 +5,6 @@ from .access import (
     GroupsRequest,
     GroupsResponse,
 )
-from .admin import (
-    ApiKeyStatusResponse,
-    ApiKeyTestResponse,
-    LLMSettingsRequest,
-    LLMSettingsResponse,
-    SaveApiKeyRequest,
-)
 from .assistants import (
     AssistantResponse,
     CreateAssistantRequest,
@@ -42,10 +35,6 @@ from .operations import (
 
 __all__ = [
     "AddMessageRequest",
-    "ApiKeyStatusResponse",
-    "ApiKeyTestResponse",
-    "LLMSettingsRequest",
-    "LLMSettingsResponse",
     "AssistantResponse",
     "AuditEventResponse",
     "ChatRequest",
@@ -67,7 +56,6 @@ __all__ = [
     "MessageResponse",
     "ReindexJobResponse",
     "ReviewFeedbackRequest",
-    "SaveApiKeyRequest",
     "SubmitFeedbackRequest",
     "UsageLimitsRequest",
     "UsageLimitsResponse",

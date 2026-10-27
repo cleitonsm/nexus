@@ -47,9 +47,6 @@ def scan(data: Path) -> tuple[list[dict], list[str]]:
     manifest = json.loads((data / "manifest.json").read_text(encoding="utf-8"))
     documents = manifest["documents"]
     admin = Api(token_for("admin.nexus"))
-    status, original = admin.json("GET", "/admin/llm-settings")
-    if status != 200:
-        raise RuntimeError(f"llm-settings: {status}")
     status, assistant = admin.json(
         "POST", "/assistants", payload={"name": f"CT-56 acesso {uuid4().hex[:6]}"}
     )
@@ -58,6 +55,7 @@ def scan(data: Path) -> tuple[list[dict], list[str]]:
     assistant_id = assistant["id"]
     findings: list[dict] = []
     errors: list[str] = []
+    credential_id: str | None = None
     try:
         status, _ = admin.json(
             "PUT",
@@ -77,17 +75,9 @@ def scan(data: Path) -> tuple[list[dict], list[str]]:
             if done["status"] != "indexado":
                 raise RuntimeError(f"{item['file']} nao foi indexado: {done}")
         with FakeLLMServer() as llm:
-            status, _ = admin.json(
-                "PUT",
-                "/admin/llm-settings",
-                payload={
-                    "provider": "custom",
-                    "model": "modelo-simulado",
-                    "api_url": llm.url,
-                },
-            )
-            if status != 200:
-                raise RuntimeError(f"llm-settings (simulado): {status}")
+            # SPEC-013: credencial temporaria so neste assistente; a padrao da
+            # pilha nao muda e nenhum texto de teste vai ao provedor real.
+            credential_id = _use_fake_llm(admin, assistant_id, llm.url)
             for username, groups in manifest["users"].items():
                 api = Api(token_for(username))
                 for item in documents:
@@ -101,11 +91,40 @@ def scan(data: Path) -> tuple[list[dict], list[str]]:
     finally:
         cleanup = Api(token_for("admin.nexus"))
         cleanup.request("DELETE", f"/assistants/{assistant_id}")
-        restore = {"provider": original["provider"], "model": original["model"]}
-        if original["provider"] == "custom":
-            restore["api_url"] = original["api_url"]
-        cleanup.json("PUT", "/admin/llm-settings", payload=restore)
+        if credential_id:
+            cleanup.request("DELETE", f"/admin/llm-credentials/{credential_id}")
     return findings, errors
+
+
+def _use_fake_llm(admin: Api, assistant_id: str, url: str) -> str:
+    status, listed = admin.json("GET", "/admin/llm-credentials")
+    if status != 200 or not listed["items"]:
+        # A simulada viraria a padrao e nao poderia ser excluida (RN-37/RN-38).
+        raise RuntimeError(
+            "a pilha nao tem credencial de LLM: cadastre a real antes do CT-56."
+        )
+    status, created = admin.json(
+        "POST",
+        "/admin/llm-credentials",
+        payload={
+            "name": f"CT-56 simulado {uuid4().hex[:6]}",
+            "provider": "custom",
+            "api_url": url,
+            "models": [{"name": "modelo-simulado"}],
+            "default_model": "modelo-simulado",
+            "api_key": "chave-ficticia-ct56",
+        },
+    )
+    if status != 201:
+        raise RuntimeError(f"credencial simulada: {status} {created}")
+    status, data = admin.json(
+        "PUT",
+        f"/assistants/{assistant_id}/llm",
+        payload={"credential_id": created["id"], "model": "modelo-simulado"},
+    )
+    if status != 200:
+        raise RuntimeError(f"LLM do assistente: {status} {data}")
+    return created["id"]
 
 
 def _check(api, assistant_id, llm, username, item, allowed, findings, errors) -> None:
@@ -135,6 +154,12 @@ def _check(api, assistant_id, llm, username, item, allowed, findings, errors) ->
         if item["file"] not in cited_files:
             errors.append(
                 f"controle: {username} deveria recuperar {item['file']} e nao recuperou"
+            )
+        if not llm.requests:
+            # Sem isto, a superficie "enviado ao LLM" ficaria sempre vazia e a
+            # varredura passaria sem medir nada (revisao do P4 da SPEC-013).
+            errors.append(
+                f"controle: {username} x {item['file']}: o LLM simulado nao foi chamado"
             )
         return
     if item["file"] in cited_files:

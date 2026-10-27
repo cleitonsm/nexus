@@ -34,7 +34,11 @@ from src.application.services import (
     assistant_retrieval_settings,
     build_assistant_runtime,
 )
-from src.application.use_cases import ChatWithAssistantInput, ChatWithAssistantUseCase
+from src.application.use_cases import (
+    ChatWithAssistantInput,
+    ChatWithAssistantUseCase,
+    configuration_differences,
+)
 from src.domain import (
     PROVIDER_ENDPOINTS,
     Assistant,
@@ -106,7 +110,9 @@ class HybridToggleTestCase(unittest.TestCase):
     def test_with_settings_keeps_the_gateways(self) -> None:
         store = ScriptedVectorStore([[], []])
         base = build_retriever(store)
-        tuned = base.for_profile(candidates=12, top_n=3, min_score=0.4, hybrid_enabled=False)
+        tuned = base.with_settings(
+            RetrievalSettings(candidates=12, top_n=3, min_score=0.4, hybrid_enabled=False)
+        )
         tuned.search(AssistantId(ASSISTANT), "pergunta", user_groups=frozenset())
         self.assertEqual(store.calls[0]["limit"], 12)
         self.assertEqual(base.settings.candidates, RetrievalSettings().candidates)
@@ -161,6 +167,27 @@ class BuildRuntimeTestCase(unittest.TestCase):
         self.assertNotIn("sk-gemini-ficticia", repr(fields))
         self.assertNotIn("sk-gemini-ficticia", repr(runtime))
 
+    def test_origins_and_clamp_reach_the_report(self) -> None:
+        runtime = self.build(assistant(retrieval_profile=RetrievalProfile(min_score=0.3)))
+        self.assertEqual(runtime.retrieval_origins["min_score"], "assistant")
+        self.assertEqual(runtime.retrieval_origins["candidates"], "default")
+        self.assertFalse(runtime.top_k_clamped)
+
+    def test_key_that_cannot_be_decrypted_means_no_key(self) -> None:
+        # I1: chave mestra trocada e erro do servidor; o chat segue "sem chave".
+        self.credentials.keys["cred-openai"] = "corrompida-sem-prefixo"
+
+        class BrokenCipher(PrefixCipher):
+            def decrypt(self, ciphertext: str) -> str:
+                raise ValueError("Unable to decrypt stored secret.")
+
+        self.cipher = BrokenCipher()
+        with self.assertLogs("src.application.services.llm_resolution", "ERROR") as logs:
+            runtime = self.build(assistant())
+        self.assertIsNone(runtime.llm.api_key)
+        self.assertIn("llm.credential.decrypt_failed", logs.output[0])
+        self.assertNotIn("corrompida", "".join(logs.output))
+
     def test_retrieval_settings_alone_for_calibration(self) -> None:
         tuned = assistant_retrieval_settings(
             assistant(retrieval_profile=RetrievalProfile(candidates=50, top_k=8)), BASE
@@ -168,8 +195,8 @@ class BuildRuntimeTestCase(unittest.TestCase):
         self.assertEqual((tuned.candidates, tuned.top_n, tuned.min_score), (50, 8, 0.10))
 
 
-class ChatUsesTheAssistantRuntimeTestCase(unittest.TestCase):
-    """CT-106: chat com e sem streaming segue o assistente; consumo com o preco dele."""
+class _ChatRuntimeBase(unittest.TestCase):
+    """Montagem comum; sem testes proprios."""
 
     def setUp(self) -> None:
         self.credentials, self.cipher = credentials()
@@ -234,6 +261,10 @@ class ChatUsesTheAssistantRuntimeTestCase(unittest.TestCase):
             return events
         return use_case.execute(data)
 
+
+class ChatUsesTheAssistantRuntimeTestCase(_ChatRuntimeBase):
+    """CT-106: chat com e sem streaming segue o assistente; consumo com o preco dele."""
+
     def test_answer_comes_from_the_assistant_llm_with_its_settings(self) -> None:
         result = self.chat(assistant(llm_model="gpt-4o"))
         self.assertFalse(result.fallback_used)
@@ -276,6 +307,126 @@ class ChatUsesTheAssistantRuntimeTestCase(unittest.TestCase):
         self.assertEqual(events[-1].kind, "done")
         self.assertEqual(self.resolved[0].connection.provider, LLMProvider.GEMINI)
         self.assertEqual(self.records.records[0].model, "gemini-3.8-flash")
+
+
+class ChatRuntimeEdgeCasesTestCase(_ChatRuntimeBase):
+    """CT-106: casos levantados na revisao do P4 (fallback, falha, teto, sequencia)."""
+
+    def use_case(self, current: dict[str, Assistant], *, failing: bool = False):
+        store = ScriptedVectorStore(
+            [[hit("doc-1", "Ferias de trinta dias.", score=0.9)] for _ in range(4)]
+        )
+        self.store = store
+
+        class Assistants:
+            def get_by_id(self, assistant_id: AssistantId) -> Assistant | None:
+                return current["assistant"]
+
+        def builder(resolved: ResolvedLLM) -> ScriptedLLM:
+            self.resolved.append(resolved)
+            llm = ScriptedLLM(
+                "As ferias duram trinta dias [1].",
+                "As ferias duram trinta dias [1].",
+                usage=TokenUsage(input_tokens=1000, output_tokens=1000),
+            )
+            if failing:
+                def boom(**kwargs: object) -> None:
+                    raise RuntimeError("provedor fora do ar")
+
+                llm.generate_with_usage = boom  # type: ignore[method-assign]
+                llm.generate_stream = boom  # type: ignore[method-assign]
+            self.assistant_llms.append(llm)
+            return llm
+
+        def resolver(item: Assistant):
+            return build_assistant_runtime(
+                item,
+                base_settings=BASE,
+                credentials=self.credentials,
+                cipher=self.cipher,
+                environment=ENVIRONMENT,
+                currency="USD",
+                gateway_builder=builder,
+            )
+
+        return ChatWithAssistantUseCase(
+            assistant_repository=Assistants(),
+            conversation_repository=InMemoryConversationRepository(),
+            context_retriever=build_retriever(store),
+            answer_generator=GroundedAnswerGenerator(llm_gateway=self.base_llm),
+            token_counter=WordTokenCounter(),
+            access_control=self.access.control,
+            usage_governance=UsageGovernance(
+                limiter=self.records,
+                record_repository=self.records,
+                settings_repository=InMemoryUsageSettings(),
+                settings=UsageSettings(model="modelo-do-ambiente"),
+            ),
+            runtime_resolver=resolver,
+        )
+
+    def ask(self, use_case, *, top_k: int | None = None):
+        return use_case.execute(
+            ChatWithAssistantInput(
+                user=OWNER, conversation_id="conv-1", question="Quanto?", top_k=top_k
+            )
+        )
+
+    def test_fallback_with_hybrid_off_does_not_call_the_llm(self) -> None:
+        result = self.chat(
+            assistant(retrieval_profile=RetrievalProfile(hybrid_enabled=False, min_score=0.95)),
+            score=0.9,
+        )
+        self.assertTrue(result.fallback_used)
+        self.assertEqual(self.assistant_llms[0].calls, [])
+        self.assertTrue(self.store.calls[0]["sparse_vector"].is_empty)
+
+    def test_failure_records_the_assistant_model(self) -> None:
+        use_case = self.use_case({"assistant": assistant(llm_model="gpt-4o")}, failing=True)
+        with self.assertRaises(RuntimeError):
+            self.ask(use_case)
+        (record,) = self.records.records
+        self.assertEqual(record.model, "gpt-4o")
+        self.assertTrue(record.failed)
+
+    def test_request_top_k_stays_a_ceiling_below_the_assistant(self) -> None:
+        use_case = self.use_case(
+            {"assistant": assistant(retrieval_profile=RetrievalProfile(top_k=3))}
+        )
+        self.ask(use_case, top_k=10)
+        self.assertEqual(use_case._top_n(10), 3)
+        self.assertEqual(use_case._top_n(2), 2)
+
+    def test_questions_in_sequence_do_not_share_configuration(self) -> None:
+        current = {
+            "assistant": assistant(
+                llm_model="gpt-4o",
+                retrieval_profile=RetrievalProfile(min_score=0.95, hybrid_enabled=False),
+            )
+        }
+        use_case = self.use_case(current)
+        self.assertTrue(self.ask(use_case).fallback_used)
+        current["assistant"] = assistant()
+        second = self.ask(use_case)
+        self.assertFalse(second.fallback_used)
+        self.assertFalse(self.store.calls[1]["sparse_vector"].is_empty)
+        self.assertEqual(self.records.records[1].model, "gpt-4o-mini")
+
+
+class BaselineComparabilityTestCase(unittest.TestCase):
+    """RF-92/RF-95: avisar quando a configuracao mudou desde o relatorio anterior."""
+
+    def test_differences(self) -> None:
+        before = {"llm_model": "gpt-4o-mini", "relevance_min_score": "0.1", "commit": "a"}
+        self.assertEqual(configuration_differences(dict(before, commit="b"), before), [])
+        self.assertEqual(
+            configuration_differences(dict(before, llm_model="gpt-4o"), before), ["llm_model"]
+        )
+        # Relatorio antigo sem o parametro novo nao conta como diferenca.
+        self.assertEqual(
+            configuration_differences(dict(before, retrieval_hybrid="sim"), before), []
+        )
+        self.assertEqual(configuration_differences(before, None), [])
 
 
 class UsageOverrideTestCase(unittest.TestCase):

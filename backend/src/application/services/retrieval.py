@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 from src.domain import (
     AssistantId,
@@ -103,24 +103,6 @@ class ContextRetriever:
             vector_store_gateway=self._vector_store_gateway,
             reranker_gateway=self._reranker_gateway,
             settings=settings,
-        )
-
-    def for_profile(
-        self,
-        *,
-        candidates: int,
-        top_n: int,
-        min_score: float,
-        hybrid_enabled: bool,
-    ) -> ContextRetriever:
-        return self.with_settings(
-            replace(
-                self._settings,
-                candidates=candidates,
-                top_n=top_n,
-                min_score=min_score,
-                hybrid_enabled=hybrid_enabled,
-            )
         )
 
     def search(

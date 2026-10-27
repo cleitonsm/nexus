@@ -50,7 +50,7 @@ class KeycloakRealTokenTests(unittest.TestCase):
         self.assertEqual(status, 200, me)
         # Papeis de realm do Keycloak (Role, RF-41), sem traducao na API.
         self.assertIn("nexus-admin", me["roles"])
-        status, _ = Api(self.token).json("GET", "/admin/llm-settings")
+        status, _ = Api(self.token).json("GET", "/admin/llm-credentials")
         self.assertEqual(status, 403)
 
     def test_tampered_payload_is_rejected(self) -> None:

@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 from src.application.services import ContextRetriever, assistant_retrieval_settings
+from src.application.services.retrieval import RetrievalSettings
 from src.application.use_cases import (
     DEFAULT_THRESHOLDS,
     CalibrateRelevanceInput,
@@ -78,6 +79,7 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return EXIT_NO_ASSISTANT
+        settings = assistant_retrieval_settings(assistant, retrieval_settings())
         report = CalibrateRelevanceUseCase(
             document_repository=PostgresDocumentRepository(session=session),
             context_retriever=ContextRetriever(
@@ -88,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
                     api_key=os.getenv("QDRANT_API_KEY", "") or None,
                 ),
                 reranker_gateway=build_reranker_gateway(),
-                settings=assistant_retrieval_settings(assistant, retrieval_settings()),
+                settings=settings,
             ),
         ).execute(
             CalibrateRelevanceInput(
@@ -97,14 +99,36 @@ def main(argv: list[str] | None = None) -> int:
                 thresholds=args.thresholds,
             )
         )
+    # RF-95: a calibracao vale para este assistente, com estes parametros.
+    print(_configuration_line(args.assistant_name, settings))
     print(format_report(report))
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
+        data = to_dict(report)
+        data["assistant_name"] = args.assistant_name
+        data["retrieval"] = _configuration(settings)
         args.output.write_text(
-            json.dumps(to_dict(report), ensure_ascii=False, indent=2),
+            json.dumps(data, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
     return EXIT_OK
+
+
+def _configuration(settings: RetrievalSettings) -> dict[str, object]:
+    return {
+        "candidates": settings.candidates,
+        "top_n": settings.top_n,
+        "min_score": settings.min_score,
+        "hybrid_enabled": settings.hybrid_enabled,
+    }
+
+
+def _configuration_line(assistant_name: str, settings: RetrievalSettings) -> str:
+    hybrid = "sim" if settings.hybrid_enabled else "nao (so densa)"
+    return (
+        f'assistente "{assistant_name}": candidatos {settings.candidates}, '
+        f"top_k {settings.top_n}, nota minima atual {settings.min_score}, hibrida {hybrid}"
+    )
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -112,7 +136,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         description="Varre a nota minima de relevancia sobre o conjunto de referencia."
     )
     parser.add_argument("--dataset", type=Path, required=True)
-    parser.add_argument("--assistant-name", default="Nexus Docs (avaliacao)")
+    # RF-95: ``--assistant`` e o nome da SPEC-013; ``--assistant-name`` continua.
+    parser.add_argument(
+        "--assistant", "--assistant-name", dest="assistant_name",
+        default="Nexus Docs (avaliacao)",
+    )
     parser.add_argument("--allow-unvalidated", action="store_true")
     parser.add_argument("--output", type=Path, default=None)
     parser.add_argument(
