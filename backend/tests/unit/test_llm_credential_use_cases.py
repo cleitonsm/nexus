@@ -226,6 +226,23 @@ class UpdateCredentialTestCase(_Base):
         self.assertEqual(event.resource_id, self.openai_id)
         self.assertNotIn("sk-nova-ficticia", repr(self.access.audit.events))
 
+    def test_new_destination_requires_a_new_key(self) -> None:
+        # D12: trocar provedor ou URL sem chave nova e recusado e nada muda.
+        before = self.credentials.get(LLMCredentialId(self.openai_id))
+        with self.assertRaises(DomainValidationError):
+            self.update(self.openai_id, provider="custom",
+                        api_url="https://llm.exemplo.com/v1/chat/completions")
+        with self.assertRaises(DomainValidationError):
+            self.update(self.openai_id, provider="gemini", api_url=None,
+                        models=(LLMModelInput(name="gemini-3.8-flash"),),
+                        default_model="gemini-3.8-flash", api_key="  ")
+        self.assertEqual(self.credentials.get(LLMCredentialId(self.openai_id)), before)
+        moved = self.update(self.openai_id, provider="custom",
+                            api_url="https://llm.exemplo.com/v1/chat/completions",
+                            api_key="sk-destino-novo-ficticia")
+        self.assertEqual(moved.provider, "custom")
+        self.assertIn(AuditAction.LLM_CREDENTIAL_KEY_ROTATED, self.access.audit.actions())
+
     def test_removing_a_model_in_use_is_refused(self) -> None:
         self.assistants.save(assistant("juridico", credential_id=self.gemini_id,
                                        model="gemini-3.8-pro"))

@@ -369,7 +369,7 @@ class CreateLLMCredentialUseCase(_CredentialUseCase):
 
 
 class UpdateLLMCredentialUseCase(_CredentialUseCase):
-    """RF-87 e RN-38: modelo escolhido por algum assistente nao sai."""
+    """RF-87, RN-38 e D12: modelo em uso nao sai; destino novo exige chave nova."""
 
     def __init__(
         self,
@@ -401,9 +401,17 @@ class UpdateLLMCredentialUseCase(_CredentialUseCase):
             allow_insecure_http=self._allow_insecure_http,
         )
         self._ensure_unique_name(updated.name, except_id=current.id.value)
+        api_key = _clean_key(data.api_key)
+        destination_changed = (
+            updated.provider != current.provider or updated.api_url != current.api_url
+        )
+        if destination_changed and api_key is None:
+            # D12: a chave nunca vai a um destino diferente do cadastrado.
+            raise DomainValidationError(
+                "api_key is required when provider or api_url changes."
+            )
         assistants = self._assistants.list_all()
         ensure_models_removable(current, updated, assistants)
-        api_key = _clean_key(data.api_key)
         saved = self._credentials.save(
             updated,
             encrypted_key=self._cipher.encrypt(api_key) if api_key else None,

@@ -1,7 +1,7 @@
 # SPEC-013 — Várias chaves de LLM, modelo por assistente e parâmetros de recuperação por assistente
 
 **ID**: SPEC-20261027-013
-**Status**: **Aprovada** em 2026-10-27 por Cleiton Medeiros (D1 a D10 escolhidas pelo autor; todas as recomendações). D11 acrescentada pelo autor no mesmo dia, na revisão do domínio.
+**Status**: **Aprovada** em 2026-10-27 por Cleiton Medeiros (D1 a D10 escolhidas pelo autor; todas as recomendações). D11 e D12 acrescentadas pelo autor no mesmo dia, nas revisões do domínio e do P2/P3.
 **Origem**: pedido do autor (2026-10-27): cadastrar quantas chaves de API quiser, com uma padrão;
 cada assistente escolhe a chave e o modelo; híbrida, reranker, candidatos, top_k, limiar e filtros
 configuráveis na tela, sem editar o `.env`.
@@ -45,6 +45,7 @@ configuráveis na tela, sem editar o `.env`.
 | D9 | **Rotas da SPEC-008 removidas** (autor): `GET/PUT /admin/llm-settings`, `PUT /admin/api-key`, o status e `POST /admin/api-key/test` deixam de existir; a tela "Chaves de LLM" substitui o formulário atual. |
 | D10 | **Migração para a credencial "Padrão"** (autor). A migração `0010` cria a credencial "Padrão" com o ciphertext existente (sem decifrar), o provedor/URL/modelo de `llm_connection` (ou do ambiente) e a marca como padrão. Sem chave gravada, nenhuma credencial é criada e o chat responde como hoje sem chave. |
 | D11 | **Modelo com recuo para quem segue a padrão** (autor, 2026-10-27, revisão do domínio). O assistente sem credencial própria pode guardar um modelo; ao gravar, o modelo precisa existir na credencial padrão vigente. Se a padrão mudar e não tiver esse modelo, a pergunta usa o modelo padrão da nova credencial e registra o recuo; a tela avisa no assistente e, antes de confirmar a troca da padrão ou a remoção de um modelo dela, lista os assistentes que vão recuar. Quem escolheu a credencial continua protegido pela RN-38. |
+| D12 | **Destino novo exige chave nova** (autor, 2026-10-27, revisão do P2/P3). Ao alterar uma credencial, trocar o provedor ou a URL sem informar a chave é recusado com 422 e nada muda; a chave gravada nunca é enviada a um destino diferente daquele para o qual foi cadastrada. Fecha, para as credenciais, o risco da SPEC-008 D4. |
 
 ## Regras de negócio
 
@@ -58,7 +59,7 @@ configuráveis na tela, sem editar o `.env`.
 
 ## Requisitos funcionais
 
-- RF-87: o administrador lista, cria, altera (nome, URL em `Personalizado`, modelos, modelo padrão, chave opcional) e exclui credenciais; nome único, até 100 caracteres.
+- RF-87: o administrador lista, cria (chave obrigatória), altera (nome, URL em `Personalizado`, modelos, modelo padrão; chave opcional, exceto quando o provedor ou a URL mudam, D12) e exclui credenciais; nome único sem diferenciar maiúsculas, até 100 caracteres.
 - RF-88: o administrador marca uma credencial como padrão do sistema (RN-37).
 - RF-89: o administrador testa uma credencial com um dos modelos dela (substitui `POST /admin/api-key/test`).
 - RF-90: o assistente guarda a credencial (opcional, vazio = padrão) e o modelo (opcional, vazio = padrão da credencial; sem credencial, com o recuo da D11); chat, streaming, teste, consumo e avaliação usam a resolução da RN-40.
