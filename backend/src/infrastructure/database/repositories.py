@@ -27,11 +27,16 @@ from src.domain import (
     MessageId,
     MessageRole,
     JobOwnershipLostError,
+    LLMCredentialId,
     ReindexInProgressError,
     ReindexJob,
     ReindexStatus,
 )
 
+from src.infrastructure.llm_credential_mapping import (
+    profile_from_json,
+    profile_to_json,
+)
 from .transactions import commit_or_rollback
 from .models import (
     AssistantGroupModel,
@@ -66,6 +71,14 @@ class PostgresAssistantRepository:
             model.name = assistant.name.value
             model.description = assistant.description
             model.initial_prompt = assistant.initial_prompt
+        # SPEC-013: credencial, modelo e perfil de recuperacao.
+        model.llm_credential_id = (
+            assistant.llm_credential_id.value
+            if assistant.llm_credential_id is not None
+            else None
+        )
+        model.llm_model = assistant.llm_model
+        model.retrieval_profile = profile_to_json(assistant.retrieval_profile)
         commit_or_rollback(self._session)
         self._session.refresh(model)
         return _assistant_to_entity(model)
@@ -698,6 +711,15 @@ def _assistant_to_entity(model: AssistantModel) -> Assistant:
         description=model.description,
         initial_prompt=model.initial_prompt,
         created_at=model.created_at,
+        llm_credential_id=(
+            LLMCredentialId(model.llm_credential_id)
+            if model.llm_credential_id
+            else None
+        ),
+        llm_model=model.llm_model,
+        retrieval_profile=profile_from_json(
+            model.retrieval_profile, assistant_id=model.id
+        ),
     )
 
 

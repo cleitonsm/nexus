@@ -210,6 +210,14 @@ class LLMConnectionRepository(Protocol):
     def save(self, connection: LLMConnection, *, updated_by: str) -> LLMConnection: ...
 
 
+class SecretCipher(Protocol):
+    """Cifra e decifra segredos (ADR 0005); so a infraestrutura conhece a chave mestra."""
+
+    def encrypt(self, plaintext: str) -> str: ...
+
+    def decrypt(self, ciphertext: str) -> str: ...
+
+
 class LLMCredentialRepository(Protocol):
     """Credenciais de LLM (SPEC-013); a chave so entra e sai cifrada (RN-39)."""
 

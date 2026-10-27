@@ -39,9 +39,19 @@ from .retrieval import (
     RetrievalSettings,
     StructuralContext,
 )
+from .llm_resolution import (
+    LLMSource,
+    ResolvedLLM,
+    resolve_llm_for_assistant,
+    resolve_retrieval_settings,
+)
 from .usage import UsageGovernance, UsageSettings
 
 __all__ = [
+    "LLMSource",
+    "ResolvedLLM",
+    "resolve_llm_for_assistant",
+    "resolve_retrieval_settings",
     "CITATION_INSTRUCTION",
     "DEFAULT_ANSWER_INSTRUCTION",
     "ARTICLE_MAX_CHUNKS",

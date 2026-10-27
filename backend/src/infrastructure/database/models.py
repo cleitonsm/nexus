@@ -41,6 +41,21 @@ class AssistantModel(Base):
         default=_utc_now,
         nullable=False,
     )
+    # SPEC-013 (migracao 0010): sem credencial, segue a padrao (RN-40).
+    llm_credential_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey(
+            "llm_credentials.id",
+            name="fk_assistants_llm_credential_id",
+            ondelete="RESTRICT",
+        ),
+        nullable=True,
+        index=True,
+    )
+    llm_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    retrieval_profile: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(), nullable=True
+    )
 
     # passive_deletes: o ON DELETE CASCADE do banco apaga os filhos (fix-13).
     conversations: Mapped[list[ConversationModel]] = relationship(
@@ -273,6 +288,45 @@ class SecretSettingModel(Base):
         DateTime(timezone=True),
         default=_utc_now,
         nullable=False,
+    )
+
+
+class LLMCredentialModel(Base):
+    """Credencial de LLM (SPEC-013); a chave so existe cifrada (RN-39)."""
+
+    __tablename__ = "llm_credentials"
+    __table_args__ = (
+        UniqueConstraint("name", name="uq_llm_credentials_name"),
+        CheckConstraint(
+            "provider IN ('openai', 'gemini', 'custom')",
+            name="ck_llm_credentials_provider",
+        ),
+        # RN-37: no maximo uma padrao.
+        Index(
+            "uq_llm_credentials_single_default",
+            "is_default",
+            unique=True,
+            postgresql_where=text("is_default"),
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    provider: Mapped[str] = mapped_column(String(16), nullable=False)
+    api_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    models: Mapped[list[dict[str, object]]] = mapped_column(JSON(), nullable=False)
+    default_model: Mapped[str] = mapped_column(String(200), nullable=False)
+    is_default: Mapped[bool] = mapped_column(
+        Boolean(), nullable=False, default=False, server_default=text("false")
+    )
+    encrypted_key: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utc_now
     )
 
 

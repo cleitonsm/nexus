@@ -1,23 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
 
 from src.application.services import AccessControl
 from src.domain import (
     AuditAction,
     AuditResource,
     AuthenticatedUser,
+    SecretCipher,
     SecretSettingsRepository,
 )
 
 GLOBAL_LLM_API_KEY = "global_llm_api_key"
-
-
-class SecretCipher(Protocol):
-    def encrypt(self, plaintext: str) -> str: ...
-
-    def decrypt(self, ciphertext: str) -> str: ...
 
 
 @dataclass(frozen=True, slots=True)

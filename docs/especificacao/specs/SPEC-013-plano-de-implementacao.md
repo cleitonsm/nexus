@@ -11,8 +11,8 @@
 |--------|------------------------|----------------|
 | P0 Decisões | D1 a D10 escolhidas pelo autor em 2026-10-27 (todas as recomendações) | Registro na SPEC |
 | P1 Domínio | Entregue: `LLMCredentialId` em `domain/value_objects.py`; `domain/llm_credentials.py` (`LLMModelOption`, `LLMCredential`, regras RN-37/RN-38, recuo da D11), `domain/retrieval_profile.py` (`RetrievalProfile`, `RetrievalDefaults`, `ResolvedRetrievalProfile`, `ParameterOrigin`), `Assistant` com credencial, modelo e perfil, porta `LLMCredentialRepository`, erro `LLMCredentialInUseError`, ações de auditoria novas | `test_llm_credentials` (42), `test_retrieval_profile` (15) |
-| P2 Persistência | Pendente | — |
-| P3 Aplicação | Pendente | — |
+| P2 Persistência | Entregue: migração `0010_llm_credentials` (tabela, índice único parcial da padrão, FK `RESTRICT`, colunas no assistente, cópia da chave e do `llm_connection` para a credencial "Padrão" e volta no `downgrade`), `LLMCredentialModel`, `PostgresLLMCredentialRepository` (troca da padrão em duas instruções na mesma transação), mapeamento do assistente; conversão JSON em `infrastructure/llm_credential_mapping.py`, fora do pacote `database` para ser testada sem SQLAlchemy | `test_llm_credential_mapping` (9); CT-107 escrito em `tests/integration/test_llm_credentials_storage.py` (6 testes), a rodar no Docker |
+| P3 Aplicação | Entregue: `manage_llm_credentials.py` (listar, opções para o assistente, criar, alterar com rotação, excluir, marcar padrão, impacto da troca da padrão para a D11, testar), `configure_assistant.py` (LLM e recuperação do assistente, com valor efetivo e origem), `services/llm_resolution.py` (RN-40, RN-41, D8, D11; chave decifrada só aqui), porta `SecretCipher` movida para o domínio. Os casos de uso da SPEC-008 saem junto com as rotas, no P5, para a API continuar importável até lá | `test_llm_credential_use_cases` (41) |
 | P4 Pipeline do chat | Pendente | — |
 | P5 API | Pendente | — |
 | P6 Frontend | Pendente | — |
