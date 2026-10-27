@@ -49,7 +49,7 @@ export class ShellComponent {
   protected readonly user = this.store.selectSignal(selectSessionUser);
   protected readonly menu = this.store.selectSignal(selectMenu);
 
-  protected readonly sidebarCollapsed = signal(false);
+  protected readonly sidebarCollapsed = signal(true);
   protected readonly mobileSidebarOpen = signal(false);
   protected readonly assistantsCollapsed = signal(false);
   protected readonly conversationsCollapsed = signal(false);

@@ -21,6 +21,8 @@
         <button
           type="button"
           (click)="toggleNavigation()"
+          [attr.aria-label]="sidebarContentVisible() ? 'Recolher menu' : 'Expandir menu'"
+          [attr.aria-expanded]="sidebarContentVisible()"
           class="flex h-10 w-10 items-center justify-center rounded-full text-nexus-text hover:bg-nexus-hover transition-colors"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

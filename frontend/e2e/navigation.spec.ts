@@ -84,6 +84,8 @@ test("CT-82: na Auditoria, selecionar um assistente leva ao chat em branco", asy
   await login(page, "admin.nexus");
   await page.goto("/admin/audit");
   const sidebar = page.locator("aside");
+  // O menu lateral comeca recolhido; a lista de assistentes so aparece expandido.
+  await sidebar.getByRole("button", { name: "Expandir menu" }).click();
   await sidebar.getByRole("button", { name: "Assistente E2E" }).click();
 
   await expect(page).toHaveURL(/\/chat$/);
