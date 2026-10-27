@@ -1,7 +1,7 @@
 # Plano de Implementação — SPEC-013 Várias chaves de LLM, modelo e parâmetros por assistente
 
 **Spec**: [SPEC-20261027-013](SPEC-013-chaves-de-llm-e-parametros-por-assistente.md) (Aprovada em 2026-10-27)
-**Status do plano**: Em andamento — P1 a P5 entregues; P6 (tela) pendente; P4 a P6 vão juntos para o Docker
+**Status do plano**: Em andamento — P1 a P7 entregues; falta o P8 (validação no Docker e build do frontend)
 **Data**: 2026-10-27
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
@@ -15,16 +15,17 @@
 | P3 Aplicação | Entregue: `manage_llm_credentials.py` (listar, opções para o assistente, criar, alterar com rotação e chave nova obrigatória quando o destino muda (D12), excluir, marcar padrão, impacto da troca da padrão para a D11, testar), `configure_assistant.py` (LLM e recuperação do assistente, com valor efetivo e origem), `services/llm_resolution.py` (RN-40, RN-41, D8, D11; chave decifrada só aqui), porta `SecretCipher` movida para o domínio. Os casos de uso da SPEC-008 saem junto com as rotas, no P5, para a API continuar importável até lá | `test_llm_credential_use_cases` (47) |
 | P4 Pipeline do chat | Entregue: `services/assistant_runtime.py` (`AssistantRuntime`, `build_assistant_runtime`, `assistant_retrieval_settings`) monta, a cada pergunta, o LLM resolvido e os parâmetros do assistente; `ChatWithAssistantUseCase` recebe `runtime_resolver` (com e sem streaming), troca o recuperador e o gerador da pergunta e registra `chat.runtime.resolved` sem a chave; `RetrievalSettings.hybrid_enabled` e `ContextRetriever.with_settings`: híbrida desligada manda o vetor esparso vazio e o adaptador do Qdrant já faz só a pré-busca densa, com os mesmos filtros (sem mudança no Qdrant); consumo com modelo e preço do assistente (D8); `get_assistant_runtime_resolver` e `get_llm_gateway_builder` nas rotas do chat; `evaluate` e `calibrate_relevance` usam o mesmo caminho e o relatório registra fonte, credencial, recuo e híbrida (RF-95). Testes de integração que trocavam o LLM passam a trocar `get_llm_gateway_builder`. Os testes de pilha real e o `leakage_scan` ainda configuram o LLM pelas rotas da SPEC-008: migram no P5 | `test_assistant_runtime` (13); CT-108 pendente no Docker |
 | P5 API | Entregue: `routes/llm_credentials.py` (`/admin/llm-credentials`: listar com presets e moeda, criar, alterar, excluir, padrão, impacto da D11, testar; `/llm-credentials/options`), `routes/assistant_settings.py` (`/assistants/{id}/llm` e `/retrieval-settings`, com as faixas da D6), 409 com `code` `llm_credential_in_use` (assistentes, modelos, se é a padrão) e `concurrent_change` em `api/errors.py`; `/assistants/infer` usa a credencial padrão (`resolve_default_llm`). D9: saem `/admin/api-key*`, `/admin/llm-settings`, `manage_api_key.py`, `manage_llm_connection.py`, `PostgresLLMConnectionRepository`, `PostgresSecretSettingsRepository` e as portas `LLMConnectionRepository`/`SecretSettingsRepository` (as tabelas ficam); migração `0011` apaga a chave global e o `llm_connection` (T9), com `downgrade` a partir da padrão. Testes de pilha (`stack_support.use_fake_llm`, `test_full_stack_flow`, `test_assistant_isolation`, `test_ocr_container`, `test_keycloak_real`) e o `leakage_scan` (CT-56) usam uma credencial temporária só nos assistentes do teste, sem mexer na padrão (pulam ou param se a pilha não tem credencial); o CT-56 passa a falhar se o LLM simulado não for chamado num controle permitido | CT-109 em `test_access_control_api.py` (`LLMCredentialsApiTestCase`, 8 testes, e os de papéis do CT-30 reescritos); CT-107 ajustado para a `0011`; integração a rodar no Docker |
-| P6 Frontend | Pendente | — |
-| P7 Documentação | Pendente | — |
+| P6 Frontend | Entregue: slice NgRx `llmConfig` (actions, reducer, seletores, effects; recarrega a lista depois de toda alteração; 409 da RN-38 vira conflito com nomes dos assistentes); página `/admin/llm-credentials` (lista com padrão, chave configurada, modelos e preços, quem usa e quem segue; criar e editar com modelos e preços, chave obrigatória ao criar e ao trocar o destino (D12); tornar padrão com confirmação que mostra quem segue e quem recua (D11); excluir; testar com o modelo escolhido); seções "Modelo de linguagem" (administrador edita, curador vê) e "Recuperação" (administrador e curador, com valor efetivo, origem, faixas da D6, aviso dos filtros fixos, de recalibração e de linha de base, restaurar padrão) na página de assistentes; item "Chaves de LLM" no menu Administração; sai o modal da SPEC-008, suas actions, estado, effects, seletores e o efeito de sessão que pedia a situação da chave; E2E do menu atualizado | `shared/llm/llm-config.spec.ts` (11, executado aqui com um substituto do Vitest), `llm-config.reducer.spec.ts` (6) e `llm-config.effects.spec.ts` (4) para o `npm test`; sintaxe de todos os `.ts` conferida com o TypeScript 6 |
+| P7 Documentação | Entregue: ADR 0013 (a 0012 já era o tema do Keycloak), status das ADRs 0005 e 0007, CT-99 a CT-112 na estratégia de testes (CT-64 a CT-66, CT-68 e CT-69 marcados como removidos), `variaveis-ambiente.md`, tabela de rotas da SPEC-004 e a skill `desenvolvedor-nexus`. Pendente: diagramas C4 de componentes | Revisão do autor |
 | P8 Validação no Docker | Pendente | — |
 
 Verificação feita fora do Docker, em Python 3.13 com o LangGraph substituído por um dublê:
-**900 testes unitários passam** (778 anteriores, 133 novos e 11 removidos com os casos de uso da SPEC-008). `ruff` não pôde ser instalado (sem
+**901 testes unitários passam** (778 anteriores, 134 novos e 11 removidos com os casos de uso da SPEC-008). `ruff` não pôde ser instalado (sem
 acesso ao PyPI); uma verificação equivalente à regra F401 (imports sem uso) não achou problemas.
 Revisões do `architecture-guard`: P1 e P2/P3 sem bloqueantes; os achados importantes foram
 corrigidos (P1: T3, T6, T7 e D11; P2/P3: T9, atualização perdida, corridas traduzidas, chave fora
 do `repr` das entradas, 403 antes de 404, nome único sem diferenciar maiúsculas).
+Revisão do `architecture-guard` no P5: sem bloqueantes; corrigidos o 422 que devolvia o corpo com a chave, a decifragem que falhava virando 502 no teste da credencial (agora 503 com código próprio), a limpeza do CT-56 e do `stack_support`, a `0011` idempotente, códigos próprios de erro e a montagem dos gateways em `composition.py`. Pendente decisão do autor: `/assistants/infer` (D13).
 Revisão do `rag-quality-reviewer` no P4: sem bloqueantes; corrigidos I1 (chave que não decifra vira
 "sem chave", com log de erro, em vez de 422), I2 (P5 e `leakage_scan`), I3 (relatório de avaliação com
 `judge_model`, origem de cada parâmetro, `top_k` limitado e aviso `baseline_comparable` quando a
@@ -32,7 +33,7 @@ configuração muda; calibração com assistente e parâmetros, `--assistant`), 
 revisor no repositório) e os menores M1, M2, M3, M6 e M7.
 **Não verificado**: nada roda aqui com FastAPI, SQLAlchemy, PostgreSQL ou Qdrant: migrações e
 repositórios (CT-107), rotas (CT-109), busca só densa (CT-108) e os testes de pilha ficam para o
-Docker. A tela ainda chama as rotas da SPEC-008 até o P6.
+Docker. Frontend: sem `npm` aqui, nem build nem `npm test` rodaram; os specs do reducer e dos effects e a checagem de tipos dos templates (`strictTemplates`) ficam para o P8.
 
 ## 1. Ordem de execução
 
@@ -48,7 +49,7 @@ flowchart LR
     P3 --> P4[P4 Pipeline do chat]
     P3 --> P5[P5 API]
     P5 --> P6[P6 Frontend]
-    P4 --> P7[P7 Documentacao e ADR 0012]
+    P4 --> P7[P7 Documentacao e ADR 0013]
     P6 --> P7
     P7 --> P8[P8 Validacao no Docker]
 ```
@@ -63,7 +64,7 @@ flowchart LR
 | **P4 Pipeline do chat** | `chat_with_assistant` (com e sem streaming) recebe a conexão, a chave decifrada em memória, o preço do modelo e os parâmetros resolvidos por pergunta. `ContextRetriever` usa `candidates`, `top_n` e `min_score` do perfil; `RetrievalSettings.hybrid_enabled` (desligado = vetor esparso vazio; o adaptador do Qdrant faz só a pré-busca densa, mesmos filtros de `user_groups` e `active`). `HttpChatCompletionsLLM` criado por credencial. Consumo usa o preço do modelo ou `LLM_PRICE_*`. `evaluate` e `calibrate_relevance --assistant` usam a mesma resolução e registram credencial, modelo e parâmetros (RF-95). | `application/use_cases/chat_with_assistant.py`, `application/services/retrieval.py`, `infrastructure/vector_store/qdrant_store.py`, `api/dependencies.py`, `infrastructure/composition.py`, `cli/evaluate.py`, `cli/calibrate_relevance.py` | CT-106, CT-108 (integração), CT-111 (avaliação) |
 | **P5 API** | `/admin/llm-credentials` (`GET`, `POST`), `/{id}` (`PUT`, `DELETE`), `/{id}/default` e `/{id}/test` (`POST`); `GET /llm-credentials/options`; `GET/PUT /assistants/{id}/llm` e `/assistants/{id}/retrieval-settings`. `LLMCredentialInUseError` → 409 com os assistentes afetados; códigos novos em `api/error_codes.py`. Saem `/admin/llm-settings` e `/admin/api-key*` (D9). | `api/routes/llm_credentials.py` (novo), `api/routes/assistants.py`, `api/routes/admin.py`, `api/schemas/` | CT-109 (integração) |
 | **P6 Frontend** | Página `/admin/llm-credentials` no `administrationMenu` (lista, padrão com a lista de assistentes afetados antes de confirmar, criar, editar, rotacionar chave, testar, excluir, preço por modelo com aviso quando ausente). Seções "Modelo de linguagem" e "Recuperação" no assistente, com valor efetivo, origem, "restaurar padrão", aviso fixo dos filtros de segurança, de recalibração e de linha de base. Sai o formulário da SPEC-008. | `pages/llm-credentials-page.component.*` (novo), `pages/assistants-page.component.*`, `store/`, `core/services/nexus-api.service.ts`, `shared/models/nexus.models.ts` | CT-110 |
-| **P7 Documentação** | ADR 0012 e status da ADR 0005 (substituída em parte) e 0007 (complementada); `estrategia-de-testes.md` com CT-99 a CT-112; `variaveis-ambiente.md` dizendo que `RETRIEVAL_CANDIDATES`, `RERANK_TOP_N`, `RELEVANCE_MIN_SCORE`, `LLM_MODEL` e `LLM_API_URL` viram padrão global; C4 de componentes; skill `desenvolvedor-nexus` (item 7 e ADRs vigentes). | `docs/arquitetura/adrs/`, `docs/especificacao/`, `docs/infraestrutura/`, `.claude/skills/desenvolvedor-nexus/SKILL.md` | — |
+| **P7 Documentação** | ADR 0013 e status da ADR 0005 (substituída em parte) e 0007 (complementada); `estrategia-de-testes.md` com CT-99 a CT-112; `variaveis-ambiente.md` dizendo que `RETRIEVAL_CANDIDATES`, `RERANK_TOP_N`, `RELEVANCE_MIN_SCORE`, `LLM_MODEL` e `LLM_API_URL` viram padrão global; C4 de componentes; skill `desenvolvedor-nexus` (item 7 e ADRs vigentes). | `docs/arquitetura/adrs/`, `docs/especificacao/`, `docs/infraestrutura/`, `.claude/skills/desenvolvedor-nexus/SKILL.md` | — |
 | **P8 Validação** | Docker: rebuild, migração `0010` sobre um banco com chave gravada (credencial "Padrão" criada, chat igual), CT-107 a CT-109, portão de qualidade nos três conjuntos sem configuração gravada (CT-111), CT-112 com OpenAI e Gemini reais em dois assistentes. Revisão do `architecture-guard` e do `rag-quality-reviewer`. | — | CT-107 a CT-112 |
 
 ## 3. Decisões técnicas deste plano

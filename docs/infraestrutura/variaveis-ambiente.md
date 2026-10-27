@@ -15,10 +15,10 @@
 - `QDRANT_URL`: URL do servico Qdrant no Compose.
 - `EMBEDDING_MODEL_NAME`: modelo de embedding local (padrao recomendado: `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`).
 - `LLM_PROVIDER`: informativa; o provedor efetivo e inferido de `LLM_API_URL` (SPEC-008).
-- `LLM_MODEL`: modelo de geracao de resposta. **Padrao do ambiente**: a tela de administracao (SPEC-008) o substitui, sem reiniciar servicos.
-- `NEXUS_SECRETS_KEY`: chave-mestra usada para criptografar segredos persistidos (ex.: API key global).
-- `LLM_API_URL`: endpoint HTTP do provedor de LLM (padrao: API compatível com OpenAI `/chat/completions`). **Padrao do ambiente**: a tela de administracao o substitui. Presets: OpenAI `https://api.openai.com/v1/chat/completions`; Gemini `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`.
-- Precos do custo estimado (`LLM_PRICE_*`) continuam so no ambiente; ao trocar de modelo, ajuste-os (SPEC-008 D6).
+- `LLM_MODEL`: modelo de geracao de resposta. **So o padrao global** (SPEC-013): vale quando nao ha credencial de LLM cadastrada; as credenciais da tela Chaves de LLM o substituem. A migracao `0010` tambem o le, se nao houver conexao gravada pela SPEC-008: o container que roda o Alembic (a API) precisa do mesmo ambiente.
+- `NEXUS_SECRETS_KEY`: chave-mestra usada para criptografar segredos persistidos (as chaves das credenciais de LLM, SPEC-013). Trocar o valor torna as chaves gravadas ilegiveis: o chat responde como sem chave e o teste da credencial avisa; grave as chaves de novo.
+- `LLM_API_URL`: endpoint HTTP do provedor de LLM (padrao: API compatível com OpenAI `/chat/completions`). **So o padrao global** (SPEC-013), como o `LLM_MODEL`. Presets: OpenAI `https://api.openai.com/v1/chat/completions`; Gemini `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`.
+- Precos do custo estimado (`LLM_PRICE_*`): usados para os modelos sem preco na credencial (SPEC-013 D8); `LLM_PRICE_CURRENCY` e a moeda de todos os precos.
 
 ## Frontend
 
@@ -57,7 +57,7 @@ uploads são recusados até `POST /assistants/{id}/reindex` (RN-16).
 
 - `RERANKER_MODEL_NAME`: modelo local de reranking (padrão
   `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`), no mesmo cache de `HF_HOME`.
-- `RETRIEVAL_CANDIDATES`: candidatos recuperados pela busca híbrida antes do reranking (padrão `30`).
+- `RETRIEVAL_CANDIDATES`: candidatos recuperados pela busca híbrida antes do reranking (padrão `30`). Este e os dois seguintes são o **padrão global** (SPEC-013): cada assistente pode gravar os seus na tela Documentos e permissões, nas faixas da D6 (candidatos 5–100, top k 1–20, nota 0–1).
 - `RERANK_TOP_N`: trechos mantidos após o reranking (padrão `5`).
 - `RELEVANCE_MIN_SCORE`: nota mínima, de 0 a 1, para um trecho compor o contexto (padrão `0.5`).
   Sem trecho acima dela, a resposta é o fallback, sem chamada ao LLM de geração.

@@ -112,5 +112,10 @@ export function describeApiError(error: unknown): string {
   if (typeof detail === "string" && detail.trim()) {
     return detail;
   }
+  // SPEC-013: erros com codigo proprio trazem ``{code, message}``.
+  const message = (detail as { message?: unknown } | null | undefined)?.message;
+  if (typeof message === "string" && message.trim()) {
+    return message;
+  }
   return UNEXPECTED_ERROR;
 }

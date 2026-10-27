@@ -148,7 +148,7 @@ describe("administrationMenu", () => {
       "Conversas arquivadas",
       "Avaliações",
       "Consumo e limites",
-      "Configuração do LLM"
+      "Chaves de LLM"
     ]);
   });
 
@@ -161,7 +161,7 @@ describe("administrationMenu", () => {
     expect(labels(null)).toEqual([]);
   });
 
-  it("routes the screens and opens the LLM settings as an action", () => {
+  it("routes every item to a screen, including the LLM keys (SPEC-013)", () => {
     const items = administrationMenu(menuFor(user(Roles.admin)));
     expect(items.map((item) => item.target)).toEqual([
       { kind: "route", path: "/assistants" },
@@ -169,7 +169,7 @@ describe("administrationMenu", () => {
       { kind: "route", path: "/admin/archived" },
       { kind: "route", path: "/feedback" },
       { kind: "route", path: "/admin/usage" },
-      { kind: "llmSettings" }
+      { kind: "route", path: "/admin/llm-credentials" }
     ]);
   });
 });

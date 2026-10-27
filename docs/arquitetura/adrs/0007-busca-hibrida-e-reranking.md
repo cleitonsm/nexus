@@ -3,7 +3,9 @@
 ## Status
 
 Aceita em 2026-10-07, com a aprovação da SPEC-003. Implementada; ainda não executada no ambiente
-Docker.
+Docker. Complementada pela [ADR 0013](0013-credenciais-de-llm-e-configuracao-por-assistente.md)
+(SPEC-013): candidatos, top_k, nota mínima e a parte BM25 da busca podem ser ajustados por
+assistente; o reranker e a nota mínima continuam decidindo o fallback.
 
 ## Contexto
 

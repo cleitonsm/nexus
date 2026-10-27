@@ -21,10 +21,10 @@ segredo, chave de API, token, documento real ou código confidencial.
 - Ingestão assíncrona (ADR 0009): o envio valida, guarda o original e enfileira (202); o worker reserva o job (e também as reindexações, PC-D4) com `FOR UPDATE SKIP LOCKED`, extrai (PDF com `pypdf` + OCR Tesseract/Poppler, DOCX, Markdown), fatia por estrutura em tokens, vetoriza e ativa os trechos. Estados: `pendente`, `processando`, `indexado`, `falhou`, `substituido`. O dono do job é id + tentativa + estado (`renew`, `save_if_owner`, `JobOwnershipLostError`, SPEC-007); o backup pausa a ingestão (`IngestionPause`); OCR limitado por `OCR_MAX_PAGES` (200).
 - Acesso (ADR 0008): Keycloak com PKCE no frontend; a API valida o token (JWKS, `iss`, `aud`, `exp`); papéis de realm `nexus-admin`, `nexus-curador`, `nexus-usuario` (`Role`); grupos por assistente e por documento; conversas privadas, inclusive para administradores; trilha de auditoria append-only. `GET /groups` lê os grupos no Keycloak pelo cliente de serviço `nexus-backend` (503 sem ele); grupo desconhecido no envio ou na restrição → 422 (`UnknownGroupsError`), e com o Keycloak fora do ar a validação é ignorada e registrada (`groups.validation.skipped`).
 - Operação (ADR 0010): limite de uso por usuário (por minuto e por dia, 429 com horário), consumo e custo estimado, feedback útil/não útil, `/metrics` em texto Prometheus e exportador OTLP/HTTP próprios, sem dependência nova.
-- LLM (SPEC-008/009): provedor, modelo e URL ficam em `app_settings` (`llm_connection`), URL livre só para administrador; o cliente repete 3 vezes (1 s e 3 s) só em 429/5xx e falha de conexão. A nota mínima do reranker vem de `RELEVANCE_MIN_SCORE` (0,10 no `.env.example`, calibrada no CT-22; o padrão em código é 0,5).
+- LLM (SPEC-013, ADR 0013): várias credenciais em `llm_credentials` (provedor, URL, modelos com preço opcional, modelo padrão, chave só cifrada; uma padrão). Cada pergunta resolve credencial, modelo, chave, preço e parâmetros do assistente (`services/assistant_runtime.py`, `llm_resolution.py`): credencial do assistente → padrão → ambiente (`LLM_MODEL`/`LLM_API_URL`). O cliente repete 3 vezes (1 s e 3 s) só em 429/5xx e falha de conexão (SPEC-009). Candidatos, top_k, nota mínima e a parte BM25 da busca podem ser gravados por assistente; sem valor, vale o ambiente (`RELEVANCE_MIN_SCORE` 0,10 no `.env.example`, calibrada no CT-22; padrão em código 0,5).
 - Endurecimento (SPEC-007): `POST /conversations/{id}/messages` só aceita `role=user`; upload lido em blocos, com 413 pelo `Content-Length` e pelo fluxo; fora de `APP_ENV=local` a API e o worker não iniciam com segredo ausente ou padrão; portas do Compose em `127.0.0.1`, exceto o frontend.
-- Banco versionado por Alembic (ADR 0011), aplicado na subida da API: migrações `0001` a `0009` em `infrastructure/database/alembic/versions/`. Nova mudança de esquema = nova migração numerada; migração existente nunca é editada (a `0009` reaplica a guarda da auditoria em vez de mudar a `0004`).
-- Frontend Angular 20 standalone (NgRx 20; PC-D12). Shell com sidebar e `router-outlet`. Rotas: `/chat`, `/assistants`, `/admin/audit`, `/admin/archived`, `/admin/usage`, `/feedback`, protegidas por `roleGuard`; as telas administrativas e a configuração do LLM ficam no menu Administração (`administrationMenu`, CDK Menu, SPEC-010). Pastas: `pages`, `features`, `store`, `core/auth`, `core/services`, `shared` (`chat`, `documents`, `models`, `pipes`), `shell`.
+- Banco versionado por Alembic (ADR 0011), aplicado na subida da API: migrações `0001` a `0011` em `infrastructure/database/alembic/versions/`. Nova mudança de esquema = nova migração numerada; migração existente nunca é editada (a `0009` reaplica a guarda da auditoria em vez de mudar a `0004`).
+- Frontend Angular 20 standalone (NgRx 20; PC-D12). Shell com sidebar e `router-outlet`. Rotas: `/chat`, `/assistants`, `/admin/audit`, `/admin/archived`, `/admin/usage`, `/admin/llm-credentials`, `/feedback`, protegidas por `roleGuard`; as telas administrativas ficam no menu Administração (`administrationMenu`, CDK Menu, SPEC-010). Credenciais e configuração por assistente no slice `llmConfig` (SPEC-013); regras de tela puras em `shared/llm/llm-config.ts`. Pastas: `pages`, `features`, `store`, `core/auth`, `core/services`, `shared` (`chat`, `documents`, `models`, `pipes`), `shell`.
 
 ## Tecnologias por camada
 
@@ -43,7 +43,7 @@ segredo, chave de API, token, documento real ou código confidencial.
 4. Reutilize as portas existentes (`AssistantRepository`, `DocumentRepository`, `ConversationRepository`, `EmbeddingGateway`, `VectorStoreGateway`, `LLMGateway`, `IngestionJobQueue`, `AuditLogRepository`, `Tracer`). Adapter novo implementa o `Protocol` existente.
 5. Toda busca passa `user_groups`; todo trecho gravado leva `assistant_id`, `document_id`, `chunk_index`, seção, página, modelo, `allowed_groups` e `active`.
 6. Ação administrativa ou de curadoria gera evento de auditoria; logs e spans nunca levam token, chave nem texto integral de documento.
-7. API key global: persistir só o ciphertext; endpoint e UI devolvem status, nunca a chave; decifrar só em memória na chamada ao LLM.
+7. Chaves de LLM (credenciais, SPEC-013): persistir só o ciphertext; endpoint, UI, log, auditoria, `repr` e o 422 de validação nunca devolvem a chave (só `key_configured`); decifrar só em memória na chamada ao LLM; destino novo exige chave nova.
 8. Variável de ambiente nova vai para `.env.example` e `docs/infraestrutura/variaveis-ambiente.md`.
 9. Use type hints e funções pequenas, sem `print` e sem dependência nova.
 10. Aceite somente se os exemplos de caso normal, de limite e de erro passam, os testes unitários continuam verdes e o diff permanece no módulo da tarefa.
@@ -61,10 +61,12 @@ segredo, chave de API, token, documento real ou código confidencial.
 - 0002: Clean Architecture com FastAPI.
 - 0003: collection Qdrant por assistente.
 - 0004: embedding local, dimensão 384, sem LLM na vetorização.
-- 0005: API key global cifrada; UI só vê `configurada` ou `nao configurada`.
+- 0005: API key cifrada, nunca devolvida (substituída em parte pela 0013).
 - 0006: embeddings semânticos reais, collections versionadas e reindexação por alias.
 - 0007: busca híbrida (densa + BM25, RRF) e reranking local com nota mínima.
 - 0008: Keycloak como único provedor de identidade; papéis e grupos.
 - 0009: ingestão assíncrona com fila no PostgreSQL e worker.
 - 0010: observabilidade e avaliação contínua sem dependência nova.
 - 0011: migrações versionadas de banco com Alembic.
+- 0012: tema de login próprio do Keycloak.
+- 0013: várias credenciais de LLM e configuração por assistente (SPEC-013).

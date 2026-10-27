@@ -2,7 +2,9 @@
 
 ## Status
 
-Aceita.
+Aceita. Substituída em parte pela [ADR 0013](0013-credenciais-de-llm-e-configuracao-por-assistente.md)
+(SPEC-013, 2026-10-27): continuam valendo a chave só cifrada, decifrada em memória e nunca
+devolvida; a chave única global deu lugar a várias credenciais, uma delas padrão.
 
 ## Contexto
 

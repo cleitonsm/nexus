@@ -64,8 +64,8 @@ export function menuFor(user: SessionUser | null): MenuVisibility {
   };
 }
 
-/** Destino de um item do menu Administracao: uma tela ou o modal do LLM (SPEC-010, D3). */
-export type AdministrationTarget = { kind: "route"; path: string } | { kind: "llmSettings" };
+/** Destino de um item do menu Administracao: uma tela (SPEC-010; SPEC-013 trocou o modal do LLM pela tela de chaves). */
+export type AdministrationTarget = { kind: "route"; path: string };
 
 export type AdministrationItemId =
   | "documents"
@@ -73,7 +73,7 @@ export type AdministrationItemId =
   | "archived"
   | "feedback"
   | "usage"
-  | "llmSettings";
+  | "llmCredentials";
 
 export interface AdministrationItem {
   id: AdministrationItemId;
@@ -119,9 +119,9 @@ export function administrationMenu(menu: MenuVisibility): AdministrationItem[] {
       visible: menu.viewUsage
     },
     {
-      id: "llmSettings",
-      label: "Configuração do LLM",
-      target: { kind: "llmSettings" },
+      id: "llmCredentials",
+      label: "Chaves de LLM",
+      target: { kind: "route", path: "/admin/llm-credentials" },
       visible: menu.configureLlm
     }
   ];

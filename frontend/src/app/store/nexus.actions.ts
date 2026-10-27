@@ -1,10 +1,6 @@
 import { createActionGroup, emptyProps, props } from "@ngrx/store";
 
 import {
-  ApiKeyTestResult,
-  ApiKeyStatus,
-  LlmSettings,
-  LlmSettingsInput,
   Assistant,
   AuditEvent,
   AuditFilters,
@@ -132,22 +128,6 @@ export const nexusActions = createActionGroup({
     "Save Usage Limits": props<{ limits: UsageLimits }>(),
     "Save Usage Limits Success": props<{ limits: UsageLimits }>(),
     "Save Usage Limits Failure": props<{ error: string }>(),
-
-    "Load Api Key Status": emptyProps(),
-    "Load Api Key Status Success": props<{ status: ApiKeyStatus }>(),
-    "Load Api Key Status Failure": props<{ error: string }>(),
-    "Save Api Key": props<{ apiKey: string }>(),
-    "Save Api Key Success": props<{ status: ApiKeyStatus }>(),
-    "Save Api Key Failure": props<{ error: string }>(),
-    "Load Llm Settings": emptyProps(),
-    "Load Llm Settings Success": props<{ settings: LlmSettings }>(),
-    "Load Llm Settings Failure": props<{ error: string }>(),
-    "Save Llm Settings": props<{ input: LlmSettingsInput }>(),
-    "Save Llm Settings Success": props<{ settings: LlmSettings }>(),
-    "Save Llm Settings Failure": props<{ error: string }>(),
-    "Test Api Key": emptyProps(),
-    "Test Api Key Success": props<{ result: ApiKeyTestResult }>(),
-    "Test Api Key Failure": props<{ error: string }>(),
 
     "Set Assistant Groups": props<{ assistantId: string; groups: string[] }>(),
     "Set Assistant Groups Success": props<{ assistantId: string; groups: string[] }>(),
