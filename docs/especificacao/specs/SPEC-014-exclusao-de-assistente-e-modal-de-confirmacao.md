@@ -1,7 +1,7 @@
 # SPEC-014 — Exclusão de assistente com a base vetorial e modal de confirmação padrão
 
 **ID**: SPEC-20261028-014
-**Status**: **Aprovada** em 2026-10-28 por Cleiton Medeiros (D1 a D3 escolhidas pelo autor; D2 e D3 são as recomendações). Código entregue em 2026-10-28. CT-118 aprovado pelo autor na pilha em 2026-10-28; CT-119 escrito em `tests/integration/test_access_control_api.py`, a executar no container do backend.
+**Status**: **Implementada** em 2026-10-28 — CT-113 a CT-117 aprovados (unitários e Vitest, CI verde no PR #11); CT-118 aprovado pelo autor na pilha; CT-119 aprovado no container do backend (`test_access_control_api`, 36 testes OK). Histórico: **Aprovada** em 2026-10-28 por Cleiton Medeiros (D1 a D3 escolhidas pelo autor; D2 e D3 são as recomendações).
 **Origem**: pedido do autor (2026-10-28): excluir um assistente e toda a base vetorial dele,
 avisando antes que a base também será excluída; modal de confirmação no padrão visual do Nexus
 para excluir conversas, reaproveitado na exclusão de assistentes.
