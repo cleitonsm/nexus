@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, computed, inject, signal } from "@angular/core";
+import { Component, computed, effect, inject, signal, untracked } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from "@angular/cdk/menu";
 import { ConnectedPosition } from "@angular/cdk/overlay";
@@ -9,6 +9,14 @@ import { Store } from "@ngrx/store";
 import { filter, map } from "rxjs";
 
 import { AdministrationItem, administrationMenu } from "../core/auth/access";
+import { ConfirmDialogComponent } from "../shared/dialogs/confirm-dialog.component";
+import {
+  PendingDeletion,
+  conversationLabel,
+  deletionDialog,
+  deletionOutcome
+} from "../shared/dialogs/confirm-dialog";
+import { Assistant, Conversation } from "../shared/models/nexus.models";
 
 import { authActions } from "../store/auth.actions";
 import { selectMenu, selectSessionUser } from "../store/auth.selectors";
@@ -27,7 +35,15 @@ import {
 @Component({
   selector: "app-shell",
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterOutlet, CdkMenu, CdkMenuItem, CdkMenuTrigger],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterOutlet,
+    CdkMenu,
+    CdkMenuItem,
+    CdkMenuTrigger,
+    ConfirmDialogComponent
+  ],
   templateUrl: "./shell.component.html"
 })
 export class ShellComponent {
@@ -106,8 +122,42 @@ export class ShellComponent {
 
   private selectedAssistantFiles: File[] = [];
 
+  /** SPEC-014: exclusao aguardando confirmacao no modal (RF-97, RF-98). */
+  protected readonly pendingDeletion = signal<PendingDeletion | null>(null);
+  private readonly deletionSubmitted = signal(false);
+  protected readonly deletionDialog = computed(() => {
+    const pending = this.pendingDeletion();
+    return pending ? deletionDialog(pending) : null;
+  });
+  protected readonly deletionBusy = computed(() => {
+    const pending = this.pendingDeletion();
+    if (!pending) {
+      return false;
+    }
+    return pending.kind === "assistant"
+      ? this.loading().deleteAssistant
+      : this.loading().deleteConversation;
+  });
+  /** RF-99: o erro aparece no modal so depois de confirmar. */
+  protected readonly deletionError = computed(() =>
+    deletionOutcome(this.deletionSubmitted(), this.deletionBusy(), this.error()) === "failed"
+      ? this.error()
+      : null
+  );
+
   constructor() {
     this.store.dispatch(nexusActions.loadAssistants());
+    // RF-99: fecha o modal quando a exclusao termina sem erro.
+    effect(() => {
+      const outcome = deletionOutcome(
+        this.deletionSubmitted(),
+        this.deletionBusy(),
+        this.error()
+      );
+      if (outcome === "succeeded") {
+        untracked(() => this.resetDeletion());
+      }
+    });
   }
 
   protected isAdministrationItemActive(item: AdministrationItem): boolean {
@@ -217,29 +267,63 @@ export class ShellComponent {
     this.store.dispatch(nexusActions.selectConversation({ conversationId }));
   }
 
-  protected deleteAssistant(assistantId: string, assistantName: string): void {
-    if (this.loading().deleteAssistant) {
+  /** RF-96: so o administrador ve a acao; a API repete a verificacao. */
+  protected askDeleteAssistant(assistant: Assistant): void {
+    if (!this.menu().manageAssistants || this.pendingDeletion()) {
       return;
     }
-    const confirmed = window.confirm(
-      `Excluir o assistente "${assistantName}" e todo o seu histórico?`
-    );
-    if (!confirmed) {
-      return;
-    }
-    this.store.dispatch(nexusActions.deleteAssistant({ assistantId }));
+    this.pendingDeletion.set({
+      kind: "assistant",
+      assistantId: assistant.id,
+      name: assistant.name
+    });
   }
 
-  protected deleteConversation(conversationId: string): void {
+  protected askDeleteConversation(conversation: Conversation): void {
     const assistantId = this.activeAssistantId();
-    if (!assistantId || this.loading().deleteConversation) {
+    if (!assistantId || this.pendingDeletion()) {
       return;
     }
-    const confirmed = window.confirm("Excluir esta conversa?");
-    if (!confirmed) {
+    this.pendingDeletion.set({
+      kind: "conversation",
+      assistantId,
+      conversationId: conversation.id,
+      name: conversationLabel(conversation)
+    });
+  }
+
+  protected confirmDeletion(): void {
+    const pending = this.pendingDeletion();
+    if (!pending || this.deletionBusy()) {
       return;
     }
-    this.store.dispatch(nexusActions.deleteConversation({ assistantId, conversationId }));
+    this.deletionSubmitted.set(true);
+    if (pending.kind === "assistant") {
+      this.store.dispatch(nexusActions.deleteAssistant({ assistantId: pending.assistantId }));
+    } else {
+      this.store.dispatch(
+        nexusActions.deleteConversation({
+          assistantId: pending.assistantId,
+          conversationId: pending.conversationId
+        })
+      );
+    }
+  }
+
+  protected cancelDeletion(): void {
+    if (this.deletionBusy()) {
+      return;
+    }
+    // O erro ja foi lido no modal; nao fica repetido na tela de chat.
+    if (this.deletionError()) {
+      this.store.dispatch(nexusActions.clearError());
+    }
+    this.resetDeletion();
+  }
+
+  private resetDeletion(): void {
+    this.pendingDeletion.set(null);
+    this.deletionSubmitted.set(false);
   }
 
   protected clearError(): void {

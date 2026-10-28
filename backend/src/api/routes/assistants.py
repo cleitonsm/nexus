@@ -8,6 +8,9 @@ from src.api.dependencies import (
     get_conversation_repository,
     get_current_user,
     get_default_llm_gateway,
+    get_document_repository,
+    get_file_storage,
+    get_reindex_job_repository,
     get_vector_store_gateway,
 )
 from src.api.schemas import (
@@ -38,13 +41,17 @@ from src.application.use_cases import (
 from src.domain import (
     AssistantId,
     AuthenticatedUser,
+    DocumentFileStorage,
     DomainValidationError,
     LLMGateway,
+    ReindexInProgressError,
     VectorStoreGateway,
 )
 from src.infrastructure.database import (
     PostgresAssistantRepository,
     PostgresConversationRepository,
+    PostgresDocumentRepository,
+    PostgresReindexJobRepository,
 )
 
 router = APIRouter(
@@ -147,11 +154,22 @@ def delete_assistant(
         get_assistant_repository
     ),
     vector_store_gateway: VectorStoreGateway = Depends(get_vector_store_gateway),
+    document_repository: PostgresDocumentRepository = Depends(
+        get_document_repository
+    ),
+    file_storage: DocumentFileStorage = Depends(get_file_storage),
+    reindex_job_repository: PostgresReindexJobRepository = Depends(
+        get_reindex_job_repository
+    ),
 ) -> Response:
+    """SPEC-014: exclui o assistente, a base vetorial e os originais."""
     use_case = DeleteAssistantUseCase(
         assistant_repository=repository,
         vector_store_gateway=vector_store_gateway,
         access_control=access_control,
+        document_repository=document_repository,
+        file_storage=file_storage,
+        reindex_job_repository=reindex_job_repository,
     )
     try:
         use_case.execute(DeleteAssistantInput(user=user, assistant_id=assistant_id))
@@ -164,6 +182,18 @@ def delete_assistant(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="assistant not found",
+        ) from exc
+    except ReindexInProgressError as exc:
+        # RN-45 (SPEC-014): nada foi apagado.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "reindex_in_progress",
+                "message": (
+                    "Há uma reindexação em andamento neste assistente. "
+                    "Aguarde a conclusão para excluí-lo."
+                ),
+            },
         ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

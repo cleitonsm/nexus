@@ -27,6 +27,7 @@ from src.api.dependencies import (
     get_conversation_repository,
     get_document_repository,
     get_embedding_gateway,
+    get_file_storage,
     get_llm_insecure_http_allowed,
     get_llm_test_gateway_factory,
     get_reindex_job_repository,
@@ -55,6 +56,7 @@ from src.application.services import (
 )
 from src.domain import (
     Assistant,
+    ReindexJob,
     AssistantId,
     AssistantName,
     ChatMessage,
@@ -495,6 +497,57 @@ class AssistantGroupsTestCase(ApiAccessTestCase):
         deleted = self.acting_as(curator).delete(f"/assistants/{RH}")
         self.assertEqual((created.status_code, deleted.status_code), (403, 403))
         self.assertIn(RH, self.assistants.items)
+
+
+class RunningReindexRepository:
+    def get_running(self, assistant_id: AssistantId) -> ReindexJob:
+        return ReindexJob(
+            id="job-1",
+            assistant_id=assistant_id,
+            target_collection=f"{CollectionName.from_assistant_id(assistant_id).value}-v2",
+        )
+
+    def get_latest(self, assistant_id: AssistantId) -> None:
+        return None
+
+
+class NoFileStorage:
+    def delete(self, storage_key: str) -> None:
+        return None
+
+
+class AssistantDeletionApiTestCase(ApiAccessTestCase):
+    """SPEC-014: exclusao do assistente pela API (CT-119, RN-45)."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.admin = member("root", role=Role.ADMIN)
+        self.app.dependency_overrides[get_file_storage] = NoFileStorage
+        self.deleted_collections: list[str] = []
+        self.vector_store.delete_collection = (  # type: ignore[method-assign]
+            lambda name: self.deleted_collections.append(name.value)
+        )
+
+    def test_administrator_deletes_the_assistant_and_its_collection(self) -> None:
+        response = self.acting_as(self.admin).delete(f"/assistants/{RH}")
+        self.assertEqual(response.status_code, 204)
+        self.assertNotIn(RH, self.assistants.items)
+        self.assertEqual(
+            self.deleted_collections, [CollectionName.from_assistant_id(AssistantId(RH)).value]
+        )
+
+    def test_running_reindex_answers_409_and_keeps_everything(self) -> None:
+        self.app.dependency_overrides[get_reindex_job_repository] = RunningReindexRepository
+        response = self.acting_as(self.admin).delete(f"/assistants/{RH}")
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["detail"]["code"], "reindex_in_progress")
+        self.assertIn("reindexação", response.json()["detail"]["message"])
+        self.assertIn(RH, self.assistants.items)
+        self.assertEqual(self.deleted_collections, [])
+
+    def test_unknown_assistant_answers_404(self) -> None:
+        response = self.acting_as(self.admin).delete("/assistants/nao-existe")
+        self.assertEqual(response.status_code, 404)
 
 
 class ConversationPrivacyTestCase(ApiAccessTestCase):
