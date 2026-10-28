@@ -546,29 +546,107 @@ class AssistantManagementTestCase(AccessTestCase):
         self.assertEqual(event.resource_id, "jur")
         self.assertEqual(event.user_id, self.admin.id)
 
-    def _delete(self, user: AuthenticatedUser, assistant_id: str = ASSISTANT) -> None:
+    def _delete(
+        self,
+        user: AuthenticatedUser,
+        assistant_id: str = ASSISTANT,
+        storage: "FileStorage | None" = None,
+    ) -> None:
         DeleteAssistantUseCase(
             assistant_repository=self.assistants,
             vector_store_gateway=self.vector_store,
             access_control=self.access.control,
+            document_repository=self.documents,
+            file_storage=storage or FileStorage(),
+            reindex_job_repository=self.jobs,
         ).execute(DeleteAssistantInput(user=user, assistant_id=assistant_id))
 
+    def _with_indexed_base(self) -> FileStorage:
+        """Collection versionada com trechos e dois documentos com original."""
+        physical = f"assistant-{ASSISTANT}-v2"
+        self.vector_store.aliases[f"assistant-{ASSISTANT}"] = physical
+        self.vector_store.collections[physical] = []
+        storage = FileStorage()
+        for document_id in ("doc-1", "doc-2"):
+            key = f"{ASSISTANT}/{document_id}"
+            storage.files[key] = b"conteudo ficticio"
+            self.documents.add(document_id, storage_key=key)
+        return storage
+
     def test_administrator_deletes_assistant_and_its_collection(self) -> None:
-        self.vector_store.aliases[f"assistant-{ASSISTANT}"] = f"assistant-{ASSISTANT}-v2"
-        self._delete(self.admin)
+        """CT-113 (RN-44): base vetorial, originais e registro saem juntos."""
+        storage = self._with_indexed_base()
+        self._delete(self.admin, storage=storage)
         self.assertNotIn(ASSISTANT, self.assistants.items)
         self.assertEqual(self.vector_store.deleted, [f"assistant-{ASSISTANT}-v2"])
-        self.assertIn(AuditAction.ASSISTANT_DELETED, self.access.audit.actions())
+        self.assertNotIn(f"assistant-{ASSISTANT}-v2", self.vector_store.collections)
+        self.assertEqual(storage.files, {})
+        event = self.access.audit.last(AuditAction.ASSISTANT_DELETED)
+        self.assertEqual(event.resource_id, ASSISTANT)
+        self.assertEqual(event.details["name"], ASSISTANT.upper())
+        self.assertEqual(event.details["collection"], f"assistant-{ASSISTANT}-v2")
+        self.assertEqual(event.details["documents_removed"], 2)
+
+    def test_legacy_collection_without_alias_is_deleted(self) -> None:
+        self._delete(self.admin)
+        self.assertEqual(self.vector_store.deleted, [f"assistant-{ASSISTANT}"])
+
+    def test_running_reindex_blocks_the_deletion(self) -> None:
+        """CT-114 (RN-45): nada e apagado."""
+        storage = self._with_indexed_base()
+        self.jobs.save(
+            ReindexJob(
+                id="job-1",
+                assistant_id=AssistantId(ASSISTANT),
+                target_collection=f"assistant-{ASSISTANT}-v3",
+            )
+        )
+        with self.assertRaises(ReindexInProgressError):
+            self._delete(self.admin, storage=storage)
+        self.assertIn(ASSISTANT, self.assistants.items)
+        self.assertEqual(self.vector_store.deleted, [])
+        self.assertEqual(len(storage.files), 2)
+        self.assertNotIn(AuditAction.ASSISTANT_DELETED, self.access.audit.actions())
+
+    def test_vector_store_failure_keeps_the_assistant(self) -> None:
+        """CT-115 (RN-44): a exclusao pode ser repetida."""
+        storage = self._with_indexed_base()
+
+        def unavailable(collection_name: CollectionName) -> None:
+            raise RuntimeError("vector store unavailable")
+
+        self.vector_store.delete_collection = unavailable  # type: ignore[method-assign]
+        with self.assertRaises(RuntimeError):
+            self._delete(self.admin, storage=storage)
+        self.assertIn(ASSISTANT, self.assistants.items)
+        self.assertEqual(len(storage.files), 2)
+
+    def test_original_file_failure_does_not_stop_the_deletion(self) -> None:
+        """CT-115 (RN-44): o arquivo orfao e registrado em log."""
+        storage = self._with_indexed_base()
+
+        def broken(storage_key: str) -> None:
+            raise OSError("disk unavailable")
+
+        storage.delete = broken  # type: ignore[method-assign]
+        with self.assertLogs(
+            "src.application.use_cases.manage_assistant_access", level="ERROR"
+        ):
+            self._delete(self.admin, storage=storage)
+        self.assertNotIn(ASSISTANT, self.assistants.items)
 
     def test_non_administrator_cannot_delete_an_assistant(self) -> None:
+        """CT-116 (RN-46)."""
         with self.assertRaises(AccessDeniedError):
             self._delete(self.rh_curator)
         self.assertIn(ASSISTANT, self.assistants.items)
         self.assertEqual(self.vector_store.deleted, [])
+        self.assertDenied(self.rh_curator, "assistant.deleted")
 
     def test_deleting_an_unknown_assistant_is_reported(self) -> None:
         with self.assertRaises(AssistantNotFoundError):
             self._delete(self.admin, "nao-existe")
+        self.assertEqual(self.vector_store.deleted, [])
 
     def _set_groups(self, user: AuthenticatedUser, *groups: str, assistant_id: str = ASSISTANT):
         return SetAssistantGroupsUseCase(

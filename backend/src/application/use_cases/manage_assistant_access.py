@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from src.application.dto import DocumentAccessDTO
@@ -13,6 +14,8 @@ from src.domain import (
     AuditResource,
     AuthenticatedUser,
     CollectionName,
+    Document,
+    DocumentFileStorage,
     DocumentId,
     DocumentRepository,
     GroupDirectory,
@@ -21,6 +24,8 @@ from src.domain import (
     VectorStoreGateway,
     normalize_groups,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AssistantNotFoundError(LookupError):
@@ -38,34 +43,77 @@ class DeleteAssistantInput:
 
 
 class DeleteAssistantUseCase:
+    """RF-96, RN-44 a RN-46 (SPEC-014): exclui o assistente e a base vetorial.
+
+    Ordem: collection vigente, originais dos documentos e, por ultimo, o
+    registro (o PostgreSQL apaga documentos, jobs e conversas em cascata). Se
+    algo falhar antes do registro, o assistente continua listado e a exclusao
+    pode ser repetida.
+    """
+
     def __init__(
         self,
         *,
         assistant_repository: AssistantRepository,
         vector_store_gateway: VectorStoreGateway,
         access_control: AccessControl,
+        document_repository: DocumentRepository,
+        file_storage: DocumentFileStorage,
+        reindex_job_repository: ReindexJobRepository,
     ) -> None:
         self._assistant_repository = assistant_repository
         self._vector_store_gateway = vector_store_gateway
         self._access = access_control
+        self._documents = document_repository
+        self._storage = file_storage
+        self._reindex_jobs = reindex_job_repository
 
     def execute(self, data: DeleteAssistantInput) -> None:
         self._access.require_admin(data.user, AuditAction.ASSISTANT_DELETED)
         assistant_id = AssistantId(data.assistant_id)
-        if not self._assistant_repository.delete(assistant_id):
+        assistant = self._assistant_repository.get_by_id(assistant_id)
+        if assistant is None:
             raise AssistantNotFoundError("assistant not found.")
+        # RN-45: o worker trocaria o alias depois e recriaria a base.
+        if self._reindex_jobs.get_running(assistant_id) is not None:
+            raise ReindexInProgressError(
+                "a reindex is in progress for this assistant."
+            )
+        documents = self._documents.list_by_assistant(assistant_id)
         # O nome do assistente e um alias; a collection vigente e versionada.
         alias = CollectionName.from_assistant_id(assistant_id)
-        self._vector_store_gateway.delete_collection(
-            self._vector_store_gateway.resolve_alias(alias) or alias
-        )
+        collection = self._vector_store_gateway.resolve_alias(alias) or alias
+        self._vector_store_gateway.delete_collection(collection)
+        for document in documents:
+            self._discard_original(document)
+        if not self._assistant_repository.delete(assistant_id):
+            raise AssistantNotFoundError("assistant not found.")
         self._access.audit(
             data.user,
             AuditAction.ASSISTANT_DELETED,
             resource_type=AuditResource.ASSISTANT,
             resource_id=assistant_id.value,
-            details={"assistant_id": assistant_id.value},
+            details={
+                "assistant_id": assistant_id.value,
+                "name": assistant.name.value,
+                "collection": collection.value,
+                "documents_removed": len(documents),
+            },
         )
+
+    def _discard_original(self, document: Document) -> None:
+        if not document.storage_key:
+            return
+        try:
+            self._storage.delete(document.storage_key)
+        except Exception:  # noqa: BLE001 - o arquivo orfao nao afeta as buscas
+            logger.exception(
+                "assistant.delete.original_failed",
+                extra={
+                    "assistant_id": document.assistant_id.value,
+                    "document_id": document.id.value,
+                },
+            )
 
 
 @dataclass(frozen=True, slots=True)

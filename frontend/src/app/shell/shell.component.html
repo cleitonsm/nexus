@@ -75,14 +75,36 @@
 
           <ul *ngIf="!assistantsCollapsed()" class="space-y-1 overflow-hidden">
             <li *ngFor="let assistant of assistants()">
-              <button
-                (click)="selectAssistant(assistant.id)"
-                class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+              <div
+                class="group flex w-full items-center gap-1 rounded-full text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
                 [ngClass]="{ 'bg-nexus-active font-medium': assistant.id === activeAssistantId() }"
               >
-                <div class="h-2 w-2 rounded-full bg-nexus-accent shrink-0"></div>
-                <span class="truncate">{{ assistant.name }}</span>
-              </button>
+                <button
+                  type="button"
+                  (click)="selectAssistant(assistant.id)"
+                  class="flex min-w-0 flex-1 items-center gap-3 rounded-full px-3 py-2 text-left"
+                >
+                  <div class="h-2 w-2 rounded-full bg-nexus-accent shrink-0"></div>
+                  <span class="truncate">{{ assistant.name }}</span>
+                </button>
+                <!-- SPEC-014 (RF-96, D1): so o administrador exclui assistentes -->
+                <button
+                  *ngIf="menu().manageAssistants"
+                  type="button"
+                  (click)="askDeleteAssistant(assistant)"
+                  [disabled]="loading().deleteAssistant"
+                  class="mr-2 shrink-0 rounded-full p-1 text-nexus-dim opacity-0 transition-all hover:bg-nexus-active hover:text-rose-400 focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-0"
+                  [attr.aria-label]="'Excluir o assistente ' + assistant.name"
+                  title="Excluir assistente"
+                  data-testid="delete-assistant"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+                  </svg>
+                </button>
+              </div>
             </li>
           </ul>
         </div>
@@ -121,13 +143,18 @@
                 </button>
 
                 <button
-                  (click)="deleteConversation(conversation.id)"
+                  type="button"
+                  (click)="askDeleteConversation(conversation)"
                   [disabled]="loading().deleteConversation"
-                  class="opacity-0 group-hover:opacity-100 p-1 hover:bg-nexus-active rounded-full transition-all text-nexus-dim hover:text-rose-400 shrink-0"
+                  class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-1 hover:bg-nexus-active rounded-full transition-all text-nexus-dim hover:text-rose-400 shrink-0"
+                  aria-label="Excluir conversa"
                   title="Excluir conversa"
+                  data-testid="delete-conversation"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12" />
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 6h18" />
+                    <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
                   </svg>
                 </button>
               </div>
@@ -357,3 +384,13 @@
     </form>
   </article>
 </div>
+
+<!-- SPEC-014: confirmacao de exclusao de conversa e de assistente -->
+<app-confirm-dialog
+  *ngIf="deletionDialog() as dialog"
+  [config]="dialog"
+  [busy]="deletionBusy()"
+  [error]="deletionError()"
+  (confirmed)="confirmDeletion()"
+  (cancelled)="cancelDeletion()"
+/>
