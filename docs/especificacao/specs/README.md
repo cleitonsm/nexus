@@ -26,6 +26,7 @@ testes são escritos antes da implementação.
 | SPEC-20261026-012 | Dispositivos normativos na recuperação e formato da resposta | [`SPEC-012-dispositivos-normativos-e-formato-de-resposta.md`](SPEC-012-dispositivos-normativos-e-formato-de-resposta.md) | Implementada (2026-10-27); D11 a D13 para continuação | RF-82 a RF-86 |
 | SPEC-20261027-013 | Várias chaves de LLM, modelo e parâmetros de recuperação por assistente | [`SPEC-013-chaves-de-llm-e-parametros-por-assistente.md`](SPEC-013-chaves-de-llm-e-parametros-por-assistente.md) | Implementada e validada (2026-10-28); CT-112 adiado | RF-87 a RF-95 |
 | SPEC-20261028-014 | Exclusão de assistente com a base vetorial e modal de confirmação padrão | [`SPEC-014-exclusao-de-assistente-e-modal-de-confirmacao.md`](SPEC-014-exclusao-de-assistente-e-modal-de-confirmacao.md) | Implementada (2026-10-28); CT-113 a CT-119 aprovados | RF-96 a RF-99 |
+| SPEC-20261028-015 | Barra lateral no padrão visual do Gemini (ícones, 72 px, tooltips, logo) | [`SPEC-015-barra-lateral-no-padrao-gemini.md`](SPEC-015-barra-lateral-no-padrao-gemini.md) | Implementada (2026-10-28); CT-123 aprovado pelo autor | RF-100 a RF-102 |
 
 ## Status possíveis
 

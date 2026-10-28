@@ -42,7 +42,7 @@ test.describe("CT-81: menu Administracao conforme o papel", () => {
     await login(page, "usuario.rh");
     await expect(page.locator(TRIGGER)).toHaveCount(0);
     await expect(page.getByTitle("Conversas", { exact: true })).toHaveCount(0);
-    await expect(page.getByTitle("Sair")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sair" })).toBeVisible();
   });
 
   test("Chaves de LLM abre a tela de credenciais (SPEC-013)", async ({ page }) => {
@@ -85,7 +85,7 @@ test("CT-82: na Auditoria, selecionar um assistente leva ao chat em branco", asy
   await page.goto("/admin/audit");
   const sidebar = page.locator("aside");
   // O menu lateral comeca recolhido; a lista de assistentes so aparece expandido.
-  await sidebar.getByRole("button", { name: "Expandir menu" }).click();
+  await sidebar.getByRole("button", { name: "Abrir barra lateral" }).click();
   await sidebar.getByRole("button", { name: "Assistente E2E" }).click();
 
   await expect(page).toHaveURL(/\/chat$/);
