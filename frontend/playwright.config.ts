@@ -6,6 +6,9 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
   retries: 0,
+  // Um teste por vez: o realm tem protecao contra forca bruta, e logins simultaneos do mesmo
+  // usuario (admin.nexus em varios arquivos) sao recusados como senha invalida.
+  workers: 1,
   reporter: [["list"], ["html", { open: "never", outputFolder: "../docs/qa/relatorios/e2e-html" }]],
   use: {
     baseURL: process.env["NEXUS_URL"] ?? "http://localhost:4200",

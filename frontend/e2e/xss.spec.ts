@@ -40,6 +40,9 @@ test("markup malicioso na resposta nao executa nem vira link perigoso", async ({
     });
   });
   await page.goto("/chat");
+  // Espera o chat terminar de carregar: ler o HTML no meio de uma navegacao falha.
+  await expect(page.getByPlaceholder("Digite algo aqui")).toBeVisible();
+  await page.waitForLoadState("networkidle");
   const html = await page.content();
   expect(html).not.toContain("<script>window.__xss");
   expect(html).not.toContain('onerror="window.__xss');
