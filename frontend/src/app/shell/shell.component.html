@@ -6,74 +6,120 @@
   ></div>
 
   <div class="flex h-full">
-    <!-- Sidebar -->
+    <!-- Sidebar (SPEC-015: padrao visual do Gemini; recolhida com 72 px) -->
     <aside
-      class="fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col bg-nexus-sidebar p-3 transition-all duration-300 ease-in-out lg:static lg:z-auto"
+      class="fixed inset-y-0 left-0 z-40 flex w-[280px] flex-col overflow-hidden bg-nexus-sidebar px-4 py-2 transition-all duration-300 ease-in-out lg:static lg:z-auto"
       [ngClass]="{
         'translate-x-0': mobileSidebarOpen(),
         '-translate-x-full lg:translate-x-0': !mobileSidebarOpen(),
         'lg:w-[280px]': !sidebarCollapsed(),
-        'lg:w-20': sidebarCollapsed()
+        'lg:w-[72px]': sidebarCollapsed()
       }"
     >
-      <!-- Menu Toggle & Logo -->
-      <div class="flex items-center gap-3 px-2 py-3">
+      <!-- Topo: logo "N" que vira "Abrir barra lateral" no hover; aberta, logo + nome + fechar (D6) -->
+      <div class="flex h-14 shrink-0 items-center justify-between">
         <button
+          *ngIf="!sidebarContentVisible()"
           type="button"
           (click)="toggleNavigation()"
-          [attr.aria-label]="sidebarContentVisible() ? 'Recolher menu' : 'Expandir menu'"
-          [attr.aria-expanded]="sidebarContentVisible()"
-          class="flex h-10 w-10 items-center justify-center rounded-full text-nexus-text hover:bg-nexus-hover transition-colors"
+          [attr.aria-label]="sidebarToggleLabel()"
+          aria-expanded="false"
+          [nexusTooltip]="sidebarToggleLabel()"
+          data-testid="sidebar-toggle"
+          class="group flex h-10 w-10 items-center justify-center rounded-full text-nexus-text transition-colors hover:bg-nexus-hover focus-visible:bg-nexus-hover outline-none"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 12h18M3 6h18M3 18h18" />
-          </svg>
+          <nexus-icon name="logo" [size]="28" class="group-hover:hidden group-focus-visible:hidden" />
+          <nexus-icon name="panelOpen" class="hidden group-hover:inline-flex group-focus-visible:inline-flex" />
         </button>
-        <h1 *ngIf="sidebarContentVisible()" class="text-xl font-medium tracking-tight">Nexus</h1>
+
+        <ng-container *ngIf="sidebarContentVisible()">
+          <div class="flex min-w-0 items-center">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center">
+              <nexus-icon name="logo" [size]="28" />
+            </span>
+            <span class="ml-1 truncate text-xl font-medium tracking-tight">Nexus</span>
+          </div>
+          <button
+            type="button"
+            (click)="toggleNavigation()"
+            [attr.aria-label]="sidebarToggleLabel()"
+            aria-expanded="true"
+            [nexusTooltip]="sidebarToggleLabel()"
+            data-testid="sidebar-toggle"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-nexus-dim transition-colors hover:bg-nexus-hover hover:text-nexus-text"
+          >
+            <nexus-icon name="panelClose" />
+          </button>
+        </ng-container>
       </div>
 
-      <!-- New Chat Button -->
+      <!-- Nova conversa: item como os demais, icone na mesma posicao aberta ou recolhida (D3) -->
       <button
         type="button"
         (click)="createConversation()"
         [disabled]="!activeAssistantId() || loading().createConversation"
-        class="mt-4 flex items-center gap-3 rounded-full bg-nexus-hover px-4 py-3 text-sm font-medium text-nexus-text hover:bg-nexus-active transition-all disabled:opacity-50"
-        [ngClass]="{ 'w-10 h-10 p-0 justify-center self-center': !sidebarContentVisible() }"
+        aria-label="Nova conversa"
+        nexusTooltip="Nova conversa"
+        [nexusTooltipDisabled]="itemTooltipDisabled()"
+        class="mt-2 flex h-10 w-full shrink-0 items-center rounded-full text-sm font-medium text-nexus-text transition-colors hover:bg-nexus-hover disabled:opacity-50 disabled:hover:bg-transparent"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-        <span *ngIf="sidebarContentVisible()">Nova conversa</span>
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center">
+          <nexus-icon name="newChat" />
+        </span>
+        <span *ngIf="sidebarContentVisible()" class="truncate pr-4">Nova conversa</span>
       </button>
 
+      <!-- Barra recolhida: atalhos para as secoes (D4) -->
+      <ng-container *ngIf="!sidebarContentVisible()">
+        <button
+          type="button"
+          (click)="openSection('assistants')"
+          aria-label="Assistentes"
+          nexusTooltip="Assistentes"
+          class="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-nexus-text transition-colors hover:bg-nexus-hover"
+        >
+          <nexus-icon name="assistants" />
+        </button>
+        <button
+          type="button"
+          (click)="openSection('conversations')"
+          aria-label="Recentes"
+          nexusTooltip="Recentes"
+          class="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-nexus-text transition-colors hover:bg-nexus-hover"
+        >
+          <nexus-icon name="recent" />
+        </button>
+      </ng-container>
+
       <!-- Sidebar Content -->
-      <div *ngIf="sidebarContentVisible()" class="mt-6 flex-1 overflow-y-auto px-2">
+      <div *ngIf="sidebarContentVisible()" class="mt-1 flex-1 overflow-y-auto">
 
         <!-- Assistants Section -->
         <div class="mb-2">
           <button
             type="button"
             (click)="toggleAssistants()"
-            class="flex w-full items-center justify-between px-2 py-1 mb-1 rounded-lg hover:bg-nexus-hover transition-colors group"
+            [attr.aria-expanded]="!assistantsCollapsed()"
+            class="group flex h-10 w-full items-center rounded-full text-sm text-nexus-text transition-colors hover:bg-nexus-hover"
           >
-            <h2 class="text-xs font-medium text-nexus-dim uppercase tracking-wider">Assistentes</h2>
-            <div class="flex items-center gap-2">
-              <span
-                *ngIf="menu().manageAssistants"
-                (click)="$event.stopPropagation(); openCreateAssistantModal()"
-                class="text-nexus-accent hover:underline text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-              >Criar</span>
-              <svg
-                width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                class="text-nexus-dim transition-transform duration-200"
-                [ngClass]="{ 'rotate-180': !assistantsCollapsed() }"
-              >
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </div>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center">
+              <nexus-icon name="assistants" />
+            </span>
+            <h2 class="flex-1 text-left text-sm font-medium">Assistentes</h2>
+            <span
+              *ngIf="menu().manageAssistants"
+              (click)="$event.stopPropagation(); openCreateAssistantModal()"
+              class="mr-2 text-xs text-nexus-accent opacity-0 transition-opacity hover:underline group-hover:opacity-100"
+            >Criar</span>
+            <nexus-icon
+              name="chevronDown"
+              [size]="16"
+              class="mr-3 text-nexus-dim transition-transform duration-200"
+              [ngClass]="{ 'rotate-180': !assistantsCollapsed() }"
+            />
           </button>
 
-          <ul *ngIf="!assistantsCollapsed()" class="space-y-1 overflow-hidden">
+          <ul *ngIf="!assistantsCollapsed()" class="mt-1 space-y-0.5 overflow-hidden">
             <li *ngFor="let assistant of assistants()">
               <div
                 class="group flex w-full items-center gap-1 rounded-full text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
@@ -82,7 +128,7 @@
                 <button
                   type="button"
                   (click)="selectAssistant(assistant.id)"
-                  class="flex min-w-0 flex-1 items-center gap-3 rounded-full px-3 py-2 text-left"
+                  class="flex min-w-0 flex-1 items-center gap-4 rounded-full py-2 pl-4 text-left"
                 >
                   <div class="h-2 w-2 rounded-full bg-nexus-accent shrink-0"></div>
                   <span class="truncate">{{ assistant.name }}</span>
@@ -98,11 +144,7 @@
                   title="Excluir assistente"
                   data-testid="delete-assistant"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M3 6h18" />
-                    <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                  </svg>
+                  <nexus-icon name="trash" [size]="16" />
                 </button>
               </div>
             </li>
@@ -110,35 +152,36 @@
         </div>
 
         <!-- Recent Conversations Section -->
-        <div class="mt-4">
+        <div class="mt-2">
           <button
             type="button"
             (click)="toggleConversations()"
-            class="flex w-full items-center justify-between px-2 py-1 mb-1 rounded-lg hover:bg-nexus-hover transition-colors"
+            [attr.aria-expanded]="!conversationsCollapsed()"
+            class="flex h-10 w-full items-center rounded-full text-sm text-nexus-text transition-colors hover:bg-nexus-hover"
           >
-            <h2 class="text-xs font-medium text-nexus-dim uppercase tracking-wider">Recentes</h2>
-            <svg
-              width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-              class="text-nexus-dim transition-transform duration-200"
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center">
+              <nexus-icon name="recent" />
+            </span>
+            <h2 class="flex-1 text-left text-sm font-medium">Recentes</h2>
+            <nexus-icon
+              name="chevronDown"
+              [size]="16"
+              class="mr-3 text-nexus-dim transition-transform duration-200"
               [ngClass]="{ 'rotate-180': !conversationsCollapsed() }"
-            >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
+            />
           </button>
 
-          <ul *ngIf="!conversationsCollapsed()" class="space-y-1">
+          <ul *ngIf="!conversationsCollapsed()" class="mt-1 space-y-0.5">
             <li *ngFor="let conversation of conversations()">
               <div
-                class="group flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors relative"
+                class="group flex w-full items-center gap-3 rounded-full py-2 pl-3 pr-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors relative"
                 [ngClass]="{ 'bg-nexus-active': conversation.id === currentConversationId() }"
               >
                 <button
                   (click)="selectConversation(conversation.id)"
                   class="flex-1 flex items-center gap-3 min-w-0 text-left"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-nexus-dim shrink-0">
-                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                  </svg>
+                  <nexus-icon name="conversation" [size]="16" class="text-nexus-dim" />
                   <span class="truncate">{{ conversation.name || ('Conversa ' + conversation.id.slice(0, 8)) }}</span>
                 </button>
 
@@ -151,11 +194,7 @@
                   title="Excluir conversa"
                   data-testid="delete-conversation"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M3 6h18" />
-                    <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                  </svg>
+                  <nexus-icon name="trash" [size]="16" />
                 </button>
               </div>
             </li>
@@ -165,33 +204,29 @@
       </div>
 
       <!-- Rodape: menu Administracao conforme o papel (SPEC-010, RF-46) e a conta -->
-      <div class="mt-auto border-t border-nexus-hover p-2">
+      <div class="mt-auto shrink-0 border-t border-nexus-hover pt-2">
         <button
           *ngIf="administrationItems().length > 0"
           type="button"
           data-testid="administration-menu-trigger"
           [cdkMenuTriggerFor]="administrationMenu"
           [cdkMenuPosition]="administrationMenuPositions()"
-          class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
-          [ngClass]="{
-            'bg-nexus-active': administrationActive(),
-            'justify-center': !sidebarContentVisible()
-          }"
-          title="Administração"
+          aria-label="Administração"
+          nexusTooltip="Administração"
+          [nexusTooltipDisabled]="itemTooltipDisabled()"
+          class="flex h-10 w-full items-center rounded-full text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+          [ngClass]="{ 'bg-nexus-active': administrationActive() }"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
-          </svg>
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center">
+            <nexus-icon name="settings" />
+          </span>
           <span *ngIf="sidebarContentVisible()" class="flex-1 text-left">Administração</span>
-          <svg
+          <nexus-icon
             *ngIf="sidebarContentVisible()"
-            width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            class="text-nexus-dim"
-            aria-hidden="true"
-          >
-            <path d="M18 15l-6-6-6 6" />
-          </svg>
+            name="chevronUp"
+            [size]="16"
+            class="mr-3 text-nexus-dim"
+          />
         </button>
 
         <ng-template #administrationMenu>
@@ -212,31 +247,7 @@
               class="flex w-full items-center gap-3 rounded-full px-3 py-2 text-left text-sm text-nexus-text outline-none hover:bg-nexus-hover focus:bg-nexus-hover transition-colors"
               [ngClass]="{ 'bg-nexus-active': isAdministrationItemActive(item) }"
             >
-              <ng-container [ngSwitch]="item.id">
-                <svg *ngSwitchCase="'documents'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                  <path d="M14 2v6h6" />
-                </svg>
-                <svg *ngSwitchCase="'audit'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M9 11l3 3L22 4" />
-                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-                </svg>
-                <svg *ngSwitchCase="'archived'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M21 8v13H3V8" />
-                  <path d="M1 3h22v5H1z" />
-                  <path d="M10 12h4" />
-                </svg>
-                <svg *ngSwitchCase="'feedback'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3z" />
-                  <path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17" />
-                </svg>
-                <svg *ngSwitchCase="'usage'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M18 20V10M12 20V4M6 20v-6" />
-                </svg>
-                <svg *ngSwitchCase="'llmCredentials'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
-                </svg>
-              </ng-container>
+              <nexus-icon [name]="item.id" [size]="18" />
               <span>{{ item.label }}</span>
             </button>
           </div>
@@ -244,9 +255,9 @@
 
         <div
           *ngIf="user() as sessionUser"
-          class="mt-2 flex items-center gap-2 border-t border-nexus-hover px-2 pt-2"
+          class="mt-2 flex items-center gap-2 border-t border-nexus-hover pt-2"
         >
-          <div *ngIf="sidebarContentVisible()" class="min-w-0 flex-1">
+          <div *ngIf="sidebarContentVisible()" class="min-w-0 flex-1 pl-3">
             <div class="truncate text-sm font-medium">{{ sessionUser.name }}</div>
             <div class="truncate text-xs text-nexus-dim">
               {{ sessionUser.groups.length > 0 ? sessionUser.groups.join(", ") : "sem grupo" }}
@@ -255,14 +266,15 @@
           <button
             type="button"
             (click)="logout()"
-            class="flex h-9 shrink-0 items-center gap-2 rounded-full px-3 text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
-            title="Sair"
+            aria-label="Sair"
+            nexusTooltip="Sair"
+            [nexusTooltipDisabled]="itemTooltipDisabled()"
+            class="flex h-10 shrink-0 items-center rounded-full text-sm text-nexus-text hover:bg-nexus-hover transition-colors"
+            [ngClass]="{ 'w-10': !sidebarContentVisible(), 'pr-4': sidebarContentVisible() }"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-              <path d="M16 17l5-5-5-5" />
-              <path d="M21 12H9" />
-            </svg>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center">
+              <nexus-icon name="logout" />
+            </span>
             <span *ngIf="sidebarContentVisible()">Sair</span>
           </button>
         </div>
@@ -273,12 +285,16 @@
     <section class="relative flex min-w-0 flex-1 flex-col overflow-hidden">
       <!-- Header (Mobile Only) -->
       <header class="flex h-14 items-center px-4 lg:hidden">
-        <button (click)="toggleNavigation()" class="p-2 text-nexus-text">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 12h18M3 6h18M3 18h18" />
-          </svg>
+        <button
+          type="button"
+          (click)="toggleNavigation()"
+          aria-label="Abrir menu"
+          class="flex h-10 w-10 items-center justify-center rounded-full text-nexus-text hover:bg-nexus-hover"
+        >
+          <nexus-icon name="menu" [size]="22" />
         </button>
-        <span class="ml-4 text-lg font-medium">Nexus</span>
+        <nexus-icon name="logo" [size]="24" class="ml-3" />
+        <span class="ml-2 text-lg font-medium">Nexus</span>
       </header>
 
       <div class="flex-1 overflow-hidden flex flex-col">

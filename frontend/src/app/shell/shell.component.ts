@@ -16,7 +16,10 @@ import {
   deletionDialog,
   deletionOutcome
 } from "../shared/dialogs/confirm-dialog";
+import { NexusIconComponent } from "../shared/icons/nexus-icon.component";
 import { Assistant, Conversation } from "../shared/models/nexus.models";
+import { TooltipDirective } from "../shared/tooltip/tooltip.directive";
+import { SidebarSection, itemTooltipDisabled, sidebarToggleLabel } from "./sidebar";
 
 import { authActions } from "../store/auth.actions";
 import { selectMenu, selectSessionUser } from "../store/auth.selectors";
@@ -42,7 +45,9 @@ import {
     CdkMenu,
     CdkMenuItem,
     CdkMenuTrigger,
-    ConfirmDialogComponent
+    ConfirmDialogComponent,
+    NexusIconComponent,
+    TooltipDirective
   ],
   templateUrl: "./shell.component.html"
 })
@@ -72,6 +77,15 @@ export class ShellComponent {
 
   protected readonly sidebarContentVisible = computed(
     () => !this.sidebarCollapsed() || this.mobileSidebarOpen()
+  );
+
+  /** SPEC-015 (RF-102): "Abrir barra lateral" ou "Fechar barra lateral". */
+  protected readonly sidebarToggleLabel = computed(() =>
+    sidebarToggleLabel(this.sidebarContentVisible())
+  );
+  /** SPEC-015 (RF-101): tooltip dos itens so com a barra recolhida. */
+  protected readonly itemTooltipDisabled = computed(() =>
+    itemTooltipDisabled(this.sidebarContentVisible())
   );
 
   /** SPEC-010 (RF-76): telas do menu Administracao que o papel enxerga. */
@@ -188,6 +202,16 @@ export class ShellComponent {
       return;
     }
     this.sidebarCollapsed.update((isCollapsed) => !isCollapsed);
+  }
+
+  /** SPEC-015 (D4): o icone da secao na barra recolhida abre a barra com a secao aberta. */
+  protected openSection(section: SidebarSection): void {
+    if (section === "assistants") {
+      this.assistantsCollapsed.set(false);
+    } else {
+      this.conversationsCollapsed.set(false);
+    }
+    this.sidebarCollapsed.set(false);
   }
 
   protected closeMobileSidebar(): void {

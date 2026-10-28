@@ -13,6 +13,6 @@ export async function login(page: Page, username: string): Promise<void> {
 }
 
 export async function logout(page: Page): Promise<void> {
-  await page.getByTitle("Sair").click();
+  await page.getByRole("button", { name: "Sair" }).click();
   await expect(page.locator("#username")).toBeVisible({ timeout: 30_000 });
 }
