@@ -25,6 +25,7 @@ import {
   ReindexJob,
   FeedbackRating,
   FeedbackReview,
+  HomeAssistants,
   MessageFeedback,
   UsageLimits,
   UsageReport
@@ -59,6 +60,18 @@ export class NexusApiService {
 
   getMe(): Observable<SessionUser> {
     return this.http.get<SessionUser>(`${this.baseUrl}/me`);
+  }
+
+  /** SPEC-016: acesso rapido da tela inicial do usuario do token. */
+  getHomeAssistants(): Observable<HomeAssistants> {
+    return this.http.get<HomeAssistants>(`${this.baseUrl}/me/home-assistants`);
+  }
+
+  saveHomeAssistants(body: {
+    assistant_ids: string[];
+    default_assistant_id: string;
+  }): Observable<HomeAssistants> {
+    return this.http.put<HomeAssistants>(`${this.baseUrl}/me/home-assistants`, body);
   }
 
   setAssistantGroups(assistantId: string, groups: string[]): Observable<{ groups: string[] }> {

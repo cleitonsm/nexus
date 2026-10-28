@@ -64,6 +64,7 @@ from src.infrastructure.composition import (
     sparse_encoding_parameters,
 )
 from src.infrastructure.database import (
+    PostgresHomeAssistantPreferenceRepository,
     PostgresAssistantPermissionRepository,
     PostgresAssistantRepository,
     PostgresAuditLogRepository,
@@ -163,6 +164,13 @@ def get_assistant_repository(
     session: Session = Depends(get_session),
 ) -> PostgresAssistantRepository:
     return PostgresAssistantRepository(session=session)
+
+
+def get_home_assistant_repository(
+    session: Session = Depends(get_session),
+) -> PostgresHomeAssistantPreferenceRepository:
+    """SPEC-016: acesso rapido da tela inicial."""
+    return PostgresHomeAssistantPreferenceRepository(session=session)
 
 
 def get_conversation_repository(

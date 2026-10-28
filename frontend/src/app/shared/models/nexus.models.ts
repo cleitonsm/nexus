@@ -8,6 +8,14 @@ export interface Assistant {
   groups?: string[];
 }
 
+/** SPEC-016: acesso rapido efetivo da tela inicial (RN-49). */
+export interface HomeAssistants {
+  assistant_ids: string[];
+  default_assistant_id: string | null;
+  max: number;
+  customized: boolean;
+}
+
 /** Documento de um assistente e os grupos a que esta restrito (RF-43). */
 /** Ciclo de vida do documento (SPEC-005). */
 export type DocumentStatus = "pendente" | "processando" | "indexado" | "falhou" | "substituido";

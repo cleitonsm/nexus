@@ -57,7 +57,7 @@
       <button
         type="button"
         (click)="createConversation()"
-        [disabled]="!activeAssistantId() || loading().createConversation"
+        [disabled]="!newConversationTarget() || loading().createConversation"
         aria-label="Nova conversa"
         nexusTooltip="Nova conversa"
         [nexusTooltipDisabled]="itemTooltipDisabled()"

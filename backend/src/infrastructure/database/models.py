@@ -14,6 +14,7 @@ from sqlalchemy import (
     Index,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -529,3 +530,30 @@ class MessageFeedbackModel(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class UserHomeAssistantModel(Base):
+    """SPEC-016: assistente no acesso rapido da tela inicial de um usuario."""
+
+    __tablename__ = "user_home_assistants"
+    __table_args__ = (
+        CheckConstraint("position >= 0", name="ck_user_home_assistants_position"),
+        Index("ix_user_home_assistants_assistant_id", "assistant_id"),
+        Index(
+            "uq_user_home_assistants_single_default",
+            "owner_user_id",
+            unique=True,
+            postgresql_where=text("is_default"),
+        ),
+    )
+
+    owner_user_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    assistant_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("assistants.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    is_default: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )

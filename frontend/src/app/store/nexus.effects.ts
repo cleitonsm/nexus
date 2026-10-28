@@ -30,7 +30,11 @@ import { INDEX_POLL_INTERVAL_MS, isReindexRunning } from "../shared/documents/in
 import { Conversation } from "../shared/models/nexus.models";
 import { chatStreamActions, interruptedChatActions, isTerminal } from "./chat-stream-flow";
 import { nexusActions } from "./nexus.actions";
-import { selectActiveAssistantId } from "./nexus.selectors";
+import {
+  selectActiveAssistantId,
+  selectCurrentConversationId,
+  selectHomeCards
+} from "./nexus.selectors";
 
 function resolveError(error: unknown): string {
   return describeApiError(error);
@@ -48,6 +52,90 @@ export const loadAssistantsEffect = createEffect(
           )
         )
       )
+    ),
+  { functional: true }
+);
+
+/**
+ * SPEC-016: o acesso rapido depende da lista de assistentes visiveis, entao e
+ * recarregado sempre que ela muda (carga, criacao e exclusao).
+ */
+export const loadHomeAssistantsTriggerEffect = createEffect(
+  (actions$ = inject(Actions)) =>
+    actions$.pipe(
+      ofType(
+        nexusActions.loadAssistantsSuccess,
+        nexusActions.createAssistantSuccess,
+        nexusActions.deleteAssistantSuccess
+      ),
+      map(() => nexusActions.loadHomeAssistants())
+    ),
+  { functional: true }
+);
+
+export const loadHomeAssistantsEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.loadHomeAssistants),
+      switchMap(() =>
+        api.getHomeAssistants().pipe(
+          map((homeAssistants) => nexusActions.loadHomeAssistantsSuccess({ homeAssistants })),
+          catchError((error) =>
+            of(nexusActions.loadHomeAssistantsFailure({ error: resolveError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+export const saveHomeAssistantsEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.saveHomeAssistants),
+      switchMap(({ assistantIds, defaultAssistantId }) =>
+        api
+          .saveHomeAssistants({
+            assistant_ids: assistantIds,
+            default_assistant_id: defaultAssistantId
+          })
+          .pipe(
+            map((homeAssistants) => nexusActions.saveHomeAssistantsSuccess({ homeAssistants })),
+            catchError((error) =>
+              of(nexusActions.saveHomeAssistantsFailure({ error: resolveError(error) }))
+            )
+          )
+      )
+    ),
+  { functional: true }
+);
+
+/**
+ * SPEC-016 (D5, RF-105): sem conversa aberta, o padrao e o assistente ativo.
+ * Vale ao carregar (sem assistente ativo) e ao salvar o acesso rapido na tela
+ * inicial. Uma conversa aberta nunca e trocada.
+ */
+export const applyDefaultAssistantEffect = createEffect(
+  (actions$ = inject(Actions), store = inject(Store)) =>
+    actions$.pipe(
+      ofType(
+        nexusActions.loadHomeAssistantsSuccess,
+        // Sem a resposta, os cartoes seguem a D4 sobre a lista local.
+        nexusActions.loadHomeAssistantsFailure,
+        nexusActions.saveHomeAssistantsSuccess
+      ),
+      withLatestFrom(
+        store.select(selectHomeCards),
+        store.select(selectActiveAssistantId),
+        store.select(selectCurrentConversationId)
+      ),
+      filter(([action, cards, activeId, conversationId]) => {
+        if (!cards.defaultId || conversationId !== null || cards.defaultId === activeId) {
+          return false;
+        }
+        return action.type === nexusActions.saveHomeAssistantsSuccess.type || activeId === null;
+      }),
+      map(([, cards]) => nexusActions.applyDefaultAssistant({ assistantId: cards.defaultId! }))
     ),
   { functional: true }
 );
@@ -147,7 +235,7 @@ export const createConversationEffect = createEffect(
 export const selectAssistantEffect = createEffect(
   (actions$ = inject(Actions)) =>
     actions$.pipe(
-      ofType(nexusActions.selectAssistant),
+      ofType(nexusActions.selectAssistant, nexusActions.applyDefaultAssistant),
       map(({ assistantId }) => nexusActions.loadAssistantConversations({ assistantId }))
     ),
   { functional: true }
@@ -754,6 +842,10 @@ export const loadAuditEventsEffect = createEffect(
 
 export const nexusEffects = {
   loadAssistantsEffect,
+  loadHomeAssistantsTriggerEffect,
+  loadHomeAssistantsEffect,
+  saveHomeAssistantsEffect,
+  applyDefaultAssistantEffect,
   createAssistantEffect,
   deleteAssistantEffect,
   selectCreatedAssistantEffect,

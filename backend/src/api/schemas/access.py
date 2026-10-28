@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from typing import Annotated
+
 from pydantic import BaseModel, Field
 
 
@@ -48,3 +50,21 @@ class AuditEventResponse(BaseModel):
     resource_type: str
     resource_id: str | None
     details: dict[str, object]
+
+
+class HomeAssistantsRequest(BaseModel):
+    """SPEC-016: selecao completa; substitui a anterior.
+
+    O limite (D1) e as demais regras (RN-47) ficam no dominio, para o 422 levar
+    o ``code`` da regra; aqui so um teto contra corpo abusivo.
+    """
+
+    assistant_ids: list[Annotated[str, Field(max_length=64)]] = Field(max_length=50)
+    default_assistant_id: str = Field(min_length=1, max_length=64)
+
+
+class HomeAssistantsResponse(BaseModel):
+    assistant_ids: list[str]
+    default_assistant_id: str | None
+    max: int
+    customized: bool

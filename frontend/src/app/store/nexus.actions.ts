@@ -12,6 +12,7 @@ import {
   IndexStatus,
   ReindexJob,
   FeedbackReview,
+  HomeAssistants,
   MessageFeedback,
   UsageLimits,
   UsageReport
@@ -41,6 +42,20 @@ export const nexusActions = createActionGroup({
     "Delete Assistant Failure": props<{ error: string }>(),
 
     "Select Assistant": props<{ assistantId: string }>(),
+    /**
+     * SPEC-016 (D5): torna o padrao o assistente ativo sem levar ao chat; vale no
+     * carregamento, numa tela administrativa inclusive.
+     */
+    "Apply Default Assistant": props<{ assistantId: string }>(),
+
+    "Load Home Assistants": emptyProps(),
+    "Load Home Assistants Success": props<{ homeAssistants: HomeAssistants }>(),
+    "Load Home Assistants Failure": props<{ error: string }>(),
+    "Open Home Assistants Dialog": emptyProps(),
+    "Close Home Assistants Dialog": emptyProps(),
+    "Save Home Assistants": props<{ assistantIds: string[]; defaultAssistantId: string }>(),
+    "Save Home Assistants Success": props<{ homeAssistants: HomeAssistants }>(),
+    "Save Home Assistants Failure": props<{ error: string }>(),
 
     "Create Conversation": props<{ assistantId: string }>(),
     "Create Conversation Success": props<{ assistantId: string; conversation: Conversation }>(),

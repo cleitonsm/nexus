@@ -9,6 +9,7 @@ from .conversation_dto import (
     MessageDTO,
     RegisterConversationResult,
 )
+from .home_assistants_dto import HomeAssistantsDTO
 from .evaluation_dto import EvaluationComparisonDTO, EvaluationReportDTO
 from .index_dto import IndexStatusDTO, ReindexJobDTO
 from .operations_dto import (
@@ -30,6 +31,7 @@ __all__ = [
     "EvaluationComparisonDTO",
     "EvaluationReportDTO",
     "FeedbackDTO",
+    "HomeAssistantsDTO",
     "IndexStatusDTO",
     "ListConversationsResult",
     "MessageDTO",

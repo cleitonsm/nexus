@@ -21,8 +21,11 @@ import {
 import { INTERRUPTED_ANSWER } from "./chat-stream-flow";
 import { nexusActions } from "./nexus.actions";
 import {
+  applyDefaultAssistantEffect,
+  loadHomeAssistantsTriggerEffect,
   navigateToChatEffect,
   pollDocumentStatusEffect,
+  saveHomeAssistantsEffect,
   refreshDocumentAccessEffect,
   sendChatQuestionEffect,
   submitFeedbackEffect,
@@ -352,7 +355,93 @@ describe("navigateToChatEffect", () => {
     collect(navigateToChatEffect(actionsOf(actions), fake));
 
     actions.next(nexusActions.loadAssistants());
+    // SPEC-016 (D5): aplicar o padrao no carregamento nao tira o usuario da tela.
+    actions.next(nexusActions.applyDefaultAssistant({ assistantId: "a1" }));
 
     expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe("home assistants effects (CT-128, SPEC-016)", () => {
+  const home = {
+    assistant_ids: ["a2", "a1"],
+    default_assistant_id: "a2",
+    max: 4,
+    customized: true
+  };
+  const assistants = ["a1", "a2"].map((id) => ({
+    id,
+    name: id,
+    description: null,
+    initial_prompt: null,
+    created_at: "2026-10-28T00:00:00Z"
+  }));
+
+  function storeWith(nexus: Record<string, unknown>): Store {
+    const state = { nexus: { assistants, homeAssistants: home, ...nexus } };
+    return {
+      select: (selector: (value: unknown) => unknown) => of(selector(state))
+    } as unknown as Store;
+  }
+
+  it("reloads the quick access whenever the assistant list changes", () => {
+    const actions = new Subject<unknown>();
+    const received = collect(loadHomeAssistantsTriggerEffect(actionsOf(actions)));
+    actions.next(nexusActions.loadAssistantsSuccess({ assistants }));
+    actions.next(nexusActions.deleteAssistantSuccess({ assistantId: "a1" }));
+    actions.next(nexusActions.selectAssistant({ assistantId: "a1" }));
+    expect(received.map((action) => action.type)).toEqual([
+      nexusActions.loadHomeAssistants.type,
+      nexusActions.loadHomeAssistants.type
+    ]);
+  });
+
+  it("sends the choice and reports the API code on failure", () => {
+    const actions = new Subject<unknown>();
+    const save = vi
+      .fn()
+      .mockReturnValueOnce(of(home))
+      .mockReturnValueOnce(
+        throwError(() => ({ status: 422, error: { detail: { code: "home_assistants_limit" } } }))
+      );
+    const received = collect(saveHomeAssistantsEffect(actionsOf(actions), api({ saveHomeAssistants: save })));
+    const choice = nexusActions.saveHomeAssistants({ assistantIds: ["a2", "a1"], defaultAssistantId: "a2" });
+    actions.next(choice);
+    actions.next(choice);
+    expect(save).toHaveBeenCalledWith({ assistant_ids: ["a2", "a1"], default_assistant_id: "a2" });
+    expect(received[0]).toEqual(nexusActions.saveHomeAssistantsSuccess({ homeAssistants: home }));
+    expect(received[1].type).toBe(nexusActions.saveHomeAssistantsFailure.type);
+  });
+
+  it("applies the default on load when nothing is active (D5)", () => {
+    const actions = new Subject<unknown>();
+    const received = collect(
+      applyDefaultAssistantEffect(
+        actionsOf(actions),
+        storeWith({ activeAssistantId: null, currentConversationId: null })
+      )
+    );
+    actions.next(nexusActions.loadHomeAssistantsSuccess({ homeAssistants: home }));
+    expect(received).toEqual([nexusActions.applyDefaultAssistant({ assistantId: "a2" })]);
+  });
+
+  it("keeps the user's choice on reload and never touches an open conversation", () => {
+    const actions = new Subject<unknown>();
+    const active = collect(
+      applyDefaultAssistantEffect(
+        actionsOf(actions),
+        storeWith({ activeAssistantId: "a1", currentConversationId: null })
+      )
+    );
+    const open = collect(
+      applyDefaultAssistantEffect(
+        actionsOf(actions),
+        storeWith({ activeAssistantId: null, currentConversationId: "c1" })
+      )
+    );
+    actions.next(nexusActions.loadHomeAssistantsSuccess({ homeAssistants: home }));
+    actions.next(nexusActions.saveHomeAssistantsSuccess({ homeAssistants: home }));
+    expect(active).toEqual([nexusActions.applyDefaultAssistant({ assistantId: "a2" })]);
+    expect(open).toEqual([]);
   });
 });

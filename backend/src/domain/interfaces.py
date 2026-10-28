@@ -11,6 +11,7 @@ from .chunking import DocumentChunk, ExtractedDocument
 from .citations import ContextChunk
 from .errors import DomainValidationError
 from .feedback import FeedbackQuery, MessageFeedback
+from .home_assistants import HomeAssistantSelection
 from .llm_credentials import LLMCredential
 from .retrieval_profile import RetrievalProfile
 from .maintenance import IngestionPause
@@ -38,6 +39,18 @@ from .value_objects import (
     DocumentId,
     LLMCredentialId,
 )
+
+
+class HomeAssistantPreferenceRepository(Protocol):
+    """SPEC-016: acesso rapido da tela inicial, por usuario (RF-106)."""
+
+    def get(self, owner_user_id: str) -> HomeAssistantSelection | None:
+        """Selecao gravada, sem filtro de acesso; ``None`` se nunca gravou."""
+        ...
+
+    def replace(self, owner_user_id: str, selection: HomeAssistantSelection) -> None:
+        """Troca a selecao inteira do usuario numa transacao."""
+        ...
 
 
 class AssistantRepository(Protocol):

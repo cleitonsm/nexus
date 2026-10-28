@@ -36,7 +36,10 @@ from .repositories import (
 )
 from .session import SessionLocal, engine, get_db_session
 
+from .home_assistants_repository import PostgresHomeAssistantPreferenceRepository
+
 __all__ = [
+    "PostgresHomeAssistantPreferenceRepository",
     "AppSettingModel",
     "AssistantGroupModel",
     "AssistantModel",

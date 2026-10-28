@@ -1,6 +1,8 @@
 from .access import (
     AuditEventResponse,
     CurrentUserResponse,
+    HomeAssistantsRequest,
+    HomeAssistantsResponse,
     DocumentAccessResponse,
     GroupsRequest,
     GroupsResponse,
@@ -46,6 +48,8 @@ __all__ = [
     "CreateAssistantRequest",
     "CreateConversationRequest",
     "CurrentUserResponse",
+    "HomeAssistantsRequest",
+    "HomeAssistantsResponse",
     "DocumentAccessResponse",
     "FeedbackResponse",
     "GroupsRequest",

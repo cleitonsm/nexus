@@ -17,6 +17,7 @@ import {
   deletionOutcome
 } from "../shared/dialogs/confirm-dialog";
 import { NexusIconComponent } from "../shared/icons/nexus-icon.component";
+import { newConversationAssistant } from "../shared/home/home-assistants";
 import { Assistant, Conversation } from "../shared/models/nexus.models";
 import { TooltipDirective } from "../shared/tooltip/tooltip.directive";
 import { SidebarSection, itemTooltipDisabled, sidebarToggleLabel } from "./sidebar";
@@ -31,6 +32,7 @@ import {
   selectCreateAssistantModalOpen,
   selectCurrentConversationId,
   selectError,
+  selectHomeCards,
   selectLoadingState,
   selectNotice
 } from "../store/nexus.selectors";
@@ -58,6 +60,10 @@ export class ShellComponent {
 
   protected readonly assistants = this.store.selectSignal(selectAssistants);
   protected readonly activeAssistantId = this.store.selectSignal(selectActiveAssistantId);
+  private readonly homeCards = this.store.selectSignal(selectHomeCards);
+  protected readonly newConversationTarget = computed(() =>
+    newConversationAssistant(this.homeCards().defaultId, this.activeAssistantId())
+  );
   protected readonly conversations = this.store.selectSignal(selectActiveAssistantConversations);
   protected readonly currentConversationId = this.store.selectSignal(selectCurrentConversationId);
   protected readonly loading = this.store.selectSignal(selectLoadingState);
@@ -279,10 +285,14 @@ export class ShellComponent {
     this.selectedAssistantFiles = Array.from(target?.files ?? []);
   }
 
+  /** SPEC-016 (D5, RF-105): "Nova conversa" volta ao assistente padrao. */
   protected createConversation(): void {
-    const assistantId = this.activeAssistantId();
+    const assistantId = this.newConversationTarget();
     if (!assistantId || this.loading().createConversation) {
       return;
+    }
+    if (assistantId !== this.activeAssistantId()) {
+      this.store.dispatch(nexusActions.applyDefaultAssistant({ assistantId }));
     }
     this.store.dispatch(nexusActions.createConversation({ assistantId }));
   }

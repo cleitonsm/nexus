@@ -1,5 +1,6 @@
 import { createFeatureSelector, createSelector } from "@ngrx/store";
 
+import { resolveHomeCards } from "../shared/home/home-assistants";
 import { Citation } from "../shared/models/nexus.models";
 import { NexusState, nexusFeatureKey } from "./nexus.reducer";
 
@@ -127,3 +128,14 @@ export const selectUsageReport = createSelector(selectNexusState, (state) => sta
 export const selectUsageLimits = createSelector(selectNexusState, (state) => state.usageLimits);
 
 export const selectNotice = createSelector(selectNexusState, (state) => state.notice);
+
+/** SPEC-016 (RF-104): cartoes da tela inicial, padrao primeiro. */
+export const selectHomeCards = createSelector(selectNexusState, (state) =>
+  resolveHomeCards(state.assistants, state.homeAssistants)
+);
+
+export const selectHomeAssistantsDialog = createSelector(selectNexusState, (state) => ({
+  open: state.homeAssistantsDialogOpen,
+  saving: state.loading.saveHomeAssistants,
+  error: state.homeAssistantsError
+}));

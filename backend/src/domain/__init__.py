@@ -19,6 +19,14 @@ from .citations import (
     resolve_citations,
     strip_unknown_markers,
 )
+from .home_assistants import (
+    ASSISTANT_NOT_AVAILABLE,
+    MAX_HOME_ASSISTANTS,
+    EffectiveHomeAssistants,
+    HomeAssistantSelection,
+    HomeAssistantsValidationError,
+    effective_home_assistants,
+)
 from .entities import (
     Assistant,
     ChatMessage,
@@ -67,6 +75,7 @@ from .feedback import (
     MessageFeedback,
 )
 from .interfaces import (
+    HomeAssistantPreferenceRepository,
     IngestionPauseRepository,
     AnswerJudge,
     FeedbackRepository,
@@ -328,6 +337,13 @@ __all__ = [
     "parse_legal_reference",
     "starts_legal_item",
     "structural_heading",
+    "ASSISTANT_NOT_AVAILABLE",
+    "MAX_HOME_ASSISTANTS",
+    "EffectiveHomeAssistants",
+    "HomeAssistantPreferenceRepository",
+    "HomeAssistantSelection",
+    "HomeAssistantsValidationError",
+    "effective_home_assistants",
     "evaluate_usage_limits",
     "first_relevant_rank",
     "mean_reciprocal_rank",

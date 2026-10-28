@@ -14,6 +14,7 @@ from src.domain import (
     AccessDeniedError,
     ConcurrentChangeError,
     GroupDirectoryUnavailableError,
+    HomeAssistantsValidationError,
     InvalidFeedbackStateError,
     LLMCredentialInUseError,
     UsageLimitExceededError,
@@ -95,6 +96,19 @@ def register_error_handlers(app: FastAPI) -> None:
             content=error_body(
                 status.HTTP_409_CONFLICT,
                 {"code": "concurrent_change", "message": str(exc)},
+            ),
+        )
+
+    @app.exception_handler(HomeAssistantsValidationError)
+    async def home_assistants_invalid(
+        _: Request, exc: HomeAssistantsValidationError
+    ) -> JSONResponse:
+        """SPEC-016 (RN-47, RN-48): 422 com o ``code`` da regra."""
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=error_body(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                {"code": exc.code, "message": str(exc)},
             ),
         )
 

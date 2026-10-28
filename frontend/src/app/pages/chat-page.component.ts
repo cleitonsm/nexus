@@ -14,6 +14,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { Store } from "@ngrx/store";
 
 import { ChatMessage, Citation, FeedbackRating } from "../shared/models/nexus.models";
+import { HomeAssistantsDialogComponent } from "../features/home/home-assistants-dialog.component";
 import { MarkdownPipe } from "../shared/pipes/markdown.pipe";
 import { selectMenu } from "../store/auth.selectors";
 import { nexusActions } from "../store/nexus.actions";
@@ -26,6 +27,8 @@ import {
   selectCurrentMessages,
   selectError,
   selectFeedbackByMessage,
+  selectHomeAssistantsDialog,
+  selectHomeCards,
   selectInferAssistantError,
   selectLoadingState
 } from "../store/nexus.selectors";
@@ -36,7 +39,7 @@ export const FEEDBACK_COMMENT_MAX = 1000;
 @Component({
   selector: "app-chat-page",
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MarkdownPipe],
+  imports: [CommonModule, ReactiveFormsModule, MarkdownPipe, HomeAssistantsDialogComponent],
   templateUrl: "./chat-page.component.html",
   host: { class: "flex-1 min-h-0 flex flex-col overflow-hidden" }
 })
@@ -62,7 +65,10 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   protected readonly isInferring = computed(() => this.loading().inferAssistant);
   protected readonly inferAssistantError = this.store.selectSignal(selectInferAssistantError);
   protected readonly hasAssistants = computed(() => this.assistants().length > 0);
-  protected readonly topAssistants = computed(() => this.assistants().slice(0, 3));
+  /** SPEC-016 (RF-104): acesso rapido do usuario, padrao primeiro. */
+  protected readonly homeCards = this.store.selectSignal(selectHomeCards);
+  protected readonly topAssistants = computed(() => this.homeCards().assistants);
+  protected readonly homeDialog = this.store.selectSignal(selectHomeAssistantsDialog);
 
   /** Resposta em streaming (RF-58): pergunta exibida e texto parcial. */
   protected readonly chatStream = this.store.selectSignal(selectCurrentChatStream);
@@ -270,6 +276,18 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
       return;
     }
     this.store.dispatch(nexusActions.openCreateAssistantModal());
+  }
+
+  protected openHomeAssistantsDialog(): void {
+    this.store.dispatch(nexusActions.openHomeAssistantsDialog());
+  }
+
+  protected closeHomeAssistantsDialog(): void {
+    this.store.dispatch(nexusActions.closeHomeAssistantsDialog());
+  }
+
+  protected saveHomeAssistants(choice: { assistantIds: string[]; defaultAssistantId: string }): void {
+    this.store.dispatch(nexusActions.saveHomeAssistants(choice));
   }
 
   protected selectAssistantCard(assistantId: string): void {

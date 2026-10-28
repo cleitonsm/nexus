@@ -9,6 +9,7 @@ import {
   ConversationDetail,
   DocumentAccess,
   FeedbackRating,
+  HomeAssistants,
   IndexStatus,
   MessageFeedback,
   UsageLimits,
@@ -37,6 +38,11 @@ export interface NexusState {
   archivedConversationDetail: ConversationDetail | null;
   auditEvents: AuditEvent[];
   createAssistantModalOpen: boolean;
+  /** SPEC-016: acesso rapido efetivo; ``null`` antes da resposta da API. */
+  homeAssistants: HomeAssistants | null;
+  homeAssistantsDialogOpen: boolean;
+  /** Erro do modal de acesso rapido; nao vai para o aviso geral da tela. */
+  homeAssistantsError: string | null;
   inferAssistantError: string | null;
   /** Resposta em streaming em andamento (RF-58). */
   chatStream: ChatStreamState | null;
@@ -72,6 +78,7 @@ export interface NexusState {
     startReindex: boolean;
     archivedConversations: boolean;
     archivedAction: boolean;
+    saveHomeAssistants: boolean;
   };
   error: string | null;
 }
@@ -97,6 +104,9 @@ export const initialNexusState: NexusState = {
   archivedConversationDetail: null,
   auditEvents: [],
   createAssistantModalOpen: false,
+  homeAssistants: null,
+  homeAssistantsDialogOpen: false,
+  homeAssistantsError: null,
   inferAssistantError: null,
   chatStream: null,
   feedbackByMessage: {},
@@ -127,7 +137,8 @@ export const initialNexusState: NexusState = {
     indexStatus: false,
     startReindex: false,
     archivedConversations: false,
-    archivedAction: false
+    archivedAction: false,
+    saveHomeAssistants: false
   },
   error: null
 };
@@ -234,6 +245,44 @@ export const nexusReducer = createReducer(
     ...state,
     activeAssistantId: assistantId,
     currentConversationId: null
+  })),
+
+  // SPEC-016 (D5): mesmo efeito de selecionar, sem passar pela navegacao.
+  on(nexusActions.applyDefaultAssistant, (state, { assistantId }) => ({
+    ...state,
+    activeAssistantId: assistantId,
+    currentConversationId: null
+  })),
+
+  on(nexusActions.loadHomeAssistantsSuccess, (state, { homeAssistants }) => ({
+    ...state,
+    homeAssistants
+  })),
+  on(nexusActions.openHomeAssistantsDialog, (state) => ({
+    ...state,
+    homeAssistantsDialogOpen: true,
+    homeAssistantsError: null
+  })),
+  on(nexusActions.closeHomeAssistantsDialog, (state) =>
+    state.loading.saveHomeAssistants
+      ? state
+      : { ...state, homeAssistantsDialogOpen: false, homeAssistantsError: null }
+  ),
+  on(nexusActions.saveHomeAssistants, (state) => ({
+    ...state,
+    homeAssistantsError: null,
+    loading: { ...state.loading, saveHomeAssistants: true }
+  })),
+  on(nexusActions.saveHomeAssistantsSuccess, (state, { homeAssistants }) => ({
+    ...state,
+    homeAssistants,
+    homeAssistantsDialogOpen: false,
+    loading: { ...state.loading, saveHomeAssistants: false }
+  })),
+  on(nexusActions.saveHomeAssistantsFailure, (state, { error }) => ({
+    ...state,
+    homeAssistantsError: error,
+    loading: { ...state.loading, saveHomeAssistants: false }
   })),
 
   on(nexusActions.createConversation, (state) => ({

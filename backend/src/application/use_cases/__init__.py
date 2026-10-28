@@ -46,6 +46,11 @@ from .infer_assistant import (
     InferAssistantUseCase,
 )
 from .list_assistants import ListAssistantsUseCase
+from .manage_home_assistants import (
+    GetHomeAssistantsUseCase,
+    SetHomeAssistantsInput,
+    SetHomeAssistantsUseCase,
+)
 from .list_conversations import (
     ListConversationsInput,
     ListConversationsUseCase,
@@ -260,6 +265,9 @@ __all__ = [
     "IngestDocumentInput",
     "IngestDocumentUseCase",
     "ListAssistantsUseCase",
+    "GetHomeAssistantsUseCase",
+    "SetHomeAssistantsInput",
+    "SetHomeAssistantsUseCase",
     "ListAuditEventsInput",
     "ListAuditEventsUseCase",
     "ListConversationsInput",

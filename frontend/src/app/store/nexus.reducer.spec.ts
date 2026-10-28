@@ -26,7 +26,8 @@ import {
   selectAuditEvents,
   selectCurrentChatStream,
   selectCurrentCitationsByMessage,
-  selectCurrentMessages
+  selectCurrentMessages,
+  selectHomeCards
 } from "./nexus.selectors";
 
 const assistantConversation = (
@@ -216,6 +217,49 @@ describe("nexusReducer", () => {
     expect(nextState.currentConversationId).toBe("conv-2");
     expect(nextState.messagesByConversation["conv-1"]).toBeUndefined();
     expect(nextState.loading.deleteConversation).toBe(false);
+  });
+});
+
+describe("home assistants (CT-128, SPEC-016)", () => {
+  const home = { assistant_ids: ["b", "a"], default_assistant_id: "b", max: 4, customized: true };
+
+  it("applies the default as a blank chat (D5)", () => {
+    const state = nexusReducer(
+      { ...initialNexusState, activeAssistantId: "a", currentConversationId: "c1" },
+      nexusActions.applyDefaultAssistant({ assistantId: "b" })
+    );
+    expect(state.activeAssistantId).toBe("b");
+    expect(state.currentConversationId).toBeNull();
+  });
+
+  it("closes the dialog on save and keeps it open with the error on failure", () => {
+    let state = nexusReducer(initialNexusState, nexusActions.openHomeAssistantsDialog());
+    state = nexusReducer(
+      state,
+      nexusActions.saveHomeAssistants({ assistantIds: ["b"], defaultAssistantId: "b" })
+    );
+    expect(state.loading.saveHomeAssistants).toBe(true);
+    // Durante o envio o modal nao fecha.
+    expect(nexusReducer(state, nexusActions.closeHomeAssistantsDialog()).homeAssistantsDialogOpen).toBe(true);
+
+    const failed = nexusReducer(state, nexusActions.saveHomeAssistantsFailure({ error: "limite" }));
+    expect(failed.homeAssistantsDialogOpen).toBe(true);
+    expect(failed.homeAssistantsError).toBe("limite");
+    expect(failed.error).toBeNull();
+
+    const saved = nexusReducer(state, nexusActions.saveHomeAssistantsSuccess({ homeAssistants: home }));
+    expect(saved.homeAssistantsDialogOpen).toBe(false);
+    expect(saved.homeAssistants).toEqual(home);
+  });
+
+  it("selects the home cards with the default first", () => {
+    const state = nexusReducer(
+      { ...initialNexusState, assistants: ["a", "b", "c"].map(assistant) },
+      nexusActions.loadHomeAssistantsSuccess({ homeAssistants: home })
+    );
+    const cards = selectHomeCards.projector(state);
+    expect(cards.assistants.map((item) => item.id)).toEqual(["b", "a"]);
+    expect(cards.defaultId).toBe("b");
   });
 });
 
