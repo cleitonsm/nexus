@@ -2,8 +2,8 @@
 
 Rodada oficial: `scripts/validation/spec-013-p8.ps1` sobre o commit `79227cb`, pilha do Compose no ar
 (`docker compose up -d --build`, migrações `0010` e `0011` aplicadas na subida). Executada pelo autor,
-analisada com apoio de IA generativa. Os `*.log` ficam fora do Git (`.gitignore`); este resumo traz os
-números. `resumo.md` é a saída do script; este `LEIAME.md` é a análise.
+analisada com apoio de IA generativa. Os `*.log` da rodada oficial entram com `git add -f`
+(o `.gitignore` exclui `*.log`), como nas campanhas anteriores. `resumo.md` é a saída do script; este `LEIAME.md` é a análise.
 
 | Etapa | Casos | Resultado |
 |---|---|---|
