@@ -1,0 +1,22 @@
+﻿
+Running 17 tests using 1 worker
+
+  ✓   1 e2e\access.spec.ts:20:7 › E1: admin.nexus acessa so as rotas do seu papel e sai (3.9s)
+  ✓   2 e2e\access.spec.ts:20:7 › E1: curadora.rh acessa so as rotas do seu papel e sai (2.4s)
+  ✓   3 e2e\access.spec.ts:20:7 › E1: usuario.rh acessa so as rotas do seu papel e sai (2.5s)
+  ✓   4 e2e\access.spec.ts:20:7 › E1: usuario.financeiro acessa so as rotas do seu papel e sai (2.4s)
+  ✓   5 e2e\access.spec.ts:37:5 › E1: sem sessao, qualquer rota leva ao login (629ms)
+  ✓   6 e2e\login-theme.spec.ts:16:7 › tema de login do Keycloak (SPEC-011) › CT-87: carrega o tema nexus com marca, selo e botao em pilula (1.1s)
+  ✓   7 e2e\login-theme.spec.ts:31:7 › tema de login do Keycloak (SPEC-011) › CT-88: senha errada mostra o erro dentro do cartao (904ms)
+  ✓   8 e2e\login-theme.spec.ts:44:7 › tema de login do Keycloak (SPEC-011) › CT-88: troca para ingles mantendo o layout (804ms)
+  ✓   9 e2e\login-theme.spec.ts:56:7 › tema de login do Keycloak (SPEC-011) › RNF-36: sem rolagem horizontal a 360 px (539ms)
+  ✓  10 e2e\navigation.spec.ts:23:7 › CT-81: menu Administracao conforme o papel › admin ve os seis itens, na ordem da SPEC (1.1s)
+  ✓  11 e2e\navigation.spec.ts:36:7 › CT-81: menu Administracao conforme o papel › curadora ve Documentos e permissoes e Avaliacoes (915ms)
+  ✓  12 e2e\navigation.spec.ts:41:7 › CT-81: menu Administracao conforme o papel › usuario comum nao ve o botao Administracao, mas ve Sair (840ms)
+  ✓  13 e2e\navigation.spec.ts:48:7 › CT-81: menu Administracao conforme o papel › Chaves de LLM abre a tela de credenciais (SPEC-013) (1.1s)
+  ✓  14 e2e\navigation.spec.ts:58:5 › CT-82: na Auditoria, selecionar um assistente leva ao chat em branco (1.8s)
+  ✓  15 e2e\navigation.spec.ts:96:5 › CT-83: o menu funciona pelo teclado e fecha com clique fora (1.0s)
+  ✓  16 e2e\navigation.spec.ts:115:5 › CT-84: a rota /admin foi removida e leva ao chat (1.1s)
+  ✓  17 e2e\xss.spec.ts:17:5 › markup malicioso na resposta nao executa nem vira link perigoso (1.7s)
+
+  17 passed (27.6s)
