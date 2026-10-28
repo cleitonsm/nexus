@@ -1,7 +1,7 @@
 # SPEC-013 — Várias chaves de LLM, modelo por assistente e parâmetros de recuperação por assistente
 
 **ID**: SPEC-20261027-013
-**Status**: **Aprovada** em 2026-10-27 por Cleiton Medeiros (D1 a D10 escolhidas pelo autor; todas as recomendações). D11 a D13 acrescentadas pelo autor no mesmo dia, nas revisões do domínio, do P2/P3 e do P5.
+**Status**: **Implementada** em 2026-10-28 — validada no Docker sobre `79227cb` ([validação](../../qa/relatorios/2026-10-28-spec-013/RESUMO.md): integração, CT-56, E2E e CT-111 sem regressão); CT-112 (OpenAI e Gemini reais) adiado pelo autor. Histórico: **Aprovada** em 2026-10-27 por Cleiton Medeiros (D1 a D10 escolhidas pelo autor; todas as recomendações). D11 a D13 acrescentadas pelo autor no mesmo dia, nas revisões do domínio, do P2/P3 e do P5.
 **Origem**: pedido do autor (2026-10-27): cadastrar quantas chaves de API quiser, com uma padrão;
 cada assistente escolhe a chave e o modelo; híbrida, reranker, candidatos, top_k, limiar e filtros
 configuráveis na tela, sem editar o `.env`.

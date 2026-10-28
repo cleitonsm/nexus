@@ -206,6 +206,7 @@ teste for pulado.
 
 | Casos | Onde rodou | Onde |
 |-------|------------|------|
+| SPEC-013: CT-99 a CT-106 (901 unitários), CT-107 a CT-109 (159 de integração, nenhum pulado), CT-110 (`npm test`), CT-56, CT-81 a CT-84 e FE-04 no Playwright (17/17), CT-111 nos três conjuntos sem regressão de recuperação. CT-112 adiado pelo autor | Docker, 2026-10-28 sobre `79227cb` | [RESUMO](../qa/relatorios/2026-10-28-spec-013/RESUMO.md) |
 | RNF-30 (cobertura de `domain` e `application`: 95%), CT-21, CT-32, CT-69 e FE-01 a FE-05 no Angular 20, FE-07 (E1 a E11, manual) | Campanha `validacao-final-rc9` (V2, V4 e V5), 2026-10-25 sobre `400ae33` | `docs/qa/relatorios/2026-10-24-rc9/` |
 | Todos os CT automatizados (V2: 705 unitários; V3: 146 de integração, nenhum pulado; CT-53, CT-54, CT-56), CT-13 e CT-22 (V6, 3 execuções com o Gemini), CT-47 e CT-48 (V8), RNF-01, 02, 03, 16, 17 e 18 (V7) | Campanha `validacao-final-rc8`, 2026-10-24 sobre `1bfc1fe` | [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md) |
 | CT-01 a CT-03, CT-05 (parte unitária), CT-06 a CT-09, CT-14 a CT-17, CT-23 a CT-25, CT-33 a CT-36, CT-41 a CT-43, CT-58, CT-59, CT-61 a CT-67, CT-71 a CT-75 | Unitários (662 testes, 1 pulado; 2026-10-20 sobre `95c49ff`) | `backend/tests/unit/` |

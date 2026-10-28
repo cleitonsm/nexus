@@ -2,8 +2,9 @@
 
 ## Status
 
-Aceita em 2026-10-27, com a aprovação da SPEC-013. Implementada; validação no ambiente Docker
-pendente (P8 do plano). Substitui em parte a [ADR 0005](0005-api-key-global-criptografada.md) e
+Aceita em 2026-10-27, com a aprovação da SPEC-013. Implementada e validada no Docker em 2026-10-28
+([resumo](../../qa/relatorios/2026-10-28-spec-013/RESUMO.md)); o teste manual com OpenAI e Gemini
+reais (CT-112) foi adiado pelo autor. Substitui em parte a [ADR 0005](0005-api-key-global-criptografada.md) e
 complementa a [ADR 0007](0007-busca-hibrida-e-reranking.md).
 
 ## Contexto

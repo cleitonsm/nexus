@@ -13,7 +13,8 @@ npx playwright test
 Com a pilha do Compose no ar e saudável (`docker compose up -d --build --wait`) e o realm de
 desenvolvimento (usuários `admin.nexus`, `curadora.rh`, `usuario.rh`, `usuario.financeiro`, senha
 `nexus-dev`). Variáveis: `NEXUS_URL` (padrão `http://localhost:4200`), `NEXUS_TEST_PASSWORD`,
-`CHROMIUM_PATH`. Logo depois de recriar o `keycloak`, espere ele ficar saudável: com ele ainda
+`CHROMIUM_PATH`. Os testes rodam um por vez (`workers: 1`): o realm tem proteção contra força bruta, e logins
+simultâneos do mesmo usuário em arquivos diferentes são recusados como senha inválida. Logo depois de recriar o `keycloak`, espere ele ficar saudável: com ele ainda
 subindo, os primeiros testes estouram o tempo na página de login.
 
 Automatizado aqui: **E1** (login por papel, rotas conforme o papel, logout), a parte do **FE-04**
@@ -25,8 +26,8 @@ tela — o plano admite roteiro manual (V-D4b) para o que não foi automatizado.
 |---------|-------|----------|
 | `access.spec.ts` | E1, CT-32, CT-86 | Aprovado em 2026-10-26 na pilha local |
 | `login-theme.spec.ts` | CT-87, CT-88, RNF-36 | Aprovado em 2026-10-26 na pilha local |
-| `navigation.spec.ts` | CT-81 a CT-84 (SPEC-010) | Escrito, ainda não executado |
-| `xss.spec.ts` | FE-04 | Escrito, ainda não executado |
+| `navigation.spec.ts` | CT-81 a CT-84 (SPEC-010) e o item "Chaves de LLM" (SPEC-013) | Aprovado em 2026-10-28 na pilha local |
+| `xss.spec.ts` | FE-04 | Aprovado em 2026-10-28 na pilha local |
 
 Os seletores do Keycloak (`#username`, `#password`, `#kc-login`) vêm do tema `nexus` (SPEC-011,
 herda os ids do `keycloak.v2`) e o botão `Sair` (atributo `title`) de `shell.component.html`.
