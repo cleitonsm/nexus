@@ -60,3 +60,7 @@ flowchart LR
 - **Cliente de Streaming**: recebe a resposta em partes e as fontes ao final.
 - **Novas telas**: permissões do assistente, gestão de documentos, índice de busca, auditoria,
   consumo, avaliações e conversas arquivadas.
+- **Configuração de LLM (SPEC-013)**: a tela "Chaves de LLM" (`/admin/llm-credentials`) e as
+  seções "Modelo de linguagem" e "Recuperação" da página de assistentes usam a fatia
+  `llmConfig` do store (actions, reducer, effects e selectors próprios); as regras de tela
+  (faixas, conflitos 409, preços) ficam em funções puras em `shared/llm`.

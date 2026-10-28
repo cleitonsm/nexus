@@ -17,9 +17,11 @@ Cada execução cria uma pasta `BACKUP_PATH/<AAAAMMDDTHHMMSSZ>/` com:
 | `counts.txt` | contagens por tabela, por collection e de arquivos, tiradas do próprio backup (D10) |
 | `manifest.txt`, `SHA256SUMS` | data, banco e somas de verificação de todos os arquivos |
 
-Nenhum segredo é gravado fora dos próprios dumps; a API key do LLM continua cifrada no banco
-(ADR 0005) e a chave `NEXUS_SECRETS_KEY` **não** entra no backup. Guarde-a à parte: sem ela a API
-key restaurada não pode ser decifrada e precisa ser cadastrada de novo.
+Nenhum segredo é gravado fora dos próprios dumps; as chaves das credenciais de LLM continuam
+cifradas no banco (tabela `llm_credentials`, ADR 0005 e ADR 0013) e a chave `NEXUS_SECRETS_KEY`
+**não** entra no backup. Guarde-a à parte: sem ela as chaves restauradas não podem ser decifradas
+e precisam ser cadastradas de novo em "Chaves de LLM" (o teste da credencial avisa que a chave
+gravada não pôde ser decifrada).
 
 A pasta só recebe o nome final quando tudo deu certo. Uma execução interrompida deixa
 `<data>.partial`, removida na execução seguinte.

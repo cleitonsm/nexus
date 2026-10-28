@@ -38,7 +38,7 @@ flowchart LR
     API -->|"JWKS"| KC
     API --> PG[("PostgreSQL")]
     API --> QD[("Qdrant")]
-    API --> LLM["Provedor de LLM"]
+    API --> LLM["Provedores de LLM (um por credencial)"]
     API --> FS[("Volume de documentos originais")]
     Worker["Worker de Ingestao"] --> PG
     Worker --> QD
@@ -58,6 +58,10 @@ flowchart LR
 - **Keycloak (cliente de serviço)**: além de emitir os tokens, responde ao backend a lista de
   grupos do realm pelo cliente `nexus-backend`, só de leitura (PC-D6).
 - **Volume de documentos originais**: guarda os arquivos enviados para reprocessamento.
+- **PostgreSQL (credenciais de LLM)**: desde a SPEC-013 guarda as credenciais de LLM (tabela
+  `llm_credentials`, chave cifrada com `NEXUS_SECRETS_KEY`) e, por assistente, a credencial, o
+  modelo e o perfil de recuperação. A API decifra a chave a cada pergunta e chama o provedor
+  daquela credencial (ADR 0013).
 - **Observabilidade**: coletor e visualização de rastreamentos e métricas, ativados por perfil.
 
 ### Mudanças nos containers existentes

@@ -51,7 +51,8 @@ filtro de grupos, consumo e auditoria continuam **planejados** (Fases 4 e 6).
 flowchart TD
     Start[Mensagem do usuario autenticado] --> Access[Verificar acesso e limite de uso]
     Access -->|negado| Deny[Responder 403 ou 429]
-    Access -->|permitido| LoadHistory[Carregar historico]
+    Access -->|permitido| Runtime[Resolver configuracao do assistente: credencial, modelo, recuperacao]
+    Runtime --> LoadHistory[Carregar historico]
     LoadHistory --> PersistUser[Persistir pergunta]
     PersistUser --> Rewrite[Reescrever pergunta com o historico]
     Rewrite --> Retrieve[Busca hibrida com filtro de grupos]
@@ -71,6 +72,11 @@ flowchart TD
 ### Etapas Novas ou Alteradas
 
 - **Verificar acesso e limite de uso**: feito no caso de uso, antes de o grafo iniciar.
+- **Resolver configuração do assistente** (SPEC-013): no caso de uso, depois do acesso e antes do
+  grafo; define a credencial e o modelo do LLM e
+  os parâmetros de recuperação desta pergunta (span `chat.resolve_runtime`). Uma falha ao decifrar
+  a chave não interrompe a pergunta: o LLM é chamado sem chave e o erro aparece como falha do
+  provedor.
 - **Reescrever pergunta**: transforma perguntas de continuação em consultas autônomas; ignorada
   quando não há histórico.
 - **Busca híbrida**: vetor denso e BM25 com fusão RRF, restrita aos documentos que o usuário pode ver.

@@ -1,5 +1,10 @@
 # Validacao manual: administracao, chat e ingestao
 
+> **Desde a SPEC-013 (2026-10-28)** a API key global e a tela que a gravava foram substituidas
+> pelas credenciais de LLM (menu Administracao > "Chaves de LLM", varias chaves e uma padrao).
+> Nos passos 1 a 3, 11 e 12, leia "API key global" como "credencial padrao"; a chave continua
+> cifrada no banco (tabela `llm_credentials`) e nunca volta na API nem na tela.
+
 ## Objetivo
 
 Validar ponta a ponta o fluxo de configuracao da API key global, ingestao de documentos em formatos suportados e uso de historico de conversa no chat.
