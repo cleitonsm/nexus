@@ -3,11 +3,17 @@ import { HttpClient, HttpEventType, HttpParams } from "@angular/common/http";
 import { Observable, filter, mergeMap } from "rxjs";
 
 import {
-  ApiKeyTestResult,
-  ApiKeyStatus,
-  LlmSettings,
-  LlmSettingsInput,
   Assistant,
+  AssistantLlm,
+  AssistantLlmInput,
+  AssistantRetrieval,
+  AssistantRetrievalInput,
+  DefaultChangeImpact,
+  LlmCredential,
+  LlmCredentialInput,
+  LlmCredentialList,
+  LlmCredentialOption,
+  LlmCredentialTestResult,
   AuditEvent,
   AuditFilters,
   ChatResponse,
@@ -39,10 +45,6 @@ interface CreateConversationPayload {
 interface ChatPayload {
   question: string;
   top_k: number;
-}
-
-interface SaveApiKeyPayload {
-  api_key: string;
 }
 
 interface InferAssistantPayload {
@@ -295,24 +297,82 @@ export class NexusApiService {
     });
   }
 
-  getApiKeyStatus(): Observable<ApiKeyStatus> {
-    return this.http.get<ApiKeyStatus>(`${this.baseUrl}/admin/api-key/status`);
+  // SPEC-013: credenciais de LLM (so administrador).
+  listLlmCredentials(): Observable<LlmCredentialList> {
+    return this.http.get<LlmCredentialList>(`${this.baseUrl}/admin/llm-credentials`);
   }
 
-  saveApiKey(payload: SaveApiKeyPayload): Observable<ApiKeyStatus> {
-    return this.http.post<ApiKeyStatus>(`${this.baseUrl}/admin/api-key`, payload);
+  createLlmCredential(input: LlmCredentialInput): Observable<LlmCredential> {
+    return this.http.post<LlmCredential>(`${this.baseUrl}/admin/llm-credentials`, input);
   }
 
-  getLlmSettings(): Observable<LlmSettings> {
-    return this.http.get<LlmSettings>(`${this.baseUrl}/admin/llm-settings`);
+  updateLlmCredential(id: string, input: LlmCredentialInput): Observable<LlmCredential> {
+    const { make_default: _ignored, ...payload } = input;
+    return this.http.put<LlmCredential>(
+      `${this.baseUrl}/admin/llm-credentials/${encodeURIComponent(id)}`,
+      payload
+    );
   }
 
-  saveLlmSettings(input: LlmSettingsInput): Observable<LlmSettings> {
-    return this.http.put<LlmSettings>(`${this.baseUrl}/admin/llm-settings`, input);
+  deleteLlmCredential(id: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.baseUrl}/admin/llm-credentials/${encodeURIComponent(id)}`
+    );
   }
 
-  testApiKey(): Observable<ApiKeyTestResult> {
-    return this.http.post<ApiKeyTestResult>(`${this.baseUrl}/admin/api-key/test`, {});
+  setDefaultLlmCredential(id: string): Observable<LlmCredential> {
+    return this.http.post<LlmCredential>(
+      `${this.baseUrl}/admin/llm-credentials/${encodeURIComponent(id)}/default`,
+      {}
+    );
+  }
+
+  getDefaultChangeImpact(id: string, modelNames: string[] | null): Observable<DefaultChangeImpact> {
+    return this.http.post<DefaultChangeImpact>(
+      `${this.baseUrl}/admin/llm-credentials/${encodeURIComponent(id)}/impact`,
+      { model_names: modelNames }
+    );
+  }
+
+  testLlmCredential(id: string, model: string | null): Observable<LlmCredentialTestResult> {
+    return this.http.post<LlmCredentialTestResult>(
+      `${this.baseUrl}/admin/llm-credentials/${encodeURIComponent(id)}/test`,
+      { model }
+    );
+  }
+
+  listLlmCredentialOptions(): Observable<LlmCredentialOption[]> {
+    return this.http.get<LlmCredentialOption[]>(`${this.baseUrl}/llm-credentials/options`);
+  }
+
+  // SPEC-013: modelo e recuperacao do assistente.
+  getAssistantLlm(assistantId: string): Observable<AssistantLlm> {
+    return this.http.get<AssistantLlm>(
+      `${this.baseUrl}/assistants/${encodeURIComponent(assistantId)}/llm`
+    );
+  }
+
+  saveAssistantLlm(assistantId: string, input: AssistantLlmInput): Observable<AssistantLlm> {
+    return this.http.put<AssistantLlm>(
+      `${this.baseUrl}/assistants/${encodeURIComponent(assistantId)}/llm`,
+      input
+    );
+  }
+
+  getAssistantRetrieval(assistantId: string): Observable<AssistantRetrieval> {
+    return this.http.get<AssistantRetrieval>(
+      `${this.baseUrl}/assistants/${encodeURIComponent(assistantId)}/retrieval-settings`
+    );
+  }
+
+  saveAssistantRetrieval(
+    assistantId: string,
+    input: AssistantRetrievalInput
+  ): Observable<AssistantRetrieval> {
+    return this.http.put<AssistantRetrieval>(
+      `${this.baseUrl}/assistants/${encodeURIComponent(assistantId)}/retrieval-settings`,
+      input
+    );
   }
 }
 

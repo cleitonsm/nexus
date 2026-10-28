@@ -103,6 +103,12 @@ restritos a grupos aos quais ele não pertence, mesmo que sejam os mais relevant
 Busca híbrida com fusão RRF, reranking local e nota mínima de relevância, conforme a
 [ADR 0007](adrs/0007-busca-hibrida-e-reranking.md).
 
+Desde a SPEC-013 ([ADR 0013](adrs/0013-credenciais-de-llm-e-configuracao-por-assistente.md)),
+cada assistente pode ajustar busca híbrida (liga ou desliga só a parte BM25), candidatos, top k e
+nota mínima; campo vazio segue o ambiente (`RETRIEVAL_CANDIDATES`, `RERANK_TOP_N`,
+`RELEVANCE_MIN_SCORE`). Os filtros de `user_groups` e `active` e o reranker continuam sempre
+aplicados e não são configuráveis, então o isolamento descrito acima não muda.
+
 ### Medição da Recuperação
 
 Desde a Fase 1, a recuperação é medida pelo comando de avaliação contra um conjunto de referência

@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, computed, effect, inject, signal } from "@angular/core";
+import { Component, computed, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { CdkMenu, CdkMenuItem, CdkMenuTrigger } from "@angular/cdk/menu";
 import { ConnectedPosition } from "@angular/cdk/overlay";
@@ -12,18 +12,14 @@ import { AdministrationItem, administrationMenu } from "../core/auth/access";
 
 import { authActions } from "../store/auth.actions";
 import { selectMenu, selectSessionUser } from "../store/auth.selectors";
-import { LlmProvider } from "../shared/models/nexus.models";
 import { nexusActions } from "../store/nexus.actions";
 import {
   selectActiveAssistantConversations,
   selectActiveAssistantId,
-  selectApiKeyTestResult,
-  selectApiKeyStatus,
   selectAssistants,
   selectCreateAssistantModalOpen,
   selectCurrentConversationId,
   selectError,
-  selectLlmSettings,
   selectLoadingState,
   selectNotice
 } from "../store/nexus.selectors";
@@ -45,9 +41,6 @@ export class ShellComponent {
   protected readonly currentConversationId = this.store.selectSignal(selectCurrentConversationId);
   protected readonly loading = this.store.selectSignal(selectLoadingState);
   protected readonly error = this.store.selectSignal(selectError);
-  protected readonly apiKeyStatus = this.store.selectSignal(selectApiKeyStatus);
-  protected readonly apiKeyTestResult = this.store.selectSignal(selectApiKeyTestResult);
-  protected readonly llmSettings = this.store.selectSignal(selectLlmSettings);
   protected readonly notice = this.store.selectSignal(selectNotice);
   protected readonly createAssistantModalOpen = this.store.selectSignal(
     selectCreateAssistantModalOpen
@@ -56,9 +49,8 @@ export class ShellComponent {
   protected readonly user = this.store.selectSignal(selectSessionUser);
   protected readonly menu = this.store.selectSignal(selectMenu);
 
-  protected readonly sidebarCollapsed = signal(false);
+  protected readonly sidebarCollapsed = signal(true);
   protected readonly mobileSidebarOpen = signal(false);
-  protected readonly adminModalOpen = signal(false);
   protected readonly assistantsCollapsed = signal(false);
   protected readonly conversationsCollapsed = signal(false);
 
@@ -112,58 +104,19 @@ export class ShellComponent {
     documentMetadata: [""]
   });
 
-  protected readonly apiKeyForm = this.formBuilder.nonNullable.group({
-    apiKey: ["", [Validators.required]]
-  });
-
-  /** SPEC-008: provedor, modelo e URL do LLM (a URL so vale para ``custom``). */
-  protected readonly llmForm = this.formBuilder.nonNullable.group({
-    provider: ["openai" as LlmProvider, [Validators.required]],
-    model: ["", [Validators.required, Validators.maxLength(200), Validators.pattern(/^\S+$/)]],
-    apiUrl: [""]
-  });
-
-  protected readonly llmProviders: { value: LlmProvider; label: string }[] = [
-    { value: "openai", label: "OpenAI" },
-    { value: "gemini", label: "Gemini (Google)" },
-    { value: "custom", label: "Personalizado (compatível com OpenAI)" }
-  ];
-
   private selectedAssistantFiles: File[] = [];
 
   constructor() {
-    // A situacao da chave do LLM e pedida pelo efeito da sessao, so para
-    // administradores.
     this.store.dispatch(nexusActions.loadAssistants());
-
-    // SPEC-008: preenche o formulario com a conexao efetiva do LLM sempre que
-    // ela chega do servidor.
-    effect(() => {
-      const settings = this.llmSettings();
-      if (settings) {
-        this.llmForm.reset({
-          provider: settings.provider,
-          model: settings.model,
-          apiUrl: settings.provider === "custom" ? settings.api_url : ""
-        });
-      }
-    });
   }
 
   protected isAdministrationItemActive(item: AdministrationItem): boolean {
-    if (item.target.kind !== "route") {
-      return false;
-    }
     const path = this.currentUrl().split(/[?#]/)[0];
     return path === item.target.path;
   }
 
   protected openAdministrationItem(item: AdministrationItem): void {
     this.closeMobileSidebar();
-    if (item.target.kind === "llmSettings") {
-      this.openAdminModal();
-      return;
-    }
     void this.router.navigateByUrl(item.target.path);
   }
 
@@ -207,19 +160,6 @@ export class ShellComponent {
       documentMetadata: ""
     });
     this.selectedAssistantFiles = [];
-  }
-
-  protected openAdminModal(): void {
-    if (!this.menu().configureLlm) {
-      return;
-    }
-    this.adminModalOpen.set(true);
-    this.store.dispatch(nexusActions.loadLlmSettings());
-  }
-
-  protected closeAdminModal(): void {
-    this.adminModalOpen.set(false);
-    this.apiKeyForm.reset({ apiKey: "" });
   }
 
   protected selectAssistant(assistantId: string): void {
@@ -300,62 +240,6 @@ export class ShellComponent {
       return;
     }
     this.store.dispatch(nexusActions.deleteConversation({ assistantId, conversationId }));
-  }
-
-  protected saveApiKey(): void {
-    if (this.apiKeyForm.invalid || this.loading().saveApiKey) {
-      this.apiKeyForm.markAllAsTouched();
-      return;
-    }
-
-    this.store.dispatch(
-      nexusActions.saveApiKey({
-        apiKey: this.apiKeyForm.controls.apiKey.value.trim()
-      })
-    );
-    this.apiKeyForm.reset({ apiKey: "" });
-  }
-
-  protected isCustomProvider(): boolean {
-    return this.llmForm.controls.provider.value === "custom";
-  }
-
-  /** URL que sera usada: a do provedor predefinido ou a digitada. */
-  protected llmEndpointPreview(): string {
-    const provider = this.llmForm.controls.provider.value;
-    if (provider === "custom") {
-      return this.llmForm.controls.apiUrl.value.trim();
-    }
-    return this.llmSettings()?.provider_urls?.[provider] ?? "";
-  }
-
-  protected saveLlmSettings(): void {
-    const { provider, model, apiUrl } = this.llmForm.getRawValue();
-    const needsUrl = provider === "custom";
-    if (
-      this.llmForm.invalid ||
-      (needsUrl && !apiUrl.trim()) ||
-      this.loading().saveLlmSettings
-    ) {
-      this.llmForm.markAllAsTouched();
-      return;
-    }
-    this.store.dispatch(
-      nexusActions.saveLlmSettings({
-        input: {
-          provider,
-          model: model.trim(),
-          api_url: needsUrl ? apiUrl.trim() : null
-        }
-      })
-    );
-  }
-
-  protected testApiKey(): void {
-    if (this.loading().testApiKey || !this.apiKeyStatus()?.configured) {
-      return;
-    }
-    this.store.dispatch(nexusActions.testApiKey());
   }
 
   protected clearError(): void {

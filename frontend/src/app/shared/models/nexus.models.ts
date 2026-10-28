@@ -133,35 +133,128 @@ export interface ChatResponse {
   rewritten_query: string;
 }
 
-export interface ApiKeyStatus {
-  configured: boolean;
-}
-
-/** Provedor do LLM (SPEC-008 D1); ``custom`` aceita URL digitada. */
+/** Provedor do LLM (SPEC-013 D5); ``custom`` aceita URL digitada. */
 export type LlmProvider = "openai" | "gemini" | "custom";
 
-/** Conexao efetiva com o LLM e a origem do valor (SPEC-008 RF-68). */
-export interface LlmSettings {
+/** Modelo permitido na credencial; preco por 1K tokens opcional (D8). */
+export interface LlmModel {
+  name: string;
+  input_per_1k: string | null;
+  output_per_1k: string | null;
+}
+
+/** Credencial de LLM (SPEC-013). A chave nunca volta: so ``key_configured``. */
+export interface LlmCredential {
+  id: string;
+  name: string;
   provider: LlmProvider;
-  model: string;
   api_url: string;
-  /** "ambiente" vem do .env; "configurado", da tela. */
-  source: "ambiente" | "configurado";
-  /** URL fixa de cada provedor predefinido. */
+  models: LlmModel[];
+  default_model: string;
+  is_default: boolean;
+  key_configured: boolean;
+  /** Assistentes que escolheram esta credencial. */
+  assistant_ids: string[];
+  /** So na padrao: assistentes que a seguem sem escolha propria. */
+  following_assistant_ids: string[];
+}
+
+export interface LlmCredentialList {
+  items: LlmCredential[];
   provider_urls: Record<string, string>;
+  /** Moeda dos precos (LLM_PRICE_CURRENCY). */
+  currency: string;
 }
 
-export interface LlmSettingsInput {
+export interface LlmCredentialInput {
+  name: string;
   provider: LlmProvider;
-  model: string;
   api_url: string | null;
+  models: LlmModel[];
+  default_model: string;
+  /** Obrigatoria ao criar e ao trocar provedor ou URL (D12); vazia mantem a gravada. */
+  api_key: string | null;
+  make_default?: boolean;
 }
 
-export interface ApiKeyTestResult {
+export interface LlmCredentialOption {
+  id: string;
+  name: string;
+  provider: LlmProvider;
+  models: string[];
+  default_model: string;
+  is_default: boolean;
+}
+
+/** D11: quem segue a padrao e quem recua ao modelo padrao dela. */
+export interface DefaultChangeImpact {
+  credential_id: string;
+  following_assistant_ids: string[];
+  falling_back_assistant_ids: string[];
+}
+
+export interface LlmCredentialTestResult {
   ok: boolean;
+  credential_id: string;
   model: string;
   message: string;
   response_preview: string;
+}
+
+/** 409 da RN-38: quem usa a credencial ou os modelos. */
+export interface LlmCredentialConflict {
+  message: string;
+  assistant_ids: string[];
+  models: string[];
+  is_default: boolean;
+}
+
+export type LlmSource = "assistant" | "default" | "environment";
+
+export interface AssistantLlm {
+  credential_id: string | null;
+  model: string | null;
+  effective_credential_id: string | null;
+  effective_credential_name: string | null;
+  effective_provider: LlmProvider;
+  effective_model: string;
+  source: LlmSource;
+  model_falls_back: boolean;
+}
+
+export interface AssistantLlmInput {
+  credential_id: string | null;
+  model: string | null;
+}
+
+export type RetrievalOrigin = "assistant" | "default";
+
+export interface RetrievalField<T> {
+  stored: T | null;
+  effective: T;
+  origin: RetrievalOrigin;
+}
+
+export interface AssistantRetrieval {
+  hybrid_enabled: RetrievalField<boolean>;
+  candidates: RetrievalField<number>;
+  top_k: RetrievalField<number>;
+  min_score: RetrievalField<number>;
+  top_k_clamped: boolean;
+  /** Faixas aceitas (D6): [minimo, maximo]. */
+  limits: {
+    candidates: [number, number];
+    top_k: [number, number];
+    min_score: [number, number];
+  };
+}
+
+/** Substitui o perfil inteiro; ``null`` volta ao padrao. */
+export interface AssistantRetrievalInput {
+  hybrid_enabled: boolean | null;
+  candidates: number | null;
+  top_k: number | null;
+  min_score: number | null;
 }
 
 /** Evento da resposta em streaming (RF-58, SPEC-006). */

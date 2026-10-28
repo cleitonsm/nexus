@@ -45,7 +45,6 @@ from src.application.use_cases import (
     DescribeCurrentUserUseCase,
     DocumentNotFoundError,
     GetConversationUseCase,
-    GetGlobalApiKeyStatusUseCase,
     GetIndexStatusInput,
     GetIndexStatusUseCase,
     IngestDocumentInput,
@@ -65,8 +64,6 @@ from src.application.use_cases import (
     RegisterConversationUseCase,
     RunReindexInput,
     RunReindexUseCase,
-    SaveGlobalApiKeyInput,
-    SaveGlobalApiKeyUseCase,
     SetAssistantGroupsInput,
     SetAssistantGroupsUseCase,
     SetDocumentGroupsInput,
@@ -479,25 +476,6 @@ def _indexer() -> DocumentIndexer:
         embedding_gateway=OneVectorEmbedding(),
         sparse_embedding_gateway=Bm25SparseEmbeddingGateway(),
     )
-
-
-class SecretRepository:
-    def __init__(self) -> None:
-        self.items: dict[str, str] = {}
-
-    def set_encrypted_value(self, *, key_name: str, encrypted_value: str) -> None:
-        self.items[key_name] = encrypted_value
-
-    def get_encrypted_value(self, *, key_name: str) -> str | None:
-        return self.items.get(key_name)
-
-
-class Cipher:
-    def encrypt(self, plaintext: str) -> str:
-        return f"enc::{plaintext}"
-
-    def decrypt(self, ciphertext: str) -> str:
-        return ciphertext.removeprefix("enc::")
 
 
 class AccessTestCase(unittest.TestCase):
@@ -1174,42 +1152,6 @@ class DocumentManagementTestCase(AccessTestCase):
             use_case.execute(
                 ListDocumentsInput(user=self.rh_user, assistant_id=ASSISTANT)
             )
-
-
-class LlmConfigurationTestCase(AccessTestCase):
-    """RF-47 (contrato do CT-30)."""
-
-    def setUp(self) -> None:
-        super().setUp()
-        self.secrets = SecretRepository()
-
-    def test_non_administrator_cannot_save_or_read_the_status(self) -> None:
-        save = SaveGlobalApiKeyUseCase(
-            secret_repository=self.secrets,
-            secret_cipher=Cipher(),
-            access_control=self.access.control,
-        )
-        status = GetGlobalApiKeyStatusUseCase(
-            secret_repository=self.secrets,
-            access_control=self.access.control,
-        )
-        for user in (self.rh_curator, self.rh_user):
-            with self.subTest(user=user.id):
-                with self.assertRaises(AccessDeniedError):
-                    save.execute(SaveGlobalApiKeyInput(user=user, api_key="sk-x"))
-                with self.assertRaises(AccessDeniedError):
-                    status.execute(user)
-        self.assertEqual(self.secrets.items, {})
-
-    def test_key_change_is_audited_without_the_key(self) -> None:
-        SaveGlobalApiKeyUseCase(
-            secret_repository=self.secrets,
-            secret_cipher=Cipher(),
-            access_control=self.access.control,
-        ).execute(SaveGlobalApiKeyInput(user=self.admin, api_key="sk-segredo-123"))
-        event = self.access.audit.last(AuditAction.LLM_API_KEY_CHANGED)
-        self.assertEqual(event.user_id, self.admin.id)
-        self.assertNotIn("sk-segredo-123", repr(event))
 
 
 class AuditTrailTestCase(AccessTestCase):

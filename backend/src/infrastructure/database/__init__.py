@@ -21,7 +21,6 @@ from .operations_repositories import (
     PostgresIngestionPauseRepository,
     PostgresUsageLimiter,
     PostgresUsageRecordRepository,
-    PostgresLLMConnectionRepository,
     PostgresUsageSettingsRepository,
     ingestion_job_gauges,
 )
@@ -34,7 +33,6 @@ from .repositories import (
     PostgresDocumentRepository,
     PostgresIngestionJobQueue,
     PostgresReindexJobRepository,
-    PostgresSecretSettingsRepository,
 )
 from .session import SessionLocal, engine, get_db_session
 
@@ -59,9 +57,7 @@ __all__ = [
     "PostgresFeedbackRepository",
     "PostgresIndexParametersRepository",
     "PostgresIngestionJobQueue",
-    "PostgresLLMConnectionRepository",
     "PostgresReindexJobRepository",
-    "PostgresSecretSettingsRepository",
     "PostgresIngestionPauseRepository",
     "PostgresUsageLimiter",
     "PostgresUsageRecordRepository",

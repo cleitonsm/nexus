@@ -126,7 +126,12 @@ class TracedVectorStore:
     ) -> list[SearchResult]:
         with self._tracer.span(
             "qdrant.hybrid_search",
-            {"db.system": "qdrant", "qdrant.limit": limit},
+            {
+                "db.system": "qdrant",
+                "qdrant.limit": limit,
+                # SPEC-013 (D3): falso = so a pre-busca densa.
+                "qdrant.hybrid": not sparse_vector.is_empty,
+            },
         ) as span:
             results = self._inner.hybrid_search(
                 collection_name,

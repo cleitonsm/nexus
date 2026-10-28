@@ -32,15 +32,17 @@ flowchart LR
     Admin["Administrador"] --> Nexus
     Docs["Documentos Oficiais (PDF, DOCX, TXT, digitalizados)"] --> Nexus
     Nexus --> KC["Keycloak (Provedor de Identidade)"]
-    Nexus --> LLM["Provedor de LLM"]
+    Nexus --> LLM["Provedores de LLM (OpenAI, Gemini, compativeis)"]
     DevOps["Equipe Tecnica"] --> Nexus
 ```
 
 - **Usuário**: conversa com os assistentes a que seus grupos têm acesso e consulta as fontes.
 - **Curador**: mantém os documentos e o conjunto de referência dos assistentes sob sua responsabilidade.
-- **Administrador**: gerencia assistentes, permissões, configuração do LLM e consulta a auditoria.
+- **Administrador**: gerencia assistentes, permissões e credenciais de LLM (várias chaves, uma
+  padrão; ADR 0013), escolhe a chave e o modelo de cada assistente e consulta a auditoria.
 - **Keycloak**: único provedor de identidade; autentica e informa papéis e grupos (ADR 0008).
-- **Provedor de LLM**: continua usado apenas para geração e reescrita de perguntas, nunca para
-  embeddings, reranking ou OCR.
+- **Provedores de LLM**: continuam usados apenas para geração e reescrita de perguntas, nunca
+  para embeddings, reranking ou OCR. Desde a SPEC-013, cada assistente fala com o provedor da
+  credencial escolhida para ele (ou da padrão); a sugestão de assistente usa a padrão (D13).
 - **Equipe técnica**: opera o ambiente, acompanha rastreamentos e métricas e executa a avaliação
   de qualidade, já disponível por linha de comando.

@@ -6,6 +6,8 @@ Keycloak nem do banco. Execute dentro do container do backend.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import re
 import unittest
 
@@ -15,6 +17,8 @@ from fastapi.testclient import TestClient
 
 from access_support import AccessHarness, TokenFactory, bearer, member
 from src.api.dependencies import (
+    get_llm_credential_repository,
+    get_llm_gateway_builder,
     get_answer_generator,
     get_usage_governance,
     get_assistant_repository,
@@ -23,19 +27,21 @@ from src.api.dependencies import (
     get_conversation_repository,
     get_document_repository,
     get_embedding_gateway,
-    get_llm_connection_default,
-    get_llm_connection_repository,
     get_llm_insecure_http_allowed,
+    get_llm_test_gateway_factory,
     get_reindex_job_repository,
+    get_retrieval_defaults,
     get_secret_cipher,
-    get_secret_settings_repository,
     get_token_counter,
     get_token_verifier,
     get_vector_store_gateway,
 )
 from src.api.routes import (
     admin_router,
+    assistant_settings_router,
     assistants_router,
+    llm_credential_options_router,
+    llm_credentials_router,
     conversations_router,
     document_access_router,
     documents_router,
@@ -56,7 +62,9 @@ from src.domain import (
     Conversation,
     ConversationId,
     DocumentId,
-    LLMConnection,
+    LLMCredential,
+    LLMCredentialId,
+    RetrievalDefaults,
     Role,
     SearchResult,
     SparseVector,
@@ -68,15 +76,66 @@ RH = "assistant-rh"
 ORPHAN = "assistant-sem-grupo"
 ANA = member("ana", "rh")
 BRUNO = member("bruno", "financeiro")
+OPENAI_CREDENTIAL = {
+    "name": "OpenAI",
+    "provider": "openai",
+    "models": [{"name": "gpt-4o-mini"}, {"name": "gpt-4o"}],
+    "default_model": "gpt-4o-mini",
+    # Chave ficticia.
+    "api_key": "sk-live-ficticia",
+}
+
 ALL_ROUTERS = (
     admin_router,
+    assistant_settings_router,
     assistants_router,
+    llm_credential_options_router,
+    llm_credentials_router,
     conversations_router,
     document_access_router,
     documents_router,
     index_router,
     me_router,
 )
+
+
+class InMemoryLLMCredentials:
+    """SPEC-013: credenciais em memoria; a chave fica so cifrada, a parte."""
+
+    def __init__(self) -> None:
+        self.items: dict[str, LLMCredential] = {}
+        self.keys: dict[str, str] = {}
+
+    def list_all(self) -> list[LLMCredential]:
+        return sorted(self.items.values(), key=lambda item: (not item.is_default, item.name))
+
+    def get(self, credential_id: LLMCredentialId) -> LLMCredential | None:
+        return self.items.get(credential_id.value)
+
+    def get_default(self) -> LLMCredential | None:
+        return next((item for item in self.items.values() if item.is_default), None)
+
+    def get_encrypted_key(self, credential_id: LLMCredentialId) -> str | None:
+        return self.keys.get(credential_id.value)
+
+    def save(self, credential, *, encrypted_key, updated_by):
+        if credential.is_default:
+            for key, item in list(self.items.items()):
+                if key != credential.id.value and item.is_default:
+                    self.items[key] = item.with_default(False)
+        if encrypted_key is not None:
+            self.keys[credential.id.value] = encrypted_key
+        stored = credential.with_key_configured(credential.id.value in self.keys)
+        self.items[credential.id.value] = stored
+        return stored
+
+    def set_default(self, credential_id, *, updated_by):
+        for key, item in list(self.items.items()):
+            self.items[key] = item.with_default(key == credential_id.value)
+
+    def delete(self, credential_id) -> bool:
+        self.keys.pop(credential_id.value, None)
+        return self.items.pop(credential_id.value, None) is not None
 
 
 class AssistantRepository:
@@ -98,6 +157,22 @@ class AssistantRepository:
 
     def delete(self, assistant_id: AssistantId) -> bool:
         return self.items.pop(assistant_id.value, None) is not None
+
+    def update_llm_choice(self, assistant_id, *, credential_id, model):
+        current = self.items.get(assistant_id.value)
+        if current is None:
+            return None
+        self.items[assistant_id.value] = replace(
+            current, llm_credential_id=credential_id, llm_model=model
+        )
+        return self.items[assistant_id.value]
+
+    def update_retrieval_profile(self, assistant_id, profile):
+        current = self.items.get(assistant_id.value)
+        if current is None:
+            return None
+        self.items[assistant_id.value] = replace(current, retrieval_profile=profile)
+        return self.items[assistant_id.value]
 
 
 class ConversationRepository:
@@ -215,17 +290,6 @@ class WordTokenCounter:
         return len(text.split())
 
 
-class SecretRepository:
-    def __init__(self) -> None:
-        self.items: dict[str, str] = {}
-
-    def set_encrypted_value(self, *, key_name: str, encrypted_value: str) -> None:
-        self.items[key_name] = encrypted_value
-
-    def get_encrypted_value(self, *, key_name: str) -> str | None:
-        return self.items.get(key_name)
-
-
 class Cipher:
     def encrypt(self, plaintext: str) -> str:
         return f"enc::{plaintext}"
@@ -244,7 +308,7 @@ class ApiAccessTestCase(unittest.TestCase):
         self.assistants = AssistantRepository()
         self.conversations = ConversationRepository()
         self.vector_store = RecordingVectorStore()
-        self.secrets = SecretRepository()
+        self.credentials = InMemoryLLMCredentials()
         retriever = ContextRetriever(
             embedding_gateway=OneVectorEmbedding(),
             sparse_embedding_gateway=Bm25SparseEmbeddingGateway(),
@@ -260,9 +324,16 @@ class ApiAccessTestCase(unittest.TestCase):
         overrides[get_answer_generator] = lambda: GroundedAnswerGenerator(
             llm_gateway=FakeContextAwareLLM()
         )
+        # SPEC-013: o LLM e resolvido por assistente; troca-se o construtor.
+        overrides[get_llm_credential_repository] = lambda: self.credentials
+        overrides[get_llm_gateway_builder] = lambda: lambda _resolved: FakeContextAwareLLM()
         overrides[get_token_counter] = WordTokenCounter
-        overrides[get_secret_settings_repository] = lambda: self.secrets
         overrides[get_secret_cipher] = Cipher
+        overrides[get_llm_insecure_http_allowed] = lambda: False
+        overrides[get_llm_test_gateway_factory] = lambda: lambda _c, _k: FakeContextAwareLLM()
+        overrides[get_retrieval_defaults] = lambda: RetrievalDefaults(
+            candidates=30, top_k=5, min_score=0.10
+        )
         overrides[get_audit_log_repository] = lambda: self.access.audit
         overrides[get_usage_governance] = lambda: None
         # Nenhum teste daqui toca o banco nem carrega o modelo de embedding.
@@ -506,11 +577,14 @@ class RolesFromTokenTestCase(ApiAccessTestCase):
     def _admin_routes(self, token: str) -> dict[str, int]:
         headers = bearer(token)
         return {
-            "status": self.client.get("/admin/api-key/status", headers=headers).status_code,
+            "list": self.client.get("/admin/llm-credentials", headers=headers).status_code,
             "save": self.client.post(
-                "/admin/api-key", json={"api_key": "sk-x"}, headers=headers
+                "/admin/llm-credentials", json=OPENAI_CREDENTIAL, headers=headers
             ).status_code,
-            "test": self.client.post("/admin/api-key/test", headers=headers).status_code,
+            "test": self.client.post(
+                "/admin/llm-credentials/x/test", json={}, headers=headers
+            ).status_code,
+            "options": self.client.get("/llm-credentials/options", headers=headers).status_code,
             "audit": self.client.get("/admin/audit-events", headers=headers).status_code,
         }
 
@@ -519,7 +593,7 @@ class RolesFromTokenTestCase(ApiAccessTestCase):
             with self.subTest(role=role):
                 token = self.tokens.token("carla", roles=(role,), groups=("rh",))
                 self.assertEqual(set(self._admin_routes(token).values()), {403})
-        self.assertEqual(self.secrets.items, {})
+        self.assertEqual(self.credentials.items, {})
 
     def test_token_without_a_nexus_role_is_denied(self) -> None:
         token = self.tokens.token("visitante", roles=("offline_access",), groups=("rh",))
@@ -531,13 +605,14 @@ class RolesFromTokenTestCase(ApiAccessTestCase):
         token = self.tokens.token("root", roles=("nexus-admin",))
         headers = bearer(token)
         saved = self.client.post(
-            "/admin/api-key", json={"api_key": "sk-live"}, headers=headers
+            "/admin/llm-credentials", json=OPENAI_CREDENTIAL, headers=headers
         )
         self.assertEqual(saved.status_code, 201)
-        self.assertEqual(self.secrets.items, {"global_llm_api_key": "enc::sk-live"})
-        status = self.client.get("/admin/api-key/status", headers=headers)
-        self.assertEqual(status.json(), {"configured": True})
-        self.assertNotIn("sk-live", repr(self.access.audit.events))
+        self.assertEqual(list(self.credentials.keys.values()), ["enc::sk-live-ficticia"])
+        listed = self.client.get("/admin/llm-credentials", headers=headers)
+        self.assertTrue(listed.json()["items"][0]["key_configured"])
+        self.assertNotIn("sk-live-ficticia", listed.text + saved.text)
+        self.assertNotIn("sk-live-ficticia", repr(self.access.audit.events))
 
     def test_me_returns_identity_roles_and_groups_from_the_token(self) -> None:
         token = self.tokens.token(
@@ -588,78 +663,136 @@ class AuditApiTestCase(ApiAccessTestCase):
         self.assertIn("auth.session_started", self.access.audit.actions())
 
 
-class InMemoryLLMConnections:
-    def __init__(self) -> None:
-        self.connection: LLMConnection | None = None
-
-    def get(self) -> LLMConnection | None:
-        return self.connection
-
-    def save(self, connection: LLMConnection, *, updated_by: str) -> LLMConnection:
-        self.connection = connection
-        return connection
-
-
-class LLMSettingsApiTestCase(ApiAccessTestCase):
-    """SPEC-008 CT-68: GET e PUT /admin/llm-settings (200, 422, 403)."""
-
-    ENVIRONMENT = LLMConnection.from_environment(
-        model="gpt-4o-mini", api_url="https://api.openai.com/v1/chat/completions"
-    )
+class LLMCredentialsApiTestCase(ApiAccessTestCase):
+    """SPEC-013 CT-109: rotas de credenciais e da configuracao do assistente."""
 
     def setUp(self) -> None:
         super().setUp()
-        self.llm_connections = InMemoryLLMConnections()
-        overrides = self.app.dependency_overrides
-        overrides[get_llm_connection_repository] = lambda: self.llm_connections
-        overrides[get_llm_connection_default] = lambda: self.ENVIRONMENT
-        overrides[get_llm_insecure_http_allowed] = lambda: False
         self.admin = member("root", role=Role.ADMIN)
+        self.curator = member("carla", "rh", role=Role.CURATOR)
 
-    def test_administrator_reads_the_environment_value_until_saving(self) -> None:
-        body = self.acting_as(self.admin).get("/admin/llm-settings").json()
-        self.assertEqual(
-            (body["provider"], body["model"], body["source"]),
-            ("openai", "gpt-4o-mini", "ambiente"),
+    def create(self, **changes: object) -> dict:
+        response = self.acting_as(self.admin).post(
+            "/admin/llm-credentials", json={**OPENAI_CREDENTIAL, **changes}
         )
+        self.assertEqual(response.status_code, 201, response.text)
+        return response.json()
+
+    def test_list_offers_presets_and_currency(self) -> None:
+        self.create()
+        body = self.acting_as(self.admin).get("/admin/llm-credentials").json()
         self.assertIn("gemini", body["provider_urls"])
+        self.assertTrue(body["currency"])
+        (item,) = body["items"]
+        self.assertTrue(item["is_default"])
+        self.assertNotIn("api_key", item)
 
-    def test_saving_gemini_uses_the_provider_url_and_is_audited(self) -> None:
-        client = self.acting_as(self.admin)
-        saved = client.put(
-            "/admin/llm-settings",
-            json={"provider": "gemini", "model": "gemini-flash", "api_url": "https://x.example.com"},
+    def test_preset_fixes_the_url_and_prices_are_kept(self) -> None:
+        created = self.create(
+            name="Gemini",
+            provider="gemini",
+            api_url="https://outro.exemplo.com/v1/chat",
+            models=[{"name": "gemini-flash", "input_per_1k": "0.0001", "output_per_1k": "0.0004"}],
+            default_model="gemini-flash",
         )
-        self.assertEqual(saved.status_code, 200)
-        self.assertEqual(saved.json()["api_url"], saved.json()["provider_urls"]["gemini"])
-        self.assertEqual(client.get("/admin/llm-settings").json()["source"], "configurado")
-        self.assertIn("llm_settings.changed", self.access.audit.actions())
+        self.assertTrue(created["api_url"].startswith("https://generativelanguage"))
+        self.assertEqual(created["models"][0]["output_per_1k"], "0.0004")
 
-    def test_invalid_values_answer_422_and_keep_the_previous_one(self) -> None:
+    def test_invalid_input_answers_422(self) -> None:
         client = self.acting_as(self.admin)
-        for payload in (
-            {"provider": "custom", "model": "m", "api_url": "http://inseguro.example.com/v1"},
-            {"provider": "custom", "model": "m", "api_url": "https://u:p@x.example.com/v1"},
-            {"provider": "custom", "model": "m", "api_url": "https://x.example.com/v1?key=1"},
-            {"provider": "gemini", "model": "dois nomes"},
-            {"provider": "inexistente", "model": "m"},
+        for changes in (
+            {"provider": "custom", "api_url": "http://inseguro.exemplo.com/v1"},
+            {"provider": "custom", "api_url": "https://x.exemplo.com/v1?key=1"},
+            {"default_model": "nao-listado"},
+            {"provider": "azure"},
+            {"models": []},
+            {"api_key": ""},
         ):
+            with self.subTest(changes=changes):
+                response = client.post(
+                    "/admin/llm-credentials", json={**OPENAI_CREDENTIAL, **changes}
+                )
+                self.assertEqual(response.status_code, 422, response.text)
+        self.assertEqual(self.credentials.items, {})
+
+    def test_validation_error_never_echoes_the_key(self) -> None:
+        # RN-39: no Pydantic 2 o erro de campo ausente traz o corpo em ``input``.
+        body = {key: value for key, value in OPENAI_CREDENTIAL.items() if key != "models"}
+        response = self.acting_as(self.admin).post("/admin/llm-credentials", json=body)
+        self.assertEqual(response.status_code, 422)
+        self.assertNotIn("sk-live-ficticia", response.text)
+
+    def test_default_cannot_be_deleted_and_answers_409_with_followers(self) -> None:
+        created = self.create()
+        response = self.acting_as(self.admin).delete(f"/admin/llm-credentials/{created['id']}")
+        self.assertEqual(response.status_code, 409)
+        detail = response.json()["detail"]
+        self.assertEqual(detail["code"], "llm_credential_in_use")
+        self.assertTrue(detail["is_default"])
+        self.assertIn(RH, detail["assistant_ids"])
+
+    def test_new_destination_without_key_answers_422(self) -> None:
+        created = self.create()
+        response = self.acting_as(self.admin).put(
+            f"/admin/llm-credentials/{created['id']}",
+            json={
+                "name": "OpenAI",
+                "provider": "custom",
+                "api_url": "https://llm.exemplo.com/v1/chat/completions",
+                "models": [{"name": "gpt-4o-mini"}],
+                "default_model": "gpt-4o-mini",
+            },
+        )
+        self.assertEqual(response.status_code, 422)
+
+    def test_test_route_uses_the_credential(self) -> None:
+        created = self.create()
+        response = self.acting_as(self.admin).post(
+            f"/admin/llm-credentials/{created['id']}/test", json={"model": "gpt-4o-mini"}
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["model"], "gpt-4o-mini")
+        missing = self.acting_as(self.admin).post("/admin/llm-credentials/nada/test", json={})
+        self.assertEqual(missing.status_code, 404)
+
+    def test_assistant_llm_is_set_by_the_admin_and_read_by_the_curator(self) -> None:
+        created = self.create()
+        response = self.acting_as(self.admin).put(
+            f"/assistants/{RH}/llm",
+            json={"credential_id": created["id"], "model": "gpt-4o"},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["source"], "assistant")
+        read = self.acting_as(self.curator).get(f"/assistants/{RH}/llm")
+        self.assertEqual(read.status_code, 200)
+        self.assertEqual(read.json()["effective_model"], "gpt-4o")
+        denied = self.acting_as(self.curator).put(f"/assistants/{RH}/llm", json={})
+        self.assertEqual(denied.status_code, 403)
+        unknown = self.acting_as(self.admin).put(
+            f"/assistants/{RH}/llm", json={"credential_id": "nada"}
+        )
+        self.assertEqual(unknown.status_code, 422)
+
+    def test_retrieval_settings_by_the_curator_with_limits(self) -> None:
+        client = self.acting_as(self.curator)
+        body = client.get(f"/assistants/{RH}/retrieval-settings").json()
+        self.assertEqual(body["min_score"]["origin"], "default")
+        self.assertEqual(body["limits"]["candidates"], [5, 100])
+        saved = client.put(
+            f"/assistants/{RH}/retrieval-settings",
+            json={"min_score": 0.3, "hybrid_enabled": False},
+        )
+        self.assertEqual(saved.status_code, 200, saved.text)
+        self.assertEqual(saved.json()["min_score"]["effective"], 0.3)
+        self.assertFalse(saved.json()["hybrid_enabled"]["effective"])
+        for payload in ({"top_k": 21}, {"candidates": "30"}, {"hybrid_enabled": "sim"}):
             with self.subTest(payload=payload):
                 self.assertEqual(
-                    client.put("/admin/llm-settings", json=payload).status_code, 422
+                    client.put(f"/assistants/{RH}/retrieval-settings", json=payload).status_code,
+                    422,
                 )
-        self.assertIsNone(self.llm_connections.connection)
-
-    def test_non_administrators_answer_403(self) -> None:
-        for user in (ANA, member("carla", "rh", role=Role.CURATOR)):
-            client = self.acting_as(user)
-            with self.subTest(user=user.id):
-                self.assertEqual(client.get("/admin/llm-settings").status_code, 403)
-                put = client.put(
-                    "/admin/llm-settings", json={"provider": "openai", "model": "gpt-4o"}
-                )
-                self.assertEqual(put.status_code, 403)
-        self.assertIsNone(self.llm_connections.connection)
+        other = client.put(f"/assistants/{ORPHAN}/retrieval-settings", json={"top_k": 3})
+        self.assertEqual(other.status_code, 403)
 
 
 if __name__ == "__main__":

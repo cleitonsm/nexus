@@ -12,6 +12,8 @@ import { authInterceptor } from "./app/core/auth/auth.interceptor";
 import { AuthService } from "./app/core/auth/auth.service";
 import { authEffects } from "./app/store/auth.effects";
 import { authFeatureKey, authReducer } from "./app/store/auth.reducer";
+import { llmConfigEffects } from "./app/store/llm-config.effects";
+import { llmConfigFeatureKey, llmConfigReducer } from "./app/store/llm-config.reducer";
 import { nexusEffects } from "./app/store/nexus.effects";
 import { nexusFeatureKey, nexusReducer } from "./app/store/nexus.reducer";
 
@@ -19,8 +21,12 @@ bootstrapApplication(AppComponent, {
   providers: [
     provideHttpClient(withInterceptors([authInterceptor])),
     provideRouter(appRoutes),
-    provideStore({ [nexusFeatureKey]: nexusReducer, [authFeatureKey]: authReducer }),
-    provideEffects(nexusEffects, authEffects),
+    provideStore({
+      [nexusFeatureKey]: nexusReducer,
+      [authFeatureKey]: authReducer,
+      [llmConfigFeatureKey]: llmConfigReducer
+    }),
+    provideEffects(nexusEffects, authEffects, llmConfigEffects),
     provideStoreDevtools({
       maxAge: 25,
       logOnly: !isDevMode()

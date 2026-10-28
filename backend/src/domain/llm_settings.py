@@ -80,6 +80,11 @@ class LLMConnection:
         return cls(provider=chosen, model=clean_model, api_url=url)
 
 
+def validate_model_name(model: str) -> str:
+    """Regras de nome de modelo da SPEC-008, reaproveitadas na SPEC-013."""
+    return _validated_model(model)
+
+
 def _validated_model(model: str) -> str:
     value = model.strip()
     if not value:

@@ -7,7 +7,7 @@ from src.api.dependencies import (
     get_assistant_repository,
     get_conversation_repository,
     get_current_user,
-    get_llm_gateway,
+    get_default_llm_gateway,
     get_vector_store_gateway,
 )
 from src.api.schemas import (
@@ -112,7 +112,8 @@ def infer_assistant(
     repository: PostgresAssistantRepository = Depends(
         get_assistant_repository
     ),
-    llm_gateway: LLMGateway = Depends(get_llm_gateway),
+    # SPEC-013: credencial padrao (sem assistente escolhido ainda).
+    llm_gateway: LLMGateway = Depends(get_default_llm_gateway),
 ) -> InferAssistantResponse:
     # So concorrem os assistentes que o usuario pode usar (RF-42).
     assistants = ListAssistantsUseCase(repository, access_control).execute(user)

@@ -66,21 +66,6 @@ export const selectInferAssistantError = createSelector(
 
 export const selectError = createSelector(selectNexusState, (state) => state.error);
 
-export const selectApiKeyStatus = createSelector(
-  selectNexusState,
-  (state) => state.apiKeyStatus
-);
-
-export const selectLlmSettings = createSelector(
-  selectNexusState,
-  (state) => state.llmSettings
-);
-
-export const selectApiKeyTestResult = createSelector(
-  selectNexusState,
-  (state) => state.apiKeyTestResult
-);
-
 export const selectLoadingState = createSelector(
   selectNexusState,
   (state) => state.loading

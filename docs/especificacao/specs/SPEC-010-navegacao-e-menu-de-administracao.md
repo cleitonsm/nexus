@@ -1,7 +1,7 @@
 # SPEC-010 — Navegação da barra lateral e menu de Administração
 
 **ID**: SPEC-20261025-010
-**Status**: **Aprovada** em 2026-10-25 — decisões D1 a D9 escolhidas pelo autor; código entregue em 2026-10-25, validação no Docker e e2e pendentes (depende de `npm install @angular/cdk@^20.2`).
+**Status**: **Aprovada** em 2026-10-25 — decisões D1 a D9 escolhidas pelo autor; código entregue em 2026-10-25, validação no Docker e e2e pendentes (depende de `npm install @angular/cdk@^20.2`). Desde a SPEC-013 o modal "Configuração do LLM" saiu do menu: o item passou a ser "Chaves de LLM" (`/admin/llm-credentials`).
 **Origem**: melhoria de usabilidade pedida pelo autor (exemplo: menu suspenso de configurações do Gemini); [planejamento](https://claude.ai/artifact/LKrPWKKXGHkoxuErBQroTv)
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 

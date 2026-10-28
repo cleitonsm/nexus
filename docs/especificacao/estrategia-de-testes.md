@@ -122,12 +122,12 @@ infraestrutura e poucos roteiros ponta a ponta.
 | CT-61 | Unitário | Segredo ausente ou padrão fora de `APP_ENV=local` impede a partida, sem citar o valor | RF-67 |
 | CT-62 | Unitário | O comando de avaliação envia e processa os documentos do piloto; falha de indexação é reportada | CT-04 |
 | CT-63 | Unitário | `LLMConnection` aceita presets e URL personalizada válida; recusa modelo vazio, com espaço ou longo, URL sem `https`, com usuário/senha, parâmetros ou fragmento | RF-69 |
-| CT-64 | Unitário | Resolução: sem valor gravado vale o ambiente (provedor inferido pela URL); o gravado vence | RF-68, RF-70 |
-| CT-65 | Unitário | Consulta e alteração exigem administrador; a negativa é auditada | RF-71 |
-| CT-66 | Unitário | A alteração grava, audita anterior e novo sem a chave e vale na resolução seguinte | RF-69, RF-71 |
+| CT-64 | Unitário | Resolução: sem valor gravado vale o ambiente (provedor inferido pela URL); o gravado vence — **removido na SPEC-013 (D9); ver CT-103** | RF-68, RF-70 |
+| CT-65 | Unitário | Consulta e alteração exigem administrador; a negativa é auditada — **removido na SPEC-013 (D9); ver CT-105** | RF-71 |
+| CT-66 | Unitário | A alteração grava, audita anterior e novo sem a chave e vale na resolução seguinte — **removido na SPEC-013 (D9); ver CT-104** | RF-69, RF-71 |
 | CT-67 | Unitário | Preset fixa a URL do provedor mesmo que o cliente envie outra; `http` só no ambiente local | RF-69 |
-| CT-68 | Integração | `GET` e `PUT /admin/llm-settings`: 200, 422 e 403 | RF-68, RF-69, RF-71 |
-| CT-69 | Vitest | Reducer e seletor da conexão (carregada, salva, erro) | RF-72 |
+| CT-68 | Integração | `GET` e `PUT /admin/llm-settings`: 200, 422 e 403 — **removido na SPEC-013 (D9); ver CT-109** | RF-68, RF-69, RF-71 |
+| CT-69 | Vitest | Reducer e seletor da conexão (carregada, salva, erro) — **removido na SPEC-013 (D9); ver CT-110** | RF-72 |
 | CT-70 | Manual | Gemini real: "Testar LLM" responde `ok` com a chave de teste do autor | RF-70 |
 | CT-71 | Unitário | O cliente do LLM repete em 503, 429 e falha de conexão e entrega na tentativa seguinte, esperando 1 s e 3 s | RF-73 |
 | CT-72 | Unitário | Não repete em 400, 401, 403 e 404; esgotadas as três tentativas devolve o erro atual | RF-73 |
@@ -157,6 +157,20 @@ infraestrutura e poucos roteiros ponta a ponta.
 | CT-96 | Integração (Docker) | `fetch_article` no Qdrant real: filtro de grupos, `active`, ordem por `chunk_index`, limite e collection inexistente | RF-83, RN-34 |
 | CT-97 | Avaliação | Conjunto `normativo-ficticio`: recall@k e MRR por dispositivo; sem regressão em `nexus-docs` e `nexus-docs-ampliado` | SPEC-012 |
 | CT-98 | Manual | Constituição real no ambiente do autor: "Explique o artigo 5" lista os incisos e parágrafos com citações e resumo; "inciso XI do art. 5º" responde sucinto | SPEC-012 |
+| CT-99 | Unitário | `LLMCredential`: nome, URL (regras da SPEC-008 D3, também na construção direta), modelos sem repetição, modelo padrão na lista, preço de entrada e saída juntos e não negativos | RF-87, RN-39, D8 |
+| CT-100 | Unitário | `RetrievalProfile`: faixas da D6, tipos estritos, top_k ≤ candidatos; resolução por campo com origem; na pergunta nunca falha (top_k limitado) | RF-91, RN-41, T3 |
+| CT-101 | Unitário | RN-37: primeira credencial nasce padrão; marcar outra desmarca a anterior; impacto da troca (D11) | RF-88, RN-37 |
+| CT-102 | Unitário | RN-38: padrão e credencial escolhida não saem (409 com os assistentes); modelo em uso não sai da lista | RN-38 |
+| CT-103 | Unitário | Resolução por pergunta: assistente → padrão → ambiente; recuo do modelo (D11); preço do modelo (D8); chave que não decifra vira "sem chave" | RN-40, RN-41 |
+| CT-104 | Unitário + Integração | A chave nunca volta em DTO, log, auditoria, `repr` nem no 422; rotação mantém o id; destino novo exige chave nova (D12) | RN-39, D12 |
+| CT-105 | Unitário | Permissões da D7 (credenciais e LLM do assistente só administrador; recuperação também curador do assistente; 403 antes de 404) e auditoria da RF-94, inclusive negativas | RF-94, D7 |
+| CT-106 | Unitário | Chat com e sem streaming usa credencial, modelo e parâmetros do assistente; fallback pela nota do reranker com híbrida desligada sem chamar o LLM; consumo com o modelo e o preço do assistente, inclusive em falha; teto do `top_k` da requisição | RF-90, RF-91, D3, D8 |
+| CT-107 | Integração (Docker) | Migrações `0010` (cópia da chave e do `llm_connection`) e `0011` (remoção), `downgrade`; índices e FK fecham as corridas; repositórios | D10, T9, RN-37, RN-38 |
+| CT-108 | Integração (Docker) | Busca só densa no Qdrant real com filtro de grupos e `active` | D3, RN-42 |
+| CT-109 | Integração | Rotas `/admin/llm-credentials`, `/llm-credentials/options`, `/assistants/{id}/llm` e `/retrieval-settings` (200, 403, 404, 409, 422) | RF-87 a RF-91 |
+| CT-110 | Vitest | Regras de tela (modelos, destino, conflito, rascunho da recuperação), reducer, seletores e effects do `llmConfig` | RF-92, RF-93 |
+| CT-111 | Avaliação | `nexus-docs`, `nexus-docs-ampliado` e `normativo-ficticio` sem configuração gravada: sem regressão; relatório registra `baseline_comparable` | Objetivo da SPEC-013 |
+| CT-112 | Manual | Duas credenciais reais (OpenAI e Gemini) em dois assistentes; troca da padrão com recuo; teste da credencial | SPEC-013 |
 
 ---
 
@@ -192,6 +206,7 @@ teste for pulado.
 
 | Casos | Onde rodou | Onde |
 |-------|------------|------|
+| SPEC-013: CT-99 a CT-106 (901 unitários), CT-107 a CT-109 (159 de integração, nenhum pulado), CT-110 (`npm test`), CT-56, CT-81 a CT-84 e FE-04 no Playwright (17/17), CT-111 nos três conjuntos sem regressão de recuperação. CT-112 adiado pelo autor | Docker, 2026-10-28 sobre `79227cb` | [RESUMO](../qa/relatorios/2026-10-28-spec-013/LEIAME.md) |
 | RNF-30 (cobertura de `domain` e `application`: 95%), CT-21, CT-32, CT-69 e FE-01 a FE-05 no Angular 20, FE-07 (E1 a E11, manual) | Campanha `validacao-final-rc9` (V2, V4 e V5), 2026-10-25 sobre `400ae33` | `docs/qa/relatorios/2026-10-24-rc9/` |
 | Todos os CT automatizados (V2: 705 unitários; V3: 146 de integração, nenhum pulado; CT-53, CT-54, CT-56), CT-13 e CT-22 (V6, 3 execuções com o Gemini), CT-47 e CT-48 (V8), RNF-01, 02, 03, 16, 17 e 18 (V7) | Campanha `validacao-final-rc8`, 2026-10-24 sobre `1bfc1fe` | [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md) |
 | CT-01 a CT-03, CT-05 (parte unitária), CT-06 a CT-09, CT-14 a CT-17, CT-23 a CT-25, CT-33 a CT-36, CT-41 a CT-43, CT-58, CT-59, CT-61 a CT-67, CT-71 a CT-75 | Unitários (662 testes, 1 pulado; 2026-10-20 sobre `95c49ff`) | `backend/tests/unit/` |

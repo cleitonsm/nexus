@@ -19,11 +19,12 @@ testes são escritos antes da implementação.
 | SPEC-20261007-005 | 5 — Ingestão e ciclo de vida | [`SPEC-005-ingestao-e-ciclo-de-vida.md`](SPEC-005-ingestao-e-ciclo-de-vida.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-48 a RF-55 |
 | SPEC-20261007-006 | 6 — Operação e governança | [`SPEC-006-operacao-e-governanca.md`](SPEC-006-operacao-e-governanca.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-56 a RF-63 |
 | SPEC-20261014-007 | Endurecimento (fix-1 a fix-4 do cartographer) | [`SPEC-007-endurecimento.md`](SPEC-007-endurecimento.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-64 a RF-67 |
-| SPEC-20261014-008 | Configuração do LLM na administração (provedor, modelo e URL) | [`SPEC-008-configuracao-do-llm.md`](SPEC-008-configuracao-do-llm.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-68 a RF-72 |
+| SPEC-20261014-008 | Configuração do LLM na administração (provedor, modelo e URL) | [`SPEC-008-configuracao-do-llm.md`](SPEC-008-configuracao-do-llm.md) | Substituída pela SPEC-013 (2026-10-28); antes implementada (2026-10-25) | RF-68 a RF-72 |
 | SPEC-20261014-009 | Robustez do LLM (novas tentativas), grupos de documentos validados no Keycloak e cliente Qdrant 1.11.3 | [`SPEC-009-robustez-llm-grupos-qdrant.md`](SPEC-009-robustez-llm-grupos-qdrant.md) | Implementada (2026-10-25; validação final `rc8`/`rc9`) | RF-73, RF-74 |
 | SPEC-20261025-010 | Navegação da barra lateral e menu de Administração | [`SPEC-010-navegacao-e-menu-de-administracao.md`](SPEC-010-navegacao-e-menu-de-administracao.md) | Aprovada (2026-10-25); código entregue, validação pendente | RF-75 a RF-78 |
 | SPEC-20261025-011 | Tema de login do Keycloak no padrão visual do Nexus | [`SPEC-011-tema-de-login-do-keycloak.md`](SPEC-011-tema-de-login-do-keycloak.md) | Implementada (2026-10-26) | RF-79 a RF-81 |
 | SPEC-20261026-012 | Dispositivos normativos na recuperação e formato da resposta | [`SPEC-012-dispositivos-normativos-e-formato-de-resposta.md`](SPEC-012-dispositivos-normativos-e-formato-de-resposta.md) | Implementada (2026-10-27); D11 a D13 para continuação | RF-82 a RF-86 |
+| SPEC-20261027-013 | Várias chaves de LLM, modelo e parâmetros de recuperação por assistente | [`SPEC-013-chaves-de-llm-e-parametros-por-assistente.md`](SPEC-013-chaves-de-llm-e-parametros-por-assistente.md) | Implementada e validada (2026-10-28); CT-112 adiado | RF-87 a RF-95 |
 
 ## Status possíveis
 

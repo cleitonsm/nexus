@@ -60,11 +60,16 @@ flowchart LR
     UseCases --> FilePort["Port de Armazenamento de Arquivos"]
     UseCases --> LimitPort["Port de Limite de Uso"]
     UseCases --> LlmPort["Port de LLM (geracao, streaming, consumo)"]
+    UseCases --> Runtime["Configuracao do Assistente (credencial, modelo, recuperacao)"]
+    Runtime --> CredPort["Port de Credenciais de LLM + SecretCipher"]
+    Runtime --> Profile["Domain RetrievalProfile e LLMCredential"]
+    Runtime --> LlmPort
 
     TokenPort --> KcAdapter["Keycloak Token Verifier"]
     RepoPort --> PgAdapter["PostgreSQL Adapter"]
     QueuePort --> PgQueue["Fila em PostgreSQL"]
     LimitPort --> PgAdapter
+    CredPort --> PgAdapter
     VectorPort --> QdrantAdapter["Qdrant Adapter"]
     EmbPort --> EmbAdapter["Sentence Transformer Adapter"]
     SparsePort --> Bm25Adapter["BM25 Adapter"]
@@ -77,10 +82,17 @@ flowchart LR
     PgAdapter --> PG[("PostgreSQL")]
     PgQueue --> PG
     QdrantAdapter --> QD[("Qdrant")]
-    LlmAdapter --> Provider["Provedor de LLM"]
+    LlmAdapter --> Provider["Provedores de LLM (por credencial)"]
 ```
 
 ### Notas da Evolução
+
+- **Configuração por assistente (SPEC-013, ADR 0013).** A cada pergunta, o serviço
+  `assistant_runtime` resolve a credencial (do assistente, senão a padrão, senão o ambiente), o
+  modelo e os parâmetros de recuperação (busca híbrida, candidatos, top k e nota mínima; campo
+  vazio segue o ambiente) e monta o gateway de LLM daquela credencial. O chat, a avaliação e a
+  calibração usam o mesmo caminho. A chave só é decifrada em memória, pela porta `SecretCipher`.
+  O reranker e os filtros `user_groups`/`active` não são configuráveis.
 
 - As regras de acesso ficam no domínio (`AccessPolicy`); as rotas apenas obtêm o usuário autenticado.
 - O worker é um segundo ponto de entrada do mesmo código: invoca casos de uso de aplicação

@@ -253,5 +253,29 @@
         </li>
       </ul>
     </article>
+
+    <!-- SPEC-013: modelo de linguagem e recuperacao deste assistente. -->
+    <div
+      *ngIf="llmNotice()"
+      class="rounded-md border border-emerald-400/40 bg-emerald-500/10 p-3 text-sm text-emerald-200"
+      role="status"
+    >
+      <div class="flex items-center justify-between gap-2">
+        <span>{{ llmNotice() }}</span>
+        <button type="button" class="text-xs underline" (click)="clearLlmFeedback()">fechar</button>
+      </div>
+    </div>
+    <div
+      *ngIf="llmError()"
+      class="rounded-md border border-rose-400/50 bg-rose-500/10 p-3 text-sm text-rose-200"
+      role="alert"
+    >
+      <div class="flex items-center justify-between gap-2">
+        <span>{{ llmError() }}</span>
+        <button type="button" class="text-xs underline" (click)="clearLlmFeedback()">fechar</button>
+      </div>
+    </div>
+    <app-assistant-llm-settings [assistantId]="assistant.id" />
+    <app-assistant-retrieval-settings [assistantId]="assistant.id" />
   </ng-container>
 </section>

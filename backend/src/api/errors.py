@@ -12,8 +12,10 @@ from .error_codes import error_body
 
 from src.domain import (
     AccessDeniedError,
+    ConcurrentChangeError,
     GroupDirectoryUnavailableError,
     InvalidFeedbackStateError,
+    LLMCredentialInUseError,
     UsageLimitExceededError,
 )
 
@@ -34,10 +36,16 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
+        # RN-39: ``input`` (o corpo recebido) e ``ctx`` podem trazer a chave de
+        # API digitada; o 422 so diz onde e por que, nunca o valor.
+        errors = [
+            {key: value for key, value in item.items() if key not in ("input", "ctx")}
+            for item in exc.errors()
+        ]
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=jsonable_encoder(
-                error_body(status.HTTP_422_UNPROCESSABLE_ENTITY, exc.errors())
+                error_body(status.HTTP_422_UNPROCESSABLE_ENTITY, errors)
             ),
         )
 
@@ -62,6 +70,33 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(UsageLimitExceededError)
     async def usage_limited(_: Request, exc: UsageLimitExceededError) -> JSONResponse:
         return usage_limit_response(exc)
+
+    @app.exception_handler(LLMCredentialInUseError)
+    async def credential_in_use(_: Request, exc: LLMCredentialInUseError) -> JSONResponse:
+        """RN-38: 409 com quem usa a credencial ou os modelos."""
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content=error_body(
+                status.HTTP_409_CONFLICT,
+                {
+                    "code": "llm_credential_in_use",
+                    "message": str(exc),
+                    "assistant_ids": list(exc.assistant_ids),
+                    "models": list(exc.models),
+                    "is_default": exc.is_default,
+                },
+            ),
+        )
+
+    @app.exception_handler(ConcurrentChangeError)
+    async def concurrent_change(_: Request, exc: ConcurrentChangeError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content=error_body(
+                status.HTTP_409_CONFLICT,
+                {"code": "concurrent_change", "message": str(exc)},
+            ),
+        )
 
     @app.exception_handler(InvalidFeedbackStateError)
     async def feedback_state(_: Request, exc: InvalidFeedbackStateError) -> JSONResponse:

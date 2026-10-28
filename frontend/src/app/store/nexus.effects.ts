@@ -446,91 +446,6 @@ export const saveUsageLimitsEffect = createEffect(
   { functional: true }
 );
 
-export const loadApiKeyStatusEffect = createEffect(
-  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
-    actions$.pipe(
-      ofType(nexusActions.loadApiKeyStatus),
-      switchMap(() =>
-        api.getApiKeyStatus().pipe(
-          map((status) => nexusActions.loadApiKeyStatusSuccess({ status })),
-          catchError((error) =>
-            of(nexusActions.loadApiKeyStatusFailure({ error: resolveError(error) }))
-          )
-        )
-      )
-    ),
-  { functional: true }
-);
-
-export const saveApiKeyEffect = createEffect(
-  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
-    actions$.pipe(
-      ofType(nexusActions.saveApiKey),
-      switchMap(({ apiKey }) =>
-        api.saveApiKey({ api_key: apiKey }).pipe(
-          mergeMap((status) =>
-            of(
-              nexusActions.saveApiKeySuccess({ status }),
-              nexusActions.loadApiKeyStatusSuccess({ status })
-            )
-          ),
-          catchError((error) =>
-            of(nexusActions.saveApiKeyFailure({ error: resolveError(error) }))
-          )
-        )
-      )
-    ),
-  { functional: true }
-);
-
-export const loadLlmSettingsEffect = createEffect(
-  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
-    actions$.pipe(
-      ofType(nexusActions.loadLlmSettings),
-      switchMap(() =>
-        api.getLlmSettings().pipe(
-          map((settings) => nexusActions.loadLlmSettingsSuccess({ settings })),
-          catchError((error) =>
-            of(nexusActions.loadLlmSettingsFailure({ error: resolveError(error) }))
-          )
-        )
-      )
-    ),
-  { functional: true }
-);
-
-export const saveLlmSettingsEffect = createEffect(
-  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
-    actions$.pipe(
-      ofType(nexusActions.saveLlmSettings),
-      switchMap(({ input }) =>
-        api.saveLlmSettings(input).pipe(
-          map((settings) => nexusActions.saveLlmSettingsSuccess({ settings })),
-          catchError((error) =>
-            of(nexusActions.saveLlmSettingsFailure({ error: resolveError(error) }))
-          )
-        )
-      )
-    ),
-  { functional: true }
-);
-
-export const testApiKeyEffect = createEffect(
-  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
-    actions$.pipe(
-      ofType(nexusActions.testApiKey),
-      switchMap(() =>
-        api.testApiKey().pipe(
-          map((result) => nexusActions.testApiKeySuccess({ result })),
-          catchError((error) =>
-            of(nexusActions.testApiKeyFailure({ error: resolveError(error) }))
-          )
-        )
-      )
-    ),
-  { functional: true }
-);
-
 export const setAssistantGroupsEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
     actions$.pipe(
@@ -851,11 +766,6 @@ export const nexusEffects = {
   uploadDocumentEffect,
   inferAssistantAndSendEffect,
   sendChatQuestionEffect,
-  loadApiKeyStatusEffect,
-  saveApiKeyEffect,
-  loadLlmSettingsEffect,
-  saveLlmSettingsEffect,
-  testApiKeyEffect,
   setAssistantGroupsEffect,
   loadDocumentAccessEffect,
   refreshDocumentAccessEffect,

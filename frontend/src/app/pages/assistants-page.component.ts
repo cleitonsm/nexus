@@ -13,9 +13,13 @@ import {
   statusLabel
 } from "../shared/documents/document-lifecycle";
 import { canStartReindex, indexNotices } from "../shared/documents/index-status";
+import { AssistantLlmSettingsComponent } from "../features/assistants/assistant-llm-settings.component";
+import { AssistantRetrievalSettingsComponent } from "../features/assistants/assistant-retrieval-settings.component";
 import { GroupPickerComponent } from "../shared/groups/group-picker.component";
 import { DocumentAccess, DocumentStatus } from "../shared/models/nexus.models";
 import { selectMenu } from "../store/auth.selectors";
+import { llmConfigActions } from "../store/llm-config.actions";
+import { selectLlmError, selectLlmNotice } from "../store/llm-config.selectors";
 import { nexusActions } from "../store/nexus.actions";
 import {
   selectActiveAssistantId,
@@ -37,7 +41,12 @@ import {
 @Component({
   selector: "app-assistants-page",
   standalone: true,
-  imports: [CommonModule, GroupPickerComponent],
+  imports: [
+    CommonModule,
+    GroupPickerComponent,
+    AssistantLlmSettingsComponent,
+    AssistantRetrievalSettingsComponent
+  ],
   templateUrl: "./assistants-page.component.html",
   host: { class: "flex-1 min-h-0 overflow-y-auto p-4 lg:p-6" }
 })
@@ -52,6 +61,9 @@ export class AssistantsPageComponent {
   protected readonly loading = this.store.selectSignal(selectLoadingState);
   protected readonly error = this.store.selectSignal(selectError);
   protected readonly menu = this.store.selectSignal(selectMenu);
+  /** SPEC-013: avisos das secoes de modelo e recuperacao. */
+  protected readonly llmNotice = this.store.selectSignal(selectLlmNotice);
+  protected readonly llmError = this.store.selectSignal(selectLlmError);
   /** Grupos do Keycloak para escolher (PC-D6); ``null``: campo de texto. */
   protected readonly availableGroups = this.store.selectSignal(selectAvailableGroups);
   /** Estado do indice de busca (RF-31) e avisos, inclusive o do BM25 (PC-D2). */
@@ -222,6 +234,10 @@ export class AssistantsPageComponent {
 
   protected clearError(): void {
     this.store.dispatch(nexusActions.clearError());
+  }
+
+  protected clearLlmFeedback(): void {
+    this.store.dispatch(llmConfigActions.clearFeedback());
   }
 
   private clearDraft(id: string): void {

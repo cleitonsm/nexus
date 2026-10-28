@@ -1,0 +1,10 @@
+﻿commit: 79227cb
+data: 2026-10-28T07:46:55
+
+NAME               IMAGE                   COMMAND                  SERVICE    CREATED        STATUS                  PORTS
+nexus-backend-1    nexus-backend           "uvicorn src.api.mai…"   backend    13 hours ago   Up 13 hours (healthy)   127.0.0.1:8000->8000/tcp
+nexus-frontend-1   nexus-frontend          "/docker-entrypoint.…"   frontend   13 hours ago   Up 13 hours (healthy)   0.0.0.0:4200->80/tcp, [::]:4200->80/tcp
+nexus-keycloak-1   nexus-keycloak          "/opt/keycloak/bin/k…"   keycloak   13 hours ago   Up 13 hours (healthy)   127.0.0.1:8080->8080/tcp
+nexus-postgres-1   postgres:16-alpine      "docker-entrypoint.s…"   postgres   13 hours ago   Up 13 hours (healthy)   127.0.0.1:5432->5432/tcp
+nexus-qdrant-1     qdrant/qdrant:v1.11.3   "./entrypoint.sh"        qdrant     13 hours ago   Up 13 hours (healthy)   127.0.0.1:6333->6333/tcp
+nexus-worker-1     nexus-worker            "python -m src.cli.w…"   worker     13 hours ago   Up 13 hours             8000/tcp

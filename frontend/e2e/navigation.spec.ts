@@ -28,7 +28,7 @@ test.describe("CT-81: menu Administracao conforme o papel", () => {
       "Conversas arquivadas",
       "Avaliações",
       "Consumo e limites",
-      "Configuração do LLM"
+      "Chaves de LLM"
     ]);
     await expect(page.getByTitle("Conversas", { exact: true })).toHaveCount(0);
   });
@@ -45,12 +45,13 @@ test.describe("CT-81: menu Administracao conforme o papel", () => {
     await expect(page.getByTitle("Sair")).toBeVisible();
   });
 
-  test("Configuracao do LLM abre o modal com o novo titulo", async ({ page }) => {
+  test("Chaves de LLM abre a tela de credenciais (SPEC-013)", async ({ page }) => {
     await login(page, "admin.nexus");
     await openMenuItems(page);
-    await page.locator(MENU).getByRole("menuitem", { name: "Configuração do LLM" }).click();
+    await page.locator(MENU).getByRole("menuitem", { name: "Chaves de LLM" }).click();
     await expect(page.locator(MENU)).toHaveCount(0);
-    await expect(page.getByRole("dialog", { name: "Configuração do LLM" })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/llm-credentials$/);
+    await expect(page.getByRole("heading", { name: "Chaves de LLM" })).toBeVisible();
   });
 });
 
@@ -83,6 +84,8 @@ test("CT-82: na Auditoria, selecionar um assistente leva ao chat em branco", asy
   await login(page, "admin.nexus");
   await page.goto("/admin/audit");
   const sidebar = page.locator("aside");
+  // O menu lateral comeca recolhido; a lista de assistentes so aparece expandido.
+  await sidebar.getByRole("button", { name: "Expandir menu" }).click();
   await sidebar.getByRole("button", { name: "Assistente E2E" }).click();
 
   await expect(page).toHaveURL(/\/chat$/);

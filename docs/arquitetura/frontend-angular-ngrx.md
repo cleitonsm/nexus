@@ -11,12 +11,14 @@ A arquitetura inicial deve ser previsível sem criar camadas excessivas para o M
 - Rotas de primeiro nivel:
   - `/chat`: experiencia conversacional isolada.
   - `/assistants`: criacao/listagem de assistentes e upload de documentos.
-  - `/admin`: configuracao da API key global do sistema.
+  - `/admin/llm-credentials`: credenciais de LLM (SPEC-013; substituiu a API key global da
+    SPEC-008).
 - `core`: servicos singleton, interceptors, configuracao e integracao HTTP.
 - `shared`: componentes e utilitarios reutilizaveis.
 - `features/chat`: conversa com mensagens em bolhas, input ancorado e renderizacao Markdown.
 - `features/assistants`: administracao funcional de assistentes e documentos.
-- `features/admin`: estado administrativo da API key (status e gravacao sem leitura).
+- `features/assistants`: tambem as secoes "Modelo de linguagem" e "Recuperacao" do assistente
+  (SPEC-013).
 - `store`: estado global NgRx por dominio (chat, assistants, admin e carregamentos/erro).
 
 ## Estado Global (Evolução MVP)
@@ -24,8 +26,8 @@ A arquitetura inicial deve ser previsível sem criar camadas excessivas para o M
 - assistente selecionado e lista de assistentes
 - lista de conversas por assistente
 - conversa ativa e mensagens da conversa selecionada
-- status da API key global (`configurada`/`nao configurada`)
-- estado de gravacao/substituicao da API key global
+- credenciais de LLM, padrao, impacto de troca da padrao e configuracao de LLM e recuperacao
+  por assistente (fatia `llmConfig`, SPEC-013; nenhuma chave volta da API, so `key_configured`)
 - documentos do assistente e estados de carregamento/erro
 
 ## Diretriz
@@ -45,8 +47,8 @@ Conteúdo **planejado**; as seções acima continuam descrevendo o frontend do M
   substituição e restrição por grupo.
 - `/assistants`: também mostra o painel "Índice de busca" (estado do índice, aviso de mudança do
   BM25 e botão de reindexar, PC-D2) e escolhe grupos do Keycloak num seletor (PC-D6).
-- `/admin`, `/admin/audit`, `/admin/usage` e `/admin/archived`: administradores; chave do LLM,
-  auditoria, consumo e conversas anteriores à autenticação (PC-D5).
+- `/admin/llm-credentials`, `/admin/audit`, `/admin/usage` e `/admin/archived`: administradores;
+  credenciais de LLM (SPEC-013), auditoria, consumo e conversas anteriores à autenticação (PC-D5).
 - `/feedback`: curadores e administradores; avaliações negativas.
 - Guards de rota por papel; itens de menu ocultos quando o papel não permite.
 

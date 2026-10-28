@@ -59,6 +59,21 @@ class MessageId:
 
 
 @dataclass(frozen=True, slots=True)
+class LLMCredentialId:
+    """Identificador de uma credencial de LLM (SPEC-013)."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "value", _require_non_empty(self.value, "llm_credential_id")
+        )
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass(frozen=True, slots=True)
 class AssistantName:
     value: str
 

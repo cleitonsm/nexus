@@ -49,3 +49,31 @@ def _deltas(
             continue
         deltas[name] = value - baseline
     return deltas
+
+
+# SPEC-013 (RF-92): parametros que, se mudarem, tornam a comparacao enganosa.
+COMPARABLE_PARAMETERS = (
+    "llm_model",
+    "llm_credential",
+    "judge_model",
+    "retrieval_candidates",
+    "rerank_top_n",
+    "relevance_min_score",
+    "retrieval_hybrid",
+)
+
+
+def configuration_differences(
+    current: object, previous: object
+) -> list[str]:
+    """Parametros que mudaram desde o relatorio anterior.
+
+    Parametro ausente em um dos dois (relatorios antigos) nao conta.
+    """
+    if not isinstance(current, dict) or not isinstance(previous, dict):
+        return []
+    return [
+        name
+        for name in COMPARABLE_PARAMETERS
+        if name in current and name in previous and current[name] != previous[name]
+    ]

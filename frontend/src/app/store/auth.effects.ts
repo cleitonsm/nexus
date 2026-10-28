@@ -1,12 +1,10 @@
 import { inject } from "@angular/core";
 import { Actions, createEffect, ofType } from "@ngrx/effects";
-import { catchError, filter, map, of, switchMap, tap } from "rxjs";
+import { catchError, map, of, switchMap, tap } from "rxjs";
 
-import { menuFor } from "../core/auth/access";
 import { AuthService } from "../core/auth/auth.service";
 import { NexusApiService } from "../core/services/nexus-api.service";
 import { authActions } from "./auth.actions";
-import { nexusActions } from "./nexus.actions";
 
 export const loadSessionEffect = createEffect(
   (actions$ = inject(Actions), api = inject(NexusApiService)) =>
@@ -35,17 +33,6 @@ function sessionError(error: unknown): string {
   return "Não foi possível carregar os dados da sua sessão.";
 }
 
-/** A situacao da chave do LLM so e pedida por quem pode configura-la (RF-47). */
-export const loadAdminDataEffect = createEffect(
-  (actions$ = inject(Actions)) =>
-    actions$.pipe(
-      ofType(authActions.loadSessionSuccess),
-      filter(({ user }) => menuFor(user).configureLlm),
-      map(() => nexusActions.loadApiKeyStatus())
-    ),
-  { functional: true }
-);
-
 export const sessionExpiredEffect = createEffect(
   (actions$ = inject(Actions), auth = inject(AuthService)) =>
     actions$.pipe(
@@ -66,7 +53,6 @@ export const logoutEffect = createEffect(
 
 export const authEffects = {
   loadSessionEffect,
-  loadAdminDataEffect,
   sessionExpiredEffect,
   logoutEffect
 };

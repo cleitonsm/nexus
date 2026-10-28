@@ -16,12 +16,15 @@ from src.api.errors import register_error_handlers
 from src.api.routes import (
     admin_router,
     archived_conversations_router,
+    assistant_settings_router,
     assistants_router,
     conversations_router,
     document_access_router,
     documents_router,
     feedback_router,
     index_router,
+    llm_credential_options_router,
+    llm_credentials_router,
     me_router,
 )
 from src.api.middleware import register_request_context
@@ -86,6 +89,9 @@ app.add_middleware(
 app.include_router(admin_router)
 app.include_router(archived_conversations_router)
 app.include_router(assistants_router)
+app.include_router(assistant_settings_router)
+app.include_router(llm_credentials_router)
+app.include_router(llm_credential_options_router)
 app.include_router(conversations_router)
 app.include_router(document_access_router)
 app.include_router(documents_router)

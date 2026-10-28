@@ -13,7 +13,7 @@ from __future__ import annotations
 import unittest
 from uuid import uuid4
 
-from stack_support import Api, FakeLLMServer, stack_available, token_for
+from stack_support import Api, FakeLLMServer, stack_available, token_for, use_fake_llm
 
 DOCUMENT = (
     "# Ferias\n\nO colaborador tem trinta dias corridos de ferias por ano, "
@@ -26,21 +26,8 @@ class FullStackFlowTests(unittest.TestCase):
         if not stack_available():
             self.skipTest("pilha do Compose indisponivel")
         self.admin = Api(token_for("admin.nexus"))
-        status, original = self.admin.json("GET", "/admin/llm-settings")
-        self.assertEqual(status, 200)
-        self.original = original
-        self.addCleanup(self._restore_llm)
         self.created: list[str] = []
         self.addCleanup(self._remove_assistants)
-
-    def _restore_llm(self) -> None:
-        payload = {
-            "provider": self.original["provider"],
-            "model": self.original["model"],
-        }
-        if self.original["provider"] == "custom":
-            payload["api_url"] = self.original["api_url"]
-        self.admin.json("PUT", "/admin/llm-settings", payload=payload)
 
     def _remove_assistants(self) -> None:
         for assistant_id in self.created:
@@ -64,16 +51,7 @@ class FullStackFlowTests(unittest.TestCase):
         self.assertEqual(done["status"], "indexado", done)
 
         with FakeLLMServer() as llm:
-            status, data = self.admin.json(
-                "PUT",
-                "/admin/llm-settings",
-                payload={
-                    "provider": "custom",
-                    "model": "modelo-simulado",
-                    "api_url": llm.url,
-                },
-            )
-            self.assertEqual(status, 200, data)
+            use_fake_llm(self, self.admin, llm.url, assistant_id)
             status, conversation = self.admin.json(
                 "POST", "/conversations", payload={"assistant_id": assistant_id}
             )

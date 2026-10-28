@@ -18,8 +18,6 @@ from src.domain import (
     FeedbackReview,
     FeedbackStatus,
     IngestionPause,
-    LLMConnection,
-    LLMProvider,
     MessageFeedback,
     SparseEncodingParameters,
     UsageLimitDecision,
@@ -43,7 +41,6 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 USAGE_LIMITS_KEY = "usage_limits"
-LLM_CONNECTION_KEY = "llm_connection"
 # Gravada e apagada por scripts/backup.sh (SPEC-006 D10).
 INGESTION_PAUSE_KEY = "ingestion_pause"
 SPARSE_PARAMETERS_KEY_PREFIX = "bm25:"
@@ -225,53 +222,6 @@ class PostgresUsageSettingsRepository:
             model.updated_at = now
         commit_or_rollback(self._session)
         return limits
-
-
-class PostgresLLMConnectionRepository:
-    """Provedor, modelo e URL do LLM em ``app_settings`` (SPEC-008 D2); sem migracao."""
-
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def get(self) -> LLMConnection | None:
-        model = self._session.get(AppSettingModel, LLM_CONNECTION_KEY)
-        if model is None:
-            return None
-        value = model.value or {}
-        try:
-            return LLMConnection(
-                provider=LLMProvider(str(value["provider"])),
-                model=str(value["model"]),
-                api_url=str(value["api_url"]),
-            )
-        except (KeyError, ValueError):
-            # Registro corrompido: vale o padrao do ambiente, com aviso no log.
-            logger.warning("llm_connection.invalid_stored_value")
-            return None
-
-    def save(self, connection: LLMConnection, *, updated_by: str) -> LLMConnection:
-        value = {
-            "provider": connection.provider.value,
-            "model": connection.model,
-            "api_url": connection.api_url,
-        }
-        model = self._session.get(AppSettingModel, LLM_CONNECTION_KEY)
-        now = datetime.now(UTC)
-        if model is None:
-            self._session.add(
-                AppSettingModel(
-                    key_name=LLM_CONNECTION_KEY,
-                    value=value,
-                    updated_by=updated_by,
-                    updated_at=now,
-                )
-            )
-        else:
-            model.value = value
-            model.updated_by = updated_by
-            model.updated_at = now
-        commit_or_rollback(self._session)
-        return connection
 
 
 class PostgresIndexParametersRepository:

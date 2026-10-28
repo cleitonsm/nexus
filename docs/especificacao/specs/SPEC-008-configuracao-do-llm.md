@@ -1,7 +1,7 @@
 # SPEC-008 — Configuração do LLM na administração (provedor, modelo e URL)
 
 **ID**: SPEC-20261014-008
-**Status**: **Implementada** em 2026-10-25 — validada na campanha final (`validacao-final-rc8` e `rc9`; [RESUMO](../../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). Histórico: Aprovada em 2026-10-14 (escopo, URL livre para administrador e aviso de avaliação escolhidos pelo autor); código entregue, validação no Docker pendente.
+**Status**: **Substituída** pela [SPEC-013](SPEC-013-chaves-de-llm-e-parametros-por-assistente.md) em 2026-10-28 — a chave global, o `llm_connection`, as rotas `/admin/api-key*` e `/admin/llm-settings` e o modal saíram; a migração `0010` copiou a configuração para a credencial "Padrão" e a `0011` removeu as linhas antigas. Antes: **Implementada** em 2026-10-25 — validada na campanha final (`validacao-final-rc8` e `rc9`; [RESUMO](../../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md)). Histórico: Aprovada em 2026-10-14 (escopo, URL livre para administrador e aviso de avaliação escolhidos pelo autor); código entregue, validação no Docker pendente.
 **Origem**: teste rápido no Docker (E1) — chave de teste do Gemini recusada com 401 porque o destino continuava sendo `api.openai.com`; a tela só gravava a chave
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
@@ -26,12 +26,19 @@ from src.domain import (
     IngestionJobStatus,
     MessageId,
     MessageRole,
+    ConcurrentChangeError,
     JobOwnershipLostError,
+    LLMCredentialId,
     ReindexInProgressError,
     ReindexJob,
     ReindexStatus,
+    RetrievalProfile,
 )
 
+from src.infrastructure.llm_credential_mapping import (
+    profile_from_json,
+    profile_to_json,
+)
 from .transactions import commit_or_rollback
 from .models import (
     AssistantGroupModel,
@@ -43,7 +50,6 @@ from .models import (
     IngestionJobModel,
     MessageModel,
     ReindexJobModel,
-    SecretSettingModel,
 )
 
 
@@ -60,6 +66,14 @@ class PostgresAssistantRepository:
                 description=assistant.description,
                 initial_prompt=assistant.initial_prompt,
                 created_at=assistant.created_at,
+                # SPEC-013: so na criacao; depois, pelos metodos proprios.
+                llm_credential_id=(
+                    assistant.llm_credential_id.value
+                    if assistant.llm_credential_id is not None
+                    else None
+                ),
+                llm_model=assistant.llm_model,
+                retrieval_profile=profile_to_json(assistant.retrieval_profile),
             )
             self._session.add(model)
         else:
@@ -67,6 +81,50 @@ class PostgresAssistantRepository:
             model.description = assistant.description
             model.initial_prompt = assistant.initial_prompt
         commit_or_rollback(self._session)
+        self._session.refresh(model)
+        return _assistant_to_entity(model)
+
+    def update_llm_choice(
+        self,
+        assistant_id: AssistantId,
+        *,
+        credential_id: LLMCredentialId | None,
+        model: str | None,
+    ) -> Assistant | None:
+        """So as duas colunas: nao desfaz o perfil gravado ao mesmo tempo."""
+        values = {
+            "llm_credential_id": credential_id.value if credential_id else None,
+            "llm_model": model,
+        }
+        try:
+            return self._update_columns(assistant_id, values)
+        except IntegrityError as exc:
+            # A credencial foi excluida entre a conferencia e a gravacao.
+            raise ConcurrentChangeError("credential changed concurrently.") from exc
+
+    def update_retrieval_profile(
+        self, assistant_id: AssistantId, profile: RetrievalProfile
+    ) -> Assistant | None:
+        return self._update_columns(
+            assistant_id, {"retrieval_profile": profile_to_json(profile)}
+        )
+
+    def _update_columns(
+        self, assistant_id: AssistantId, values: dict[str, object]
+    ) -> Assistant | None:
+        try:
+            result = self._session.execute(
+                update(AssistantModel)
+                .where(AssistantModel.id == assistant_id.value)
+                .values(**values)
+            )
+        except BaseException:
+            self._session.rollback()
+            raise
+        commit_or_rollback(self._session)
+        if result.rowcount == 0:
+            return None
+        model = self._session.get(AssistantModel, assistant_id.value)
         self._session.refresh(model)
         return _assistant_to_entity(model)
 
@@ -659,38 +717,6 @@ class PostgresAuditRetentionRepository:
         return int(result.rowcount or 0)
 
 
-class PostgresSecretSettingsRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def set_encrypted_value(
-        self,
-        *,
-        key_name: str,
-        encrypted_value: str,
-    ) -> None:
-        now = datetime.now(UTC)
-        model = self._session.get(SecretSettingModel, key_name)
-        if model is None:
-            model = SecretSettingModel(
-                key_name=key_name,
-                encrypted_value=encrypted_value,
-                created_at=now,
-                updated_at=now,
-            )
-            self._session.add(model)
-        else:
-            model.encrypted_value = encrypted_value
-            model.updated_at = now
-        commit_or_rollback(self._session)
-
-    def get_encrypted_value(self, *, key_name: str) -> str | None:
-        model = self._session.get(SecretSettingModel, key_name)
-        if model is None:
-            return None
-        return model.encrypted_value
-
-
 def _assistant_to_entity(model: AssistantModel) -> Assistant:
     return Assistant(
         id=AssistantId(model.id),
@@ -698,6 +724,15 @@ def _assistant_to_entity(model: AssistantModel) -> Assistant:
         description=model.description,
         initial_prompt=model.initial_prompt,
         created_at=model.created_at,
+        llm_credential_id=(
+            LLMCredentialId(model.llm_credential_id)
+            if model.llm_credential_id
+            else None
+        ),
+        llm_model=model.llm_model,
+        retrieval_profile=profile_from_json(
+            model.retrieval_profile, assistant_id=model.id
+        ),
     )
 
 

@@ -1,9 +1,6 @@
 import { createReducer, on } from "@ngrx/store";
 
 import {
-  ApiKeyTestResult,
-  ApiKeyStatus,
-  LlmSettings,
   Assistant,
   AuditEvent,
   ChatMessage,
@@ -41,9 +38,6 @@ export interface NexusState {
   auditEvents: AuditEvent[];
   createAssistantModalOpen: boolean;
   inferAssistantError: string | null;
-  apiKeyStatus: ApiKeyStatus | null;
-  apiKeyTestResult: ApiKeyTestResult | null;
-  llmSettings: LlmSettings | null;
   /** Resposta em streaming em andamento (RF-58). */
   chatStream: ChatStreamState | null;
   /** Avaliacao enviada nesta sessao, por mensagem (RF-61). */
@@ -63,11 +57,6 @@ export interface NexusState {
     uploadDocument: boolean;
     sendChat: boolean;
     inferAssistant: boolean;
-    apiKeyStatus: boolean;
-    saveApiKey: boolean;
-    llmSettings: boolean;
-    saveLlmSettings: boolean;
-    testApiKey: boolean;
     assistantGroups: boolean;
     documentAccess: boolean;
     documentAction: boolean;
@@ -109,9 +98,6 @@ export const initialNexusState: NexusState = {
   auditEvents: [],
   createAssistantModalOpen: false,
   inferAssistantError: null,
-  apiKeyStatus: null,
-  apiKeyTestResult: null,
-  llmSettings: null,
   chatStream: null,
   feedbackByMessage: {},
   curatorFeedback: [],
@@ -127,11 +113,6 @@ export const initialNexusState: NexusState = {
     uploadDocument: false,
     sendChat: false,
     inferAssistant: false,
-    apiKeyStatus: false,
-    saveApiKey: false,
-    llmSettings: false,
-    saveLlmSettings: false,
-    testApiKey: false,
     assistantGroups: false,
     documentAccess: false,
     documentAction: false,
@@ -587,87 +568,6 @@ export const nexusReducer = createReducer(
     error
   })),
 
-  on(nexusActions.loadApiKeyStatus, (state) => ({
-    ...state,
-    loading: { ...state.loading, apiKeyStatus: true },
-    error: null
-  })),
-  on(nexusActions.loadApiKeyStatusSuccess, (state, { status }) => ({
-    ...state,
-    apiKeyStatus: status,
-    loading: { ...state.loading, apiKeyStatus: false }
-  })),
-  on(nexusActions.loadApiKeyStatusFailure, (state, { error }) => ({
-    ...state,
-    loading: { ...state.loading, apiKeyStatus: false },
-    error
-  })),
-
-  on(nexusActions.saveApiKey, (state) => ({
-    ...state,
-    loading: { ...state.loading, saveApiKey: true },
-    error: null
-  })),
-  on(nexusActions.saveApiKeySuccess, (state, { status }) => ({
-    ...state,
-    apiKeyStatus: status,
-    apiKeyTestResult: null,
-    loading: { ...state.loading, saveApiKey: false }
-  })),
-  on(nexusActions.saveApiKeyFailure, (state, { error }) => ({
-    ...state,
-    loading: { ...state.loading, saveApiKey: false },
-    error
-  })),
-  on(nexusActions.loadLlmSettings, (state) => ({
-    ...state,
-    loading: { ...state.loading, llmSettings: true }
-  })),
-  on(nexusActions.loadLlmSettingsSuccess, (state, { settings }) => ({
-    ...state,
-    llmSettings: settings,
-    loading: { ...state.loading, llmSettings: false }
-  })),
-  on(nexusActions.loadLlmSettingsFailure, (state, { error }) => ({
-    ...state,
-    loading: { ...state.loading, llmSettings: false },
-    error
-  })),
-  on(nexusActions.saveLlmSettings, (state) => ({
-    ...state,
-    loading: { ...state.loading, saveLlmSettings: true },
-    error: null,
-    notice: null
-  })),
-  on(nexusActions.saveLlmSettingsSuccess, (state, { settings }) => ({
-    ...state,
-    llmSettings: settings,
-    // O teste anterior era de outra conexao.
-    apiKeyTestResult: null,
-    loading: { ...state.loading, saveLlmSettings: false },
-    notice: "Conexão gravada; vale a partir da próxima pergunta e do próximo teste."
-  })),
-  on(nexusActions.saveLlmSettingsFailure, (state, { error }) => ({
-    ...state,
-    loading: { ...state.loading, saveLlmSettings: false },
-    error
-  })),
-  on(nexusActions.testApiKey, (state) => ({
-    ...state,
-    apiKeyTestResult: null,
-    loading: { ...state.loading, testApiKey: true },
-    error: null
-  })),
-  on(nexusActions.testApiKeySuccess, (state, { result }) => ({
-    ...state,
-    apiKeyTestResult: result,
-    loading: { ...state.loading, testApiKey: false }
-  })),
-  on(nexusActions.testApiKeyFailure, (state, { error }) => ({
-    ...state,
-    loading: { ...state.loading, testApiKey: false },
-    error
-  })),
 
   on(nexusActions.setAssistantGroups, (state) => ({
     ...state,

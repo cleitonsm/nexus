@@ -39,9 +39,35 @@ from .retrieval import (
     RetrievalSettings,
     StructuralContext,
 )
+from .assistant_runtime import (
+    AssistantRuntime,
+    AssistantRuntimeResolver,
+    LLMGatewayBuilder,
+    assistant_retrieval_settings,
+    build_assistant_runtime,
+    retrieval_defaults,
+)
+from .llm_resolution import (
+    LLMSource,
+    ResolvedLLM,
+    resolve_default_llm,
+    resolve_llm_for_assistant,
+    resolve_retrieval_settings,
+)
 from .usage import UsageGovernance, UsageSettings
 
 __all__ = [
+    "AssistantRuntime",
+    "AssistantRuntimeResolver",
+    "LLMGatewayBuilder",
+    "assistant_retrieval_settings",
+    "build_assistant_runtime",
+    "retrieval_defaults",
+    "LLMSource",
+    "ResolvedLLM",
+    "resolve_default_llm",
+    "resolve_llm_for_assistant",
+    "resolve_retrieval_settings",
     "CITATION_INSTRUCTION",
     "DEFAULT_ANSWER_INSTRUCTION",
     "ARTICLE_MAX_CHUNKS",

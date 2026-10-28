@@ -13,6 +13,7 @@ from src.domain import (
     RerankerGateway,
     SearchResult,
     SparseEmbeddingGateway,
+    SparseVector,
     VectorStoreGateway,
     mentions_part,
     parse_legal_reference,
@@ -43,6 +44,9 @@ class RetrievalSettings:
     history_token_budget: int = 1500
     # SPEC-012 (D8): orcamento quando o contexto e um artigo inteiro.
     structural_context_token_budget: int = 16000
+    # SPEC-013 (D3): desligada, a busca usa so o vetor denso; os filtros de
+    # grupos e ``active`` continuam valendo (RN-42).
+    hybrid_enabled: bool = True
 
     def __post_init__(self) -> None:
         if self.candidates < 1 or self.top_n < 1:
@@ -91,6 +95,16 @@ class ContextRetriever:
     def settings(self) -> RetrievalSettings:
         return self._settings
 
+    def with_settings(self, settings: RetrievalSettings) -> ContextRetriever:
+        """Mesmos modelos e gateways, parametros do assistente (SPEC-013, RN-41)."""
+        return ContextRetriever(
+            embedding_gateway=self._embedding_gateway,
+            sparse_embedding_gateway=self._sparse_embedding_gateway,
+            vector_store_gateway=self._vector_store_gateway,
+            reranker_gateway=self._reranker_gateway,
+            settings=settings,
+        )
+
     def search(
         self,
         assistant_id: AssistantId,
@@ -108,10 +122,16 @@ class ContextRetriever:
         dense_vector = self._embedding_gateway.embed_query(query)
         if not dense_vector:
             return []
+        # D3: vetor esparso vazio = so a pre-busca densa, com os mesmos filtros.
+        sparse_vector = (
+            self._sparse_embedding_gateway.embed_query(query)
+            if self._settings.hybrid_enabled
+            else SparseVector()
+        )
         results = self._vector_store_gateway.hybrid_search(
             collection_name=CollectionName.from_assistant_id(assistant_id),
             dense_vector=dense_vector,
-            sparse_vector=self._sparse_embedding_gateway.embed_query(query),
+            sparse_vector=sparse_vector,
             limit=self._settings.candidates,
             payload_filter=payload_filter,
             user_groups=user_groups,

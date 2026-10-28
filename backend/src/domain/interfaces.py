@@ -11,7 +11,8 @@ from .chunking import DocumentChunk, ExtractedDocument
 from .citations import ContextChunk
 from .errors import DomainValidationError
 from .feedback import FeedbackQuery, MessageFeedback
-from .llm_settings import LLMConnection
+from .llm_credentials import LLMCredential
+from .retrieval_profile import RetrievalProfile
 from .maintenance import IngestionPause
 from .usage import (
     LLMCompletion,
@@ -35,11 +36,31 @@ from .value_objects import (
     CollectionName,
     ConversationId,
     DocumentId,
+    LLMCredentialId,
 )
 
 
 class AssistantRepository(Protocol):
-    def save(self, assistant: Assistant) -> Assistant: ...
+    def save(self, assistant: Assistant) -> Assistant:
+        """Cria ou altera nome, descricao e prompt; credencial, modelo e perfil
+        so entram na criacao (os metodos abaixo os alteram, sem atualizacao perdida)."""
+        ...
+
+    def update_llm_choice(
+        self,
+        assistant_id: AssistantId,
+        *,
+        credential_id: LLMCredentialId | None,
+        model: str | None,
+    ) -> Assistant | None:
+        """SPEC-013: grava so credencial e modelo; ``None`` se o assistente nao existe."""
+        ...
+
+    def update_retrieval_profile(
+        self, assistant_id: AssistantId, profile: RetrievalProfile
+    ) -> Assistant | None:
+        """SPEC-013: grava so o perfil de recuperacao."""
+        ...
 
     def list_all(self) -> list[Assistant]: ...
 
@@ -189,23 +210,40 @@ class ConversationRepository(Protocol):
         ...
 
 
-class SecretSettingsRepository(Protocol):
-    def set_encrypted_value(
+class SecretCipher(Protocol):
+    """Cifra e decifra segredos (ADR 0005); so a infraestrutura conhece a chave mestra."""
+
+    def encrypt(self, plaintext: str) -> str: ...
+
+    def decrypt(self, ciphertext: str) -> str: ...
+
+
+class LLMCredentialRepository(Protocol):
+    """Credenciais de LLM (SPEC-013); a chave so entra e sai cifrada (RN-39)."""
+
+    def list_all(self) -> list[LLMCredential]: ...
+
+    def get(self, credential_id: LLMCredentialId) -> LLMCredential | None: ...
+
+    def get_default(self) -> LLMCredential | None: ...
+
+    def get_encrypted_key(self, credential_id: LLMCredentialId) -> str | None: ...
+
+    def save(
         self,
+        credential: LLMCredential,
         *,
-        key_name: str,
-        encrypted_value: str,
-    ) -> None: ...
+        encrypted_key: str | None,
+        updated_by: str,
+    ) -> LLMCredential:
+        """Cria ou altera; ``encrypted_key=None`` mantem a chave gravada."""
+        ...
 
-    def get_encrypted_value(self, *, key_name: str) -> str | None: ...
+    def set_default(self, credential_id: LLMCredentialId, *, updated_by: str) -> None:
+        """RN-37: marca a padrao e desmarca as outras na mesma transacao."""
+        ...
 
-
-class LLMConnectionRepository(Protocol):
-    """Conexao com o LLM definida na tela; sem valor gravado, vale o ambiente."""
-
-    def get(self) -> LLMConnection | None: ...
-
-    def save(self, connection: LLMConnection, *, updated_by: str) -> LLMConnection: ...
+    def delete(self, credential_id: LLMCredentialId) -> bool: ...
 
 
 class EmbeddingGateway(Protocol):

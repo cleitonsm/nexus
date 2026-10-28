@@ -178,7 +178,7 @@ exibidas a usuários comuns.
 | `PUT /assistants/{id}/groups` | Administrador | Define os grupos do assistente |
 | `PUT /documents/{id}/groups` | Curador com acesso, administrador | Define a restrição do documento |
 | `GET /admin/audit-events` | Administrador | Consulta a auditoria, com filtros |
-| `/admin/api-key/*` | Administrador | Rotas existentes, agora restritas |
+| `/admin/api-key/*` | Administrador | Rotas existentes, agora restritas. Removidas pela SPEC-013 (D9): `/admin/llm-credentials` |
 
 ### Frontend
 

@@ -18,8 +18,6 @@ from src.api.dependencies import (
     get_ingestion_job_queue,
     get_max_file_bytes,
     get_reindex_job_repository,
-    get_secret_cipher,
-    get_secret_settings_repository,
     get_vector_store_gateway,
     get_conversation_repository,
 )
@@ -54,30 +52,6 @@ from src.domain import (
 from src.infrastructure.chunking import StructuralDocumentChunker
 from src.infrastructure.documents import SupportedDocumentExtractor
 from src.infrastructure.embeddings import Bm25SparseEmbeddingGateway
-
-
-class InMemorySecretSettingsRepository:
-    def __init__(self) -> None:
-        self.items: dict[str, str] = {}
-
-    def set_encrypted_value(
-        self,
-        *,
-        key_name: str,
-        encrypted_value: str,
-    ) -> None:
-        self.items[key_name] = encrypted_value
-
-    def get_encrypted_value(self, *, key_name: str) -> str | None:
-        return self.items.get(key_name)
-
-
-class FakeSecretCipher:
-    def encrypt(self, plaintext: str) -> str:
-        return f"enc::{plaintext}"
-
-    def decrypt(self, ciphertext: str) -> str:
-        return ciphertext.replace("enc::", "", 1)
 
 
 class InMemoryAssistantRepository:
@@ -382,34 +356,6 @@ class ApiRoutesTestCase(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.app.dependency_overrides.clear()
-
-    def test_admin_api_key_endpoints_store_encrypted_value(self) -> None:
-        repository = InMemorySecretSettingsRepository()
-        self.app.dependency_overrides[get_secret_settings_repository] = (
-            lambda: repository
-        )
-        self.app.dependency_overrides[get_secret_cipher] = FakeSecretCipher
-
-        with TestClient(self.app) as client:
-            status_before = client.get("/admin/api-key/status")
-            self.assertEqual(status_before.status_code, 200)
-            self.assertEqual(status_before.json(), {"configured": False})
-
-            save_response = client.post(
-                "/admin/api-key",
-                json={"api_key": "sk-live-xyz"},
-            )
-            self.assertEqual(save_response.status_code, 201)
-            self.assertEqual(save_response.json(), {"configured": True})
-
-            status_after = client.get("/admin/api-key/status")
-            self.assertEqual(status_after.status_code, 200)
-            self.assertEqual(status_after.json(), {"configured": True})
-
-        self.assertEqual(
-            repository.items["global_llm_api_key"],
-            "enc::sk-live-xyz",
-        )
 
     def test_list_assistant_conversations_returns_only_assistant_history(self) -> None:
         assistant_id = AssistantId("assistant-1")

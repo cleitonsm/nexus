@@ -18,7 +18,7 @@ from stack_support import (
     Api,
     FakeLLMServer,
     call,
-    preserve_llm_settings,
+    use_fake_llm,
     stack_available,
     token_for,
 )
@@ -107,7 +107,6 @@ class OcrContainerTests(unittest.TestCase):
         except Exception as exc:  # noqa: BLE001 - sem Pillow ou fonte
             self.skipTest(f"nao foi possivel gerar o PDF digitalizado: {exc}")
         self.admin = Api(token_for("admin.nexus"))
-        preserve_llm_settings(self, self.admin)
         status, data = self.admin.json(
             "POST", "/assistants", payload={"name": f"CT-39 {uuid4().hex[:8]}"}
         )
@@ -130,15 +129,7 @@ class OcrContainerTests(unittest.TestCase):
         self.assertGreater(done["chunk_count"], 0)
 
         with FakeLLMServer() as llm:
-            self.admin.json(
-                "PUT",
-                "/admin/llm-settings",
-                payload={
-                    "provider": "custom",
-                    "model": "modelo-simulado",
-                    "api_url": llm.url,
-                },
-            )
+            use_fake_llm(self, self.admin, llm.url, self.assistant_id)
             status, conversation = self.admin.json(
                 "POST", "/conversations", payload={"assistant_id": self.assistant_id}
             )
