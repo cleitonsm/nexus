@@ -879,3 +879,37 @@ describe("chat stream cancellation (SPEC-006 D13)", () => {
     expect(state.error).toBeNull();
   });
 });
+
+describe("updateAssistant (CT-136, SPEC-017)", () => {
+  it("troca o item na lista e mantem o ativo e a ordem", () => {
+    const state: NexusState = {
+      ...initialNexusState,
+      assistants: [assistant("assistant-1"), assistant("assistant-2")],
+      activeAssistantId: "assistant-2"
+    };
+    const loading = nexusReducer(
+      state,
+      nexusActions.updateAssistant({
+        assistantId: "assistant-2",
+        input: { name: "Novo nome", description: null, initial_prompt: "p" }
+      })
+    );
+    expect(loading.loading.updateAssistant).toBe(true);
+
+    const updated = { ...assistant("assistant-2"), name: "Novo nome", initial_prompt: "p" };
+    const next = nexusReducer(loading, nexusActions.updateAssistantSuccess({ assistant: updated }));
+
+    expect(next.assistants.map((item) => item.name)).toEqual(["Assistant assistant-1", "Novo nome"]);
+    expect(next.activeAssistantId).toBe("assistant-2");
+    expect(next.loading.updateAssistant).toBe(false);
+  });
+
+  it("guarda o erro e libera o botao na falha", () => {
+    const next = nexusReducer(
+      { ...initialNexusState, loading: { ...initialNexusState.loading, updateAssistant: true } },
+      nexusActions.updateAssistantFailure({ error: "O prompt pode ter até 4000 caracteres." })
+    );
+    expect(next.loading.updateAssistant).toBe(false);
+    expect(next.error).toContain("4000");
+  });
+});

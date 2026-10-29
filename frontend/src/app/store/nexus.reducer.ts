@@ -57,6 +57,7 @@ export interface NexusState {
   loading: {
     assistants: boolean;
     createAssistant: boolean;
+    updateAssistant: boolean;
     deleteAssistant: boolean;
     createConversation: boolean;
     deleteConversation: boolean;
@@ -117,6 +118,7 @@ export const initialNexusState: NexusState = {
   loading: {
     assistants: false,
     createAssistant: false,
+    updateAssistant: false,
     deleteAssistant: false,
     createConversation: false,
     deleteConversation: false,
@@ -186,6 +188,22 @@ export const nexusReducer = createReducer(
   on(nexusActions.createAssistantFailure, (state, { error }) => ({
     ...state,
     loading: { ...state.loading, createAssistant: false },
+    error
+  })),
+  on(nexusActions.updateAssistant, (state) => ({
+    ...state,
+    loading: { ...state.loading, updateAssistant: true },
+    error: null
+  })),
+  // SPEC-017 (RF-110): trocar o item atualiza barra lateral, cartoes e modal.
+  on(nexusActions.updateAssistantSuccess, (state, { assistant }) => ({
+    ...state,
+    assistants: state.assistants.map((item) => (item.id === assistant.id ? assistant : item)),
+    loading: { ...state.loading, updateAssistant: false }
+  })),
+  on(nexusActions.updateAssistantFailure, (state, { error }) => ({
+    ...state,
+    loading: { ...state.loading, updateAssistant: false },
     error
   })),
   on(nexusActions.deleteAssistant, (state) => ({

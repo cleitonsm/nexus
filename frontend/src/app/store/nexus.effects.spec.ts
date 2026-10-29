@@ -22,6 +22,7 @@ import { INTERRUPTED_ANSWER } from "./chat-stream-flow";
 import { nexusActions } from "./nexus.actions";
 import {
   applyDefaultAssistantEffect,
+  createAssistantEffect,
   loadHomeAssistantsTriggerEffect,
   navigateToChatEffect,
   pollDocumentStatusEffect,
@@ -29,6 +30,7 @@ import {
   refreshDocumentAccessEffect,
   sendChatQuestionEffect,
   submitFeedbackEffect,
+  updateAssistantEffect,
   uploadDocumentEffect
 } from "./nexus.effects";
 
@@ -443,5 +445,69 @@ describe("home assistants effects (CT-128, SPEC-016)", () => {
     actions.next(nexusActions.saveHomeAssistantsSuccess({ homeAssistants: home }));
     expect(active).toEqual([nexusActions.applyDefaultAssistant({ assistantId: "a2" })]);
     expect(open).toEqual([]);
+  });
+});
+
+describe("updateAssistantEffect (CT-136, SPEC-017)", () => {
+  const input = { name: "Novo", description: null, initial_prompt: "p" };
+  const saved = {
+    id: "a1",
+    name: "Novo",
+    description: null,
+    initial_prompt: "p",
+    created_at: "2026-10-29T00:00:00Z",
+    groups: ["juridico"]
+  };
+
+  it("envia o PUT e devolve o assistente gravado", () => {
+    const actions = new Subject<unknown>();
+    const update = vi.fn().mockReturnValue(of(saved));
+    const received = collect(updateAssistantEffect(actionsOf(actions), api({ updateAssistant: update })));
+    actions.next(nexusActions.updateAssistant({ assistantId: "a1", input }));
+    expect(update).toHaveBeenCalledWith("a1", input);
+    expect(received).toEqual([nexusActions.updateAssistantSuccess({ assistant: saved })]);
+  });
+
+  it("traduz o code do 422 para portugues", () => {
+    const actions = new Subject<unknown>();
+    const update = vi.fn().mockReturnValue(
+      throwError(() => ({
+        status: 422,
+        error: { detail: { code: "assistant_prompt_too_long", message: "too long" }, code: "assistant_prompt_too_long" }
+      }))
+    );
+    const received = collect(updateAssistantEffect(actionsOf(actions), api({ updateAssistant: update })));
+    actions.next(nexusActions.updateAssistant({ assistantId: "a1", input }));
+    expect(received[0]).toEqual(
+      nexusActions.updateAssistantFailure({ error: "O prompt pode ter até 4000 caracteres." })
+    );
+  });
+});
+
+describe("createAssistantEffect (CT-136, SPEC-017 item 4)", () => {
+  it("mostra o erro da RN-51 em portugues na criacao", () => {
+    const actions = new Subject<unknown>();
+    const create = vi.fn().mockReturnValue(
+      throwError(() => ({
+        status: 422,
+        error: {
+          detail: { code: "assistant_name_required", message: "assistant name is required." },
+          code: "assistant_name_required"
+        }
+      }))
+    );
+    const received = collect(createAssistantEffect(actionsOf(actions), api({ createAssistant: create })));
+    actions.next(
+      nexusActions.createAssistant({
+        name: "   ",
+        description: null,
+        initialPrompt: null,
+        documentFiles: [],
+        documentMetadata: {}
+      })
+    );
+    expect(received).toEqual([
+      nexusActions.createAssistantFailure({ error: "Informe o nome do assistente." })
+    ]);
   });
 });

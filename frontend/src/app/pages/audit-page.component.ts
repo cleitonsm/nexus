@@ -17,6 +17,7 @@ const ACTION_LABELS: Record<string, string> = {
   "access.denied": "Acesso negado",
   "chat.question": "Pergunta",
   "assistant.created": "Assistente criado",
+  "assistant.updated": "Assistente alterado",
   "assistant.deleted": "Assistente excluído",
   "assistant.groups_changed": "Grupos do assistente alterados",
   "assistant.reindex_started": "Reindexação iniciada",

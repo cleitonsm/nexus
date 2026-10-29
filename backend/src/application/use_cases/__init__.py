@@ -19,6 +19,7 @@ from .compare_evaluation_reports import (
     configuration_differences,
 )
 from .create_assistant import CreateAssistantInput, CreateAssistantUseCase
+from .update_assistant import UpdateAssistantInput, UpdateAssistantUseCase
 from .calibrate_relevance import (
     DEFAULT_THRESHOLDS,
     CalibrateRelevanceInput,
@@ -232,6 +233,8 @@ __all__ = [
     "CreateAssistantUseCase",
     "DeleteAssistantInput",
     "DeleteAssistantUseCase",
+    "UpdateAssistantInput",
+    "UpdateAssistantUseCase",
     "DeleteConversationUseCase",
     "DeleteDocumentUseCase",
     "DescribeCurrentUserUseCase",

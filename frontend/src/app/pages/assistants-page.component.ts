@@ -13,7 +13,9 @@ import {
   statusLabel
 } from "../shared/documents/document-lifecycle";
 import { canStartReindex, indexNotices } from "../shared/documents/index-status";
+import { canEditAssistantProfile } from "../shared/assistants/assistant-profile";
 import { AssistantLlmSettingsComponent } from "../features/assistants/assistant-llm-settings.component";
+import { AssistantProfileSettingsComponent } from "../features/assistants/assistant-profile-settings.component";
 import { AssistantRetrievalSettingsComponent } from "../features/assistants/assistant-retrieval-settings.component";
 import { GroupPickerComponent } from "../shared/groups/group-picker.component";
 import { DocumentAccess, DocumentStatus } from "../shared/models/nexus.models";
@@ -45,6 +47,7 @@ import {
     CommonModule,
     GroupPickerComponent,
     AssistantLlmSettingsComponent,
+    AssistantProfileSettingsComponent,
     AssistantRetrievalSettingsComponent
   ],
   templateUrl: "./assistants-page.component.html",
@@ -75,6 +78,10 @@ export class AssistantsPageComponent {
     () => this.assistants().find((assistant) => assistant.id === this.activeAssistantId()) ?? null
   );
   protected readonly assistantGroups = computed(() => this.activeAssistant()?.groups ?? []);
+  /** SPEC-017 (D1, D2): card "Dados do assistente" para admin e curador dele. */
+  protected readonly canEditProfile = computed(() =>
+    canEditAssistantProfile(this.menu(), this.activeAssistant())
+  );
 
   /** Grupos aplicados aos proximos arquivos enviados (D8). */
   protected readonly uploadGroups = signal("");

@@ -79,7 +79,7 @@ Regras do MVP revisadas por esta evolução:
 | ID    | Regra |
 |-------|-------|
 | RN-20 | Nenhuma funcionalidade é acessível sem autenticação pelo Keycloak; não existe cadastro local de usuários nem de senhas no Nexus. |
-| RN-21 | Papéis: o administrador gerencia assistentes, permissões e a configuração do LLM; o curador gerencia documentos e o conjunto de referência dos assistentes a que tem acesso; o usuário conversa com os assistentes a que tem acesso. |
+| RN-21 | Papéis: o administrador gerencia assistentes, permissões e a configuração do LLM; o curador gerencia documentos e o conjunto de referência dos assistentes a que tem acesso e, desde a SPEC-017 (D1), altera o nome, a descrição e o prompt inicial desses assistentes (criar, excluir e vincular grupos continua só com o administrador); o usuário conversa com os assistentes a que tem acesso. |
 | RN-22 | Um assistente sem grupo vinculado é visível apenas a administradores (negação por padrão). |
 | RN-23 | Um documento restrito só pode compor o contexto de usuários pertencentes aos grupos autorizados; a restrição de documento nunca amplia o acesso além do definido para o assistente. |
 | RN-24 | O conteúdo de uma conversa é privado de quem a criou; administradores consultam apenas os registros de auditoria. |

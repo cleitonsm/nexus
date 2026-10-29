@@ -34,6 +34,7 @@ from .entities import (
 )
 from .value_objects import (
     AssistantId,
+    AssistantName,
     CollectionName,
     ConversationId,
     DocumentId,
@@ -57,6 +58,18 @@ class AssistantRepository(Protocol):
     def save(self, assistant: Assistant) -> Assistant:
         """Cria ou altera nome, descricao e prompt; credencial, modelo e perfil
         so entram na criacao (os metodos abaixo os alteram, sem atualizacao perdida)."""
+        ...
+
+    def update_profile(
+        self,
+        assistant_id: AssistantId,
+        *,
+        name: AssistantName,
+        description: str | None,
+        initial_prompt: str | None,
+    ) -> Assistant | None:
+        """SPEC-017 (RN-54): grava so nome, descricao e prompt; ``None`` se o
+        assistente nao existe (nunca o recria)."""
         ...
 
     def update_llm_choice(

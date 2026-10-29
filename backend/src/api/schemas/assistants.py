@@ -5,10 +5,23 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+# SPEC-017: teto contra corpos enormes, acima dos limites do dominio (RN-51),
+# para que o 422 traga o ``code`` da regra e nao o erro generico do Pydantic.
+_BODY_CEILING = 20_000
+
+
 class CreateAssistantRequest(BaseModel):
     name: str = Field(min_length=1, max_length=80)
-    description: str | None = None
-    initial_prompt: str | None = None
+    description: str | None = Field(default=None, max_length=_BODY_CEILING)
+    initial_prompt: str | None = Field(default=None, max_length=_BODY_CEILING)
+
+
+class UpdateAssistantRequest(BaseModel):
+    """SPEC-017: substitui os tres campos (PUT)."""
+
+    name: str = Field(max_length=_BODY_CEILING)
+    description: str | None = Field(default=None, max_length=_BODY_CEILING)
+    initial_prompt: str | None = Field(default=None, max_length=_BODY_CEILING)
 
 
 class InferAssistantRequest(BaseModel):

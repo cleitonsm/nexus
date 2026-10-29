@@ -70,3 +70,10 @@ flowchart LR
   (limite, padrão automático, contador, cartões efetivos) ficam em `shared/home`. A fatia
   `nexus` guarda `homeAssistants` e o estado do modal; a action `applyDefaultAssistant` torna o
   padrão ativo ao carregar e em "Nova conversa", sem passar pela navegação para o chat.
+- **Edição do assistente (SPEC-017)**: o card "Dados do assistente"
+  (`features/assistants/assistant-profile-settings.component.ts`) fica no topo da página de
+  assistentes, para o administrador e o curador do assistente; ele só apresenta e despacha
+  `updateAssistant`. As regras (limites 80/500/4000, campo vazio vira `null`, aviso de nome
+  repetido, visibilidade do card, mensagens por `code`) ficam em `shared/assistants`. O
+  `NexusApiService.updateAssistant` chama `PUT /assistants/{id}`; o modal de criação usa os mesmos
+  limites e mensagens.

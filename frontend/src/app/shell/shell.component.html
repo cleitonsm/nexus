@@ -335,6 +335,7 @@
         <input
           class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
           formControlName="name"
+          maxlength="80"
           placeholder="Ex: Jurídico"
         />
       </label>
@@ -344,6 +345,7 @@
           class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
           rows="3"
           formControlName="description"
+          maxlength="500"
           placeholder="Contexto de uso (opcional)"
         ></textarea>
       </label>
@@ -353,6 +355,7 @@
           class="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none focus:border-indigo-400"
           rows="4"
           formControlName="initialPrompt"
+          maxlength="4000"
           placeholder="Ex: Aja como um especialista em questões jurídicas e use a documentação RAG como fonte de verdade."
         ></textarea>
       </label>

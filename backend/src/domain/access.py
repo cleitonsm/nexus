@@ -110,6 +110,15 @@ class AccessPolicy:
         return user.is_curator and bool(user.groups & assistant_groups)
 
     @staticmethod
+    def can_edit_assistant(
+        user: AuthenticatedUser,
+        assistant_groups: frozenset[str],
+    ) -> bool:
+        """SPEC-017 (D1, RN-52): administrador ou curador de um dos grupos do
+        assistente; assistente sem grupo e so do administrador."""
+        return AccessPolicy.can_manage_documents(user, assistant_groups)
+
+    @staticmethod
     def can_configure_llm(user: AuthenticatedUser) -> bool:
         return user.is_admin
 

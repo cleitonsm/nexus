@@ -21,6 +21,7 @@ from src.api.schemas import (
     GroupsResponse,
     InferAssistantRequest,
     InferAssistantResponse,
+    UpdateAssistantRequest,
 )
 from src.application.dto import AssistantDTO
 from src.application.services import AccessControl
@@ -37,9 +38,12 @@ from src.application.use_cases import (
     ListConversationsUseCase,
     SetAssistantGroupsInput,
     SetAssistantGroupsUseCase,
+    UpdateAssistantInput,
+    UpdateAssistantUseCase,
 )
 from src.domain import (
     AssistantId,
+    AssistantProfileValidationError,
     AuthenticatedUser,
     DocumentFileStorage,
     DomainValidationError,
@@ -91,6 +95,8 @@ def create_assistant(
                 initial_prompt=payload.initial_prompt,
             )
         )
+    except AssistantProfileValidationError:
+        raise  # SPEC-017: 422 com o ``code`` da regra (api/errors.py).
     except DomainValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -122,8 +128,9 @@ def infer_assistant(
     # SPEC-013: credencial padrao (sem assistente escolhido ainda).
     llm_gateway: LLMGateway = Depends(get_default_llm_gateway),
 ) -> InferAssistantResponse:
-    # So concorrem os assistentes que o usuario pode usar (RF-42).
-    assistants = ListAssistantsUseCase(repository, access_control).execute(user)
+    # So concorrem os assistentes que o usuario pode usar (RF-42), com o prompt
+    # mesmo para quem nao o le na listagem (SPEC-017, D5).
+    assistants = ListAssistantsUseCase(repository, access_control).inference_catalog(user)
     result = InferAssistantUseCase(llm_gateway=llm_gateway).execute(
         InferAssistantInput(
             question=payload.question,
@@ -196,6 +203,47 @@ def delete_assistant(
             },
         ) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/{assistant_id}", response_model=AssistantResponse)
+def update_assistant(
+    assistant_id: str,
+    payload: UpdateAssistantRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    access_control: AccessControl = Depends(get_access_control),
+    repository: PostgresAssistantRepository = Depends(
+        get_assistant_repository
+    ),
+) -> AssistantResponse:
+    """SPEC-017: altera nome, descricao e prompt (RF-108).
+
+    403 para quem nao edita o assistente, exista ele ou nao (RN-52); 404 so
+    para quem pode editar; 422 com o ``code`` da RN-51.
+    """
+    use_case = UpdateAssistantUseCase(repository, access_control)
+    try:
+        updated = use_case.execute(
+            UpdateAssistantInput(
+                user=user,
+                assistant_id=assistant_id,
+                name=payload.name,
+                description=payload.description,
+                initial_prompt=payload.initial_prompt,
+            )
+        )
+    except AssistantProfileValidationError:
+        raise
+    except DomainValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except AssistantNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "assistant_not_found", "message": "assistant not found"},
+        ) from exc
+    return _assistant_response(updated)
 
 
 @router.put("/{assistant_id}/groups", response_model=GroupsResponse)

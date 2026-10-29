@@ -12,6 +12,7 @@ from .error_codes import error_body
 
 from src.domain import (
     AccessDeniedError,
+    AssistantProfileValidationError,
     ConcurrentChangeError,
     GroupDirectoryUnavailableError,
     HomeAssistantsValidationError,
@@ -104,6 +105,19 @@ def register_error_handlers(app: FastAPI) -> None:
         _: Request, exc: HomeAssistantsValidationError
     ) -> JSONResponse:
         """SPEC-016 (RN-47, RN-48): 422 com o ``code`` da regra."""
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=error_body(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                {"code": exc.code, "message": str(exc)},
+            ),
+        )
+
+    @app.exception_handler(AssistantProfileValidationError)
+    async def assistant_profile_invalid(
+        _: Request, exc: AssistantProfileValidationError
+    ) -> JSONResponse:
+        """SPEC-017 (RN-51): 422 com o ``code`` da regra, sem ecoar o texto."""
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=error_body(

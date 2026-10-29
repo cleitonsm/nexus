@@ -12,6 +12,7 @@ from .assistants import (
     CreateAssistantRequest,
     InferAssistantRequest,
     InferAssistantResponse,
+    UpdateAssistantRequest,
 )
 from .conversations import (
     AddMessageRequest,
@@ -57,6 +58,7 @@ __all__ = [
     "IndexStatusResponse",
     "InferAssistantRequest",
     "InferAssistantResponse",
+    "UpdateAssistantRequest",
     "MessageResponse",
     "ReindexJobResponse",
     "ReviewFeedbackRequest",

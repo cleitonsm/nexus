@@ -94,6 +94,34 @@ Pré-condição: `usuario.rh` com acesso a pelo menos cinco assistentes (vincule
     `usuario.rh`, confirme que ele sumiu do acesso rápido e que o próximo virou o padrão.
 45. A 360 px, confirme que os cartões e o modal cabem na tela sem rolagem horizontal.
 
+## SPEC-017 — Edição de nome, descrição e prompt do assistente (CT-138)
+
+Pré-condição: um assistente de teste com o grupo `rh`, documentos indexados e prompt preenchido, e
+outro sem grupo. Anote o prompt original para restaurá-lo no fim. Faça as capturas a 1280 px e a
+360 px.
+
+46. Como `admin.nexus`, abra "Documentos e permissões" com o assistente de teste ativo: o card
+    "Dados do assistente" aparece no topo, com os valores atuais e os contadores "n / 80", "n / 500"
+    e "n / 4000". "Salvar" e "Descartar" ficam desabilitados.
+47. Altere o nome e confirme que "Salvar" é habilitado. Clique em "Descartar": os valores voltam e os
+    botões são desabilitados de novo.
+48. Digite o nome de outro assistente existente: aparece o aviso de nome repetido, sem bloquear.
+49. Apague o prompt: aparece "Sem prompt, o assistente usa a instrução padrão do sistema." Cole um
+    texto com mais de 4000 caracteres: o contador fica vermelho e "Salvar" é desabilitado.
+50. Grave um nome e um prompt novos ("Responda em tópicos."). Sem recarregar, o nome novo aparece na
+    barra lateral, no título da página e, na tela inicial, no cartão do acesso rápido.
+51. Abra uma conversa já existente com o assistente e faça uma pergunta: a resposta segue o prompt
+    novo e ainda traz as citações `[n]`. As respostas anteriores não mudam.
+52. Em `/admin/audit`, confirme o evento "Assistente alterado" com os campos alterados, o nome antes e
+    depois, e o tamanho e o hash do prompt, sem o texto dele.
+53. Como `curadora.rh`, confirme o card no assistente de teste e a sua ausência no assistente sem
+    grupo; salve uma alteração da descrição e confirme o evento com a curadora como autora.
+54. Como `usuario.rh`, confirme que `/assistants` leva ao chat, que a escolha automática de assistente
+    continua funcionando e que a lista de assistentes (`GET /api/assistants`, pelas ferramentas do
+    navegador) traz `initial_prompt` nulo.
+55. Navegue pelo card só com o teclado (Tab até os campos e os botões). A 360 px, confirme que o card
+    cabe na tela sem rolagem horizontal. Restaure o prompt original.
+
 ## Resultado esperado
 
 - Respostas fundamentadas exibem fontes; perguntas fora do escopo resultam em fallback.
@@ -102,3 +130,6 @@ Pré-condição: `usuario.rh` com acesso a pelo menos cinco assistentes (vincule
 - Cada resposta é rastreável e seu custo estimado é consultável.
 - Chaves, tokens e conteúdo integral de documentos não aparecem em logs nem em rastreamentos.
 - Cada usuário vê na tela inicial o próprio acesso rápido, com o padrão sempre marcado (SPEC-016).
+- Administrador e curador do assistente alteram nome, descrição e prompt sem perder grupos,
+  documentos nem índice; o prompt novo vale na próxima pergunta e não aparece para o usuário comum
+  (SPEC-017).

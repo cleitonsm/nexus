@@ -181,6 +181,30 @@ class AccessControl:
             self._deny(user, attempted, AuditResource.ASSISTANT, assistant_id.value)
         return groups
 
+    def can_edit_assistant(
+        self,
+        user: AuthenticatedUser,
+        assistant_groups: frozenset[str],
+    ) -> bool:
+        """SPEC-017 (D1): quem pode editar nome, descricao e prompt."""
+        return AccessPolicy.can_edit_assistant(user, assistant_groups)
+
+    def require_assistant_edit(
+        self,
+        user: AuthenticatedUser,
+        assistant_id: AssistantId,
+        attempted: AuditAction | str,
+    ) -> frozenset[str]:
+        """SPEC-017 (RN-52): nega e audita quem nao edita o assistente.
+
+        Assistente inexistente nao tem grupo: so o administrador passa daqui,
+        e os demais recebem 403 sem saber se ele existe (fix-14).
+        """
+        groups = self._permissions.get_assistant_groups(assistant_id)
+        if not AccessPolicy.can_edit_assistant(user, groups):
+            self._deny(user, attempted, AuditResource.ASSISTANT, assistant_id.value)
+        return groups
+
     def require_document_management(
         self,
         user: AuthenticatedUser,

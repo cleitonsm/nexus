@@ -21,12 +21,15 @@ class AssistantDTO:
         cls,
         assistant: Assistant,
         groups: frozenset[str] = frozenset(),
+        *,
+        reveal_prompt: bool = True,
     ) -> "AssistantDTO":
+        """``reveal_prompt`` falso devolve o prompt como ``None`` (SPEC-017, D5)."""
         return cls(
             id=assistant.id.value,
             name=assistant.name.value,
             description=assistant.description,
-            initial_prompt=assistant.initial_prompt,
+            initial_prompt=assistant.initial_prompt if reveal_prompt else None,
             created_at=assistant.created_at,
             groups=tuple(sorted(groups)),
         )

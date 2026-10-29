@@ -25,6 +25,20 @@ class ListAssistantsUseCase:
                 groups
                 if self._access.can_manage_documents(user, groups)
                 else frozenset(),
+                # SPEC-017 (D5): o prompt so vai para quem pode edita-lo.
+                reveal_prompt=self._access.can_edit_assistant(user, groups),
             )
             for assistant, groups in visible
+        ]
+
+    def inference_catalog(self, user: AuthenticatedUser) -> list[AssistantDTO]:
+        """Candidatos da escolha automatica (RF-42), com o prompt de cada um.
+
+        Uso interno: o catalogo vai so ao LLM, nunca na resposta HTTP. A D5 da
+        SPEC-017 esconde o prompt da listagem, nao da inferencia.
+        """
+        visible = self._access.visible_assistants(user, self._repository.list_all())
+        return [
+            AssistantDTO.from_entity(assistant, reveal_prompt=True)
+            for assistant, _groups in visible
         ]
