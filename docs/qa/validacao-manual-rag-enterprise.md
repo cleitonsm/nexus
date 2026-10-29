@@ -76,6 +76,24 @@ existem.
 36. Indexe um documento com uma instrução maliciosa e confirme que o assistente não a segue.
 37. Execute o backup, recrie o ambiente do zero, execute a restauração e repita os passos 7 e 11.
 
+## SPEC-016 — Acesso rápido a assistentes na tela inicial (CT-130)
+
+Pré-condição: `usuario.rh` com acesso a pelo menos cinco assistentes (vincule o grupo `rh` como
+`admin.nexus`) e sem acesso rápido gravado. Faça as capturas a 1280 px e a 360 px.
+
+38. Entre como `usuario.rh` e confirme quatro cartões na tela inicial, o primeiro marcado (anel e ✓)
+    e com o selo "Padrão".
+39. Clique em "Personalizar acesso rápido": o contador mostra "4 de 4" e o quinto assistente fica
+    desabilitado. Navegue pelo modal só com o teclado (Tab, espaço, Esc).
+40. Desmarque dois, marque o quinto, escolha-o como padrão e salve. Confirme o padrão em primeiro,
+    marcado e com o selo, e os outros na ordem em que foram marcados.
+41. Recarregue a página e entre em outro navegador: a escolha e o padrão marcado se mantêm.
+42. Selecione outro cartão e clique em "Nova conversa": o padrão volta a ser o assistente ativo.
+43. Entre como `usuario.financeiro` e confirme que ele não vê a escolha de `usuario.rh`.
+44. Como `admin.nexus`, retire o grupo `rh` do assistente padrão de `usuario.rh`; como
+    `usuario.rh`, confirme que ele sumiu do acesso rápido e que o próximo virou o padrão.
+45. A 360 px, confirme que os cartões e o modal cabem na tela sem rolagem horizontal.
+
 ## Resultado esperado
 
 - Respostas fundamentadas exibem fontes; perguntas fora do escopo resultam em fallback.
@@ -83,3 +101,4 @@ existem.
 - Documentos são processados em segundo plano e podem ser excluídos e substituídos.
 - Cada resposta é rastreável e seu custo estimado é consultável.
 - Chaves, tokens e conteúdo integral de documentos não aparecem em logs nem em rastreamentos.
+- Cada usuário vê na tela inicial o próprio acesso rápido, com o padrão sempre marcado (SPEC-016).

@@ -64,12 +64,15 @@ flowchart LR
     Runtime --> CredPort["Port de Credenciais de LLM + SecretCipher"]
     Runtime --> Profile["Domain RetrievalProfile e LLMCredential"]
     Runtime --> LlmPort
+    UseCases --> HomeRules["Domain HomeAssistantSelection (acesso rapido)"]
+    UseCases --> HomePort["Port de Preferencias da Tela Inicial"]
 
     TokenPort --> KcAdapter["Keycloak Token Verifier"]
     RepoPort --> PgAdapter["PostgreSQL Adapter"]
     QueuePort --> PgQueue["Fila em PostgreSQL"]
     LimitPort --> PgAdapter
     CredPort --> PgAdapter
+    HomePort --> PgAdapter
     VectorPort --> QdrantAdapter["Qdrant Adapter"]
     EmbPort --> EmbAdapter["Sentence Transformer Adapter"]
     SparsePort --> Bm25Adapter["BM25 Adapter"]
@@ -93,6 +96,13 @@ flowchart LR
   vazio segue o ambiente) e monta o gateway de LLM daquela credencial. O chat, a avaliação e a
   calibração usam o mesmo caminho. A chave só é decifrada em memória, pela porta `SecretCipher`.
   O reranker e os filtros `user_groups`/`active` não são configuráveis.
+- **Acesso rápido da tela inicial (SPEC-016).** `GET`/`PUT /me/home-assistants` chamam
+  `GetHomeAssistantsUseCase` e `SetHomeAssistantsUseCase`. As regras (até 4 assistentes, um
+  padrão entre eles, filtro pelos assistentes visíveis agora) ficam em
+  `domain/home_assistants.py`; a visibilidade vem do `AccessControl`, como na listagem de
+  assistentes. A porta `HomeAssistantPreferenceRepository` é implementada pelo
+  `PostgresHomeAssistantPreferenceRepository`, sobre a tabela `user_home_assistants` (migração
+  `0012`). O dono é sempre o usuário do token; a preferência não gera auditoria (RN-50).
 
 - As regras de acesso ficam no domínio (`AccessPolicy`); as rotas apenas obtêm o usuário autenticado.
 - O worker é um segundo ponto de entrada do mesmo código: invoca casos de uso de aplicação

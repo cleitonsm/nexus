@@ -1,7 +1,7 @@
 # Plano de Implementação — SPEC-016 Acesso rápido a assistentes na tela inicial
 
 **Spec**: [SPEC-20261028-016](SPEC-016-acesso-rapido-a-assistentes-na-tela-inicial.md) (Aprovada em 2026-10-28)
-**Status do plano**: Concluído em 2026-10-28 — P1 a P5 entregues; funcionamento confirmado pelo autor
+**Status do plano**: Concluído em 2026-10-29 — P1 a P7 entregues; CT-124 a CT-130 aprovados
 **Data**: 2026-10-28
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
@@ -15,7 +15,8 @@
 | P3 Aplicação | Entregue: `manage_home_assistants.py` (`Get`/`SetHomeAssistantsUseCase`), `HomeAssistantsDTO`; log `home_assistants.saved` sem auditoria (RN-50) | CT-125 `test_home_assistants_use_cases` (10) |
 | P4 API | Entregue: `GET`/`PUT /me/home-assistants`, 422 com o `code` da regra | CT-127 `test_home_assistants_api` (8) |
 | P5 Frontend | Entregue: regras em `shared/home/home-assistants.ts`, modal `features/home/home-assistants-dialog.component.ts`, slice no store `nexus` (`applyDefaultAssistant` sem navegação), cartões com selo "Padrão", "Nova conversa" volta ao padrão | CT-128 (Vitest); confirmação do autor no navegador |
-| P6/P7 | Funcionamento confirmado pelo autor em 2026-10-28; registro dos CT-124 a CT-130 na estratégia de testes e E2E CT-129 ficam para a próxima rodada | Autor |
+| P6 Documentação | Entregue em 2026-10-29: CT-124 a CT-130 na estratégia de testes, `frontend/e2e/README.md`, skill `desenvolvedor-nexus` (migração `0012` e rota `/me/home-assistants`), C4 e páginas de arquitetura do backend e do frontend, tabela de rotas da SPEC-004 e passos 38 a 45 do roteiro manual (CT-130) | Revisão do autor |
+| P7 Validação | Funcionamento confirmado pelo autor em 2026-10-28. E2E CT-129 escrito em `frontend/e2e/home-assistants.spec.ts` (2026-10-29); CT-126 aprovado em 2026-10-29 no PostgreSQL 16 (6 testes; 24 com a regressão de migrações, nenhum pulado); CT-129 aprovado em 2026-10-29 na pilha local (Playwright 4/4); CT-130 aprovado no Chrome (passos 38 a 43 e 45; quatro cartões, limite e passo 44 cobertos pelo CT-129 e pelo CT-127) | PostgreSQL 16 / pilha local |
 
 ## 1. Ordem de execução
 

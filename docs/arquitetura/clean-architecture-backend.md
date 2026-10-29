@@ -119,6 +119,19 @@ Além da API HTTP, há pontos de entrada que invocam diretamente a camada de apl
 **comando de avaliação**, já existente em `src/cli`, e o **worker de ingestão**, previsto. Nenhum deles contém regra de
 negócio.
 
+### Acesso rápido da tela inicial (SPEC-016, implementado)
+
+- **Domain**: `HomeAssistantSelection` (RN-47), `EffectiveHomeAssistants`, a função
+  `effective_home_assistants` (RN-49), o limite `MAX_HOME_ASSISTANTS` (4), o erro
+  `HomeAssistantsValidationError` com o `code` de cada regra e a porta
+  `HomeAssistantPreferenceRepository`.
+- **Application**: `GetHomeAssistantsUseCase` e `SetHomeAssistantsUseCase`, com
+  `HomeAssistantsDTO`; consultam a visibilidade pelo `AccessControl`.
+- **Infrastructure**: `PostgresHomeAssistantPreferenceRepository` e o modelo
+  `UserHomeAssistantModel` (tabela `user_home_assistants`, migração `0012`).
+- **API**: `GET`/`PUT /me/home-assistants`; o erro de regra vira 422 `{detail, code}` em
+  `api/errors.py`.
+
 ### Regra de Dependência
 
 Permanece inalterada. O domínio não importa FastAPI, SQLAlchemy, Qdrant, LangGraph, bibliotecas de
