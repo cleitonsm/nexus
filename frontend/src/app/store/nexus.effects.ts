@@ -7,6 +7,7 @@ import {
   catchError,
   concat,
   defer,
+  exhaustMap,
   filter,
   map,
   mergeMap,
@@ -25,6 +26,7 @@ import {
   describeApiError,
   hasDocumentsInProgress
 } from "../shared/documents/document-lifecycle";
+import { describeProfileError } from "../shared/assistants/assistant-profile";
 import { describeChatError } from "../shared/chat/chat-stream";
 import { INDEX_POLL_INTERVAL_MS, isReindexRunning } from "../shared/documents/index-status";
 import { Conversation } from "../shared/models/nexus.models";
@@ -159,7 +161,25 @@ export const createAssistantEffect = createEffect(
             )
           ),
           catchError((error) =>
-            of(nexusActions.createAssistantFailure({ error: resolveError(error) }))
+            // SPEC-017: mesmos codigos da edicao (RN-51), em portugues.
+            of(nexusActions.createAssistantFailure({ error: describeProfileError(error) }))
+          )
+        )
+      )
+    ),
+  { functional: true }
+);
+
+/** SPEC-017: um envio por vez; o erro sai em portugues pelo ``code``. */
+export const updateAssistantEffect = createEffect(
+  (actions$ = inject(Actions), api = inject(NexusApiService)) =>
+    actions$.pipe(
+      ofType(nexusActions.updateAssistant),
+      exhaustMap(({ assistantId, input }) =>
+        api.updateAssistant(assistantId, input).pipe(
+          map((assistant) => nexusActions.updateAssistantSuccess({ assistant })),
+          catchError((error) =>
+            of(nexusActions.updateAssistantFailure({ error: describeProfileError(error) }))
           )
         )
       )
@@ -847,6 +867,7 @@ export const nexusEffects = {
   saveHomeAssistantsEffect,
   applyDefaultAssistantEffect,
   createAssistantEffect,
+  updateAssistantEffect,
   deleteAssistantEffect,
   selectCreatedAssistantEffect,
   selectAssistantEffect,

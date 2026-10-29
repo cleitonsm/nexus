@@ -8,11 +8,11 @@ from src.application.services import AccessControl
 from src.domain import (
     Assistant,
     AssistantId,
-    AssistantName,
     AssistantRepository,
     AuditAction,
     AuditResource,
     AuthenticatedUser,
+    build_assistant_profile,
 )
 
 
@@ -42,11 +42,15 @@ class CreateAssistantUseCase:
 
     def execute(self, data: CreateAssistantInput) -> AssistantDTO:
         self._access.require_admin(data.user, AuditAction.ASSISTANT_CREATED)
+        # SPEC-017 (RN-51): mesmos limites e normalizacao da edicao.
+        profile = build_assistant_profile(
+            data.name, data.description, data.initial_prompt
+        )
         assistant = Assistant(
             id=AssistantId(data.assistant_id or str(uuid4())),
-            name=AssistantName(data.name),
-            description=data.description,
-            initial_prompt=data.initial_prompt,
+            name=profile.name,
+            description=profile.description,
+            initial_prompt=profile.initial_prompt,
         )
         persisted = self._repository.save(assistant)
         self._access.audit(

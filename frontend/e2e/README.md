@@ -19,7 +19,7 @@ subindo, os primeiros testes estouram o tempo na página de login.
 
 Automatizado aqui: **E1** (login por papel, rotas conforme o papel, logout), a parte do **FE-04**
 que exige DOM real (sem script, `onerror` ou `javascript:` na resposta), a navegação da SPEC-010,
-o tema de login da SPEC-011 e o acesso rápido da SPEC-016. **E2 a E11** seguem os roteiros manuais em `docs/qa`, com captura de
+o tema de login da SPEC-011, o acesso rápido da SPEC-016 e a edição do assistente da SPEC-017. **E2 a E11** seguem os roteiros manuais em `docs/qa`, com captura de
 tela — o plano admite roteiro manual (V-D4b) para o que não foi automatizado.
 
 | Arquivo | Casos | Situação |
@@ -29,6 +29,7 @@ tela — o plano admite roteiro manual (V-D4b) para o que não foi automatizado.
 | `navigation.spec.ts` | CT-81 a CT-84 (SPEC-010) e o item "Chaves de LLM" (SPEC-013) | Aprovado em 2026-10-28 na pilha local |
 | `xss.spec.ts` | FE-04 | Aprovado em 2026-10-28 na pilha local |
 | `home-assistants.spec.ts` | CT-129 (SPEC-016) | Aprovado em 2026-10-29 na pilha local (4/4) |
+| `assistant-edit.spec.ts` | CT-137 (SPEC-017) | Aprovado em 2026-10-29 na pilha local (5/5) |
 
 Os seletores do Keycloak (`#username`, `#password`, `#kc-login`) vêm do tema `nexus` (SPEC-011,
 herda os ids do `keycloak.v2`) e o botão `Sair` (atributo `title`) de `shell.component.html`.

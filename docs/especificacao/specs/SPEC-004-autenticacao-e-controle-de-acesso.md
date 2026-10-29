@@ -176,6 +176,7 @@ exibidas a usuários comuns.
 | Todas as existentes | Conforme RN-21 | Passam a exigir token |
 | `GET /me` | Qualquer autenticado | Identidade, papéis e grupos do usuário |
 | `GET`/`PUT /me/home-assistants` | Qualquer autenticado | Acesso rápido da tela inicial do próprio usuário (SPEC-016) |
+| `PUT /assistants/{id}` | Administrador, curador do assistente | Altera nome, descrição e prompt inicial (SPEC-017, D1); quem não edita recebe 403, exista o assistente ou não |
 | `PUT /assistants/{id}/groups` | Administrador | Define os grupos do assistente |
 | `PUT /documents/{id}/groups` | Curador com acesso, administrador | Define a restrição do documento |
 | `GET /admin/audit-events` | Administrador | Consulta a auditoria, com filtros |

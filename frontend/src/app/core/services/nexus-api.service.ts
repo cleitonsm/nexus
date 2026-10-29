@@ -2,6 +2,8 @@ import { Injectable } from "@angular/core";
 import { HttpClient, HttpEventType, HttpParams } from "@angular/common/http";
 import { Observable, filter, mergeMap } from "rxjs";
 
+import { AssistantProfileInput } from "../../shared/assistants/assistant-profile";
+
 import {
   Assistant,
   AssistantLlm,
@@ -143,6 +145,14 @@ export class NexusApiService {
 
   createAssistant(payload: CreateAssistantPayload): Observable<Assistant> {
     return this.http.post<Assistant>(`${this.baseUrl}/assistants`, payload);
+  }
+
+  /** SPEC-017: substitui nome, descricao e prompt. */
+  updateAssistant(assistantId: string, body: AssistantProfileInput): Observable<Assistant> {
+    return this.http.put<Assistant>(
+      `${this.baseUrl}/assistants/${encodeURIComponent(assistantId)}`,
+      body
+    );
   }
 
   deleteAssistant(assistantId: string): Observable<void> {

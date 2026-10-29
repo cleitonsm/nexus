@@ -96,6 +96,12 @@ flowchart LR
   vazio segue o ambiente) e monta o gateway de LLM daquela credencial. O chat, a avaliação e a
   calibração usam o mesmo caminho. A chave só é decifrada em memória, pela porta `SecretCipher`.
   O reranker e os filtros `user_groups`/`active` não são configuráveis.
+- **Edição do assistente (SPEC-017).** `PUT /assistants/{id}` chama `UpdateAssistantUseCase`.
+  Limites e normalização de nome, descrição e prompt ficam em `domain/assistant_profile.py`
+  (também usados na criação); `AccessControl.require_assistant_edit` libera o administrador e o
+  curador do assistente. A porta `AssistantRepository.update_profile` grava só as três colunas e
+  devolve `None` se o assistente sumiu, sem recriá-lo. O evento `assistant.updated` guarda os
+  campos alterados, o nome e o tamanho e SHA-256 da descrição e do prompt, nunca o texto.
 - **Acesso rápido da tela inicial (SPEC-016).** `GET`/`PUT /me/home-assistants` chamam
   `GetHomeAssistantsUseCase` e `SetHomeAssistantsUseCase`. As regras (até 4 assistentes, um
   padrão entre eles, filtro pelos assistentes visíveis agora) ficam em

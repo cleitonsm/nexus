@@ -15,6 +15,8 @@ class AuditAction(StrEnum):
     CHAT_QUESTION = "chat.question"
     ASSISTANT_CREATED = "assistant.created"
     ASSISTANT_DELETED = "assistant.deleted"
+    # SPEC-017: nome, descricao ou prompt alterados (RN-53).
+    ASSISTANT_UPDATED = "assistant.updated"
     ASSISTANT_GROUPS_CHANGED = "assistant.groups_changed"
     ASSISTANT_REINDEX_STARTED = "assistant.reindex_started"
     DOCUMENT_UPLOADED = "document.uploaded"

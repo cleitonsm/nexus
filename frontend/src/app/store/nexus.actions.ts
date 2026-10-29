@@ -17,6 +17,7 @@ import {
   UsageLimits,
   UsageReport
 } from "../shared/models/nexus.models";
+import { AssistantProfileInput } from "../shared/assistants/assistant-profile";
 
 export const nexusActions = createActionGroup({
   source: "Nexus",
@@ -37,6 +38,10 @@ export const nexusActions = createActionGroup({
     "Create Assistant Failure": props<{ error: string }>(),
     "Open Create Assistant Modal": emptyProps(),
     "Close Create Assistant Modal": emptyProps(),
+    /** SPEC-017: nome, descricao e prompt. */
+    "Update Assistant": props<{ assistantId: string; input: AssistantProfileInput }>(),
+    "Update Assistant Success": props<{ assistant: Assistant }>(),
+    "Update Assistant Failure": props<{ error: string }>(),
     "Delete Assistant": props<{ assistantId: string }>(),
     "Delete Assistant Success": props<{ assistantId: string }>(),
     "Delete Assistant Failure": props<{ error: string }>(),

@@ -132,6 +132,22 @@ negócio.
 - **API**: `GET`/`PUT /me/home-assistants`; o erro de regra vira 422 `{detail, code}` em
   `api/errors.py`.
 
+### Edição do assistente (SPEC-017, implementado)
+
+- **Domain**: `domain/assistant_profile.py` com os limites (80, 500 e 4000), a normalização
+  (`normalize_optional_text`), `build_assistant_profile` (erro
+  `AssistantProfileValidationError` com o `code` de cada regra) e `assistant_profile_changes`;
+  `AccessPolicy.can_edit_assistant` (administrador ou curador de um grupo do assistente);
+  `AuditAction.ASSISTANT_UPDATED`; método `update_profile` na porta `AssistantRepository`. Os
+  limites não ficam na entidade, para que a leitura de dados antigos nunca falhe.
+- **Application**: `UpdateAssistantUseCase` e `AccessControl.require_assistant_edit`;
+  `AssistantDTO.from_entity(reveal_prompt=...)` esconde o prompt na listagem de quem não edita, e
+  `ListAssistantsUseCase.inference_catalog` mantém o prompt no catálogo interno da escolha
+  automática. A criação usa o mesmo `build_assistant_profile`.
+- **Infrastructure**: `PostgresAssistantRepository.update_profile` grava só as três colunas e
+  devolve `None` quando o assistente não existe, sem recriá-lo; sem migração.
+- **API**: `PUT /assistants/{id}`; o erro de regra vira 422 `{detail, code}` em `api/errors.py`.
+
 ### Regra de Dependência
 
 Permanece inalterada. O domínio não importa FastAPI, SQLAlchemy, Qdrant, LangGraph, bibliotecas de

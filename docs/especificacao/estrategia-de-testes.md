@@ -178,6 +178,14 @@ infraestrutura e poucos roteiros ponta a ponta.
 | CT-128 | Vitest | Regras do modal (limite, padrão automático, contador), cartões efetivos, reducer, seletor e effects (`applyDefaultAssistant` sem navegar; conversa aberta nunca trocada) | RF-104, RF-105, RF-107 |
 | CT-129 | E2E (Playwright) | Sem escolha: 4 cartões e o primeiro marcado; personalizar, salvar, recarregar e ver o padrão marcado; modal sem padrão não salva; "Nova conversa" volta ao padrão | RF-103 a RF-107 |
 | CT-130 | Manual (visual) | Cartões de 240 px, selo "Padrão", modal e contador a 360 px e 1280 px | RF-104, RF-107 |
+| CT-131 | Unitário | `build_assistant_profile` (limites 80/500/4000 com 0, máximo e máximo + 1; vazio → `None`; `code` de cada regra; mensagem sem o texto) e `assistant_profile_changes` | RN-51, D3, D4 |
+| CT-132 | Unitário | `UpdateAssistantUseCase`: admin e curador do assistente editam; usuário comum e curador de outro → negado e auditado; sem grupo → só admin; inexistente → 403/404; excluído no meio não é recriado; sem alteração não grava nem audita; evento com hash e tamanho, sem texto; prompt oculto na listagem a quem não edita | RF-108, RF-111, RN-52 a RN-54, D5, D6 |
+| CT-133 | Unitário | `build_answer_instruction` com prompt editado começa por ele e mantém formato e citação; prompt apagado → instrução padrão | RF-109, D4 |
+| CT-134 | Integração | `PUT /assistants/{id}`: 200 (admin e curador), 403 auditado, 404, 422 por `code` sem ecoar o texto, corpo malformado, campos vazios → `null`; grupos e LLM intactos; `GET /assistants` com prompt só para quem edita | RF-108, RF-111, RN-51 a RN-54 |
+| CT-135 | Integração (Docker) | `update_profile` no PostgreSQL 16: só as três colunas, perfil de recuperação preservado; inexistente → `None` sem linha nova | RN-54 |
+| CT-136 | Vitest | Regras puras (limites, normalização, diferença, nome repetido, quem vê o card, erro por `code`), reducer e effect de `updateAssistant` | RF-110, D1, D8 |
+| CT-137 | E2E (Playwright) | Editar nome e prompt, ver o nome novo na barra lateral sem recarregar, recarregar e conferir; usuário comum não vê o card | RF-108, RF-110 |
+| CT-138 | Manual (visual) | Card "Dados do assistente" a 360 px e 1280 px: contadores, aviso do prompt vazio, aviso de nome repetido e foco por teclado | RF-110 |
 
 ---
 
@@ -213,6 +221,9 @@ teste for pulado.
 
 | Casos | Onde rodou | Onde |
 |-------|------------|------|
+| SPEC-017: CT-134 (10 testes, inclusive a escolha automática com o prompt para o usuário comum) e CT-135 (2 testes no PostgreSQL 16, banco temporário com migrações `0001` a `0012`): 12 de integração, nenhum pulado | Container do backend na pilha local do autor, 2026-10-29 | `backend/tests/integration/test_assistant_update_api.py`, `test_assistant_profile_storage.py` |
+| SPEC-017: CT-137 no Playwright (5/5: admin edita nome e prompt e vê o nome novo sem recarregar e após recarregar; aviso do prompt vazio e bloqueio acima de 4000; curadora vê o card no assistente que cura e não no sem grupo dela; usuário comum não chega à tela) | Pilha local do autor, 2026-10-29 | `frontend/e2e/assistant-edit.spec.ts` |
+| SPEC-017: CT-131 a CT-133 (900 unitários na suíte, com o caso da escolha automática da revisão; 2 falhas só por arquivos fora da cópia: `scripts/validation` e dados de exemplo; `langgraph` substituído por executor mínimo porque a sandbox não tinha PyPI) e `ruff check --select F,E9` limpo; CT-136 com `npm test` (221 testes, 24 arquivos). CT-134 e CT-135 aprovados depois no container (linha acima) | Fora do Docker, 2026-10-29 | `backend/tests/unit/test_assistant_profile.py`, `test_update_assistant_use_case.py`, `frontend/src/app/shared/assistants/` |
 | SPEC-016: CT-124 e CT-125 (21 unitários), CT-127 (8 de integração, com dublês e sem banco) e CT-128 (`npm test`); funcionamento no navegador confirmado pelo autor | Fora do Docker, 2026-10-28 sobre `eed76ed` | `backend/tests/unit/test_home_assistants*.py`, `backend/tests/integration/test_home_assistants_api.py`, `frontend/src/app/shared/home/` |
 | SPEC-016: CT-126 (6 testes) e, como regressão, CT-49 `test_migrations`, CT-107 e CT-127: 24 de integração, nenhum pulado; migrações `0001` a `0012` aplicadas pelo Alembic real | PostgreSQL 16.15 local, fora do container, 2026-10-29 sobre `fbaf091` | `backend/tests/integration/test_home_assistants_storage.py` |
 | SPEC-016: CT-129 no Playwright (4/4: sem escolha, personalizar e recarregar, modal sem padrão, "Nova conversa" volta ao padrão) | Pilha local do autor, 2026-10-29 | `frontend/e2e/home-assistants.spec.ts` |

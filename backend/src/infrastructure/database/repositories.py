@@ -102,6 +102,24 @@ class PostgresAssistantRepository:
             # A credencial foi excluida entre a conferencia e a gravacao.
             raise ConcurrentChangeError("credential changed concurrently.") from exc
 
+    def update_profile(
+        self,
+        assistant_id: AssistantId,
+        *,
+        name: AssistantName,
+        description: str | None,
+        initial_prompt: str | None,
+    ) -> Assistant | None:
+        """SPEC-017 (RN-54): so as tres colunas; sem linha, ``None`` (nao recria)."""
+        return self._update_columns(
+            assistant_id,
+            {
+                "name": name.value,
+                "description": description,
+                "initial_prompt": initial_prompt,
+            },
+        )
+
     def update_retrieval_profile(
         self, assistant_id: AssistantId, profile: RetrievalProfile
     ) -> Assistant | None:

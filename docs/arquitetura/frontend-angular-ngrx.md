@@ -20,6 +20,9 @@ A arquitetura inicial deve ser previsível sem criar camadas excessivas para o M
 - `features/assistants`: tambem as secoes "Modelo de linguagem" e "Recuperacao" do assistente
   (SPEC-013).
 - `features/home` e `shared/home`: modal e regras do acesso rapido da tela inicial (SPEC-016).
+- `features/assistants/assistant-profile-settings.component.ts` e `shared/assistants`: card
+  "Dados do assistente" e regras puras de nome, descricao e prompt (limites, normalizacao,
+  diferenca, nome repetido, quem ve o card e erro por `code`) (SPEC-017).
 - `store`: estado global NgRx por dominio (chat, assistants, admin e carregamentos/erro).
 
 ## Estado Global (Evolução MVP)
@@ -32,6 +35,8 @@ A arquitetura inicial deve ser previsível sem criar camadas excessivas para o M
 - acesso rapido da tela inicial (`homeAssistants`: ids, padrao, limite e se o usuario ja
   personalizou) e estado do modal de personalizacao (SPEC-016); o padrao vira o assistente
   ativo por `applyDefaultAssistant`, sem navegacao
+- edicao do assistente (SPEC-017): `updateAssistant` com `exhaustMap`; o sucesso troca o item na
+  lista de assistentes, o que atualiza barra lateral, cartoes e modal pelos seletores existentes
 - documentos do assistente e estados de carregamento/erro
 
 ## Diretriz
