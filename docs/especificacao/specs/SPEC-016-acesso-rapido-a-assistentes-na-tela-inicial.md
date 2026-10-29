@@ -1,7 +1,7 @@
 # SPEC-016 — Acesso rápido a assistentes na tela inicial
 
 **ID**: SPEC-20261028-016
-**Status**: **Implementada** em 2026-10-28 — funcionamento confirmado pelo autor; CT-124, CT-125 e CT-127 aprovados (`unittest`). Histórico: **Aprovada** em 2026-10-28 — autor (Cleiton Medeiros) escolheu D1 = 4, D3, D5/D6 e D7 como recomendado; D2, D4 e D8 seguem a recomendação.
+**Status**: **Implementada e validada** em 2026-10-29 — CT-124 a CT-130 aprovados (unitários, integração no PostgreSQL 16, Vitest, Playwright 4/4 e roteiro visual no Chrome). Histórico: **Implementada** em 2026-10-28 (confirmação do autor); **Aprovada** em 2026-10-28 — autor (Cleiton Medeiros) escolheu D1 = 4, D3, D5/D6 e D7 como recomendado; D2, D4 e D8 seguem a recomendação.
 **Origem**: pedido do autor (2026-10-28): "permitir ao usuário escolher, dentre os assistentes
 cadastrados, quais ficam disponíveis na tela inicial como acesso rápido. A tela pode ter até N
 assistentes escolhidos, e o usuário deve marcar um deles como padrão, que sempre aparece marcado."
