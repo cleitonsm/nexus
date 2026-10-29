@@ -16,7 +16,7 @@
 | P4 API | Entregue: `GET`/`PUT /me/home-assistants`, 422 com o `code` da regra | CT-127 `test_home_assistants_api` (8) |
 | P5 Frontend | Entregue: regras em `shared/home/home-assistants.ts`, modal `features/home/home-assistants-dialog.component.ts`, slice no store `nexus` (`applyDefaultAssistant` sem navegação), cartões com selo "Padrão", "Nova conversa" volta ao padrão | CT-128 (Vitest); confirmação do autor no navegador |
 | P6 Documentação | Entregue em 2026-10-29: CT-124 a CT-130 na estratégia de testes, `frontend/e2e/README.md`, skill `desenvolvedor-nexus` (migração `0012` e rota `/me/home-assistants`), C4 e páginas de arquitetura do backend e do frontend, tabela de rotas da SPEC-004 e passos 38 a 45 do roteiro manual (CT-130) | Revisão do autor |
-| P7 Validação | Funcionamento confirmado pelo autor em 2026-10-28. E2E CT-129 escrito em `frontend/e2e/home-assistants.spec.ts` (2026-10-29); CT-126, CT-129 e CT-130 a executar na pilha local | Pilha local |
+| P7 Validação | Funcionamento confirmado pelo autor em 2026-10-28. E2E CT-129 escrito em `frontend/e2e/home-assistants.spec.ts` (2026-10-29); CT-126 aprovado em 2026-10-29 no PostgreSQL 16 (6 testes; 24 com a regressão de migrações, nenhum pulado); CT-129 e CT-130 a executar na pilha local | PostgreSQL 16 / pilha local |
 
 ## 1. Ordem de execução
 

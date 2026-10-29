@@ -214,6 +214,7 @@ teste for pulado.
 | Casos | Onde rodou | Onde |
 |-------|------------|------|
 | SPEC-016: CT-124 e CT-125 (21 unitários), CT-127 (8 de integração, com dublês e sem banco) e CT-128 (`npm test`); funcionamento no navegador confirmado pelo autor | Fora do Docker, 2026-10-28 sobre `eed76ed` | `backend/tests/unit/test_home_assistants*.py`, `backend/tests/integration/test_home_assistants_api.py`, `frontend/src/app/shared/home/` |
+| SPEC-016: CT-126 (6 testes) e, como regressão, CT-49 `test_migrations`, CT-107 e CT-127: 24 de integração, nenhum pulado; migrações `0001` a `0012` aplicadas pelo Alembic real | PostgreSQL 16.15 local, fora do container, 2026-10-29 sobre `fbaf091` | `backend/tests/integration/test_home_assistants_storage.py` |
 | SPEC-013: CT-99 a CT-106 (901 unitários), CT-107 a CT-109 (159 de integração, nenhum pulado), CT-110 (`npm test`), CT-56, CT-81 a CT-84 e FE-04 no Playwright (17/17), CT-111 nos três conjuntos sem regressão de recuperação. CT-112 adiado pelo autor | Docker, 2026-10-28 sobre `79227cb` | [RESUMO](../qa/relatorios/2026-10-28-spec-013/LEIAME.md) |
 | RNF-30 (cobertura de `domain` e `application`: 95%), CT-21, CT-32, CT-69 e FE-01 a FE-05 no Angular 20, FE-07 (E1 a E11, manual) | Campanha `validacao-final-rc9` (V2, V4 e V5), 2026-10-25 sobre `400ae33` | `docs/qa/relatorios/2026-10-24-rc9/` |
 | Todos os CT automatizados (V2: 705 unitários; V3: 146 de integração, nenhum pulado; CT-53, CT-54, CT-56), CT-13 e CT-22 (V6, 3 execuções com o Gemini), CT-47 e CT-48 (V8), RNF-01, 02, 03, 16, 17 e 18 (V7) | Campanha `validacao-final-rc8`, 2026-10-24 sobre `1bfc1fe` | [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md) |
@@ -237,7 +238,7 @@ teste for pulado.
 
 ### A executar
 
-- SPEC-016: CT-126 (`test_home_assistants_storage.py`, precisa do PostgreSQL do Compose), CT-129
+- SPEC-016: CT-129
   (`frontend/e2e/home-assistants.spec.ts`, precisa da pilha no ar) e CT-130 (passos 38 a 45 de
   [`validacao-manual-rag-enterprise.md`](../qa/validacao-manual-rag-enterprise.md)).
 
