@@ -64,3 +64,9 @@ flowchart LR
   seções "Modelo de linguagem" e "Recuperação" da página de assistentes usam a fatia
   `llmConfig` do store (actions, reducer, effects e selectors próprios); as regras de tela
   (faixas, conflitos 409, preços) ficam em funções puras em `shared/llm`.
+- **Acesso rápido da tela inicial (SPEC-016)**: a tela inicial mostra os assistentes escolhidos
+  pelo usuário, padrão primeiro e com o selo "Padrão". O modal "Personalizar acesso rápido"
+  (`features/home/home-assistants-dialog.component.ts`) só apresenta e emite a escolha; as regras
+  (limite, padrão automático, contador, cartões efetivos) ficam em `shared/home`. A fatia
+  `nexus` guarda `homeAssistants` e o estado do modal; a action `applyDefaultAssistant` torna o
+  padrão ativo ao carregar e em "Nova conversa", sem passar pela navegação para o chat.

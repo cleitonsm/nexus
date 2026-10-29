@@ -19,6 +19,7 @@ A arquitetura inicial deve ser previsível sem criar camadas excessivas para o M
 - `features/assistants`: administracao funcional de assistentes e documentos.
 - `features/assistants`: tambem as secoes "Modelo de linguagem" e "Recuperacao" do assistente
   (SPEC-013).
+- `features/home` e `shared/home`: modal e regras do acesso rapido da tela inicial (SPEC-016).
 - `store`: estado global NgRx por dominio (chat, assistants, admin e carregamentos/erro).
 
 ## Estado Global (Evolução MVP)
@@ -28,6 +29,9 @@ A arquitetura inicial deve ser previsível sem criar camadas excessivas para o M
 - conversa ativa e mensagens da conversa selecionada
 - credenciais de LLM, padrao, impacto de troca da padrao e configuracao de LLM e recuperacao
   por assistente (fatia `llmConfig`, SPEC-013; nenhuma chave volta da API, so `key_configured`)
+- acesso rapido da tela inicial (`homeAssistants`: ids, padrao, limite e se o usuario ja
+  personalizou) e estado do modal de personalizacao (SPEC-016); o padrao vira o assistente
+  ativo por `applyDefaultAssistant`, sem navegacao
 - documentos do assistente e estados de carregamento/erro
 
 ## Diretriz

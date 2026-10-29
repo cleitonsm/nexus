@@ -238,7 +238,8 @@ teste for pulado.
 ### A executar
 
 - SPEC-016: CT-126 (`test_home_assistants_storage.py`, precisa do PostgreSQL do Compose), CT-129
-  (`frontend/e2e/home-assistants.spec.ts`, precisa da pilha no ar) e CT-130 (roteiro visual).
+  (`frontend/e2e/home-assistants.spec.ts`, precisa da pilha no ar) e CT-130 (passos 38 a 45 de
+  [`validacao-manual-rag-enterprise.md`](../qa/validacao-manual-rag-enterprise.md)).
 
 Da campanha final, nenhum caso: ela terminou em 2026-10-25. FE-07 (E1 a E11) foi feito à mão pelo autor
 na V5 da `rc9`, sem capturas (PC-D13), e cobre também o FE-06 (V-D3); o Playwright continua fora do
