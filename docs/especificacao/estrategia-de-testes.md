@@ -171,6 +171,13 @@ infraestrutura e poucos roteiros ponta a ponta.
 | CT-110 | Vitest | Regras de tela (modelos, destino, conflito, rascunho da recuperação), reducer, seletores e effects do `llmConfig` | RF-92, RF-93 |
 | CT-111 | Avaliação | `nexus-docs`, `nexus-docs-ampliado` e `normativo-ficticio` sem configuração gravada: sem regressão; relatório registra `baseline_comparable` | Objetivo da SPEC-013 |
 | CT-112 | Manual | Duas credenciais reais (OpenAI e Gemini) em dois assistentes; troca da padrão com recuo; teste da credencial | SPEC-013 |
+| CT-124 | Unitário | `HomeAssistantSelection` (1 a 4, sem repetição, padrão entre os marcados, `code` de cada regra) e `effective_home_assistants` (filtro por visibilidade, ordem da D7, padrão perdido, D4) | RN-47, RN-49, D4, D8 |
+| CT-125 | Unitário | Casos de uso do acesso rápido: assistente sem acesso, inexistente ou id em branco → `assistant_not_available`; dono = usuário do token; sem auditoria; perda de grupo filtra sem apagar | RF-106, RN-48, RN-50 |
+| CT-126 | Integração (Docker) | Migração `0012` (sobe e desce), troca atômica da seleção, um padrão por usuário garantido pelo índice, cascata ao excluir o assistente | RF-106, D8 |
+| CT-127 | Integração | `GET`/`PUT /me/home-assistants`: D4, 422 com o `code` da regra, corpo malformado, isolamento entre usuários, perda de grupo, sem auditoria | RF-103, RF-106, RN-47, RN-48 |
+| CT-128 | Vitest | Regras do modal (limite, padrão automático, contador), cartões efetivos, reducer, seletor e effects (`applyDefaultAssistant` sem navegar; conversa aberta nunca trocada) | RF-104, RF-105, RF-107 |
+| CT-129 | E2E (Playwright) | Sem escolha: 4 cartões e o primeiro marcado; personalizar, salvar, recarregar e ver o padrão marcado; modal sem padrão não salva; "Nova conversa" volta ao padrão | RF-103 a RF-107 |
+| CT-130 | Manual (visual) | Cartões de 240 px, selo "Padrão", modal e contador a 360 px e 1280 px | RF-104, RF-107 |
 
 ---
 
@@ -206,6 +213,7 @@ teste for pulado.
 
 | Casos | Onde rodou | Onde |
 |-------|------------|------|
+| SPEC-016: CT-124 e CT-125 (21 unitários), CT-127 (8 de integração, com dublês e sem banco) e CT-128 (`npm test`); funcionamento no navegador confirmado pelo autor | Fora do Docker, 2026-10-28 sobre `eed76ed` | `backend/tests/unit/test_home_assistants*.py`, `backend/tests/integration/test_home_assistants_api.py`, `frontend/src/app/shared/home/` |
 | SPEC-013: CT-99 a CT-106 (901 unitários), CT-107 a CT-109 (159 de integração, nenhum pulado), CT-110 (`npm test`), CT-56, CT-81 a CT-84 e FE-04 no Playwright (17/17), CT-111 nos três conjuntos sem regressão de recuperação. CT-112 adiado pelo autor | Docker, 2026-10-28 sobre `79227cb` | [RESUMO](../qa/relatorios/2026-10-28-spec-013/LEIAME.md) |
 | RNF-30 (cobertura de `domain` e `application`: 95%), CT-21, CT-32, CT-69 e FE-01 a FE-05 no Angular 20, FE-07 (E1 a E11, manual) | Campanha `validacao-final-rc9` (V2, V4 e V5), 2026-10-25 sobre `400ae33` | `docs/qa/relatorios/2026-10-24-rc9/` |
 | Todos os CT automatizados (V2: 705 unitários; V3: 146 de integração, nenhum pulado; CT-53, CT-54, CT-56), CT-13 e CT-22 (V6, 3 execuções com o Gemini), CT-47 e CT-48 (V8), RNF-01, 02, 03, 16, 17 e 18 (V7) | Campanha `validacao-final-rc8`, 2026-10-24 sobre `1bfc1fe` | [RESUMO](../qa/relatorios/2026-10-24-rc8/RESUMO-validacao-final.md) |
@@ -229,7 +237,10 @@ teste for pulado.
 
 ### A executar
 
-Nenhum caso: a campanha final terminou em 2026-10-25. FE-07 (E1 a E11) foi feito à mão pelo autor
+- SPEC-016: CT-126 (`test_home_assistants_storage.py`, precisa do PostgreSQL do Compose), CT-129
+  (`frontend/e2e/home-assistants.spec.ts`, precisa da pilha no ar) e CT-130 (roteiro visual).
+
+Da campanha final, nenhum caso: ela terminou em 2026-10-25. FE-07 (E1 a E11) foi feito à mão pelo autor
 na V5 da `rc9`, sem capturas (PC-D13), e cobre também o FE-06 (V-D3); o Playwright continua fora do
 `package.json`.
 

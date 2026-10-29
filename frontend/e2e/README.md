@@ -18,8 +18,8 @@ simultâneos do mesmo usuário em arquivos diferentes são recusados como senha 
 subindo, os primeiros testes estouram o tempo na página de login.
 
 Automatizado aqui: **E1** (login por papel, rotas conforme o papel, logout), a parte do **FE-04**
-que exige DOM real (sem script, `onerror` ou `javascript:` na resposta), a navegação da SPEC-010
-e o tema de login da SPEC-011. **E2 a E11** seguem os roteiros manuais em `docs/qa`, com captura de
+que exige DOM real (sem script, `onerror` ou `javascript:` na resposta), a navegação da SPEC-010,
+o tema de login da SPEC-011 e o acesso rápido da SPEC-016. **E2 a E11** seguem os roteiros manuais em `docs/qa`, com captura de
 tela — o plano admite roteiro manual (V-D4b) para o que não foi automatizado.
 
 | Arquivo | Casos | Situação |
@@ -28,6 +28,7 @@ tela — o plano admite roteiro manual (V-D4b) para o que não foi automatizado.
 | `login-theme.spec.ts` | CT-87, CT-88, RNF-36 | Aprovado em 2026-10-26 na pilha local |
 | `navigation.spec.ts` | CT-81 a CT-84 (SPEC-010) e o item "Chaves de LLM" (SPEC-013) | Aprovado em 2026-10-28 na pilha local |
 | `xss.spec.ts` | FE-04 | Aprovado em 2026-10-28 na pilha local |
+| `home-assistants.spec.ts` | CT-129 (SPEC-016) | Escrito em 2026-10-29; a executar na pilha local |
 
 Os seletores do Keycloak (`#username`, `#password`, `#kc-login`) vêm do tema `nexus` (SPEC-011,
 herda os ids do `keycloak.v2`) e o botão `Sair` (atributo `title`) de `shell.component.html`.
