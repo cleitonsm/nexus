@@ -12,6 +12,7 @@ from uuid import uuid4
 from src.application.dto import MessageDTO
 from src.application.services import AccessControl, PersonalDocumentRemover
 from src.domain import (
+    SUMMARIZER_ASSISTANT_ID,
     AuthenticatedUser,
     ChatMessage,
     Conversation,
@@ -115,7 +116,10 @@ class DeleteConversationUseCase:
             data.user,
             ConversationId(data.conversation_id),
         )
-        if self._personal_documents is not None:
+        if (
+            self._personal_documents is not None
+            and conversation.assistant_id == SUMMARIZER_ASSISTANT_ID
+        ):
             # SPEC-018 (RF-120): o documento pessoal sai antes da conversa.
             self._personal_documents.remove_for_conversation(
                 conversation.id, actor=data.user

@@ -68,6 +68,10 @@ class SummaryDocumentNotFoundError(Exception):
     """A conversa nao tem documento pessoal (404)."""
 
 
+class UnsupportedDocumentFormatError(ValueError):
+    """Formato fora da lista da ingestao (415, D17)."""
+
+
 def summarizer_capabilities(max_file_bytes: int) -> SummarizerCapabilities:
     """D16 e D17: tamanho e formatos vem da ingestao; o resto, do dominio."""
     return SummarizerCapabilities(formats=SUPPORTED_DOCUMENT_FORMATS, max_bytes=max_file_bytes)
@@ -219,7 +223,7 @@ class UploadSummaryDocumentUseCase:
             source_name=data.source_name, content_type=data.content_type
         ) and self._indexer.supports(source_name=data.source_name, content_type=None)
         if not supported:
-            raise ValueError(
+            raise UnsupportedDocumentFormatError(
                 "unsupported file format. Supported formats: "
                 + ", ".join(SUPPORTED_DOCUMENT_FORMATS)
             )

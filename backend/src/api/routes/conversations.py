@@ -22,6 +22,8 @@ from src.api.dependencies import (
     get_current_user,
     get_document_repository,
     get_metrics,
+    get_personal_document_remover,
+    get_summarizer_chat,
     get_session,
     get_token_counter,
     get_tracer,
@@ -44,6 +46,8 @@ from src.application.services import (
     AccessControl,
     ContextRetriever,
     GroundedAnswerGenerator,
+    PersonalDocumentRemover,
+    SummarizerChat,
     UsageGovernance,
 )
 from src.application.use_cases import (
@@ -196,8 +200,10 @@ def delete_conversation(
     user: AuthenticatedUser = Depends(get_current_user),
     access_control: AccessControl = Depends(get_access_control),
     repository: PostgresConversationRepository = Depends(get_conversation_repository),
+    remover: PersonalDocumentRemover = Depends(get_personal_document_remover),
 ) -> Response:
-    use_case = DeleteConversationUseCase(repository, access_control)
+    # SPEC-018 (RF-120): o documento pessoal sai antes da conversa.
+    use_case = DeleteConversationUseCase(repository, access_control, personal_documents=remover)
     try:
         use_case.execute(
             ConversationRefInput(user=user, conversation_id=conversation_id)
@@ -268,6 +274,7 @@ def chat_with_assistant(
     usage_governance: UsageGovernance | None = Depends(get_usage_governance),
     tracer: Tracer = Depends(get_tracer),
     metrics: MetricsRecorder = Depends(get_metrics),
+    summarizer: SummarizerChat = Depends(get_summarizer_chat),
 ) -> ChatResponse:
     """Resposta completa de uma vez; mantida para testes e para a avaliacao."""
     use_case = ChatWithAssistantUseCase(
@@ -281,6 +288,7 @@ def chat_with_assistant(
         tracer=tracer,
         metrics=metrics,
         runtime_resolver=runtime_resolver,
+        summarizer=summarizer,
     )
     try:
         result = use_case.execute(_chat_input(user, conversation_id, payload))
@@ -313,6 +321,7 @@ def chat_with_assistant_stream(
     usage_governance: UsageGovernance | None = Depends(get_usage_governance),
     tracer: Tracer = Depends(get_tracer),
     metrics: MetricsRecorder = Depends(get_metrics),
+    summarizer: SummarizerChat = Depends(get_summarizer_chat),
 ) -> StreamingResponse:
     """RF-58: Server-Sent Events.
 
@@ -333,6 +342,7 @@ def chat_with_assistant_stream(
         tracer=tracer,
         metrics=metrics,
         runtime_resolver=runtime_resolver,
+        summarizer=summarizer,
     )
     try:
         events = _in_one_context(

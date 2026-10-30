@@ -22,6 +22,8 @@ from src.application.services import (
     RetrievalSettings,
     UsageGovernance,
     UsageSettings,
+    PersonalDocumentRemover,
+    SummarizerChat,
 )
 from src.domain import (
     Assistant,
@@ -64,6 +66,7 @@ from src.infrastructure.composition import (
     sparse_encoding_parameters,
 )
 from src.infrastructure.database import (
+    PostgresDocumentSummaryRepository,
     PostgresHomeAssistantPreferenceRepository,
     PostgresAssistantPermissionRepository,
     PostgresAssistantRepository,
@@ -411,3 +414,45 @@ def get_answer_generator() -> GroundedAnswerGenerator:
     """Base do chat sem assistente resolvido; com assistente, vale o
     ``get_assistant_runtime_resolver`` (SPEC-013)."""
     return GroundedAnswerGenerator(llm_gateway=UnconfiguredLLMGateway())
+
+
+
+# --- SPEC-018: resumidor de documentos ---------------------------------------
+
+
+def get_document_summary_repository(
+    session: Session = Depends(get_session),
+) -> PostgresDocumentSummaryRepository:
+    return PostgresDocumentSummaryRepository(session=session)
+
+
+def get_personal_document_remover(
+    documents: PostgresDocumentRepository = Depends(get_document_repository),
+    summaries: PostgresDocumentSummaryRepository = Depends(get_document_summary_repository),
+    vector_store: QdrantVectorStoreGateway = Depends(get_vector_store_gateway),
+    file_storage: DocumentFileStorage = Depends(get_file_storage),
+    access_control: AccessControl = Depends(get_access_control),
+) -> PersonalDocumentRemover:
+    """RF-120: a exclusao da conversa apaga o documento pessoal antes."""
+    return PersonalDocumentRemover(
+        documents=documents,
+        summaries=summaries,
+        vector_store=vector_store,
+        file_storage=file_storage,
+        access_control=access_control,
+    )
+
+
+def get_summarizer_chat(
+    documents: PostgresDocumentRepository = Depends(get_document_repository),
+    summaries: PostgresDocumentSummaryRepository = Depends(get_document_summary_repository),
+    max_bytes: int = Depends(get_max_file_bytes),
+) -> SummarizerChat:
+    """RN-61: roteamento da conversa do resumidor no chat."""
+    from src.application.use_cases.summary_documents import summarizer_capabilities
+
+    return SummarizerChat(
+        documents=documents,
+        summaries=summaries,
+        capabilities=summarizer_capabilities(max_bytes),
+    )

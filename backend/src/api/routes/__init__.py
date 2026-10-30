@@ -10,6 +10,7 @@ from .documents import router as documents_router
 from .feedback import router as feedback_router
 from .index import router as index_router
 from .me import router as me_router
+from .summarizer import router as summarizer_router
 
 __all__ = [
     "admin_router",
@@ -24,4 +25,5 @@ __all__ = [
     "feedback_router",
     "index_router",
     "me_router",
+    "summarizer_router",
 ]

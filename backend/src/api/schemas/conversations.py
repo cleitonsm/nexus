@@ -89,3 +89,46 @@ class ConversationDetailResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     messages: list[MessageResponse]
+
+
+class SummarizerInfoResponse(BaseModel):
+    """SPEC-018 (RF-119, D37): finalidade e limites do resumidor."""
+
+    assistant_id: str
+    formats: list[str]
+    max_bytes: int
+    max_megabytes_label: str
+    max_tokens: int
+    pages_hint: str
+    retention_days: int
+    daily_limit: int
+    out_of_scope: list[str]
+    welcome_markdown: str
+
+
+class SummaryDocumentResponse(BaseModel):
+    """SPEC-018 (RF-115, D36): o documento da conversa e a etapa visivel."""
+
+    document_id: str
+    conversation_id: str
+    source_name: str
+    size_bytes: int | None
+    stage: str
+    done: int
+    total: int
+    failure_code: str | None
+    failure_detail: str | None
+    questions_available: bool
+    created_at: datetime
+    expires_at: datetime | None
+
+
+class StoredSummaryResponse(BaseModel):
+    """SPEC-018 (RF-117, RNF-37): o resumo gravado, sem LLM."""
+
+    document_id: str
+    content: str
+    citations: list[CitationResponse]
+    prompt_version: str | None
+    model: str | None
+    updated_at: datetime
