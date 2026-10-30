@@ -17,6 +17,20 @@
   </p>
 
   <ng-container *ngIf="activeAssistant() as assistant">
+    <!-- SPEC-018 (RN-55, D3): o resumidor so troca credencial e modelo -->
+    <article
+      *ngIf="assistant.is_system"
+      class="rounded-3xl border border-slate-800 bg-slate-900/70 p-4"
+      data-testid="system-assistant-notice"
+    >
+      <h2 class="text-lg font-semibold">{{ assistant.name }}</h2>
+      <p class="mt-1 text-sm text-slate-400">
+        Assistente de sistema, disponível para todos os usuários. Cada usuário envia os próprios
+        documentos na conversa; não há base, grupos nem prompt para configurar. Aqui você escolhe só
+        a credencial e o modelo de linguagem usados nos resumos.
+      </p>
+    </article>
+    <ng-container *ngIf="!assistant.is_system">
     <app-assistant-profile-settings *ngIf="canEditProfile()" [assistantId]="assistant.id" />
 
     <article
@@ -256,6 +270,8 @@
       </ul>
     </article>
 
+    </ng-container>
+
     <!-- SPEC-013: modelo de linguagem e recuperacao deste assistente. -->
     <div
       *ngIf="llmNotice()"
@@ -278,6 +294,6 @@
       </div>
     </div>
     <app-assistant-llm-settings [assistantId]="assistant.id" />
-    <app-assistant-retrieval-settings [assistantId]="assistant.id" />
+    <app-assistant-retrieval-settings *ngIf="!assistant.is_system" [assistantId]="assistant.id" />
   </ng-container>
 </section>

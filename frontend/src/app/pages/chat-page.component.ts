@@ -8,7 +8,8 @@ import {
   computed,
   effect,
   inject,
-  signal
+  signal,
+  untracked
 } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { Store } from "@ngrx/store";
@@ -16,6 +17,23 @@ import { Store } from "@ngrx/store";
 import { ChatMessage, Citation, FeedbackRating } from "../shared/models/nexus.models";
 import { HomeAssistantsDialogComponent } from "../features/home/home-assistants-dialog.component";
 import { MarkdownPipe } from "../shared/pipes/markdown.pipe";
+import {
+  canAttach,
+  canRetrySummary,
+  canShowSummary,
+  isFinalStage,
+  isSummarizer,
+  stageHint,
+  stageLabel,
+  validateSummaryFile
+} from "../shared/summarizer/summarizer";
+import { summarizerActions } from "../store/summarizer.actions";
+import {
+  selectSummarizerError,
+  selectSummarizerInfo,
+  selectSummarizerUploading,
+  selectSummaryDocuments
+} from "../store/summarizer.selectors";
 import { selectMenu } from "../store/auth.selectors";
 import { nexusActions } from "../store/nexus.actions";
 import {
@@ -86,6 +104,32 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     this.assistants().find((assistant) => assistant.id === this.activeAssistantId()) ?? null
   );
 
+  /** SPEC-018: resumidor de documentos (RF-113 a RF-119). */
+  protected readonly summarizerInfo = this.store.selectSignal(selectSummarizerInfo);
+  protected readonly summaryDocuments = this.store.selectSignal(selectSummaryDocuments);
+  protected readonly uploadingDocument = this.store.selectSignal(selectSummarizerUploading);
+  protected readonly summarizerError = this.store.selectSignal(selectSummarizerError);
+  protected readonly localFileError = signal<string | null>(null);
+  protected readonly dragging = signal(false);
+  protected readonly isSummarizerActive = computed(() => isSummarizer(this.activeAssistant()));
+  /** Documento da conversa atual; ``null`` sem conversa ou sem documento. */
+  protected readonly currentDocument = computed(() => {
+    const conversationId = this.currentConversationId();
+    return conversationId ? (this.summaryDocuments()[conversationId] ?? null) : null;
+  });
+  protected readonly canAttachDocument = computed(
+    () => this.isSummarizerActive() && canAttach(this.currentDocument()) && !this.uploadingDocument()
+  );
+  /** D38: boas-vindas so na conversa vazia do resumidor, sem documento. */
+  protected readonly showSummarizerWelcome = computed(
+    () => this.isSummarizerActive() && !this.currentDocument() && this.messages().length === 0
+  );
+  protected readonly stageLabel = stageLabel;
+  protected readonly stageHint = stageHint;
+  protected readonly canRetrySummary = canRetrySummary;
+  protected readonly canShowSummary = canShowSummary;
+  protected readonly isFinalStage = isFinalStage;
+
   protected readonly chatForm = this.formBuilder.nonNullable.group({
     question: ["", [Validators.required]]
   });
@@ -105,6 +149,22 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
         return;
       }
       this.store.dispatch(nexusActions.loadConversation({ conversationId }));
+    });
+    effect(() => {
+      // SPEC-018: finalidade e limites, uma vez, quando o resumidor e usado.
+      if (this.isSummarizerActive() && this.summarizerInfo() === null) {
+        untracked(() => this.store.dispatch(summarizerActions.loadInfo()));
+      }
+    });
+    effect(() => {
+      // RF-115: o documento da conversa do resumidor, ao abrir a conversa.
+      const conversationId = this.currentConversationId();
+      if (!this.isSummarizerActive() || !conversationId) {
+        return;
+      }
+      if (untracked(() => this.summaryDocuments())[conversationId] === undefined) {
+        untracked(() => this.store.dispatch(summarizerActions.loadDocument({ conversationId })));
+      }
     });
     effect(() => {
       this.messages();
@@ -186,6 +246,88 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     );
     this.chatForm.reset({ question: "" });
     this.resetTextareaHeight();
+  }
+
+  /** D7: clipe no campo de mensagem. */
+  protected onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (file) {
+      this.attachDocument(file);
+    }
+  }
+
+  protected onDragOver(event: DragEvent): void {
+    if (this.canAttachDocument()) {
+      event.preventDefault();
+      this.dragging.set(true);
+    }
+  }
+
+  protected onDragLeave(): void {
+    this.dragging.set(false);
+  }
+
+  /** D7: arrastar e soltar sobre o campo de mensagem. */
+  protected onDrop(event: DragEvent): void {
+    this.dragging.set(false);
+    if (!this.canAttachDocument()) {
+      return;
+    }
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      this.attachDocument(file);
+    }
+  }
+
+  private attachDocument(file: File): void {
+    const assistantId = this.activeAssistantId();
+    if (!assistantId || !this.canAttachDocument()) {
+      return;
+    }
+    const problem = validateSummaryFile(file, this.summarizerInfo());
+    this.localFileError.set(problem);
+    if (problem) {
+      return;
+    }
+    this.store.dispatch(
+      summarizerActions.uploadDocument({
+        conversationId: this.currentConversationId(),
+        assistantId,
+        file
+      })
+    );
+  }
+
+  /** D31: "Resumir" mostra de novo o resumo gravado, sem LLM (RNF-37). */
+  protected showSummary(): void {
+    const assistantId = this.activeAssistantId();
+    if (!assistantId || this.loading().sendChat) {
+      return;
+    }
+    this.store.dispatch(
+      nexusActions.sendChatQuestion({
+        assistantId,
+        conversationId: this.currentConversationId(),
+        question: "Resumir",
+        topK: 4
+      })
+    );
+  }
+
+  /** RN-64: refaz so o resumo. */
+  protected retrySummary(): void {
+    const conversationId = this.currentConversationId();
+    if (conversationId) {
+      this.store.dispatch(summarizerActions.retrySummary({ conversationId }));
+    }
+  }
+
+  protected dismissSummarizerError(): void {
+    this.localFileError.set(null);
+    this.store.dispatch(summarizerActions.clearError());
   }
 
   protected toggleCitation(messageId: string, citation: Citation): void {

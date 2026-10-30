@@ -8,6 +8,7 @@ import {
   canSave,
   counterLabel,
   draftFrom,
+  isPinned,
   isSelected,
   isToggleDisabled,
   setDefault,
@@ -69,7 +70,14 @@ let nextId = 0;
             class="flex items-center gap-3 rounded-2xl px-3 py-2 transition-colors"
             [ngClass]="selected(assistant.id) ? 'bg-nexus-accent/10' : 'hover:bg-nexus-hover'"
           >
+            <span
+              *ngIf="pinned(assistant.id)"
+              class="shrink-0 rounded-full bg-nexus-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-nexus-accent"
+              title="O resumidor fica sempre no acesso rápido e não ocupa vaga."
+              data-testid="home-assistant-pinned"
+            >Fixo</span>
             <input
+              *ngIf="!pinned(assistant.id)"
               type="checkbox"
               [id]="checkboxId(assistant.id)"
               [checked]="selected(assistant.id)"
@@ -89,13 +97,13 @@ let nextId = 0;
             </label>
             <label
               class="flex shrink-0 items-center gap-1.5 text-xs"
-              [ngClass]="selected(assistant.id) ? 'cursor-pointer text-slate-300' : 'text-slate-600'"
+              [ngClass]="selected(assistant.id) || pinned(assistant.id) ? 'cursor-pointer text-slate-300' : 'text-slate-600'"
             >
               <input
                 type="radio"
                 [name]="radioName"
                 [checked]="draft().defaultId === assistant.id"
-                [disabled]="saving() || !selected(assistant.id)"
+                [disabled]="saving() || (!selected(assistant.id) && !pinned(assistant.id))"
                 (change)="chooseDefault(assistant.id)"
                 [attr.aria-label]="'Padrão: ' + assistant.name"
                 class="h-4 w-4 accent-nexus-accent"
@@ -172,6 +180,11 @@ export class HomeAssistantsDialogComponent {
 
   protected selected(assistantId: string): boolean {
     return isSelected(this.draft(), assistantId);
+  }
+
+  /** SPEC-018 (RN-57): o resumidor fica fixo, sem caixa de marcacao. */
+  protected pinned(assistantId: string): boolean {
+    return isPinned(this.draft(), assistantId);
   }
 
   protected toggleDisabled(assistantId: string): boolean {

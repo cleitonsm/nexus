@@ -5,6 +5,7 @@ import {
   canSave,
   counterLabel,
   draftFrom,
+  isPinned,
   isToggleDisabled,
   newConversationAssistant,
   resolveHomeCards,
@@ -99,5 +100,41 @@ describe("newConversationAssistant (D5)", () => {
     expect(newConversationAssistant("a", "b")).toBe("a");
     expect(newConversationAssistant(null, "b")).toBe("b");
     expect(newConversationAssistant(null, null)).toBeNull();
+  });
+});
+
+
+describe("cartao fixo do resumidor (CT-150, SPEC-018 RN-57)", () => {
+  const summarizer: Assistant = { ...assistant("sys"), is_system: true };
+  const WITH = [...ALL, summarizer];
+
+  it("puts the summarizer first and as default when never customized", () => {
+    const cards = resolveHomeCards(WITH, null);
+    expect(cards.assistants.map((item) => item.id)).toEqual(["sys", "a", "b", "c", "d"]);
+    expect(cards.defaultId).toBe("sys");
+    expect(cards.pinnedId).toBe("sys");
+  });
+
+  it("keeps the chosen default and falls back to the summarizer", () => {
+    const chosen = resolveHomeCards(
+      WITH,
+      home({ assistant_ids: ["sys", "c", "a"], default_assistant_id: "c", pinned_assistant_id: "sys" })
+    );
+    expect(chosen.assistants.map((item) => item.id)).toEqual(["sys", "c", "a"]);
+    expect(chosen.defaultId).toBe("c");
+    const lost = resolveHomeCards(WITH, home({ assistant_ids: ["c"], default_assistant_id: "x" }));
+    expect(lost.defaultId).toBe("sys");
+  });
+
+  it("drafts without the pinned slot and lets it be the default", () => {
+    const draft = draftFrom(resolveHomeCards(WITH, null));
+    expect(draft.selected).toEqual(["a", "b", "c", "d"]);
+    expect(isPinned(draft, "sys")).toBe(true);
+    expect(toggleAssistant(draft, "sys", 4)).toBe(draft);
+    const chosen = setDefault(toggleAssistant(draft, "d", 4), "sys");
+    expect(chosen.defaultId).toBe("sys");
+    expect(canSave(chosen, 4)).toBe(true);
+    const lostDefault = toggleAssistant(setDefault(draft, "a"), "a", 4);
+    expect(lostDefault.defaultId).toBe("sys");
   });
 });
