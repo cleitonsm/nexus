@@ -60,6 +60,13 @@ class Documents:
     def delete(self, document_id: DocumentId) -> bool:
         return self.items.pop(document_id.value, None) is not None
 
+    def list_by_assistant(self, assistant_id) -> list[Document]:
+        return [
+            item
+            for item in self.items.values()
+            if item.assistant_id == assistant_id and item.status is not DocumentStatus.REPLACED
+        ]
+
     def get_personal_by_conversation(self, conversation_id: ConversationId) -> Document | None:
         return next(
             (item for item in self.items.values() if item.conversation_id == conversation_id),

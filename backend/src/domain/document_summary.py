@@ -569,3 +569,40 @@ def capabilities_markdown(
         *(f"- {item.capitalize()}." for item in caps.out_of_scope),
     ]
     return "\n".join(lines)
+
+
+def progress_markdown(progress: SummaryProgress, source_name: str) -> str:
+    """D34 e D36: resposta, sem LLM, enquanto o resumo nao esta disponivel."""
+    name = f"**{source_name}**"
+    stage = progress.stage
+    if stage is SummaryStage.UPLOADED:
+        return f"Recebi {name}. O processamento começa em instantes."
+    if stage is SummaryStage.EXTRACTING:
+        return f"Estou lendo {name}. Assim que terminar, você já pode fazer perguntas."
+    if stage is SummaryStage.INDEXING:
+        return f"Estou preparando {name} para as perguntas. Falta pouco."
+    if stage is SummaryStage.SUMMARIZING:
+        step = (
+            f": parte {progress.done} de {progress.total}" if progress.total else ""
+        )
+        return (
+            f"Estou resumindo {name}{step}. O resumo aparece aqui sozinho quando "
+            "ficar pronto; enquanto isso, você já pode fazer perguntas sobre o documento."
+        )
+    if stage is SummaryStage.FAILED and progress.questions_available:
+        return (
+            f"Não consegui gerar o resumo de {name}. Use **Tentar resumir de novo**. "
+            "As perguntas sobre o documento continuam disponíveis."
+        )
+    if stage is SummaryStage.FAILED:
+        detail = (progress.failure_detail or "").strip()
+        if progress.failure_code == DOCUMENT_TOO_LONG and detail:
+            return f"{detail} Envie um documento menor em uma **Nova conversa**."
+        reason = f" {detail}" if detail else ""
+        return (
+            f"Não consegui processar {name}.{reason} Envie o arquivo de novo em uma "
+            "**Nova conversa**."
+        )
+    if stage is SummaryStage.READY:
+        return f"O resumo de {name} está pronto. Peça \"resuma\" para vê-lo de novo."
+    return f"O documento {name} expirou e foi apagado."

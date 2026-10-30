@@ -8,6 +8,7 @@ deterministico e os do documento sao removidos antes de serem regravados.
 from __future__ import annotations
 
 import logging
+from uuid import uuid4
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -30,7 +31,19 @@ from src.application.services import (
     record_sparse_parameters,
 )
 from src.domain import (
+    DOCUMENT_TOO_LONG,
+    MAX_SUMMARY_DOCUMENT_TOKENS,
+    PROCESSING_FAILED,
+    SUMMARIZER_ASSISTANT_ID,
+    SUMMARY_FAILED,
+    DocumentSummaryRepository,
+    DocumentTooLongError,
+    IngestionJobKind,
+    SummaryStage,
+    TokenCounter,
     TransientServiceError,
+    document_too_long_message,
+    exceeds_summary_token_limit,
     AuditAction,
     AuditResource,
     CollectionName,
@@ -153,6 +166,8 @@ class _IngestionFailures:
 
 def _definitive_reason(error: Exception) -> str | None:
     """Erros que se repetiriam em qualquer tentativa (C1)."""
+    if isinstance(error, DocumentTooLongError):
+        return str(error)  # SPEC-018 (D15): contagem e limite, em pt-BR
     if isinstance(error, IndexOutdatedError):
         return OUTDATED_INDEX_REASON
     if isinstance(error, FileNotFoundError):
@@ -205,7 +220,14 @@ class ProcessNextIngestionJobUseCase:
         settings: IngestionSettings | None = None,
         clock: Callable[[], datetime] = _utc_now,
         index_parameters: IndexParametersRepository | None = None,
+        summaries: DocumentSummaryRepository | None = None,
+        token_counter: TokenCounter | None = None,
+        summarizer: Callable[[IngestionJob, Document], ProcessingOutcome | None] | None = None,
     ) -> None:
+        # SPEC-018: documento pessoal (contagem, escopo e etapas) e job de resumo.
+        self._summaries = summaries
+        self._token_counter = token_counter
+        self._summarizer = summarizer
         self._queue = job_queue
         self._index_parameters = index_parameters
         self._documents = document_repository
@@ -232,6 +254,15 @@ class ProcessNextIngestionJobUseCase:
         if document is None:
             # Excluido antes da reserva; o job saiu junto com o documento.
             return None
+        if document.status is DocumentStatus.EXPIRED:
+            # SPEC-018: documento pessoal apagado antes da reserva (lapide).
+            self._queue.complete(job.complete(), document, None)
+            return None
+        if job.kind is IngestionJobKind.SUMMARIZE:
+            # SPEC-018 (D21): o documento ja esta indexado; so o resumo roda.
+            if self._summarizer is None:
+                raise RuntimeError("summary job without a configured summarizer.")
+            return self._summarizer(job, document)
         document = self._documents.save(document.start_processing(job.attempts))
         logger.info("ingestion.job.started", extra=_log_extra(job, document))
         try:
@@ -241,6 +272,10 @@ class ProcessNextIngestionJobUseCase:
                 CollectionName.from_assistant_id(document.assistant_id),
                 document.id,
             )
+            tombstone = self._documents.get_by_id(document.id)
+            if tombstone is not None:
+                # SPEC-018: a lapide fica; o job termina sem regravar o documento.
+                self._queue.complete(job.complete(), tombstone, None)
             logger.info("ingestion.job.document_gone", extra=_log_extra(job, document))
             return None
         except JobOwnershipLostError:
@@ -249,7 +284,9 @@ class ProcessNextIngestionJobUseCase:
             return None
         except Exception as exc:  # noqa: BLE001 - toda falha vira estado
             try:
-                return self._failures.handle(job, document, exc)
+                outcome = self._failures.handle(job, document, exc)
+                self._fail_summary(document, outcome, exc)
+                return outcome
             except JobOwnershipLostError:
                 logger.warning(
                     "ingestion.job.ownership_lost", extra=_log_extra(job, document)
@@ -261,7 +298,121 @@ class ProcessNextIngestionJobUseCase:
         if not self._queue.renew(job, self._clock()):
             raise JobOwnershipLostError(job.id)
 
+    def _fail_summary(
+        self, document: Document, outcome: ProcessingOutcome, error: Exception
+    ) -> None:
+        """SPEC-018 (D36): o documento pessoal que falhou mostra o motivo."""
+        if (
+            self._summaries is None
+            or not document.is_personal
+            or outcome.status != DocumentStatus.FAILED.value
+        ):
+            return
+        code = DOCUMENT_TOO_LONG if isinstance(error, DocumentTooLongError) else PROCESSING_FAILED
+        self._summaries.fail(document.id, code)
+
+    def _set_stage(self, document: Document, stage: SummaryStage, **values: int) -> None:
+        if self._summaries is not None:
+            self._summaries.set_stage(document.id, stage, **values)
+
+    def _index_personal(self, job: IngestionJob, document: Document) -> ProcessingOutcome:
+        """SPEC-018: conta antes de vetorizar (RN-60), grava com dono e conversa
+        (RN-59) e enfileira o resumo depois da indexacao (D21)."""
+        if self._token_counter is None:
+            raise RuntimeError("personal documents need a token counter.")
+        self._set_stage(document, SummaryStage.EXTRACTING)
+        raw_content = self._storage.load(document.storage_key or "")
+        extracted = self._indexer.extract(
+            source_name=document.source_name, content_type=None, raw_content=raw_content
+        )
+        tokens = self._token_counter.count(extracted.plain_text)
+        if exceeds_summary_token_limit(tokens):
+            raise DocumentTooLongError(
+                document_too_long_message(tokens),
+                tokens=tokens,
+                limit=MAX_SUMMARY_DOCUMENT_TOKENS,
+            )
+        self._set_stage(document, SummaryStage.INDEXING, document_tokens=tokens)
+        collection = self._personal_collection()
+        chunks = self._indexer.build_chunks(
+            assistant_id=document.assistant_id,
+            document_id=document.id,
+            source_name=document.source_name,
+            content_type=None,
+            raw_content=raw_content,
+            active=False,
+            extracted=extracted,
+            owner_user_id=document.owner_user_id,
+            conversation_id=(
+                document.conversation_id.value if document.conversation_id else None
+            ),
+        )
+        self._hold_reservation(job)
+        self._vector_store.delete_by_document(collection, document.id)
+        self._vector_store.upsert_chunks(collection_name=collection, chunks=chunks)
+        self._ensure_still_wanted(document)
+        self._hold_reservation(job)
+        self._vector_store.set_document_active(collection, document.id, True)
+        indexed = document.mark_indexed(
+            embedding_model=self._indexer.embedding_model,
+            pipeline_version=PIPELINE_VERSION,
+            chunk_count=len(chunks),
+        )
+        self._queue.complete(job.complete(), indexed, None)
+        self._set_stage(indexed, SummaryStage.SUMMARIZING)
+        self._queue.enqueue(
+            IngestionJob(
+                id=str(uuid4()), document_id=indexed.id, kind=IngestionJobKind.SUMMARIZE
+            )
+        )
+        self._audit_indexed(job, indexed, None)
+        return ProcessingOutcome(
+            job_id=job.id,
+            document_id=indexed.id.value,
+            status=indexed.status.value,
+            attempts=job.attempts,
+            chunk_count=indexed.chunk_count,
+        )
+
+    def _personal_collection(self) -> CollectionName:
+        """Collection do resumidor; com outro modelo de embedding, recria vazia.
+
+        O resumidor nao e reindexado (RN-55): os documentos pessoais duram 30
+        dias. Quem ja estava indexado perde so as perguntas pontuais; o resumo
+        gravado continua.
+        """
+        state = read_index_state(self._vector_store, SUMMARIZER_ASSISTANT_ID)
+        live = [
+            item
+            for item in self._documents.list_by_assistant(SUMMARIZER_ASSISTANT_ID)
+            if item.status is DocumentStatus.INDEXED
+        ]
+        outdated = state.current is not None and is_index_outdated(
+            state,
+            live,
+            embedding_model=self._indexer.embedding_model,
+            pipeline_version=PIPELINE_VERSION,
+        )
+        if not outdated:
+            return self._ensure_collection(state)
+        stale = state.current
+        fresh = state.next_collection()
+        self._vector_store.ensure_collection(
+            collection_name=fresh, vector_size=self._indexer.embedding_dimension
+        )
+        self._vector_store.point_alias(state.alias, fresh)
+        record_sparse_parameters(self._index_parameters, fresh, self._indexer.sparse_parameters)
+        if stale is not None:
+            self._vector_store.delete_collection(stale)
+        logger.warning(
+            "summarizer.collection.recreated",
+            extra={"stale": stale.value if stale else None, "fresh": fresh.value},
+        )
+        return state.alias
+
     def _index(self, job: IngestionJob, document: Document) -> ProcessingOutcome:
+        if document.is_personal:
+            return self._index_personal(job, document)
         collection = self._writable_collection(document)
         raw_content = self._storage.load(document.storage_key or "")
         chunks = self._indexer.build_chunks(
@@ -351,8 +502,12 @@ class ProcessNextIngestionJobUseCase:
         return previous
 
     def _ensure_still_wanted(self, document: Document) -> None:
-        """C4: exclusao durante o processamento vence o processamento."""
-        if self._documents.get_by_id(document.id) is None:
+        """C4: exclusao durante o processamento vence o processamento.
+
+        SPEC-018: o documento pessoal apagado vira lapide ``expirado``.
+        """
+        current = self._documents.get_by_id(document.id)
+        if current is None or current.status is DocumentStatus.EXPIRED:
             raise _DocumentGoneError(document.id.value)
 
     def _discard_original(self, previous: Document) -> None:
@@ -404,11 +559,13 @@ class RequeueExpiredIngestionJobsUseCase:
         access_control: AccessControl,
         settings: IngestionSettings | None = None,
         clock: Callable[[], datetime] = _utc_now,
+        summaries: DocumentSummaryRepository | None = None,
     ) -> None:
         self._queue = job_queue
         self._documents = document_repository
         self._settings = settings or IngestionSettings()
         self._clock = clock
+        self._summaries = summaries
         self._failures = _IngestionFailures(
             queue=job_queue,
             vector_store=vector_store_gateway,
@@ -422,6 +579,13 @@ class RequeueExpiredIngestionJobsUseCase:
         outcomes: list[ProcessingOutcome] = []
         for job in self._queue.list_expired(cutoff):
             document = self._documents.get_by_id(job.document_id)
+            if (
+                job.kind is IngestionJobKind.SUMMARIZE
+                and document is not None
+                and document.status is DocumentStatus.INDEXED
+            ):
+                self._requeue_summary(job, document)
+                continue
             if document is None or not document.is_in_progress:
                 continue
             if document.status is not DocumentStatus.PROCESSING:
@@ -438,3 +602,20 @@ class RequeueExpiredIngestionJobsUseCase:
                 )
             )
         return outcomes
+
+    def _requeue_summary(self, job: IngestionJob, document: Document) -> None:
+        """SPEC-018: o job de resumo vencido volta a fila ou derruba o resumo.
+
+        Os mini-resumos ja gravados ficam: a nova tentativa continua dali.
+        """
+        detail = (
+            f"JobTimeoutError: summary job reserved for more than "
+            f"{self._settings.job_timeout_seconds} seconds."
+        )
+        if job.attempts < self._settings.max_attempts:
+            when = self._clock() + self._settings.delay_after(job.attempts)
+            self._queue.retry(job.retry_at(when, detail), document)
+            return
+        self._queue.fail(job.fail(detail), document)
+        if self._summaries is not None:
+            self._summaries.fail(document.id, SUMMARY_FAILED)

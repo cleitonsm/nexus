@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from src.domain import (
+    USAGE_OPERATION_CHAT,
     AuthenticatedUser,
     LLMPricing,
     MetricsRecorder,
@@ -99,6 +100,7 @@ class UsageGovernance:
         failed: bool = False,
         model: str | None = None,
         pricing: LLMPricing | None = None,
+        operation: str = USAGE_OPERATION_CHAT,
     ) -> UsageRecord:
         """SPEC-013: modelo e preco do assistente; sem eles, os do ambiente (D8)."""
         model = model or self._settings.model
@@ -116,6 +118,8 @@ class UsageGovernance:
                 fallback_used=fallback_used,
                 failed=failed,
                 occurred_at=self._clock(),
+                # SPEC-018 (RN-65): o resumo do documento fica fora dos limites.
+                operation=operation,
             )
         )
         labels = {"model": model}
