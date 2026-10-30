@@ -5,6 +5,8 @@
 Aceita em 2026-10-07, com a aprovação da SPEC-004. Implementada; ainda não executada no ambiente
 Docker. Complementa a [ADR 0003](0003-qdrant-por-assistente.md) e encerra a limitação
 registrada na [ADR 0005](0005-api-key-global-criptografada.md).
+Complementada pela [ADR 0014](0014-documento-pessoal-e-assistente-de-sistema.md) (2026-10-30):
+todo usuário com papel envia documento pessoal ao assistente de sistema, só na própria conversa.
 
 ## Contexto
 
