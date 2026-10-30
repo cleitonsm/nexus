@@ -21,8 +21,14 @@ HOME_ASSISTANTS_EMPTY: Final = "home_assistants_empty"
 HOME_ASSISTANTS_LIMIT: Final = "home_assistants_limit"
 HOME_ASSISTANTS_DUPLICATE: Final = "home_assistants_duplicate"
 HOME_ASSISTANTS_DEFAULT_NOT_SELECTED: Final = "home_assistants_default_not_selected"
-# SPEC-018 (RN-57): o cartao fixo nao ocupa vaga.
+# SPEC-018 (RN-57): o resumidor e fixo e ocupa uma das vagas (decisao do autor
+# em 2026-10-30, revendo a D1); ele nao entra na lista escolhida.
 HOME_ASSISTANT_PINNED: Final = "home_assistant_pinned"
+
+
+def slot_limit(pinned_id: AssistantId | None) -> int:
+    """Vagas escolhidas pelo usuario: com o resumidor fixo, uma a menos."""
+    return MAX_HOME_ASSISTANTS - 1 if pinned_id is not None else MAX_HOME_ASSISTANTS
 ASSISTANT_NOT_AVAILABLE: Final = "assistant_not_available"
 
 
@@ -38,8 +44,8 @@ class HomeAssistantsValidationError(DomainValidationError):
 class HomeAssistantSelection:
     """Selecao gravada: ids na ordem de marcacao (D7) e o padrao (RN-47).
 
-    SPEC-018 (RN-57): com ``pinned_id``, o assistente fixo fica fora das vagas
-    e pode ser o padrao sem estar em ``assistant_ids``.
+    SPEC-018 (RN-57): com ``pinned_id``, o assistente fixo ocupa uma das vagas
+    sem estar em ``assistant_ids`` e pode ser o padrao.
     """
 
     assistant_ids: tuple[AssistantId, ...]
@@ -53,9 +59,10 @@ class HomeAssistantSelection:
             raise HomeAssistantsValidationError(
                 "select at least one assistant.", code=HOME_ASSISTANTS_EMPTY
             )
-        if len(ids) > MAX_HOME_ASSISTANTS:
+        limit = slot_limit(self.pinned_id)
+        if len(ids) > limit:
             raise HomeAssistantsValidationError(
-                f"select at most {MAX_HOME_ASSISTANTS} assistants.",
+                f"select at most {limit} assistants.",
                 code=HOME_ASSISTANTS_LIMIT,
             )
         if len(set(ids)) != len(ids):
@@ -146,18 +153,19 @@ def _with_pinned(
     if saved is not None:
         kept = tuple(item for item in saved.assistant_ids if item in slot_set)
         if kept or saved.default_id == pinned_id:
-            if saved.default_id in kept or saved.default_id == pinned_id:
+            ordered = tuple(item for item in saved.display_order if item in slot_set)
+            ordered = ordered[: slot_limit(pinned_id)]
+            if saved.default_id in ordered or saved.default_id == pinned_id:
                 default_id = saved.default_id
             else:
                 default_id = pinned_id  # RN-57: recuo para o resumidor
-            ordered = tuple(item for item in saved.display_order if item in slot_set)
             return EffectiveHomeAssistants(
                 assistant_ids=(pinned_id,) + ordered,
                 default_id=default_id,
                 customized=True,
                 pinned_id=pinned_id,
             )
-    first = slots[:MAX_HOME_ASSISTANTS]
+    first = slots[: slot_limit(pinned_id)]
     return EffectiveHomeAssistants(
         assistant_ids=(pinned_id,) + first,
         default_id=pinned_id,

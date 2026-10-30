@@ -36,6 +36,7 @@ from .citations import (
 from .home_assistants import (
     ASSISTANT_NOT_AVAILABLE,
     HOME_ASSISTANT_PINNED,
+    slot_limit,
     MAX_HOME_ASSISTANTS,
     EffectiveHomeAssistants,
     HomeAssistantSelection,
@@ -321,6 +322,7 @@ __all__ = [
     "DocumentSummary",
     "DocumentSummarySection",
     "HOME_ASSISTANT_PINNED",
+    "slot_limit",
     "DocumentSummaryRepository",
     "IngestionPause",
     "IngestionPauseRepository",

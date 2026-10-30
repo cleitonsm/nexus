@@ -33,7 +33,7 @@ Escolhas registradas em 2026-10-30 pelo autor: **todas as recomendações**. A p
 |---|---------|----------------------|
 | A | Embeddings e chunks | Mantidos os 128 tokens (ADR 0004). A RN03 sai do escopo; o resumo usa uma divisão própria por seções |
 | B | Disponibilidade | O resumidor está **sempre** no acesso rápido e o usuário não pode removê-lo |
-| D1 | Vaga no acesso rápido | **Cartão fixo fora das 4 vagas**, sempre o primeiro. `MAX_HOME_ASSISTANTS` continua 4 |
+| D1 | Vaga no acesso rápido | **Revista pelo autor em 2026-10-30, depois de ver a tela:** o resumidor é fixo, sempre o primeiro, e **ocupa uma das 4 vagas**. A tela inicial mostra no máximo 4 cartões; sobram 3 à escolha do usuário. `MAX_HOME_ASSISTANTS` continua 4 (escolha anterior: cartão fixo fora das 4 vagas) |
 | D2 | Padrão | Padrão **só para quem nunca personalizou** o acesso rápido (`customized: false`). Quem personalizou mantém o padrão escolhido e pode marcar o resumidor como padrão |
 | D3 | O que se altera | Não pode ser excluído (SPEC-014) nem ter nome, descrição ou prompt editados (SPEC-017). O administrador troca **só a credencial e o modelo** (SPEC-013). O prompt fica versionado no código |
 | D4 | Quem vê | Todo usuário autenticado com papel no Nexus, sem passar por grupos |
@@ -80,7 +80,7 @@ Escolhas registradas em 2026-10-30 pelo autor: **todas as recomendações**. A p
 ## Requisitos funcionais
 
 - RF-112: existe exatamente um **assistente de sistema** "Resumidor de documentos" (D5), criado pela migração e visível a todo usuário autenticado com papel (D4). Ele não pode ser excluído e não tem nome, descrição, prompt nem parâmetros de recuperação editáveis. O administrador troca só a credencial e o modelo (D3).
-- RF-113: o resumidor aparece **sempre** como o primeiro cartão do acesso rápido, fora das 4 vagas (escolha B, D1). É o padrão de quem nunca personalizou; quem personalizou pode escolhê-lo como padrão no modal, mas não pode desmarcá-lo do acesso rápido (D2).
+- RF-113: o resumidor aparece **sempre** como o primeiro cartão do acesso rápido e ocupa uma das 4 vagas; o usuário escolhe os outros 3 (escolha B, D1 revista). É o padrão de quem nunca personalizou; quem personalizou pode escolhê-lo como padrão no modal, mas não pode desmarcá-lo do acesso rápido (D2).
 - RF-114: com o resumidor ativo, o campo de mensagem mostra o clipe e aceita arrastar e soltar um arquivo (D7). O envio vale para a conversa atual, que é criada se ainda não existe. Uma conversa aceita **um** documento (D8). Com o documento já enviado, o clipe fica desabilitado e o aviso sugere "Nova conversa".
 - RF-115: o envio responde em menos de 2 s com o documento no estado "enviado" e enfileira o processamento. A tela mostra as etapas da D36, inclusive "resumindo parte x de y", consultando o status a cada 3 s (SPEC-005).
 - RF-116: o processamento extrai o texto, conta os tokens (D14), rejeita acima do teto (D15), indexa os trechos para o RAG e só então gera os mini-resumos por lote de seções e o resumo consolidado (D21 a D23). Mini-resumos e consolidado ficam gravados (D30).
@@ -101,7 +101,7 @@ Escolhas registradas em 2026-10-30 pelo autor: **todas as recomendações**. A p
 
 - RN-55: o assistente de sistema é identificado por `assistants.system_kind = 'document_summarizer'`, único. As rotas de exclusão (SPEC-014), de edição de perfil (SPEC-017), de perfil de recuperação (SPEC-013) e de documentos da base (`/assistants/{id}/documents`) respondem **409 `system_assistant_readonly`** para ele. A rota de credencial e modelo continua só do administrador (SPEC-013, D7).
 - RN-56: o resumidor é visível a todo usuário com papel no Nexus, sem grupo (D4). Ele **fica fora** do catálogo da inferência de assistente (`/assistants/infer`) e da seleção das 4 vagas do acesso rápido (D1).
-- RN-57: acesso rápido efetivo = resumidor fixo no topo + as até 4 vagas da RN-49 (SPEC-016). Se `customized: false`, o padrão é o resumidor. Se `customized: true`, o padrão é o gravado, e o resumidor pode ser esse padrão sem ocupar uma vaga. Nos dois casos, se o padrão gravado deixar de ser visível, o padrão efetivo passa a ser o resumidor (antes era o primeiro restante, D8 da SPEC-016).
+- RN-57: acesso rápido efetivo = resumidor fixo no topo + até `MAX_HOME_ASSISTANTS - 1` (3) assistentes da RN-49 (SPEC-016), num total de 4 cartões. Uma seleção gravada com mais de 3 é recusada com `home_assistants_limit`. Se `customized: false`, o padrão é o resumidor. Se `customized: true`, o padrão é o gravado, e o resumidor pode ser esse padrão sem ocupar uma vaga. Nos dois casos, se o padrão gravado deixar de ser visível, o padrão efetivo passa a ser o resumidor (antes era o primeiro restante, D8 da SPEC-016).
 - RN-58: um documento pessoal tem `owner_user_id` e `conversation_id` obrigatórios e pertence ao resumidor. Só o dono da conversa (`AccessPolicy.owns_conversation`, RN-24) envia, consulta status, lê o resumo e faz perguntas sobre ele. **Nem o administrador** lê o conteúdo (mesma regra das conversas). Uma conversa tem no máximo um documento pessoal; um segundo envio responde 409 `conversation_document_exists` (D8).
 - RN-59: toda busca no Qdrant sobre documento pessoal aplica os filtros de sempre (`user_groups` e `active`), mais `owner_user_id` e `conversation_id` iguais aos da conversa. Os pontos pessoais gravam `allowed_groups` vazio, então o filtro de grupos não restringe nem amplia; a restrição real é a do dono e da conversa. Um teste garante que a falta desses dois filtros **impede** a busca (falha fechada), e não a abre.
 - RN-60: limites do documento pessoal, todos como constantes do domínio em `domain/document_summary.py`:
@@ -137,8 +137,8 @@ Cenário: pergunta sem documento (RF-119, RN-61 item 1)
   E nenhuma chamada ao LLM é feita e nenhuma cota é consumida
 
 Cenário: cartão fixo e padrão escolhido (RN-57, D1, D2)
-  Dado um usuário que personalizou o acesso rápido com 4 assistentes e o "Jurídico" como padrão
-  Então a tela inicial mostra o resumidor primeiro, mais os 4 escolhidos
+  Dado um usuário que personalizou o acesso rápido com 3 assistentes e o "Jurídico" como padrão
+  Então a tela inicial mostra o resumidor primeiro, mais 3 escolhidos (4 cartões)
   E o "Jurídico" está marcado como padrão
   E o modal "Personalizar acesso rápido" mostra o resumidor sem a opção de desmarcar
 

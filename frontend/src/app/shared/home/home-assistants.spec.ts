@@ -108,9 +108,9 @@ describe("cartao fixo do resumidor (CT-150, SPEC-018 RN-57)", () => {
   const summarizer: Assistant = { ...assistant("sys"), is_system: true };
   const WITH = [...ALL, summarizer];
 
-  it("puts the summarizer first and as default when never customized", () => {
+  it("puts the summarizer first and as default, 4 cards in total", () => {
     const cards = resolveHomeCards(WITH, null);
-    expect(cards.assistants.map((item) => item.id)).toEqual(["sys", "a", "b", "c", "d"]);
+    expect(cards.assistants.map((item) => item.id)).toEqual(["sys", "a", "b", "c"]);
     expect(cards.defaultId).toBe("sys");
     expect(cards.pinnedId).toBe("sys");
   });
@@ -128,10 +128,13 @@ describe("cartao fixo do resumidor (CT-150, SPEC-018 RN-57)", () => {
 
   it("drafts without the pinned slot and lets it be the default", () => {
     const draft = draftFrom(resolveHomeCards(WITH, null));
-    expect(draft.selected).toEqual(["a", "b", "c", "d"]);
+    expect(draft.selected).toEqual(["a", "b", "c"]);
     expect(isPinned(draft, "sys")).toBe(true);
+    expect(counterLabel(draft, 4)).toBe("4 de 4");
+    expect(isToggleDisabled(draft, "d", 4)).toBe(true);
+    expect(toggleAssistant(draft, "d", 4)).toBe(draft);
     expect(toggleAssistant(draft, "sys", 4)).toBe(draft);
-    const chosen = setDefault(toggleAssistant(draft, "d", 4), "sys");
+    const chosen = setDefault(toggleAssistant(draft, "c", 4), "sys");
     expect(chosen.defaultId).toBe("sys");
     expect(canSave(chosen, 4)).toBe(true);
     const lostDefault = toggleAssistant(setDefault(draft, "a"), "a", 4);

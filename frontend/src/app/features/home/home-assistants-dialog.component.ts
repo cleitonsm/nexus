@@ -51,8 +51,15 @@ let nextId = 0;
           <div class="min-w-0">
             <h2 [id]="titleId" class="text-lg font-semibold">Personalizar acesso rápido</h2>
             <p [id]="descriptionId" class="mt-1 text-sm text-slate-400">
-              Escolha até {{ cards().max }} assistentes para a tela inicial e marque o padrão,
-              que já vem selecionado ao abrir o Nexus.
+              <ng-container *ngIf="cards().pinnedId; else freeChoice">
+                A tela inicial mostra {{ cards().max }} assistentes: o Resumidor de documentos, que é
+                fixo, e mais {{ cards().max - 1 }} à sua escolha. Marque também o padrão, que já vem
+                selecionado ao abrir o Nexus.
+              </ng-container>
+              <ng-template #freeChoice>
+                Escolha até {{ cards().max }} assistentes para a tela inicial e marque o padrão,
+                que já vem selecionado ao abrir o Nexus.
+              </ng-template>
             </p>
           </div>
           <span

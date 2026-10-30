@@ -87,7 +87,8 @@ function withPinned(
   const kept = (home?.assistant_ids ?? [])
     .filter((id) => id !== pinned.id)
     .map((id) => byId.get(id))
-    .filter((assistant): assistant is Assistant => assistant !== undefined);
+    .filter((assistant): assistant is Assistant => assistant !== undefined)
+    .slice(0, max - 1);
   if (home && (kept.length > 0 || home.customized)) {
     const wanted = home.default_assistant_id;
     const defaultId =
@@ -103,7 +104,7 @@ function withPinned(
     };
   }
   return {
-    assistants: [pinned, ...others.slice(0, max)],
+    assistants: [pinned, ...others.slice(0, max - 1)],
     defaultId: pinned.id,
     max,
     customized: false,
@@ -121,6 +122,14 @@ export function draftFrom(cards: HomeCards): HomeDraft {
   };
 }
 
+/**
+ * SPEC-018 (RN-57, D1 revista em 2026-10-30): o resumidor fixo ocupa uma das
+ * ``max`` vagas; sobram ``max - 1`` para o usuario escolher.
+ */
+export function slotLimit(draft: HomeDraft, max: number): number {
+  return draft.pinnedId ? max - 1 : max;
+}
+
 /** SPEC-018: o cartao fixo nao tem caixa de marcacao. */
 export function isPinned(draft: HomeDraft, id: string): boolean {
   return !!draft.pinnedId && draft.pinnedId === id;
@@ -132,7 +141,7 @@ export function isSelected(draft: HomeDraft, id: string): boolean {
 
 /** RN-47: no limite, os nao marcados ficam desabilitados. */
 export function isToggleDisabled(draft: HomeDraft, id: string, max: number): boolean {
-  return !isSelected(draft, id) && draft.selected.length >= max;
+  return !isSelected(draft, id) && draft.selected.length >= slotLimit(draft, max);
 }
 
 /**
@@ -149,7 +158,7 @@ export function toggleAssistant(draft: HomeDraft, id: string, max: number): Home
     const defaultId = draft.defaultId === id ? fallback : draft.defaultId;
     return { ...draft, selected, defaultId };
   }
-  if (draft.selected.length >= max) {
+  if (draft.selected.length >= slotLimit(draft, max)) {
     return draft;
   }
   return { ...draft, selected: [...draft.selected, id], defaultId: draft.defaultId ?? id };
@@ -163,7 +172,7 @@ export function setDefault(draft: HomeDraft, id: string): HomeDraft {
 export function canSave(draft: HomeDraft, max: number): boolean {
   return (
     draft.selected.length >= 1 &&
-    draft.selected.length <= max &&
+    draft.selected.length <= slotLimit(draft, max) &&
     draft.defaultId !== null &&
     (isSelected(draft, draft.defaultId) || isPinned(draft, draft.defaultId))
   );
@@ -171,7 +180,8 @@ export function canSave(draft: HomeDraft, max: number): boolean {
 
 /** RF-107: contador "n de N". */
 export function counterLabel(draft: HomeDraft, max: number): string {
-  return `${draft.selected.length} de ${max}`;
+  const pinned = draft.pinnedId ? 1 : 0;
+  return `${draft.selected.length + pinned} de ${max}`;
 }
 
 /**
