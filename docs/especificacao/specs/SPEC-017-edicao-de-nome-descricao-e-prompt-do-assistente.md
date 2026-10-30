@@ -2,6 +2,7 @@
 
 **ID**: SPEC-20261029-017
 **Status**: **Implementada** em 2026-10-29 — CT-131 a CT-137 aprovados (unitários, integração no container e no PostgreSQL 16, Vitest e Playwright 5/5); CT-138 manual pendente. Histórico: **Aprovada** em 2026-10-29. O autor (Cleiton Medeiros) escolheu D1 = **administrador e curador** e seguiu a recomendação em D2 a D8.
+**Nota (2026-10-30, SPEC-018)**: nome, descrição e prompt do assistente de sistema não são editáveis; `PUT /assistants/{id}` responde 409 `system_assistant_readonly` (RN-55).
 **Origem**: pedido do autor (2026-10-29): "melhoria na qual seja possível editar o prompt, nome e
 descrição dos assistentes".
 **Plano**: [SPEC-017-plano-de-implementacao.md](SPEC-017-plano-de-implementacao.md)

@@ -23,6 +23,8 @@ A arquitetura inicial deve ser previsível sem criar camadas excessivas para o M
 - `features/assistants/assistant-profile-settings.component.ts` e `shared/assistants`: card
   "Dados do assistente" e regras puras de nome, descricao e prompt (limites, normalizacao,
   diferenca, nome repetido, quem ve o card e erro por `code`) (SPEC-017).
+- `shared/summarizer` e `store/summarizer.*`: regras e estado do resumidor de documentos
+  (SPEC-018).
 - `store`: estado global NgRx por dominio (chat, assistants, admin e carregamentos/erro).
 
 ## Estado Global (Evolução MVP)
@@ -37,6 +39,9 @@ A arquitetura inicial deve ser previsível sem criar camadas excessivas para o M
   ativo por `applyDefaultAssistant`, sem navegacao
 - edicao do assistente (SPEC-017): `updateAssistant` com `exhaustMap`; o sucesso troca o item na
   lista de assistentes, o que atualiza barra lateral, cartoes e modal pelos seletores existentes
+- resumidor de documentos (fatia `summarizer`, SPEC-018): finalidade e limites, documento por
+  conversa (etapa e andamento), nome do arquivo em envio e erro; o cartao fixo do resumidor
+  ocupa uma das vagas do acesso rapido (`pinnedId`)
 - documentos do assistente e estados de carregamento/erro
 
 ## Diretriz

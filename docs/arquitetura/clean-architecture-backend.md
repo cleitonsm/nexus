@@ -132,6 +132,22 @@ negócio.
 - **API**: `GET`/`PUT /me/home-assistants`; o erro de regra vira 422 `{detail, code}` em
   `api/errors.py`.
 
+### Resumidor de documentos (SPEC-018, implementado; ADR 0014)
+
+- **Domain**: `domain/document_summary.py` (limites, lotes de seção, tamanho do resumo, etapas,
+  roteamento da mensagem, texto da finalidade, `PersonalScope`, `is_summarizer_collection`);
+  `Assistant.system_kind`, documento pessoal com lápide `expirado`, `DocumentSummary` e
+  `DocumentSummarySection`; `AccessPolicy.can_access_assistant(system=...)` e
+  `can_use_personal_document`; acesso rápido com `pinned_id`; portas `DocumentSummaryRepository` e
+  `SummarySectionSplitter`.
+- **Application**: `summary_documents.py`, `summarize_document.py`, `PersonalDocumentRemover`,
+  `SummarizerChat`, prompts versionados em `document_summary_prompts.py`; `AccessControl.require_mutable`
+  (RN-55); `ContextRetriever.search` recusa o resumidor sem escopo pessoal.
+- **Infrastructure**: migração `0013`, `PostgresDocumentSummaryRepository`, consultas de documento
+  pessoal, `usage_records.operation`; Qdrant com dono e conversa no payload e escopo obrigatório na
+  collection do resumidor; `StructuralSummarySplitter`.
+- **API**: `routes/summarizer.py`; 409, 415 e 429 com `code` em `api/errors.py`.
+
 ### Edição do assistente (SPEC-017, implementado)
 
 - **Domain**: `domain/assistant_profile.py` com os limites (80, 500 e 4000), a normalização
