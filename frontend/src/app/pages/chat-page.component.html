@@ -1,6 +1,10 @@
 <section class="flex-1 flex flex-col relative overflow-hidden bg-nexus-bg">
   <!-- Welcome Area (Visible when no interaction) -->
-  <div *ngIf="!hasInteracted()" class="flex-1 flex flex-col items-center justify-center p-4 text-center overflow-y-auto">
+  <div
+    *ngIf="!hasInteracted()"
+    class="flex-1 flex flex-col items-center p-4 text-center overflow-y-auto"
+    [ngClass]="showSummarizerWelcome() ? 'justify-start' : 'justify-center'"
+  >
     <div class="max-w-5xl w-full flex flex-col items-center py-12">
       <h1 class="text-4xl md:text-5xl font-medium tracking-tight leading-normal pb-2 mb-12 bg-gradient-to-r from-blue-400 via-purple-400 to-red-400 bg-clip-text text-transparent">
         Olá, como posso ajudar hoje?
@@ -93,7 +97,7 @@
           <!-- SPEC-018 (RF-119, D38): finalidade e limites do resumidor, sem LLM -->
           <div
             *ngIf="showSummarizerWelcome() && summarizerInfo() as info"
-            class="mt-8 mb-24 w-full max-w-2xl rounded-2xl border border-nexus-hover bg-nexus-sidebar px-6 py-5 text-left text-sm leading-relaxed prose-nexus"
+            class="prose prose-invert prose-nexus max-w-2xl mt-8 w-full rounded-2xl border border-nexus-hover bg-nexus-sidebar px-6 py-5 text-left text-sm"
             data-testid="summarizer-welcome"
             [innerHTML]="info.welcome_markdown | markdown"
           ></div>
@@ -329,8 +333,8 @@
   <div
     class="w-full transition-all duration-500 ease-in-out px-4 pb-4 md:pb-8 z-10"
     [ngClass]="{
-      'absolute bottom-[15%] left-1/2 -translate-x-1/2 max-w-3xl': !hasInteracted(),
-      'sticky bottom-0 bg-nexus-bg/80 backdrop-blur-md pt-4': hasInteracted()
+      'absolute bottom-[15%] left-1/2 -translate-x-1/2 max-w-3xl': !hasInteracted() && !showSummarizerWelcome(),
+      'sticky bottom-0 bg-nexus-bg/80 backdrop-blur-md pt-4': hasInteracted() || showSummarizerWelcome()
     }"
   >
     <div class="max-w-3xl mx-auto relative">
