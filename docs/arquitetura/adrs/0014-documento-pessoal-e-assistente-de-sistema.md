@@ -46,7 +46,7 @@ documento com dono individual, e o isolamento na busca é só por grupo.
    envio diz isso.
 5. **Resumo gravado.** O worker produz os mini-resumos por lote de seções e o consolidado, e grava
    os dois em `document_summaries` e `document_summary_sections`, com a versão do prompt. A entrega
-   do resumo geral lê o banco, sem LLM. O job `summarize` entra na mesma fila `ingestion_jobs` (ADR
+   do resumo geral lê o banco, sem LLM. O job `resumo` entra na mesma fila `ingestion_jobs` (ADR
    0009), depois da indexação, com as mesmas tentativas e o mesmo limite de tempo.
 6. **Retenção e lápide.** O documento pessoal expira 30 dias depois do envio, ou na exclusão da
    conversa, o que vier primeiro. O worker apaga vetores, original e mini-resumos e mantém a linha
