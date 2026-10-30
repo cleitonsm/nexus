@@ -21,6 +21,8 @@ HOME_ASSISTANTS_EMPTY: Final = "home_assistants_empty"
 HOME_ASSISTANTS_LIMIT: Final = "home_assistants_limit"
 HOME_ASSISTANTS_DUPLICATE: Final = "home_assistants_duplicate"
 HOME_ASSISTANTS_DEFAULT_NOT_SELECTED: Final = "home_assistants_default_not_selected"
+# SPEC-018 (RN-57): o cartao fixo nao ocupa vaga.
+HOME_ASSISTANT_PINNED: Final = "home_assistant_pinned"
 ASSISTANT_NOT_AVAILABLE: Final = "assistant_not_available"
 
 
@@ -34,10 +36,15 @@ class HomeAssistantsValidationError(DomainValidationError):
 
 @dataclass(frozen=True, slots=True)
 class HomeAssistantSelection:
-    """Selecao gravada: ids na ordem de marcacao (D7) e o padrao (RN-47)."""
+    """Selecao gravada: ids na ordem de marcacao (D7) e o padrao (RN-47).
+
+    SPEC-018 (RN-57): com ``pinned_id``, o assistente fixo fica fora das vagas
+    e pode ser o padrao sem estar em ``assistant_ids``.
+    """
 
     assistant_ids: tuple[AssistantId, ...]
     default_id: AssistantId
+    pinned_id: AssistantId | None = None
 
     def __post_init__(self) -> None:
         ids = tuple(self.assistant_ids)
@@ -55,7 +62,11 @@ class HomeAssistantSelection:
             raise HomeAssistantsValidationError(
                 "assistants must not repeat.", code=HOME_ASSISTANTS_DUPLICATE
             )
-        if self.default_id not in ids:
+        if self.pinned_id is not None and self.pinned_id in ids:
+            raise HomeAssistantsValidationError(
+                "the pinned assistant does not take a slot.", code=HOME_ASSISTANT_PINNED
+            )
+        if self.default_id not in ids and self.default_id != self.pinned_id:
             raise HomeAssistantsValidationError(
                 "the default assistant must be one of the selected.",
                 code=HOME_ASSISTANTS_DEFAULT_NOT_SELECTED,
@@ -63,26 +74,45 @@ class HomeAssistantSelection:
 
     @property
     def display_order(self) -> tuple[AssistantId, ...]:
-        """D7: padrao primeiro, os outros na ordem de marcacao."""
+        """D7: padrao primeiro, os outros na ordem de marcacao (so as vagas)."""
+        if self.default_id not in self.assistant_ids:
+            return self.assistant_ids
         return (self.default_id,) + tuple(
             item for item in self.assistant_ids if item != self.default_id
         )
 
+    @property
+    def default_is_pinned(self) -> bool:
+        return self.pinned_id is not None and self.default_id == self.pinned_id
+
 
 @dataclass(frozen=True, slots=True)
 class EffectiveHomeAssistants:
-    """O que a tela inicial mostra agora (RN-49)."""
+    """O que a tela inicial mostra agora (RN-49).
+
+    SPEC-018 (RN-57): ``pinned_id`` vem primeiro em ``assistant_ids``.
+    """
 
     assistant_ids: tuple[AssistantId, ...]
     default_id: AssistantId
     customized: bool
+    pinned_id: AssistantId | None = None
 
 
 def effective_home_assistants(
     saved: HomeAssistantSelection | None,
     visible: Sequence[AssistantId],
+    *,
+    pinned_id: AssistantId | None = None,
 ) -> EffectiveHomeAssistants | None:
-    """RN-49, D4 e D8. ``None`` so quando o usuario nao ve nenhum assistente."""
+    """RN-49, D4 e D8. ``None`` so quando o usuario nao ve nenhum assistente.
+
+    Com ``pinned_id`` (SPEC-018, RN-57), o resumidor fica fixo no topo, fora
+    das vagas; e o padrao de quem nao personalizou e o recuo de quem perdeu o
+    padrao gravado. O resultado nunca e ``None``.
+    """
+    if pinned_id is not None:
+        return _with_pinned(saved, visible, pinned_id)
     if not visible:
         return None
     visible_set = set(visible)
@@ -103,4 +133,34 @@ def effective_home_assistants(
     first = tuple(dict.fromkeys(visible))[:MAX_HOME_ASSISTANTS]
     return EffectiveHomeAssistants(
         assistant_ids=first, default_id=first[0], customized=False
+    )
+
+
+def _with_pinned(
+    saved: HomeAssistantSelection | None,
+    visible: Sequence[AssistantId],
+    pinned_id: AssistantId,
+) -> EffectiveHomeAssistants:
+    slots = tuple(item for item in dict.fromkeys(visible) if item != pinned_id)
+    slot_set = set(slots)
+    if saved is not None:
+        kept = tuple(item for item in saved.assistant_ids if item in slot_set)
+        if kept or saved.default_id == pinned_id:
+            if saved.default_id in kept or saved.default_id == pinned_id:
+                default_id = saved.default_id
+            else:
+                default_id = pinned_id  # RN-57: recuo para o resumidor
+            ordered = tuple(item for item in saved.display_order if item in slot_set)
+            return EffectiveHomeAssistants(
+                assistant_ids=(pinned_id,) + ordered,
+                default_id=default_id,
+                customized=True,
+                pinned_id=pinned_id,
+            )
+    first = slots[:MAX_HOME_ASSISTANTS]
+    return EffectiveHomeAssistants(
+        assistant_ids=(pinned_id,) + first,
+        default_id=pinned_id,
+        customized=False,
+        pinned_id=pinned_id,
     )

@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
 from .citations import Citation
+from .document_summary import PersonalScope, SummaryStage
 from .errors import DomainValidationError, InvalidDocumentStateError
 from .llm_settings import validate_model_name
 from .retrieval_profile import RetrievalProfile
@@ -42,8 +43,13 @@ class Assistant:
     llm_credential_id: LLMCredentialId | None = None
     llm_model: str | None = None
     retrieval_profile: RetrievalProfile = field(default_factory=RetrievalProfile)
+    # SPEC-018 (ADR 0014): assistente criado pela migracao, visivel a todo
+    # papel e sem exclusao nem edicao de perfil (RN-55). None nos comuns.
+    system_kind: str | None = None
 
     def __post_init__(self) -> None:
+        if self.system_kind is not None and not self.system_kind.strip():
+            raise DomainValidationError("assistant system_kind must not be blank.")
         if self.llm_model is not None:
             object.__setattr__(self, "llm_model", validate_model_name(self.llm_model))
         if self.description is not None and not self.description.strip():
@@ -54,6 +60,10 @@ class Assistant:
             raise DomainValidationError(
                 "assistant initial_prompt must not be empty when provided."
             )
+
+    @property
+    def is_system(self) -> bool:
+        return self.system_kind is not None
 
 
 class DocumentStatus(StrEnum):
@@ -66,16 +76,31 @@ class DocumentStatus(StrEnum):
     # Versao anterior de um documento substituido (D5): sem trechos nem
     # arquivo; o registro fica para identificar citacoes antigas (RN-29).
     REPLACED = "substituido"
+    # SPEC-018: documento pessoal apagado (conversa excluida ou 30 dias, D9).
+    # Fica como lapide sem conteudo: sustenta a cota e a auditoria (T7).
+    EXPIRED = "expirado"
 
 
 _DOCUMENT_TRANSITIONS: dict[DocumentStatus, frozenset[DocumentStatus]] = {
-    DocumentStatus.PENDING: frozenset({DocumentStatus.PROCESSING}),
-    DocumentStatus.PROCESSING: frozenset(
-        {DocumentStatus.INDEXED, DocumentStatus.PENDING, DocumentStatus.FAILED}
+    DocumentStatus.PENDING: frozenset(
+        {DocumentStatus.PROCESSING, DocumentStatus.EXPIRED}
     ),
-    DocumentStatus.INDEXED: frozenset({DocumentStatus.REPLACED}),
-    DocumentStatus.FAILED: frozenset({DocumentStatus.PENDING}),
+    DocumentStatus.PROCESSING: frozenset(
+        {
+            DocumentStatus.INDEXED,
+            DocumentStatus.PENDING,
+            DocumentStatus.FAILED,
+            DocumentStatus.EXPIRED,
+        }
+    ),
+    DocumentStatus.INDEXED: frozenset(
+        {DocumentStatus.REPLACED, DocumentStatus.EXPIRED}
+    ),
+    DocumentStatus.FAILED: frozenset(
+        {DocumentStatus.PENDING, DocumentStatus.EXPIRED}
+    ),
     DocumentStatus.REPLACED: frozenset(),
+    DocumentStatus.EXPIRED: frozenset(),
 }
 
 
@@ -101,8 +126,22 @@ class Document:
     version: int = 1
     replaces_document_id: DocumentId | None = None
     uploaded_by: str | None = None
+    # SPEC-018 (RN-58): documento pessoal do resumidor. Conversa so com dono;
+    # a lapide perde a conversa e mantem o dono (T7). None na base.
+    owner_user_id: str | None = None
+    conversation_id: ConversationId | None = None
+    expires_at: datetime | None = None
 
     def __post_init__(self) -> None:
+        if self.owner_user_id is not None:
+            owner = self.owner_user_id.strip()
+            if not owner:
+                raise DomainValidationError("document owner_user_id must not be blank.")
+            object.__setattr__(self, "owner_user_id", owner)
+        if self.conversation_id is not None and self.owner_user_id is None:
+            raise DomainValidationError(
+                "a document bound to a conversation must have an owner."
+            )
         if not self.source_name.strip():
             raise DomainValidationError("document source_name must not be empty.")
         if not self.content_hash.strip():
@@ -135,6 +174,20 @@ class Document:
     @property
     def is_in_progress(self) -> bool:
         return self.status in (DocumentStatus.PENDING, DocumentStatus.PROCESSING)
+
+    @property
+    def is_personal(self) -> bool:
+        """SPEC-018: documento do usuario enviado ao resumidor (RN-58)."""
+        return self.owner_user_id is not None
+
+    @property
+    def personal_scope(self) -> PersonalScope | None:
+        """Escopo da busca no documento pessoal (RN-59); None na base e na lapide."""
+        if self.owner_user_id is None or self.conversation_id is None:
+            return None
+        return PersonalScope(
+            owner_user_id=self.owner_user_id, conversation_id=self.conversation_id
+        )
 
     def is_current(self, *, embedding_model: str, pipeline_version: str) -> bool:
         return (
@@ -204,6 +257,12 @@ class Document:
 
     def mark_replaced(self) -> "Document":
         return self._move_to(DocumentStatus.REPLACED, chunk_count=0)
+
+    def mark_expired(self) -> "Document":
+        """SPEC-018 (RF-120, D9): lapide sem trechos nem original."""
+        if not self.is_personal:
+            raise InvalidDocumentStateError("only personal documents can expire.")
+        return self._move_to(DocumentStatus.EXPIRED, chunk_count=0, storage_key=None)
 
     def _move_to(self, target: DocumentStatus, **changes: object) -> "Document":
         if target not in _DOCUMENT_TRANSITIONS[self.status]:
@@ -356,6 +415,9 @@ class ReindexJob:
 class IngestionJobKind(StrEnum):
     INGEST = "ingestao"
     REPROCESS = "reprocessamento"
+    # SPEC-018 (D21): resumo hierarquico do documento pessoal, depois da
+    # indexacao, na mesma fila (ADR 0009).
+    SUMMARIZE = "resumo"
 
 
 class IngestionJobStatus(StrEnum):
@@ -413,3 +475,56 @@ class IngestionJob:
             status=IngestionJobStatus.FAILED,
             last_error=error.strip() or "unknown error",
         )
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentSummarySection:
+    """Mini-resumo de um lote de secoes (SPEC-018, RN-63, D30)."""
+
+    document_id: DocumentId
+    position: int
+    title: str
+    input_tokens: int
+    content: str
+    page_start: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.position < 0:
+            raise DomainValidationError("summary section position must not be negative.")
+        if self.input_tokens < 0:
+            raise DomainValidationError("summary section tokens must not be negative.")
+        if not self.content.strip():
+            raise DomainValidationError("summary section content must not be empty.")
+        if self.page_start is not None and self.page_start < 1:
+            raise DomainValidationError("summary section page must be at least 1.")
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentSummary:
+    """Andamento e resultado do resumo de um documento pessoal (RN-62 a RN-64)."""
+
+    document_id: DocumentId
+    stage: SummaryStage = SummaryStage.UPLOADED
+    batches_done: int = 0
+    batches_total: int = 0
+    content: str | None = None
+    citations: tuple[Citation, ...] = ()
+    document_tokens: int | None = None
+    prompt_version: str | None = None
+    model: str | None = None
+    failure_code: str | None = None
+    created_at: datetime = field(default_factory=_utc_now)
+    updated_at: datetime = field(default_factory=_utc_now)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "citations", tuple(self.citations))
+        if self.batches_done < 0 or self.batches_total < 0:
+            raise DomainValidationError("summary batches must not be negative.")
+        if self.batches_done > self.batches_total:
+            raise DomainValidationError("summary batches done must not pass total.")
+        if self.document_tokens is not None and self.document_tokens < 0:
+            raise DomainValidationError("summary document tokens must not be negative.")
+        if self.stage is SummaryStage.READY and not (self.content or "").strip():
+            raise DomainValidationError("a ready summary must have content.")
+        if self.stage is SummaryStage.FAILED and not (self.failure_code or "").strip():
+            raise DomainValidationError("a failed summary must have a failure code.")

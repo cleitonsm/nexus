@@ -95,3 +95,41 @@ class LLMCredentialInUseError(Exception):
 
 class ConcurrentChangeError(Exception):
     """Outra alteracao simultanea venceu; repetir com o estado atual resolve."""
+
+
+class SystemAssistantReadonlyError(Exception):
+    """SPEC-018 (RN-55): o assistente de sistema nao admite a operacao."""
+
+
+class NotSummarizerConversationError(Exception):
+    """SPEC-018 (RN-58): documento pessoal so na conversa do resumidor."""
+
+
+class ConversationDocumentExistsError(Exception):
+    """SPEC-018 (RN-58, D8): a conversa ja tem um documento."""
+
+
+class SummaryDailyLimitError(Exception):
+    """SPEC-018 (RN-60, D20): cota diaria de documentos atingida."""
+
+    def __init__(self, message: str, *, limit: int, retry_at: datetime) -> None:
+        super().__init__(message)
+        self.limit = limit
+        self.retry_at = retry_at
+
+
+class DocumentTooLongError(Exception):
+    """SPEC-018 (RN-60, D15): o texto passa do teto de tokens."""
+
+    def __init__(self, message: str, *, tokens: int, limit: int) -> None:
+        super().__init__(message)
+        self.tokens = tokens
+        self.limit = limit
+
+
+class SummaryNotReadyError(Exception):
+    """SPEC-018: o resumo ainda nao esta pronto (409 summary_not_ready)."""
+
+
+class SummaryNotFailedError(Exception):
+    """SPEC-018 (RN-64): so o resumo que falhou pode ser refeito."""

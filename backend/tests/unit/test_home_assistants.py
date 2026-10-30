@@ -101,5 +101,90 @@ class EffectiveHomeAssistantsTestCase(unittest.TestCase):
         self.assertFalse(result.customized)
 
 
+
+PINNED = AssistantId("system-document-summarizer")
+
+
+def pinned_selection(values: tuple[str, ...], default: str) -> HomeAssistantSelection:
+    return HomeAssistantSelection(
+        assistant_ids=ids(*values), default_id=AssistantId(default), pinned_id=PINNED
+    )
+
+
+class PinnedHomeAssistantTestCase(unittest.TestCase):
+    """SPEC-018: CT-141, cartao fixo do resumidor fora das vagas (RN-57, D1, D2)."""
+
+    def effective(self, saved: HomeAssistantSelection | None, *visible: str):
+        result = effective_home_assistants(
+            saved, ids(*visible) + (PINNED,), pinned_id=PINNED
+        )
+        assert result is not None
+        return result
+
+    def test_only_the_summarizer_is_visible(self) -> None:
+        """Usuario sem assistente da organizacao ainda ve o resumidor."""
+        result = effective_home_assistants(None, (PINNED,), pinned_id=PINNED)
+        assert result is not None
+        self.assertEqual(result.assistant_ids, (PINNED,))
+        self.assertEqual(result.default_id, PINNED)
+        self.assertEqual(result.pinned_id, PINNED)
+        self.assertFalse(result.customized)
+
+    def test_never_customized_puts_summarizer_first_as_default(self) -> None:
+        """D2: padrao para quem nunca personalizou; nao ocupa vaga (D1)."""
+        result = self.effective(None, "a", "b", "c", "d", "e")
+        self.assertEqual(result.assistant_ids, (PINNED,) + ids("a", "b", "c", "d"))
+        self.assertEqual(result.default_id, PINNED)
+        self.assertFalse(result.customized)
+
+    def test_customized_keeps_the_chosen_default(self) -> None:
+        result = self.effective(pinned_selection(("a", "b", "c", "d"), "c"), "a", "b", "c", "d")
+        self.assertEqual(result.assistant_ids, (PINNED,) + ids("c", "a", "b", "d"))
+        self.assertEqual(result.default_id, AssistantId("c"))
+        self.assertTrue(result.customized)
+
+    def test_summarizer_can_be_the_chosen_default(self) -> None:
+        result = self.effective(pinned_selection(("a", "b"), PINNED.value), "a", "b", "c")
+        self.assertEqual(result.assistant_ids, (PINNED,) + ids("a", "b"))
+        self.assertEqual(result.default_id, PINNED)
+        self.assertTrue(result.customized)
+
+    def test_lost_default_falls_back_to_the_summarizer(self) -> None:
+        """RN-57: antes caia para o primeiro restante (D8 da SPEC-016)."""
+        result = self.effective(pinned_selection(("a", "b", "c"), "b"), "a", "c")
+        self.assertEqual(result.assistant_ids, (PINNED,) + ids("a", "c"))
+        self.assertEqual(result.default_id, PINNED)
+        self.assertTrue(result.customized)
+
+    def test_everything_lost_falls_back_to_never_customized(self) -> None:
+        result = self.effective(pinned_selection(("x",), "x"), "a")
+        self.assertEqual(result.assistant_ids, (PINNED,) + ids("a"))
+        self.assertEqual(result.default_id, PINNED)
+        self.assertFalse(result.customized)
+
+    def test_pinned_default_survives_losing_every_slot(self) -> None:
+        result = self.effective(pinned_selection(("x",), PINNED.value), "a")
+        self.assertEqual(result.assistant_ids, (PINNED,))
+        self.assertEqual(result.default_id, PINNED)
+        self.assertTrue(result.customized)
+
+    def test_summarizer_cannot_take_a_slot(self) -> None:
+        with self.assertRaises(HomeAssistantsValidationError) as caught:
+            pinned_selection(("a", PINNED.value), "a")
+        self.assertEqual(caught.exception.code, "home_assistant_pinned")
+
+    def test_four_slots_besides_the_summarizer(self) -> None:
+        chosen = pinned_selection(("a", "b", "c", "d"), PINNED.value)
+        self.assertEqual(chosen.display_order, ids("a", "b", "c", "d"))
+        self.assertTrue(chosen.default_is_pinned)
+        with self.assertRaises(HomeAssistantsValidationError):
+            pinned_selection(("a", "b", "c", "d", "e"), "a")
+
+    def test_default_outside_selection_without_pin_is_still_rejected(self) -> None:
+        with self.assertRaises(HomeAssistantsValidationError) as caught:
+            selection(("a",), PINNED.value)
+        self.assertEqual(caught.exception.code, "home_assistants_default_not_selected")
+
+
 if __name__ == "__main__":
     unittest.main()

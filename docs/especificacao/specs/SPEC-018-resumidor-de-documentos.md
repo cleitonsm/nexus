@@ -229,15 +229,15 @@ Cenário: expiração e exclusão (RF-120, D9 a D11)
   - `UploadSummaryDocumentUseCase`: confere a RN-58 (dono, conversa do resumidor, nenhum documento), confere a cota (RN-60), grava o original pelo armazenamento atual, cria o `Document` pessoal com `expires_at`, enfileira o job `kind='ingest'` e audita.
   - `GetSummaryDocumentStatusUseCase`: devolve `SummaryProgress` (RF-115).
   - `GetStoredSummaryUseCase`: lê o consolidado do repositório (RNF-37).
-  - `RetrySummaryUseCase`: reenfileira `kind='summarize'` (RN-64).
+  - `RetrySummaryUseCase`: reenfileira `kind='resumo'` (RN-64).
   - `PurgeExpiredSummaryDocumentsUseCase`: apaga vetores → original → mini-resumos e documento, e audita (RF-120). A mensagem postada não é apagada.
-- `process_ingestion.py`: no fim de uma ingestão bem-sucedida de documento pessoal, conta os tokens (RN-60) **antes** dos embeddings. Acima do teto, falha definitiva `document_too_long`. Caso contrário, indexa com payload `owner_user_id` e `conversation_id` e enfileira `kind='summarize'` (D21).
+- `process_ingestion.py`: no fim de uma ingestão bem-sucedida de documento pessoal, conta os tokens (RN-60) **antes** dos embeddings. Acima do teto, falha definitiva `document_too_long`. Caso contrário, indexa com payload `owner_user_id` e `conversation_id` e enfileira `kind='resumo'` (D21).
 - `application/services/document_summary.py`: `HierarchicalSummarizer`, que usa o `LLMGateway` existente com a credencial do resumidor e recuo (D24), aplica a RN-63, grava cada mini-resumo e o progresso, consolida, monta as citações (D29), grava o consolidado com `SUMMARY_PROMPT_VERSION` e posta a mensagem na conversa (D31). Também `tailored_summary(request, sections)` para a D33.
 - `chat_with_assistant.py`: quando o assistente é o resumidor, aplica `route_summarizer_message` **antes** do grafo do LangGraph. As rotas 1 a 3 respondem sem LLM e sem registro de uso. A rota 4 chama `tailored_summary`. A rota 5 segue o grafo atual com o `payload_filter` da RN-59 e o perfil fixo da D35.
 - `ManageConversationUseCase.delete`: apaga o documento pessoal da conversa antes de apagar a conversa (RF-120), com o mesmo caminho da limpeza.
 - `ListAssistantsUseCase` e `InferAssistantUseCase`: o resumidor entra na lista e fica fora do catálogo da inferência (RN-56). `AssistantDTO.is_system`.
 - `DeleteAssistantUseCase`, `UpdateAssistantUseCase`, `ConfigureAssistantUseCase` (perfil de recuperação) e o envio para a base: levantam `SystemAssistantReadonlyError` (RN-55).
-- `cli/worker.py`: trata `kind='summarize'` e roda `PurgeExpiredSummaryDocumentsUseCase` a cada hora.
+- `cli/worker.py`: trata `kind='resumo'` e roda `PurgeExpiredSummaryDocumentsUseCase` a cada hora.
 
 ### Infraestrutura
 
@@ -262,7 +262,7 @@ Cenário: expiração e exclusão (RF-120, D9 a D11)
 
 - `assistants.system_kind varchar(32) NULL`, com índice único parcial `WHERE system_kind IS NOT NULL`. O `INSERT` do resumidor (id fixo, sem grupo, `llm_credential_id` nulo para seguir a padrão) é idempotente.
 - `documents`: `owner_user_id varchar(128) NULL`, `conversation_id varchar(64) NULL FK conversations.id ON DELETE SET NULL` e `expires_at timestamptz NULL`. A check constraint de status passa a incluir `'expirado'`. Índices `(conversation_id)` e `(owner_user_id, created_at)` (cota). Mais um check: `conversation_id IS NULL OR owner_user_id IS NOT NULL` (conversa só com dono). Depois da exclusão da conversa ou da expiração, a linha fica como lápide com status `expirado`, sem conteúdo, e sustenta a cota e a auditoria (ADR 0014, item 6; T7 do plano).
-- `ingestion_jobs.kind` passa a aceitar `'summarize'`.
+- `ingestion_jobs.kind` passa a aceitar `'resumo'`.
 - `document_summaries` com `document_id PK FK documents ON DELETE CASCADE`, `stage`, `batches_done`, `batches_total`, `content text NULL`, `citations jsonb NULL`, `document_tokens int`, `prompt_version varchar(16)`, `model varchar(200)`, `failure_code varchar(64) NULL` e `created_at`/`updated_at`.
 - `document_summary_sections` com `document_id FK ON DELETE CASCADE`, `position smallint`, `title text`, `page_start int NULL`, `input_tokens int`, `content text`. Chave primária `(document_id, position)`.
 - `usage_records.operation varchar(32) NOT NULL DEFAULT 'chat'`, em que o padrão preenche as linhas antigas (RN-65). A contagem dos limites filtra `operation = 'chat'`.
@@ -282,7 +282,7 @@ Pelo `/new-migration`; nenhuma migração existente é editada.
 
 - **ADR 0014 — "Documento pessoal e assistente de sistema"** (aceita em 2026-10-30): registra a exceção ao modelo da ADR 0008, em que só administrador e curador enviam documentos. Também registra o isolamento por dono e conversa dentro de uma única collection `assistant_{resumidor}` (compatível com a ADR 0003), o filtro de falha fechada (RN-59) e a retenção de 30 dias.
 - A ADR 0004 continua: embeddings locais de 128 tokens. **O texto do documento vai ao LLM externo no resumo**, como já acontece com os trechos recuperados numa pergunta. A ADR 0014 registra isso e a explicação do RF-119 avisa o usuário.
-- A ADR 0009 (ingestão assíncrona) ganha o job `summarize` na mesma fila, sem infraestrutura nova.
+- A ADR 0009 (ingestão assíncrona) ganha o job `resumo` na mesma fila, sem infraestrutura nova.
 - A SPEC-016 muda: RN-49 e D8 (padrão efetivo) passam a considerar o cartão fixo (RN-57). A SPEC-014 e a SPEC-017 ganham a exceção da RN-55. A matriz de permissões da SPEC-004 ganha "enviar documento pessoal: todo usuário com papel, só na própria conversa".
 - `CLAUDE.md`: a regra "toda busca no Qdrant filtra `user_groups` e `active`" continua valendo e ganha o complemento da RN-59.
 - Sem dependência nova: tokenizador, extração, OCR, LLM e fila já existem.
@@ -296,7 +296,7 @@ Pelo `/new-migration`; nenhuma migração existente é editada.
 | CT-141 | Unitário | `effective_home_assistants` com cartão fixo: sem personalização, com padrão escolhido, resumidor como padrão, padrão perdido → resumidor; seleção com o resumidor nas vagas → `home_assistant_pinned` | RN-57 |
 | CT-142 | Unitário | `AccessPolicy` e casos de uso: resumidor visível a todo papel; 409 em exclusão, edição de perfil, perfil de recuperação e envio para a base; credencial liberada ao admin | RN-55, RN-56 |
 | CT-143 | Unitário | `UploadSummaryDocumentUseCase`: dono, conversa de outro assistente, segundo documento, cota 10/11 com documentos falhos e apagados contando, auditoria sem conteúdo | RN-58, RN-60, RN-67 |
-| CT-144 | Unitário | Ingestão pessoal com dublês: teto 40.000/40.001 → `document_too_long` sem LLM; payload com dono e conversa; job `summarize` só depois de indexar | RN-60, D21 |
+| CT-144 | Unitário | Ingestão pessoal com dublês: teto 40.000/40.001 → `document_too_long` sem LLM; payload com dono e conversa; job `resumo` só depois de indexar | RN-60, D21 |
 | CT-145 | Unitário | `HierarchicalSummarizer` com LLM falso: progresso x/y, terceiro nível acima de 8 mil, falha após 3 tentativas mantém a indexação, nova tentativa sem nova cota, `prompt_version` gravada, documento delimitado como dado, uso com `operation='document_summary'` | RN-62 a RN-66 |
 | CT-146 | Unitário | `summarizer_capabilities`: o texto traz exatamente os valores das constantes e de `UPLOAD_MAX_BYTES`; mudar uma constante muda o texto | RF-119, D37 |
 | CT-147 | Integração | Rotas novas: 202, 401, 404 em conversa alheia (inclusive de admin), 409, 413, 415, 429; `GET /summary` 409 antes de pronto; chat sem documento sem registro de uso | RF-114 a RF-119, RN-58 |

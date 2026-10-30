@@ -52,6 +52,10 @@ class AuditAction(StrEnum):
     ARCHIVED_CONVERSATIONS_CONSULTED = "archived_conversation.consulted"
     ARCHIVED_CONVERSATION_VIEWED = "archived_conversation.viewed"
     ARCHIVED_CONVERSATION_DELETED = "archived_conversation.deleted"
+    # SPEC-018 (RN-67): documento pessoal do resumidor, sem conteudo.
+    SUMMARY_DOCUMENT_UPLOADED = "summary_document.uploaded"
+    SUMMARY_DOCUMENT_SUMMARIZED = "summary_document.summarized"
+    SUMMARY_DOCUMENT_DELETED = "summary_document.deleted"
 
 
 class AuditResource(StrEnum):
