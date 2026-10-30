@@ -26,6 +26,7 @@ from src.domain import (
     DAILY_SUMMARY_DOCUMENTS,
     DAILY_SUMMARY_WINDOW,
     SUMMARIZER_ASSISTANT_ID,
+    AccessPolicy,
     AuditAction,
     AuditResource,
     AuthenticatedUser,
@@ -55,6 +56,7 @@ from src.domain import (
 )
 
 from .ingest_document import SUPPORTED_DOCUMENT_FORMATS, DocumentTooLargeError
+from .chat_with_assistant import ConversationNotFoundError
 from .manage_conversation import load_owned_conversation
 
 logger = logging.getLogger(__name__)
@@ -99,6 +101,9 @@ def _summarizer_conversation(
     conversation = load_owned_conversation(
         conversations, access, user, ConversationId(conversation_id)
     )
+    # RN-58: dono da conversa e com papel no Nexus (AccessPolicy).
+    if not AccessPolicy.can_use_personal_document(user, conversation.owner_user_id):
+        raise ConversationNotFoundError("conversation not found.")
     if conversation.assistant_id != SUMMARIZER_ASSISTANT_ID:
         raise NotSummarizerConversationError(
             "personal documents belong to summarizer conversations."

@@ -217,5 +217,39 @@ class SummarizerChatTestCase(unittest.TestCase):
         self.assertEqual(events[0].text, "Resumo pronto.")
 
 
+
+class RuntimeResolutionTestCase(unittest.TestCase):
+    """Revisao de 2026-10-30: rotas sem LLM nao resolvem credencial (RNF-37)."""
+
+    def test_only_llm_routes_resolve_the_runtime(self) -> None:
+        from src.application.services import RetrievalSettings
+
+        calls: list[str] = []
+
+        class Runtime:
+            retrieval = RetrievalSettings()
+            usage_model = "m"
+            usage_pricing = None
+
+            def __init__(self, llm) -> None:
+                self.llm_gateway = llm
+
+            def log_fields(self) -> dict[str, object]:
+                return {}
+
+        scenario = Scenario(answers=("- Ponto [1].",))
+        scenario.use_case._runtime_resolver = lambda assistant: calls.append("x") or Runtime(scenario.llm)
+        scenario.ask("quais arquivos você aceita?")
+        self.assertEqual(calls, [])
+        document = scenario.with_document(DocumentStatus.INDEXED, SummaryStage.READY, content="Resumo")
+        scenario.summaries.save_section(
+            DocumentSummarySection(document_id=document.id, position=0, title="Parte",
+                                   input_tokens=10, content="mini", page_start=None)
+        )
+        scenario.ask("resuma")
+        self.assertEqual(calls, [])
+        scenario.ask("resuma em 2 tópicos")
+        self.assertEqual(calls, ["x"])
+
 if __name__ == "__main__":
     unittest.main()

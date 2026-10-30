@@ -80,6 +80,13 @@ class Documents:
             if item.owner_user_id == owner_user_id and item.created_at > since
         )
 
+    def list_personal_indexed(self) -> list[Document]:
+        return [
+            item
+            for item in self.items.values()
+            if item.is_personal and item.status is DocumentStatus.INDEXED
+        ]
+
     def list_personal_to_expire(self, now: datetime, limit: int) -> list[Document]:
         due = sorted(
             (

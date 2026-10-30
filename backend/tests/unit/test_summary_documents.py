@@ -430,5 +430,15 @@ class SummarizerInfoTestCase(unittest.TestCase):
         self.assertIn(".docx", info.formats)
 
 
+
+class ReviewFindingsTestCase(unittest.TestCase):
+    """Revisao de 2026-10-30: RN-58 pela AccessPolicy."""
+
+    def test_owner_without_role_is_treated_as_not_found(self) -> None:
+        fx = SummarizerFixture()
+        fx.conversation(owner="sem.papel")
+        with self.assertRaises(ConversationNotFoundError):
+            fx.upload(user=make_user("sem.papel", roles=()))
+
 if __name__ == "__main__":
     unittest.main()

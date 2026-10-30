@@ -25,6 +25,7 @@ from src.application.services import (
     PersonalDocumentRemover,
     SummarizerChat,
 )
+from src.application.use_cases.summary_documents import summarizer_capabilities
 from src.domain import (
     Assistant,
     AuthenticatedUser,
@@ -449,8 +450,6 @@ def get_summarizer_chat(
     max_bytes: int = Depends(get_max_file_bytes),
 ) -> SummarizerChat:
     """RN-61: roteamento da conversa do resumidor no chat."""
-    from src.application.use_cases.summary_documents import summarizer_capabilities
-
     return SummarizerChat(
         documents=documents,
         summaries=summaries,

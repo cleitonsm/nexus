@@ -348,5 +348,28 @@ class SummaryJobTestCase(unittest.TestCase):
         self.assertIs(scenario.queue.jobs[job.id].status, IngestionJobStatus.PENDING)
 
 
+
+class TombstoneTestCase(unittest.TestCase):
+    """Revisao de 2026-10-30: lapides antigas nao forcam recriar a collection."""
+
+    def test_old_model_tombstone_is_ignored(self) -> None:
+        from src.domain import SUMMARIZER_ASSISTANT_ID as SID
+
+        scenario = WorkerScenario(document_text(1, 20))
+        old = Document(
+            id=DocumentId("velho"), assistant_id=SID, source_name="velho.pdf", content_hash="h",
+            status=DocumentStatus.EXPIRED, owner_user_id="ana", embedding_model="modelo-antigo",
+        )
+        scenario.documents.items["velho"] = old
+        scenario.vector_store.aliases["assistant-system-document-summarizer"] = (
+            "assistant-system-document-summarizer-v1"
+        )
+        scenario.vector_store.collections.add("assistant-system-document-summarizer-v1")
+        scenario.run()
+        self.assertEqual(
+            scenario.vector_store.aliases["assistant-system-document-summarizer"],
+            "assistant-system-document-summarizer-v1",
+        )
+
 if __name__ == "__main__":
     unittest.main()

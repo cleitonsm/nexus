@@ -382,11 +382,8 @@ class ProcessNextIngestionJobUseCase:
         gravado continua.
         """
         state = read_index_state(self._vector_store, SUMMARIZER_ASSISTANT_ID)
-        live = [
-            item
-            for item in self._documents.list_by_assistant(SUMMARIZER_ASSISTANT_ID)
-            if item.status is DocumentStatus.INDEXED
-        ]
+        # Lapides acumulam: so os indexados (limitados pela retencao) contam.
+        live = self._documents.list_personal_indexed()
         outdated = state.current is not None and is_index_outdated(
             state,
             live,

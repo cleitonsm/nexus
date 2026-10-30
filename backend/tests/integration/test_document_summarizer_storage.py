@@ -248,6 +248,8 @@ class DocumentSummarizerStorageTests(unittest.TestCase):
         documents.save(
             self._personal("gone", None, expires_at=NOW - timedelta(days=3)).mark_expired()
         )
+        # Revisao de 2026-10-30: lapides nao entram na lista dos indexados.
+        self.assertEqual(documents.list_personal_indexed(), [])
         due = documents.list_personal_to_expire(NOW, limit=10)
         self.assertEqual([item.id.value for item in due], ["old", "due"])
         self.assertEqual(len(documents.list_personal_to_expire(NOW, limit=1)), 1)

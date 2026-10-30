@@ -393,6 +393,14 @@ class PostgresDocumentRepository:
             or 0
         )
 
+    def list_personal_indexed(self) -> list[Document]:
+        """SPEC-018: so os indexados; as lapides nao voltam (T7)."""
+        stmt = select(DocumentModel).where(
+            DocumentModel.owner_user_id.is_not(None),
+            DocumentModel.status == DocumentStatus.INDEXED.value,
+        )
+        return [_document_to_entity(item) for item in self._session.scalars(stmt).all()]
+
     def list_personal_to_expire(self, now: datetime, limit: int) -> list[Document]:
         """SPEC-018 (RF-120, T9): vencidos ainda nao expirados, mais antigos antes."""
         stmt = (

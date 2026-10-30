@@ -134,6 +134,10 @@ class DocumentRepository(Protocol):
         """SPEC-018 (RN-60, T8): envios do usuario desde ``since``, lapides inclusas."""
         ...
 
+    def list_personal_indexed(self) -> list[Document]:
+        """SPEC-018: pessoais indexados (no maximo 30 dias de envios); sem lapides."""
+        ...
+
     def list_personal_to_expire(self, now: datetime, limit: int) -> list[Document]:
         """SPEC-018 (RF-120): pessoais ainda nao expirados com ``expires_at <= now``."""
         ...

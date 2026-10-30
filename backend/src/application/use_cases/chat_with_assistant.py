@@ -224,7 +224,11 @@ class ChatWithAssistantUseCase:
         # SPEC-018 (RN-65): finalidade, progresso e resumo gravado nao contam.
         if plan is None or plan.counts_as_question:
             self._check_usage_limit(data.user, conversation_id, conversation.assistant_id)
-        self._apply_runtime(assistant)
+            self._apply_runtime(assistant)
+        else:
+            # RNF-37/RNF-38: finalidade, progresso e resumo gravado nao chamam o
+            # LLM; nao ha credencial a decifrar nem modelo a resolver.
+            self._apply_runtime(None)
 
         # Trechos ja ranqueados e tokens ja gastos: se a pergunta falhar
         # depois, a auditoria e o consumo ainda registram o que houve (C9).
