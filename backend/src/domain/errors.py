@@ -112,10 +112,9 @@ class ConversationDocumentExistsError(Exception):
 class SummaryDailyLimitError(Exception):
     """SPEC-018 (RN-60, D20): cota diaria de documentos atingida."""
 
-    def __init__(self, message: str, *, limit: int, retry_at: datetime) -> None:
+    def __init__(self, message: str, *, limit: int) -> None:
         super().__init__(message)
         self.limit = limit
-        self.retry_at = retry_at
 
 
 class DocumentTooLongError(Exception):

@@ -10,6 +10,7 @@ from .conversation_dto import (
     RegisterConversationResult,
 )
 from .home_assistants_dto import HomeAssistantsDTO
+from .summary_dto import StoredSummaryDTO, SummarizerInfoDTO, SummaryDocumentDTO
 from .evaluation_dto import EvaluationComparisonDTO, EvaluationReportDTO
 from .index_dto import IndexStatusDTO, ReindexJobDTO
 from .operations_dto import (
@@ -20,6 +21,9 @@ from .operations_dto import (
 )
 
 __all__ = [
+    "StoredSummaryDTO",
+    "SummarizerInfoDTO",
+    "SummaryDocumentDTO",
     "AssistantDTO",
     "AuditEventDTO",
     "ChatStreamEvent",

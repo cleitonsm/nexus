@@ -1,4 +1,5 @@
 from .access_control import AccessControl, AuditTrail
+from .personal_documents import PersonalDocumentRemover
 from .document_indexing import PIPELINE_VERSION, DocumentIndexer
 from .group_validation import UnknownGroupsError, ensure_known_groups
 from .grounded_answer import (
@@ -57,6 +58,7 @@ from .llm_resolution import (
 from .usage import UsageGovernance, UsageSettings
 
 __all__ = [
+    "PersonalDocumentRemover",
     "AssistantRuntime",
     "AssistantRuntimeResolver",
     "LLMGatewayBuilder",

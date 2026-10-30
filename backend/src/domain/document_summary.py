@@ -29,6 +29,14 @@ SUMMARIZER_SYSTEM_KIND: Final = "document_summarizer"
 # T6 do plano: id fixo, o mesmo do INSERT da migracao 0013.
 SUMMARIZER_ASSISTANT_ID: Final = AssistantId("system-document-summarizer")
 SUMMARIZER_NAME: Final = "Resumidor de documentos"
+# RN-55: assistentes de sistema tem id fixo, definido no codigo.
+SYSTEM_ASSISTANT_IDS: Final = frozenset({SUMMARIZER_ASSISTANT_ID})
+
+
+def is_system_assistant_id(assistant_id: AssistantId) -> bool:
+    return assistant_id in SYSTEM_ASSISTANT_IDS
+
+
 # ADR 0014 item 3: todos os documentos pessoais nesta collection (alias) e nas
 # versoes fisicas dela (``-vN``).
 SUMMARIZER_COLLECTION: Final = CollectionName.from_assistant_id(SUMMARIZER_ASSISTANT_ID)
