@@ -60,6 +60,9 @@ SUMMARY_BATCH_TARGET_TOKENS: Final = 6_000
 SUMMARY_BATCH_MIN_TOKENS: Final = 4_000
 SUMMARY_BATCH_MAX_TOKENS: Final = 8_000
 
+# D44: chamadas simultaneas ao LLM nos mini-resumos e nos grupos do 3o nivel.
+SUMMARY_PARALLEL_CALLS: Final = 4
+
 # --- Tamanho do resumo (D27) -----------------------------------------------
 
 SUMMARY_MIN_WORDS: Final = 300

@@ -4,13 +4,19 @@ Roda no worker depois da indexacao (D21). Mini-resumos ja gravados nao sao
 refeitos numa nova tentativa: o andamento sobrevive a falhas e ao limite de
 tempo do job (T9). No fim, grava o consolidado e posta a mensagem na conversa
 (D31, T4). Falha esgotada derruba so o resumo; as perguntas seguem (RN-64).
+
+D44: as chamadas de um nivel rodam em paralelo (no maximo
+``SUMMARY_PARALLEL_CALLS``). So a chamada ao LLM vai para outra thread; gravar,
+atualizar o andamento e renovar o job continuam na thread do job.
 """
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -20,6 +26,7 @@ from src.application.services import (
     AssistantRuntimeResolver,
     DocumentIndexer,
     IngestionSettings,
+    SummaryCompletion,
     UsageGovernance,
     complete_summary,
     sections_as_context,
@@ -36,6 +43,7 @@ from src.application.services.document_summary_prompts import (
 from src.domain import (
     SUMMARIZER_ASSISTANT_ID,
     SUMMARY_FAILED,
+    SUMMARY_PARALLEL_CALLS,
     USAGE_OPERATION_DOCUMENT_SUMMARY,
     AssistantRepository,
     AuditAction,
@@ -173,10 +181,10 @@ class SummarizeDocumentUseCase:
         self._summaries.set_stage(
             document.id, SummaryStage.SUMMARIZING, batches_done=len(done), batches_total=total
         )
+        calls: list[tuple[int, Callable[[], SummaryCompletion]]] = []
         for position, batch in enumerate(batches):
             if position in done:
                 continue
-            first = batch.pieces[0]
             texts = [by_index[piece.section_index].text_for(piece) for piece in batch.pieces]
             flags += sum(1 for text in texts if detect_prompt_injection(text))
             context = [
@@ -188,14 +196,18 @@ class SummarizeDocumentUseCase:
                 )
                 for number, (piece, text) in enumerate(zip(batch.pieces, texts), start=1)
             ]
-            result = complete_summary(
-                llm,
-                context,
-                instruction=MINI_SUMMARY_INSTRUCTION,
-                prompt=mini_summary_prompt(_mini_words(batch)),
+            calls.append(
+                (
+                    position,
+                    _call(llm, context, MINI_SUMMARY_INSTRUCTION, mini_summary_prompt(_mini_words(batch))),
+                )
             )
+
+        def save_mini(position: int, result: SummaryCompletion) -> None:
+            nonlocal usage
             usage = usage + result.usage
             self._hold(job)
+            batch = batches[position]
             self._summaries.save_section(
                 DocumentSummarySection(
                     document_id=document.id,
@@ -203,7 +215,7 @@ class SummarizeDocumentUseCase:
                     title=_batch_title(batch),
                     input_tokens=batch.tokens,
                     content=result.text,
-                    page_start=first.page_start,
+                    page_start=batch.pieces[0].page_start,
                 )
             )
             done.add(position)
@@ -213,23 +225,38 @@ class SummarizeDocumentUseCase:
                 batches_done=min(len(done), total),
                 batches_total=total,
             )
+
+        _in_parallel(calls, save_mini)
         minis = self._summaries.list_sections(document.id)
         context = sections_as_context(document, minis)
         words = target_summary_words(sum(item.input_tokens for item in minis))
         groups = plan_consolidation_groups([self._counter.count(item.content) for item in minis])
         if len(groups) > 1:
             # D23: terceiro nivel; os marcadores apontam para os mini-resumos.
-            condensed: list[str] = []
-            for group in groups:
-                result = complete_summary(
-                    llm,
-                    [context[index] for index in group],
-                    instruction=GROUP_INSTRUCTION,
-                    prompt=group_prompt(max(150, words // len(groups))),
-                )
+            condensed: dict[int, str] = {}
+
+            def keep_group(position: int, result: SummaryCompletion) -> None:
+                nonlocal usage
                 usage = usage + result.usage
-                condensed.append(result.text)
+                condensed[position] = result.text
                 self._hold(job)
+
+            group_words = max(150, words // len(groups))
+            _in_parallel(
+                [
+                    (
+                        position,
+                        _call(
+                            llm,
+                            [context[index] for index in group],
+                            GROUP_INSTRUCTION,
+                            group_prompt(group_words),
+                        ),
+                    )
+                    for position, group in enumerate(groups)
+                ],
+                keep_group,
+            )
             # Os textos condensados vao no pedido; os trechos levam so o titulo
             # de cada parte, para o marcador [n] continuar resolvendo a citacao.
             final_context = [
@@ -244,7 +271,9 @@ class SummarizeDocumentUseCase:
                 )
                 for item in context
             ]
-            prompt = consolidation_prompt(words) + "\n\nTextos condensados:\n\n" + "\n\n".join(condensed)
+            prompt = consolidation_prompt(words) + "\n\nTextos condensados:\n\n" + "\n\n".join(
+                condensed[position] for position in range(len(groups))
+            )
             result = complete_summary(
                 llm, final_context, instruction=CONSOLIDATION_INSTRUCTION, prompt=prompt
             )
@@ -339,6 +368,53 @@ class SummarizeDocumentUseCase:
                 "duration_ms": int((time.perf_counter() - started_at) * 1000),
             },
         )
+
+
+def _call(
+    llm: LLMGateway, context: list[ContextChunk], instruction: str, prompt: str
+) -> Callable[[], SummaryCompletion]:
+    return lambda: complete_summary(llm, context, instruction=instruction, prompt=prompt)
+
+
+def _in_parallel(
+    calls: Sequence[tuple[int, Callable[[], SummaryCompletion]]],
+    on_result: Callable[[int, SummaryCompletion], None],
+) -> None:
+    """D44: ate ``SUMMARY_PARALLEL_CALLS`` chamadas ao mesmo tempo.
+
+    ``on_result`` roda na thread que chamou, na ordem em que as respostas
+    chegam. Na primeira falha, as chamadas que ainda nao comecaram sao
+    canceladas; as que ja estavam em andamento terminam e sao gravadas, e a
+    falha sobe depois (a nova tentativa refaz so o que faltou, RN-63).
+    """
+    if not calls:
+        return
+    pool = ThreadPoolExecutor(
+        max_workers=min(SUMMARY_PARALLEL_CALLS, len(calls)),
+        thread_name_prefix="summary-llm",
+    )
+    failure: BaseException | None = None
+    try:
+        # Cada chamada leva o contexto atual (span pai do tracing).
+        futures: dict[Future[SummaryCompletion], int] = {
+            pool.submit(contextvars.copy_context().run, call): position
+            for position, call in calls
+        }
+        for future in as_completed(futures):
+            if future.cancelled():
+                continue
+            error = future.exception()
+            if error is not None:
+                if failure is None:
+                    failure = error
+                    for pending in futures:
+                        pending.cancel()
+                continue
+            on_result(futures[future], future.result())
+    finally:
+        pool.shutdown(wait=True, cancel_futures=True)
+    if failure is not None:
+        raise failure
 
 
 def _batch_title(batch: SummaryBatch) -> str:

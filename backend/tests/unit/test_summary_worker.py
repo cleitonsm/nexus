@@ -8,6 +8,8 @@ tentativa que continua de onde parou e falha que preserva as perguntas).
 
 from __future__ import annotations
 
+import threading
+import time
 import unittest
 from dataclasses import dataclass
 
@@ -169,12 +171,39 @@ class FailingLLM(ScriptedLLM):
         super().__init__(*answers, usage=TokenUsage(input_tokens=10, output_tokens=5))
         self.fail_on = set(fail_on)
         self.count = 0
+        self._lock = threading.Lock()  # D44: chamadas em paralelo
 
     def generate_with_usage(self, **kwargs):
-        self.count += 1
-        if self.count in self.fail_on:
-            raise RuntimeError("llm indisponivel")
-        return super().generate_with_usage(**kwargs)
+        with self._lock:
+            self.count += 1
+            number = self.count
+            if number in self.fail_on:
+                raise RuntimeError("llm indisponivel")
+            return super().generate_with_usage(**kwargs)
+
+
+class SlowLLM(FailingLLM):
+    """Segura cada chamada um instante e mede quantas correm ao mesmo tempo."""
+
+    def __init__(self, *answers, fail_on=(), delay=0.05):
+        super().__init__(*answers, fail_on=fail_on)
+        self.delay = delay
+        self.running = 0
+        self.peak = 0
+        self.threads: set[str] = set()
+        self._gauge = threading.Lock()
+
+    def generate_with_usage(self, **kwargs):
+        with self._gauge:
+            self.running += 1
+            self.peak = max(self.peak, self.running)
+            self.threads.add(threading.current_thread().name)
+        try:
+            time.sleep(self.delay)
+            return super().generate_with_usage(**kwargs)
+        finally:
+            with self._gauge:
+                self.running -= 1
 
 
 def document_text(sections: int, words_per_section: int) -> bytes:
@@ -347,6 +376,57 @@ class SummaryJobTestCase(unittest.TestCase):
         ).execute()
         self.assertIs(scenario.queue.jobs[job.id].status, IngestionJobStatus.PENDING)
 
+
+
+class ParallelSummaryTestCase(unittest.TestCase):
+    """D44: mini-resumos em paralelo, no maximo SUMMARY_PARALLEL_CALLS."""
+
+    def test_at_most_four_calls_at_once_and_consolidation_last(self) -> None:
+        from src.domain import SUMMARY_PARALLEL_CALLS
+
+        llm = SlowLLM("mini [1]", "## Visão geral\nResumo final [1].")
+        scenario = WorkerScenario(document_text(7, 5_000), llm=llm)  # 7 lotes de 5 mil
+        scenario.run()
+        scenario.run()
+        summary = scenario.summary
+        self.assertEqual((summary.stage, summary.batches_done, summary.batches_total), (SummaryStage.READY, 7, 7))
+        self.assertEqual(llm.peak, SUMMARY_PARALLEL_CALLS)
+        self.assertEqual(llm.count, 8)  # 7 mini-resumos + consolidado
+        positions = [item.position for item in scenario.summaries.list_sections(scenario.document.id)]
+        self.assertEqual(sorted(positions), list(range(7)))
+        self.assertEqual(summary.content, "## Visão geral\nResumo final [1].")
+        self.assertEqual(scenario.usage.records[0]["usage"].input_tokens, 80)
+
+    def test_failure_keeps_the_finished_batches(self) -> None:
+        llm = SlowLLM("mini [1]", "Final [1].", fail_on=(1,))
+        scenario = WorkerScenario(document_text(3, 5_000), llm=llm)
+        scenario.run()
+        scenario.run()  # 3 lotes ao mesmo tempo; um falha, os outros dois gravam
+        saved = scenario.summaries.list_sections(scenario.document.id)
+        self.assertEqual(len(saved), 2)
+        self.assertEqual(scenario.summary.batches_done, 2)
+        self.assertEqual(scenario.summary.stage, SummaryStage.SUMMARIZING)
+        scenario.later()
+        scenario.run()
+        self.assertEqual(scenario.summary.stage, SummaryStage.READY)
+        self.assertEqual(llm.count, 5)  # 3 + o lote que faltou + consolidado
+
+    def test_saving_happens_in_the_job_thread(self) -> None:
+        llm = SlowLLM("mini [1]", "Final [1].", delay=0.01)
+        scenario = WorkerScenario(document_text(2, 5_000), llm=llm)
+        saved_in: list[str] = []
+        original = scenario.summaries.save_section
+        def record(section):
+            saved_in.append(threading.current_thread().name)
+            return original(section)
+        scenario.summaries.save_section = record  # type: ignore[method-assign]
+        scenario.run()
+        scenario.run()
+        self.assertEqual(set(saved_in), {threading.current_thread().name})
+        # Mini-resumos nas threads do resumo; o consolidado, na thread do job.
+        workers = {name for name in llm.threads if name.startswith("summary-llm")}
+        self.assertTrue(workers)
+        self.assertEqual(llm.threads - workers, {threading.current_thread().name})
 
 
 class TombstoneTestCase(unittest.TestCase):
