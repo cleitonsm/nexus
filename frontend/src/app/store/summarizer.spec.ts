@@ -54,9 +54,11 @@ describe("summarizerReducer (CT-150)", () => {
       summarizerActions.uploadDocument({ conversationId: "c1", assistantId: "sys", file: FILE })
     );
     expect(state.uploading).toBe(true);
+    expect(state.uploadingName).toBe("contrato.pdf");
     state = summarizerReducer(state, summarizerActions.uploadDocumentSuccess({ document: doc() }));
     expect(state.documents["c1"]?.stage).toBe("enviado");
     expect(state.uploading).toBe(false);
+    expect(state.uploadingName).toBeNull();
     state = summarizerReducer(
       state,
       summarizerActions.loadDocumentSuccess({ conversationId: "c2", document: null, previousStage: null })

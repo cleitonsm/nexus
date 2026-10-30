@@ -108,6 +108,18 @@
 
   <!-- Messages Container (Visible when has interaction) -->
   <div #messagesContainer *ngIf="hasInteracted()" class="flex-1 overflow-y-auto px-4 py-8 md:px-20 lg:px-40 space-y-8">
+    <!-- SPEC-018 (D31, D34): conversa do resumidor antes da primeira mensagem -->
+    <div
+      *ngIf="isSummarizerActive() && messages().length === 0 && !chatStream() && !loading().sendChat"
+      class="mx-auto mt-10 max-w-xl text-center text-sm text-nexus-dim"
+      data-testid="summary-waiting"
+    >
+      <p class="text-base font-medium text-nexus-text">O resumo vai aparecer aqui.</p>
+      <p class="mt-2">
+        Acompanhe o andamento logo abaixo. Assim que o documento estiver pronto para perguntas,
+        você já pode escrever a sua.
+      </p>
+    </div>
     <div
       *ngFor="let message of messages()"
       class="flex flex-col gap-2"
@@ -338,6 +350,23 @@
     }"
   >
     <div class="max-w-3xl mx-auto relative">
+      <!-- SPEC-018: retorno imediato enquanto o arquivo sobe -->
+      <div
+        *ngIf="isSummarizerActive() && !currentDocument() && uploadingName() as name"
+        class="mb-3 flex items-center gap-3 rounded-2xl border border-nexus-hover bg-nexus-sidebar px-4 py-3 text-sm"
+        data-testid="summary-uploading"
+        role="status"
+        aria-live="polite"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" class="shrink-0 animate-spin text-nexus-accent" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        <div class="min-w-0 flex-1">
+          <p class="truncate font-medium">{{ name }}</p>
+          <p class="text-xs text-nexus-dim">Enviando o documento…</p>
+        </div>
+      </div>
       <!-- SPEC-018 (RF-115, D36): documento da conversa e etapa -->
       <div
         *ngIf="isSummarizerActive() && currentDocument() as doc"

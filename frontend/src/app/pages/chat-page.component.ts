@@ -32,6 +32,7 @@ import {
   selectSummarizerError,
   selectSummarizerInfo,
   selectSummarizerUploading,
+  selectSummarizerUploadingName,
   selectSummaryDocuments
 } from "../store/summarizer.selectors";
 import { selectMenu } from "../store/auth.selectors";
@@ -97,7 +98,13 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   protected readonly feedbackCommentMax = FEEDBACK_COMMENT_MAX;
 
   protected readonly hasInteracted = computed(
-    () => this.messages().length > 0 || this.loading().sendChat || this.chatStream() !== null
+    () =>
+      this.messages().length > 0 ||
+      this.loading().sendChat ||
+      this.chatStream() !== null ||
+      // SPEC-018: com documento (ou envio em andamento) a tela ja e uma conversa.
+      (this.isSummarizerActive() &&
+        (this.currentDocument() !== null || this.uploadingName() !== null))
   );
 
   protected readonly activeAssistant = computed(() =>
@@ -108,6 +115,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   protected readonly summarizerInfo = this.store.selectSignal(selectSummarizerInfo);
   protected readonly summaryDocuments = this.store.selectSignal(selectSummaryDocuments);
   protected readonly uploadingDocument = this.store.selectSignal(selectSummarizerUploading);
+  protected readonly uploadingName = this.store.selectSignal(selectSummarizerUploadingName);
   protected readonly summarizerError = this.store.selectSignal(selectSummarizerError);
   protected readonly localFileError = signal<string | null>(null);
   protected readonly dragging = signal(false);
@@ -122,7 +130,11 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   );
   /** D38: boas-vindas so na conversa vazia do resumidor, sem documento. */
   protected readonly showSummarizerWelcome = computed(
-    () => this.isSummarizerActive() && !this.currentDocument() && this.messages().length === 0
+    () =>
+      this.isSummarizerActive() &&
+      !this.currentDocument() &&
+      this.uploadingName() === null &&
+      this.messages().length === 0
   );
   protected readonly stageLabel = stageLabel;
   protected readonly stageHint = stageHint;

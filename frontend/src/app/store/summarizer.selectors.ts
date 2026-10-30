@@ -16,4 +16,9 @@ export const selectSummarizerUploading = createSelector(
   (state) => state.uploading
 );
 
+export const selectSummarizerUploadingName = createSelector(
+  selectSummarizerState,
+  (state) => state.uploadingName
+);
+
 export const selectSummarizerError = createSelector(selectSummarizerState, (state) => state.error);

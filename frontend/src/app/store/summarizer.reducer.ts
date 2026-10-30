@@ -10,6 +10,8 @@ export interface SummarizerState {
   /** Documento por conversa; ``null`` = conversa conferida e sem documento. */
   documents: Record<string, SummaryDocument | null>;
   uploading: boolean;
+  /** Nome do arquivo em envio: a tela mostra o cartao antes da resposta da API. */
+  uploadingName: string | null;
   error: string | null;
 }
 
@@ -17,6 +19,7 @@ export const initialSummarizerState: SummarizerState = {
   info: null,
   documents: {},
   uploading: false,
+  uploadingName: null,
   error: null
 };
 
@@ -27,14 +30,21 @@ function withDocument(state: SummarizerState, document: SummaryDocument): Summar
 export const summarizerReducer = createReducer(
   initialSummarizerState,
   on(summarizerActions.loadInfoSuccess, (state, { info }) => ({ ...state, info })),
-  on(summarizerActions.uploadDocument, (state) => ({ ...state, uploading: true, error: null })),
+  on(summarizerActions.uploadDocument, (state, { file }) => ({
+    ...state,
+    uploading: true,
+    uploadingName: file.name,
+    error: null
+  })),
   on(summarizerActions.uploadDocumentSuccess, (state, { document }) => ({
     ...withDocument(state, document),
-    uploading: false
+    uploading: false,
+    uploadingName: null
   })),
   on(summarizerActions.uploadDocumentFailure, (state, { error }) => ({
     ...state,
     uploading: false,
+    uploadingName: null,
     error
   })),
   on(summarizerActions.loadDocumentSuccess, (state, { conversationId, document }) => ({
