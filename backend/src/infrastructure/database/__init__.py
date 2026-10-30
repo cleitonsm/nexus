@@ -8,6 +8,8 @@ from .models import (
     ConversationModel,
     DocumentGroupModel,
     DocumentModel,
+    DocumentSummaryModel,
+    DocumentSummarySectionModel,
     IngestionJobModel,
     MessageFeedbackModel,
     MessageModel,
@@ -37,9 +39,13 @@ from .repositories import (
 from .session import SessionLocal, engine, get_db_session
 
 from .home_assistants_repository import PostgresHomeAssistantPreferenceRepository
+from .summary_repository import PostgresDocumentSummaryRepository
 
 __all__ = [
     "PostgresHomeAssistantPreferenceRepository",
+    "PostgresDocumentSummaryRepository",
+    "DocumentSummaryModel",
+    "DocumentSummarySectionModel",
     "AppSettingModel",
     "AssistantGroupModel",
     "AssistantModel",

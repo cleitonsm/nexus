@@ -2,7 +2,7 @@
 
 **Spec**: [SPEC-20261030-018](SPEC-018-resumidor-de-documentos.md) (Aprovada em 2026-10-30)
 **ADR**: [0014 — Documento pessoal e assistente de sistema](../../arquitetura/adrs/0014-documento-pessoal-e-assistente-de-sistema.md)
-**Status do plano**: Em execução desde 2026-10-30. P0 e P1 entregues.
+**Status do plano**: Em execução desde 2026-10-30. P0 a P2 entregues (P2 aguarda o CT-149 no Docker).
 **Data**: 2026-10-30
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
@@ -12,7 +12,7 @@
 |--------|------------------------|----------------|
 | P0 Decisões e ADR | Entregue: D1 a D43 como recomendado; SPEC **Aprovada**; ADR 0014 **Aceita** | Registro na SPEC e na ADR |
 | P1 Domínio | Entregue em 2026-10-30: `domain/document_summary.py` (limites, lotes, tamanho, etapas, roteamento, finalidade, `PersonalScope`), `Assistant.system_kind`, documento pessoal com `mark_expired` e status `expirado`, `DocumentSummary`/`DocumentSummarySection`, job `resumo` (valor em português, como `ingestao`), `AccessPolicy` com `system` e `can_use_personal_document`, acesso rápido com `pinned_id`, portas novas, 3 eventos de auditoria, 7 erros | CT-139 (11), CT-140/CT-146 e entidades (39), CT-141 (10), CT-142 domínio (6); suíte unitária 966 sem regressão; `ruff` limpo |
-| P2 Persistência | A fazer | CT-149 |
+| P2 Persistência | Código entregue em 2026-10-30: migração `0013_document_summarizer` (resumidor com id fixo, colunas e índices do documento pessoal com um documento por conversa garantido pelo banco, `document_summaries`, `document_summary_sections`, `usage_records.operation`), modelos, `PostgresDocumentSummaryRepository`, consultas de documento pessoal (conversa, cota, vencidos), 409 em envio simultâneo, uso do resumo fora dos limites e da contagem de perguntas, resumidor como padrão gravado no acesso rápido. CT-126 e CT-135 ajustados ao resumidor criado pela migração | CT-149 escrito (`tests/integration/test_document_summarizer_storage.py`); **pendente rodar no container** |
 | P3 Infraestrutura | A fazer | CT-148 |
 | P4 Aplicação | A fazer | CT-142 a CT-145 |
 | P5 Worker | A fazer | CT-144, CT-145, CT-149 |

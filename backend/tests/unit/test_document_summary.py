@@ -397,5 +397,17 @@ class SummaryProgressTestCase(unittest.TestCase):
             self.summary(SummaryStage.READY)
 
 
+class UsageOperationTestCase(unittest.TestCase):
+    """RN-65: o uso do resumo e separado das perguntas."""
+
+    def test_default_is_chat_and_unknown_is_rejected(self) -> None:
+        from src.domain import USAGE_OPERATION_CHAT, USAGE_OPERATION_DOCUMENT_SUMMARY, UsageRecord
+
+        self.assertEqual(UsageRecord(id="u", user_id="ana", model="m").operation, USAGE_OPERATION_CHAT)
+        UsageRecord(id="u", user_id="ana", model="m", operation=USAGE_OPERATION_DOCUMENT_SUMMARY)
+        with self.assertRaises(DomainValidationError):
+            UsageRecord(id="u", user_id="ana", model="m", operation="outra")
+
+
 if __name__ == "__main__":
     unittest.main()

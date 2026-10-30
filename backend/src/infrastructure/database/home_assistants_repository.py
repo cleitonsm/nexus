@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from src.domain import AssistantId, HomeAssistantSelection
+from src.domain import SUMMARIZER_ASSISTANT_ID, AssistantId, HomeAssistantSelection
 
 from .models import UserHomeAssistantModel
 from .transactions import commit_or_rollback
@@ -21,15 +21,20 @@ class PostgresHomeAssistantPreferenceRepository:
             .where(UserHomeAssistantModel.owner_user_id == owner_user_id)
             .order_by(UserHomeAssistantModel.position)
         ).all()
-        if not rows:
+        # SPEC-018 (RN-57): a linha do resumidor so existe quando ele e o
+        # padrao escolhido; ele nao ocupa vaga.
+        pinned = SUMMARIZER_ASSISTANT_ID.value
+        slots = [row for row in rows if row.assistant_id != pinned]
+        if not slots:
             return None
         defaults = [row.assistant_id for row in rows if row.is_default]
         # O indice garante no maximo um padrao; sem nenhum (linha do padrao
         # apagada por cascata), o primeiro assume, como na D8.
-        default_id = defaults[0] if defaults else rows[0].assistant_id
+        default_id = defaults[0] if defaults else slots[0].assistant_id
         return HomeAssistantSelection(
-            assistant_ids=tuple(AssistantId(row.assistant_id) for row in rows),
+            assistant_ids=tuple(AssistantId(row.assistant_id) for row in slots),
             default_id=AssistantId(default_id),
+            pinned_id=SUMMARIZER_ASSISTANT_ID,
         )
 
     def replace(self, owner_user_id: str, selection: HomeAssistantSelection) -> None:
@@ -48,4 +53,14 @@ class PostgresHomeAssistantPreferenceRepository:
             )
             for position, assistant_id in enumerate(selection.assistant_ids)
         )
+        if selection.default_is_pinned:
+            # SPEC-018 (RN-57): o resumidor como padrao, depois das vagas.
+            self._session.add(
+                UserHomeAssistantModel(
+                    owner_user_id=owner_user_id,
+                    assistant_id=selection.default_id.value,
+                    position=len(selection.assistant_ids),
+                    is_default=True,
+                )
+            )
         commit_or_rollback(self._session)

@@ -231,6 +231,9 @@ from .prompt_injection import detect_prompt_injection
 from .usage import (
     DAY,
     MINUTE,
+    USAGE_OPERATION_CHAT,
+    USAGE_OPERATION_DOCUMENT_SUMMARY,
+    USAGE_OPERATIONS,
     LLMCompletion,
     LLMPricing,
     LLMStreamChunk,
@@ -255,6 +258,9 @@ from .value_objects import (
 )
 
 __all__ = [
+    "USAGE_OPERATION_CHAT",
+    "USAGE_OPERATION_DOCUMENT_SUMMARY",
+    "USAGE_OPERATIONS",
     "DAILY_SUMMARY_DOCUMENTS",
     "DAILY_SUMMARY_WINDOW",
     "DOCUMENT_TOO_LONG",
