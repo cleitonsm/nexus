@@ -2,7 +2,7 @@
 
 **Spec**: [SPEC-20261030-018](SPEC-018-resumidor-de-documentos.md) (Aprovada em 2026-10-30)
 **ADR**: [0014 — Documento pessoal e assistente de sistema](../../arquitetura/adrs/0014-documento-pessoal-e-assistente-de-sistema.md)
-**Status do plano**: Em execução desde 2026-10-30. P0 a P2 entregues (P2 aguarda o CT-149 no Docker).
+**Status do plano**: Em execução desde 2026-10-30. P0 a P3 entregues (P2 e P3 aguardam o CT-148 e o CT-149 no Docker).
 **Data**: 2026-10-30
 **Elaborado com apoio de IA generativa, pendente de revisão do autor**
 
@@ -13,7 +13,7 @@
 | P0 Decisões e ADR | Entregue: D1 a D43 como recomendado; SPEC **Aprovada**; ADR 0014 **Aceita** | Registro na SPEC e na ADR |
 | P1 Domínio | Entregue em 2026-10-30: `domain/document_summary.py` (limites, lotes, tamanho, etapas, roteamento, finalidade, `PersonalScope`), `Assistant.system_kind`, documento pessoal com `mark_expired` e status `expirado`, `DocumentSummary`/`DocumentSummarySection`, job `resumo` (valor em português, como `ingestao`), `AccessPolicy` com `system` e `can_use_personal_document`, acesso rápido com `pinned_id`, portas novas, 3 eventos de auditoria, 7 erros | CT-139 (11), CT-140/CT-146 e entidades (39), CT-141 (10), CT-142 domínio (6); suíte unitária 966 sem regressão; `ruff` limpo |
 | P2 Persistência | Código entregue em 2026-10-30: migração `0013_document_summarizer` (resumidor com id fixo, colunas e índices do documento pessoal com um documento por conversa garantido pelo banco, `document_summaries`, `document_summary_sections`, `usage_records.operation`), modelos, `PostgresDocumentSummaryRepository`, consultas de documento pessoal (conversa, cota, vencidos), 409 em envio simultâneo, uso do resumo fora dos limites e da contagem de perguntas, resumidor como padrão gravado no acesso rápido. CT-126 e CT-135 ajustados ao resumidor criado pela migração | CT-149 escrito (`tests/integration/test_document_summarizer_storage.py`); **pendente rodar no container** |
-| P3 Infraestrutura | A fazer | CT-148 |
+| P3 Infraestrutura | Código entregue em 2026-10-30: contagem pelo `SentenceTransformerTokenCounter` que já existia (conta sem truncar, nada novo); Qdrant com `owner_user_id` e `conversation_id` no payload do documento pessoal, índices nas collections novas e escopo obrigatório na collection do resumidor (`is_summarizer_collection`, falha fechada); `StructuralSummarySplitter` com seções inteiras e parágrafos de até 8 mil tokens | Unitários de `is_summarizer_collection` e `test_summary_sections` (4); CT-148 escrito (`tests/integration/test_personal_scope_qdrant.py`), **pendente rodar no container**; suíte 972 sem regressão |
 | P4 Aplicação | A fazer | CT-142 a CT-145 |
 | P5 Worker | A fazer | CT-144, CT-145, CT-149 |
 | P6 API | A fazer | CT-147 |
@@ -66,7 +66,10 @@ tamanho, o PR pode ser dividido em dois: **backend** (P1 a P6) e **frontend e va
   criada sob demanda no primeiro envio, pelo `ensure_collection` atual.
 - **T2 — Falha fechada em duas camadas.** (1) A aplicação: quando o assistente é o resumidor e não
   há `PersonalScope`, levanta `AccessDeniedError` antes de chamar o gateway. (2) O gateway: na
-  collection do resumidor, `personal_scope=None` levanta `ValueError`. O CT-148 cobre a segunda e o
+  collection do resumidor (alias ou versão física, `is_summarizer_collection`), `personal_scope=None`
+  levanta `ValueError` antes de consultar; `fetch_article` também recusa essa collection. As
+  collections dos outros assistentes não ganham filtro novo (sem custo na busca), porque documento
+  pessoal só é gravado na do resumidor. O CT-148 cobre a segunda e o
   CT-142 a primeira. Os assistentes comuns nunca recebem `personal_scope`, então o caminho deles não
   muda (a avaliação de não regressão no P9 confirma).
 - **T3 — Roteamento antes do LangGraph.** As rotas 1 a 4 da RN-61 não passam pelo grafo: não têm

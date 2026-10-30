@@ -4,8 +4,7 @@ Regras puras do assistente de sistema que resume o documento pessoal do
 usuario: limites (RN-60), lotes de secao (RN-63), tamanho do resumo (RN-62),
 roteamento da mensagem (RN-61), etapas visiveis (D36) e o texto da finalidade
 montado a partir das constantes (RF-119, D37). Nada aqui depende de framework,
-de banco, do Qdrant ou do LLM; o texto do documento nao entra no dominio, so as
-contagens de tokens.
+de banco, do Qdrant ou do LLM; as regras de lote usam so as contagens de tokens.
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Final, Literal
 
 from .errors import DomainValidationError
-from .value_objects import AssistantId, ConversationId
+from .value_objects import AssistantId, CollectionName, ConversationId
 
 if TYPE_CHECKING:
     from .entities import Document, DocumentSummary
@@ -30,6 +29,9 @@ SUMMARIZER_SYSTEM_KIND: Final = "document_summarizer"
 # T6 do plano: id fixo, o mesmo do INSERT da migracao 0013.
 SUMMARIZER_ASSISTANT_ID: Final = AssistantId("system-document-summarizer")
 SUMMARIZER_NAME: Final = "Resumidor de documentos"
+# ADR 0014 item 3: todos os documentos pessoais nesta collection (alias) e nas
+# versoes fisicas dela (``-vN``).
+SUMMARIZER_COLLECTION: Final = CollectionName.from_assistant_id(SUMMARIZER_ASSISTANT_ID)
 SUMMARIZER_DESCRIPTION: Final = (
     "Resume documentos Word, PDF e texto enviados por você e responde perguntas "
     "sobre eles."
@@ -90,6 +92,14 @@ def summary_document_expires_at(uploaded_at: datetime) -> datetime:
 
 
 # --- Escopo pessoal (RN-58, RN-59) -----------------------------------------
+
+
+def is_summarizer_collection(name: CollectionName) -> bool:
+    """Collection dos documentos pessoais: o alias ou uma versao fisica dele."""
+    alias = SUMMARIZER_COLLECTION.value
+    return name.value == alias or (
+        name.value.startswith(f"{alias}-v") and name.version is not None
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,6 +234,36 @@ class BatchPiece:
     paragraph_end: int
     tokens: int
     page_start: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SectionText:
+    """Secao do documento para o resumo: paragrafos e as contagens deles (T5)."""
+
+    index: int
+    title: str
+    paragraphs: tuple[str, ...]
+    paragraph_tokens: tuple[int, ...]
+    page_start: int | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "paragraphs", tuple(self.paragraphs))
+        object.__setattr__(self, "paragraph_tokens", tuple(self.paragraph_tokens))
+        if len(self.paragraphs) != len(self.paragraph_tokens):
+            raise DomainValidationError("each paragraph needs its token count.")
+
+    def as_tokens(self) -> SectionTokens:
+        return SectionTokens(
+            index=self.index,
+            title=self.title,
+            paragraph_tokens=self.paragraph_tokens,
+            page_start=self.page_start,
+        )
+
+    def text_for(self, piece: "BatchPiece") -> str:
+        if piece.section_index != self.index:
+            raise DomainValidationError("the piece belongs to another section.")
+        return "\n\n".join(self.paragraphs[piece.paragraph_start : piece.paragraph_end])
 
 
 @dataclass(frozen=True, slots=True)

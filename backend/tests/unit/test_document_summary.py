@@ -409,5 +409,20 @@ class UsageOperationTestCase(unittest.TestCase):
             UsageRecord(id="u", user_id="ana", model="m", operation="outra")
 
 
+
+class SummarizerCollectionTestCase(unittest.TestCase):
+    """RN-59 e ADR 0014: a collection pessoal e o alias e as versoes dele."""
+
+    def test_alias_and_versions(self) -> None:
+        from src.domain import SUMMARIZER_COLLECTION, CollectionName, is_summarizer_collection
+
+        self.assertEqual(SUMMARIZER_COLLECTION.value, "assistant-system-document-summarizer")
+        self.assertTrue(is_summarizer_collection(SUMMARIZER_COLLECTION))
+        self.assertTrue(is_summarizer_collection(CollectionName.versioned(SUMMARIZER_ASSISTANT_ID, 3)))
+        for other in ("assistant-rh", "assistant-system-document-summarizer-extra", "assistant-rh-v1"):
+            with self.subTest(other=other):
+                self.assertFalse(is_summarizer_collection(CollectionName(other)))
+
+
 if __name__ == "__main__":
     unittest.main()

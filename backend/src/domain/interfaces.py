@@ -9,7 +9,7 @@ from .access import AuthenticatedUser
 from .audit import AuditEvent, AuditQuery
 from .chunking import DocumentChunk, ExtractedDocument
 from .citations import Citation, ContextChunk
-from .document_summary import PersonalScope, SummaryStage
+from .document_summary import PersonalScope, SectionText, SummaryStage
 from .errors import DomainValidationError
 from .feedback import FeedbackQuery, MessageFeedback
 from .home_assistants import HomeAssistantSelection
@@ -497,9 +497,10 @@ class VectorStoreGateway(Protocol):
     ) -> list[SearchResult]:
         """Busca densa e esparsa com fusao RRF (RF-33).
 
-        SPEC-018 (RN-59, falha fechada): sem ``personal_scope``, trechos de
-        documento pessoal nunca voltam; com ele, so voltam os trechos pessoais
-        desse dono e dessa conversa.
+        SPEC-018 (RN-59, falha fechada): na collection do resumidor
+        (``is_summarizer_collection``), ``personal_scope`` e obrigatorio e
+        restringe a busca ao dono e a conversa; sem ele, levanta ``ValueError``
+        antes de consultar. Documento pessoal so e gravado nessa collection.
 
         ``user_groups`` e obrigatorio e aplica, dentro da consulta, a restricao
         por documento (RF-43, RNF-23): so voltam trechos sem restricao ou
@@ -524,8 +525,9 @@ class VectorStoreGateway(Protocol):
     ) -> list[SearchResult]:
         """Trechos marcados com o artigo, por documento e ``chunk_index`` (RF-83).
 
-        Mesmos filtros da busca hibrida: acesso por ``user_groups`` (RF-43),
-        so trechos ativos (RN-27) e nunca trechos de documento pessoal (RN-59). ``score`` e 1,0: a correspondencia e exata.
+        Mesmos filtros da busca hibrida: acesso por ``user_groups`` (RF-43) e
+        so trechos ativos (RN-27). Na collection do resumidor levanta
+        ``ValueError``: ela nao tem artigos e exige escopo pessoal (RN-59). ``score`` e 1,0: a correspondencia e exata.
         Collection inexistente devolve lista vazia.
         """
         ...
@@ -597,6 +599,16 @@ class TokenCounter(Protocol):
     def count(self, text: str) -> int:
         """Tokens que o modelo consome para o texto, incluidos os especiais."""
         ...
+
+
+class SummarySectionSplitter(Protocol):
+    """SPEC-018 (T5): secoes inteiras do documento para o resumo, na ordem.
+
+    Cada paragrafo volta com no maximo ``SUMMARY_BATCH_MAX_TOKENS`` (o
+    paragrafo enorme e dividido por frases), como ``plan_summary_batches`` exige.
+    """
+
+    def split(self, document: ExtractedDocument) -> tuple[SectionText, ...]: ...
 
 
 class DocumentChunker(Protocol):
