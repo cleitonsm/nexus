@@ -101,7 +101,8 @@ export class AssistantsPageComponent {
     this.store.dispatch(nexusActions.loadAvailableGroups());
     effect(() => {
       const assistantId = this.activeAssistantId();
-      if (assistantId) {
+      // SPEC-018 (RN-55): o resumidor nao tem base (a API responderia 409).
+      if (assistantId && !this.activeAssistant()?.is_system) {
         this.store.dispatch(nexusActions.loadDocumentAccess({ assistantId }));
         this.store.dispatch(nexusActions.loadIndexStatus({ assistantId }));
       }

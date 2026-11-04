@@ -41,4 +41,6 @@ class ListAssistantsUseCase:
         return [
             AssistantDTO.from_entity(assistant, reveal_prompt=True)
             for assistant, _groups in visible
+            # SPEC-018 (RN-56): o resumidor nunca e escolhido automaticamente.
+            if not assistant.is_system
         ]

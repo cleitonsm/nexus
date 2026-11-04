@@ -15,6 +15,8 @@ from src.domain import (
     AuditLogRepository,
     AuditResource,
     AuthenticatedUser,
+    SystemAssistantReadonlyError,
+    is_system_assistant_id,
 )
 
 
@@ -102,7 +104,7 @@ class AccessControl:
         visible: list[tuple[Assistant, frozenset[str]]] = []
         for assistant in assistants:
             groups = groups_by_assistant.get(assistant.id.value, frozenset())
-            if AccessPolicy.can_access_assistant(user, groups):
+            if AccessPolicy.can_access_assistant(user, groups, system=assistant.is_system):
                 visible.append((assistant, groups))
         return visible
 
@@ -177,9 +179,18 @@ class AccessControl:
     ) -> frozenset[str]:
         """Devolve os grupos do assistente quando o usuario pode usa-lo."""
         groups = self._permissions.get_assistant_groups(assistant_id)
-        if not AccessPolicy.can_access_assistant(user, groups):
+        system = is_system_assistant_id(assistant_id)
+        if not AccessPolicy.can_access_assistant(user, groups, system=system):
             self._deny(user, attempted, AuditResource.ASSISTANT, assistant_id.value)
         return groups
+
+    @staticmethod
+    def require_mutable(assistant_id: AssistantId) -> None:
+        """SPEC-018 (RN-55): assistente de sistema nao admite a operacao (409)."""
+        if is_system_assistant_id(assistant_id):
+            raise SystemAssistantReadonlyError(
+                "the system assistant does not allow this operation."
+            )
 
     def can_edit_assistant(
         self,
@@ -203,6 +214,7 @@ class AccessControl:
         groups = self._permissions.get_assistant_groups(assistant_id)
         if not AccessPolicy.can_edit_assistant(user, groups):
             self._deny(user, attempted, AuditResource.ASSISTANT, assistant_id.value)
+        self.require_mutable(assistant_id)  # SPEC-018 (RN-55)
         return groups
 
     def require_document_management(
@@ -210,10 +222,19 @@ class AccessControl:
         user: AuthenticatedUser,
         assistant_id: AssistantId,
         attempted: AuditAction | str,
+        *,
+        allow_system: bool = False,
     ) -> frozenset[str]:
+        """Base e configuracao do assistente; o de sistema nao tem base (RN-55).
+
+        ``allow_system`` libera so as leituras de configuracao (D3: o
+        administrador ve e troca o LLM do resumidor).
+        """
         groups = self._permissions.get_assistant_groups(assistant_id)
         if not AccessPolicy.can_manage_documents(user, groups):
             self._deny(user, attempted, AuditResource.ASSISTANT, assistant_id.value)
+        if not allow_system:
+            self.require_mutable(assistant_id)
         return groups
 
     def _deny(

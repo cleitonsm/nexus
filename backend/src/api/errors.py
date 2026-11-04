@@ -19,6 +19,12 @@ from src.domain import (
     InvalidFeedbackStateError,
     LLMCredentialInUseError,
     UsageLimitExceededError,
+    ConversationDocumentExistsError,
+    NotSummarizerConversationError,
+    SummaryDailyLimitError,
+    SummaryNotFailedError,
+    SummaryNotReadyError,
+    SystemAssistantReadonlyError,
 )
 
 
@@ -126,6 +132,27 @@ def register_error_handlers(app: FastAPI) -> None:
             ),
         )
 
+    # SPEC-018: erros do resumidor com ``code`` estavel.
+    for error_type, status_code, code in (
+        (SystemAssistantReadonlyError, status.HTTP_409_CONFLICT, "system_assistant_readonly"),
+        (ConversationDocumentExistsError, status.HTTP_409_CONFLICT, "conversation_document_exists"),
+        (NotSummarizerConversationError, status.HTTP_409_CONFLICT, "not_summarizer_conversation"),
+        (SummaryNotReadyError, status.HTTP_409_CONFLICT, "summary_not_ready"),
+        (SummaryNotFailedError, status.HTTP_409_CONFLICT, "summary_not_failed"),
+    ):
+        app.add_exception_handler(error_type, _coded(status_code, code))
+
+    @app.exception_handler(SummaryDailyLimitError)
+    async def summary_daily_limit(_: Request, exc: SummaryDailyLimitError) -> JSONResponse:
+        """SPEC-018 (RN-60, D20): cota diaria de documentos."""
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content=error_body(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                {"code": "summary_daily_limit", "message": str(exc), "limit": exc.limit},
+            ),
+        )
+
     @app.exception_handler(InvalidFeedbackStateError)
     async def feedback_state(_: Request, exc: InvalidFeedbackStateError) -> JSONResponse:
         return JSONResponse(
@@ -153,3 +180,13 @@ def usage_limit_response(
             "retry_after_seconds": wait_seconds,
         },
     )
+
+
+def _coded(status_code: int, code: str):
+    async def handler(_: Request, exc: Exception) -> JSONResponse:
+        return JSONResponse(
+            status_code=status_code,
+            content=error_body(status_code, {"code": code, "message": str(exc)}),
+        )
+
+    return handler

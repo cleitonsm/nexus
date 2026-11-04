@@ -1,4 +1,13 @@
 from .access_control import AccessControl, AuditTrail
+from .personal_documents import PersonalDocumentRemover
+from .summarizer_chat import SummarizerChat, SummarizerPlan
+from .document_summary import (
+    SummaryCompletion,
+    complete_summary,
+    section_chunk_id,
+    sections_as_context,
+    tailored_summary,
+)
 from .document_indexing import PIPELINE_VERSION, DocumentIndexer
 from .group_validation import UnknownGroupsError, ensure_known_groups
 from .grounded_answer import (
@@ -57,6 +66,14 @@ from .llm_resolution import (
 from .usage import UsageGovernance, UsageSettings
 
 __all__ = [
+    "PersonalDocumentRemover",
+    "SummarizerChat",
+    "SummarizerPlan",
+    "SummaryCompletion",
+    "complete_summary",
+    "section_chunk_id",
+    "sections_as_context",
+    "tailored_summary",
     "AssistantRuntime",
     "AssistantRuntimeResolver",
     "LLMGatewayBuilder",

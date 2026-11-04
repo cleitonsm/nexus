@@ -68,3 +68,5 @@ class HomeAssistantsResponse(BaseModel):
     default_assistant_id: str | None
     max: int
     customized: bool
+    # SPEC-018 (RN-57): cartao fixo, primeiro de ``assistant_ids``, fora das vagas.
+    pinned_assistant_id: str | None = None

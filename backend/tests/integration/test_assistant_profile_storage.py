@@ -99,7 +99,8 @@ class AssistantProfileStorageTests(unittest.TestCase):
             initial_prompt=None,
         )
         self.assertIsNone(result)
-        self.assertEqual(repository.list_all(), [])
+        # SPEC-018: so o resumidor criado pela migracao 0013.
+        self.assertEqual([item for item in repository.list_all() if not item.is_system], [])
 
 
 if __name__ == "__main__":

@@ -70,6 +70,13 @@ flowchart LR
   (limite, padrão automático, contador, cartões efetivos) ficam em `shared/home`. A fatia
   `nexus` guarda `homeAssistants` e o estado do modal; a action `applyDefaultAssistant` torna o
   padrão ativo ao carregar e em "Nova conversa", sem passar pela navegação para o chat.
+- **Resumidor de documentos (SPEC-018)**: fatia própria `summarizer` (actions, reducer, effects e
+  selectors) com a finalidade, o documento por conversa e o envio; o efeito cria a conversa antes
+  do envio, consulta o andamento a cada 3 s até a etapa final e recarrega as mensagens quando o
+  resumo fica pronto. As regras puras (etapas, recusa local de formato e tamanho, mensagens por
+  `code`) ficam em `shared/summarizer`; as do cartão fixo no acesso rápido, em `shared/home`. A
+  página de chat mostra boas-vindas, clipe, arrastar e soltar e o cartão de etapa; `/assistants`
+  mostra no resumidor só o aviso e o card de LLM.
 - **Edição do assistente (SPEC-017)**: o card "Dados do assistente"
   (`features/assistants/assistant-profile-settings.component.ts`) fica no topo da página de
   assistentes, para o administrador e o curador do assistente; ele só apresenta e despacha

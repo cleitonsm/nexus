@@ -40,3 +40,5 @@ class AssistantResponse(BaseModel):
     created_at: datetime
     # Grupos vinculados; vazio para quem nao gerencia o assistente.
     groups: list[str] = Field(default_factory=list)
+    # SPEC-018 (RN-55): assistente de sistema (o resumidor).
+    is_system: bool = False

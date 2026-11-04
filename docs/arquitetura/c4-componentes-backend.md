@@ -96,6 +96,15 @@ flowchart LR
   vazio segue o ambiente) e monta o gateway de LLM daquela credencial. O chat, a avaliação e a
   calibração usam o mesmo caminho. A chave só é decifrada em memória, pela porta `SecretCipher`.
   O reranker e os filtros `user_groups`/`active` não são configuráveis.
+- **Resumidor de documentos (SPEC-018, ADR 0014).** `api/routes/summarizer.py` expõe a
+  finalidade (`GET /summarizer`) e o documento pessoal da conversa (envio, status, resumo gravado
+  e nova tentativa) pelos casos de uso de `summary_documents.py`. No chat, o `SummarizerChat`
+  roteia a mensagem antes do grafo (RN-61): finalidade, progresso e resumo gravado respondem sem
+  LLM; a pergunta pontual segue o grafo com `PersonalScope`. O worker conta os tokens antes de
+  vetorizar, indexa com dono e conversa e enfileira o job `resumo`, executado por
+  `SummarizeDocumentUseCase` (mini-resumos retomáveis, consolidado com citações, mensagem postada);
+  a cada hora, `PurgeExpiredSummaryDocumentsUseCase` apaga os vencidos. O `TracedVectorStore`
+  repassa o escopo pessoal sem registrar dono nem conversa.
 - **Edição do assistente (SPEC-017).** `PUT /assistants/{id}` chama `UpdateAssistantUseCase`.
   Limites e normalização de nome, descrição e prompt ficam em `domain/assistant_profile.py`
   (também usados na criação); `AccessControl.require_assistant_edit` libera o administrador e o

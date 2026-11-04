@@ -29,6 +29,7 @@ testes são escritos antes da implementação.
 | SPEC-20261028-015 | Barra lateral no padrão visual do Gemini (ícones, 72 px, tooltips, logo) | [`SPEC-015-barra-lateral-no-padrao-gemini.md`](SPEC-015-barra-lateral-no-padrao-gemini.md) | Implementada (2026-10-28); CT-123 aprovado pelo autor | RF-100 a RF-102 |
 | SPEC-20261028-016 | Acesso rápido a assistentes na tela inicial (escolha do usuário e padrão marcado) | [`SPEC-016-acesso-rapido-a-assistentes-na-tela-inicial.md`](SPEC-016-acesso-rapido-a-assistentes-na-tela-inicial.md) | Implementada e validada (2026-10-29); CT-124 a CT-130 aprovados | RF-103 a RF-107 |
 | SPEC-20261029-017 | Edição de nome, descrição e prompt do assistente | [`SPEC-017-edicao-de-nome-descricao-e-prompt-do-assistente.md`](SPEC-017-edicao-de-nome-descricao-e-prompt-do-assistente.md) | Implementada (2026-10-29); CT-131 a CT-137 aprovados, CT-138 manual pendente | RF-108 a RF-111 |
+| SPEC-20261030-018 | Resumidor de documentos (assistente de sistema, documento pessoal e resumo hierárquico) | [`SPEC-018-resumidor-de-documentos.md`](SPEC-018-resumidor-de-documentos.md) | Implementada com ressalva (2026-11-04; RNF-40 com a D44, avaliação e CT-152 pendentes) | RF-112 a RF-120 |
 
 ## Status possíveis
 

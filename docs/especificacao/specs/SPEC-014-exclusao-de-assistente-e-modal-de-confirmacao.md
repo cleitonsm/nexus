@@ -2,6 +2,7 @@
 
 **ID**: SPEC-20261028-014
 **Status**: **Implementada** em 2026-10-28 — CT-113 a CT-117 aprovados (unitários e Vitest, CI verde no PR #11); CT-118 aprovado pelo autor na pilha; CT-119 aprovado no container do backend (`test_access_control_api`, 36 testes OK). Histórico: **Aprovada** em 2026-10-28 por Cleiton Medeiros (D1 a D3 escolhidas pelo autor; D2 e D3 são as recomendações).
+**Nota (2026-10-30, SPEC-018)**: o assistente de sistema "Resumidor de documentos" não pode ser excluído; `DELETE /assistants/{id}` responde 409 `system_assistant_readonly` e a barra lateral não mostra a lixeira para ele (RN-55).
 **Origem**: pedido do autor (2026-10-28): excluir um assistente e toda a base vetorial dele,
 avisando antes que a base também será excluída; modal de confirmação no padrão visual do Nexus
 para excluir conversas, reaproveitado na exclusão de assistentes.

@@ -15,6 +15,11 @@ from .errors import DomainValidationError
 
 MINUTE = timedelta(minutes=1)
 DAY = timedelta(days=1)
+# SPEC-018 (RN-65): so perguntas (``chat``) contam nos limites; o resumo do
+# documento pessoal entra no custo do usuario.
+USAGE_OPERATION_CHAT = "chat"
+USAGE_OPERATION_DOCUMENT_SUMMARY = "document_summary"
+USAGE_OPERATIONS = frozenset({USAGE_OPERATION_CHAT, USAGE_OPERATION_DOCUMENT_SUMMARY})
 # Teto de sanidade dos limites configurados na tela (0 desliga a janela).
 MAX_LIMIT_VALUE = 1_000_000
 _COST_QUANTUM = Decimal("0.000001")
@@ -108,8 +113,11 @@ class UsageRecord:
     fallback_used: bool = False
     failed: bool = False
     occurred_at: datetime = field(default_factory=_utc_now)
+    operation: str = USAGE_OPERATION_CHAT
 
     def __post_init__(self) -> None:
+        if self.operation not in USAGE_OPERATIONS:
+            raise DomainValidationError(f"unknown usage operation: {self.operation}.")
         for name in ("id", "user_id", "model"):
             if not str(getattr(self, name)).strip():
                 raise DomainValidationError(f"usage record {name} must not be empty.")

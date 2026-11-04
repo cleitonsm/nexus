@@ -14,6 +14,8 @@ import { authEffects } from "./app/store/auth.effects";
 import { authFeatureKey, authReducer } from "./app/store/auth.reducer";
 import { llmConfigEffects } from "./app/store/llm-config.effects";
 import { llmConfigFeatureKey, llmConfigReducer } from "./app/store/llm-config.reducer";
+import { summarizerEffects } from "./app/store/summarizer.effects";
+import { summarizerFeatureKey, summarizerReducer } from "./app/store/summarizer.reducer";
 import { nexusEffects } from "./app/store/nexus.effects";
 import { nexusFeatureKey, nexusReducer } from "./app/store/nexus.reducer";
 
@@ -24,9 +26,10 @@ bootstrapApplication(AppComponent, {
     provideStore({
       [nexusFeatureKey]: nexusReducer,
       [authFeatureKey]: authReducer,
-      [llmConfigFeatureKey]: llmConfigReducer
+      [llmConfigFeatureKey]: llmConfigReducer,
+      [summarizerFeatureKey]: summarizerReducer
     }),
-    provideEffects(nexusEffects, authEffects, llmConfigEffects),
+    provideEffects(nexusEffects, authEffects, llmConfigEffects, summarizerEffects),
     provideStoreDevtools({
       maxAge: 25,
       logOnly: !isDevMode()

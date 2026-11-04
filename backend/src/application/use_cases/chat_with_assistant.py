@@ -17,9 +17,12 @@ from src.application.services import (
     ContextRetriever,
     GroundedAnswerGenerator,
     StructuralContext,
+    SummarizerChat,
+    SummarizerPlan,
     UsageGovernance,
     fit_context,
     fit_structural_context,
+    tailored_summary,
     trim_history,
 )
 from src.domain import (
@@ -40,7 +43,9 @@ from src.domain import (
     MetricsRecorder,
     NoopMetrics,
     NoopTracer,
+    PersonalScope,
     SearchResult,
+    SummarizerRoute,
     TokenCounter,
     TokenUsage,
     Tracer,
@@ -107,6 +112,9 @@ class ChatState(TypedDict):
     usage: TokenUsage
     # Trechos com padrao de injecao de prompt (RF-60); so sinalizados.
     injection_flags: int
+    # SPEC-018 (RN-59, RN-61): rota do resumidor e escopo da busca pessoal.
+    summarizer_plan: SummarizerPlan | None
+    personal_scope: PersonalScope | None
 
 
 class ChatWithAssistantUseCase:
@@ -145,8 +153,10 @@ class ChatWithAssistantUseCase:
         tracer: Tracer | None = None,
         metrics: MetricsRecorder | None = None,
         runtime_resolver: AssistantRuntimeResolver | None = None,
+        summarizer: SummarizerChat | None = None,
     ) -> None:
         self._access = access_control
+        self._summarizer = summarizer
         self._runtime_resolver = runtime_resolver
         self._base_retriever = context_retriever
         self._base_answer_generator = answer_generator
@@ -169,6 +179,8 @@ class ChatWithAssistantUseCase:
 
     def execute(self, data: ChatWithAssistantInput) -> ChatTurnResult:
         initial_state = self._start(data)
+        if _answers_directly(initial_state):
+            return self._finish_direct(initial_state, mode="sync")
         with self._tracer.span("chat.turn", _turn_attributes(initial_state, "sync")):
             try:
                 final_state = self._graph.invoke(initial_state)
@@ -185,6 +197,8 @@ class ChatWithAssistantUseCase:
         fallback. O ultimo evento e ``done``, com as citacoes.
         """
         initial_state = self._start(data)
+        if _answers_directly(initial_state):
+            return self._direct_events(initial_state)
         return self._stream_events(initial_state)
 
     def _start(self, data: ChatWithAssistantInput) -> ChatState:
@@ -203,19 +217,112 @@ class ChatWithAssistantUseCase:
             conversation.assistant_id,
             AuditAction.CHAT_QUESTION,
         )
-        self._check_usage_limit(data.user, conversation_id, conversation.assistant_id)
         assistant = self._assistant_repository.get_by_id(
             conversation.assistant_id
         )
-        self._apply_runtime(assistant)
+        plan = self._summarizer_plan(assistant, conversation_id, question)
+        # SPEC-018 (RN-65): finalidade, progresso e resumo gravado nao contam.
+        if plan is None or plan.counts_as_question:
+            self._check_usage_limit(data.user, conversation_id, conversation.assistant_id)
+            self._apply_runtime(assistant)
+        else:
+            # RNF-37/RNF-38: finalidade, progresso e resumo gravado nao chamam o
+            # LLM; nao ha credencial a decifrar nem modelo a resolver.
+            self._apply_runtime(None)
 
         # Trechos ja ranqueados e tokens ja gastos: se a pergunta falhar
         # depois, a auditoria e o consumo ainda registram o que houve (C9).
         self._ranked_so_far = []
         self._usage_so_far = TokenUsage()
-        return self._initial_state(
+        state = self._initial_state(
             data, conversation_id, conversation.assistant_id, question, assistant
         )
+        state["summarizer_plan"] = plan
+        state["personal_scope"] = plan.personal_scope if plan else None
+        return state
+
+    def _summarizer_plan(
+        self,
+        assistant: Assistant | None,
+        conversation_id: ConversationId,
+        question: str,
+    ) -> SummarizerPlan | None:
+        """SPEC-018 (RN-61): so a conversa do resumidor passa pelo roteamento."""
+        if self._summarizer is None or assistant is None or not assistant.is_system:
+            return None
+        plan = self._summarizer.plan(conversation_id, question)
+        logger.info(
+            "chat.summarizer.routed",
+            extra={"route": plan.route.value, "conversation_id": conversation_id.value},
+        )
+        return plan
+
+    def _finish_direct(self, state: ChatState, *, mode: str) -> ChatTurnResult:
+        """SPEC-018 (T3): rotas do resumidor fora do grafo do chat."""
+        plan = state["summarizer_plan"]
+        assert plan is not None and self._summarizer is not None
+        state = self._persist_user_message(state)
+        usage = TokenUsage()
+        try:
+            if plan.route is SummarizerRoute.TAILORED_SUMMARY and plan.document:
+                completion = tailored_summary(
+                    self._answer_generator.llm_gateway,
+                    plan.document,
+                    self._summarizer.sections(plan),
+                    state["question"],
+                )
+                answer, citations, usage = (
+                    completion.text,
+                    completion.citations,
+                    completion.usage,
+                )
+            else:
+                answer, citations = self._summarizer.direct_answer(plan)
+        except Exception as exc:
+            if plan.counts_as_question:
+                self._usage_so_far = usage
+                self._finish_failure(state, exc, mode=mode)
+            raise
+        state = self._persist_assistant_message(
+            {
+                **state,
+                "answer": answer,
+                "citations": citations,
+                "fallback_used": False,
+                "ranked": [],
+                "search_query": state["question"],
+                "context_chunks": [],
+                "usage": usage,
+            }
+        )
+        self._audit_question(state["user"], state)
+        if plan.counts_as_question:
+            self._record_usage(
+                state["user"],
+                state["conversation_id"],
+                state["assistant_id"],
+                usage,
+                fallback_used=False,
+                failed=False,
+            )
+        self._metrics.increment(
+            "nexus_chat_questions_total",
+            labels={"mode": mode, "outcome": f"summarizer_{plan.route.value}"},
+        )
+        return ChatTurnResult(
+            conversation_id=state["conversation_id"].value,
+            assistant_id=state["assistant_id"].value,
+            user_message=MessageDTO.from_entity(state["user_message"]),
+            assistant_message=MessageDTO.from_entity(state["assistant_message"]),
+            used_context_chunks=len(citations),
+            fallback_used=False,
+            rewritten_query=state["question"],
+        )
+
+    def _direct_events(self, state: ChatState) -> Iterator[ChatStreamEvent]:
+        result = self._finish_direct(state, mode="stream")
+        yield ChatStreamEvent(kind="delta", text=result.assistant_message.content)
+        yield ChatStreamEvent(kind="done", result=result)
 
     def _apply_runtime(self, assistant: Assistant | None) -> None:
         """SPEC-013: configuracao do assistente para esta pergunta."""
@@ -435,6 +542,8 @@ class ChatWithAssistantUseCase:
             "injection_flags": 0,
             "structural": None,
             "context_notice": None,
+            "summarizer_plan": None,
+            "personal_scope": None,
         }
 
     def _audit_failure(
@@ -636,10 +745,13 @@ class ChatWithAssistantUseCase:
 
     def _retrieve_context(self, state: ChatState) -> ChatState:
         started_at = time.perf_counter()
+        scope = state.get("personal_scope")
         candidates = self._retriever.search(
             state["assistant_id"],
             state["search_query"],
             user_groups=state["user_groups"],
+            # SPEC-018 (RN-59): so a conversa do resumidor tem escopo pessoal.
+            **({"personal_scope": scope} if scope is not None else {}),
         )
         logger.info(
             "chat.retrieval.finished",
@@ -654,6 +766,9 @@ class ChatWithAssistantUseCase:
         }
 
     def _structural_context(self, state: ChatState) -> ChatState:
+        if state.get("personal_scope") is not None:
+            # SPEC-018: documento pessoal nao passa pela leitura de artigo.
+            return {**state, "structural": None}
         structural = self._retriever.structural_context(
             state["assistant_id"],
             state["search_query"],
@@ -866,6 +981,11 @@ def _retrieved(ranked: list[SearchResult]) -> list[dict[str, object]]:
         }
         for item in ranked
     ]
+
+
+def _answers_directly(state: ChatState) -> bool:
+    plan = state.get("summarizer_plan")
+    return plan is not None and plan.answers_directly
 
 
 def _unchanged(state: ChatState) -> ChatState:

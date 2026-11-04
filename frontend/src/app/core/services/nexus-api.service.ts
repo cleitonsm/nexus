@@ -28,6 +28,8 @@ import {
   FeedbackRating,
   FeedbackReview,
   HomeAssistants,
+  SummarizerInfo,
+  SummaryDocument,
   MessageFeedback,
   UsageLimits,
   UsageReport
@@ -203,6 +205,35 @@ export class NexusApiService {
   reprocessDocument(documentId: string): Observable<DocumentAccess> {
     return this.http.post<DocumentAccess>(
       `${this.baseUrl}/documents/${documentId}/reprocess`,
+      {}
+    );
+  }
+
+  /** SPEC-018 (RF-119): finalidade e limites do resumidor. */
+  getSummarizer(): Observable<SummarizerInfo> {
+    return this.http.get<SummarizerInfo>(`${this.baseUrl}/summarizer`);
+  }
+
+  /** SPEC-018 (RF-114): documento pessoal da conversa (202, o worker processa). */
+  uploadConversationDocument(conversationId: string, file: File): Observable<SummaryDocument> {
+    const form = new FormData();
+    form.append("file", file);
+    return this.http.post<SummaryDocument>(
+      `${this.baseUrl}/conversations/${conversationId}/document`,
+      form
+    );
+  }
+
+  getConversationDocument(conversationId: string): Observable<SummaryDocument> {
+    return this.http.get<SummaryDocument>(
+      `${this.baseUrl}/conversations/${conversationId}/document`
+    );
+  }
+
+  /** SPEC-018 (RN-64): refaz so o resumo. */
+  retrySummary(conversationId: string): Observable<SummaryDocument> {
+    return this.http.post<SummaryDocument>(
+      `${this.baseUrl}/conversations/${conversationId}/summary/retry`,
       {}
     );
   }

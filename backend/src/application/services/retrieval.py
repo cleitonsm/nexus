@@ -6,6 +6,7 @@ import unicodedata
 from dataclasses import dataclass
 
 from src.domain import (
+    AccessDeniedError,
     AssistantId,
     CollectionName,
     EmbeddingGateway,
@@ -16,6 +17,8 @@ from src.domain import (
     SparseVector,
     VectorStoreGateway,
     mentions_part,
+    PersonalScope,
+    is_system_assistant_id,
     parse_legal_reference,
 )
 
@@ -112,13 +115,19 @@ class ContextRetriever:
         payload_filter: dict[str, str] | None = None,
         *,
         user_groups: frozenset[str] | None,
+        personal_scope: PersonalScope | None = None,
     ) -> list[SearchResult]:
         """Candidatos da busca hibrida, restritos a collection do assistente.
+
+        SPEC-018 (RN-59, T2): no resumidor, a busca so roda com o escopo do
+        dono e da conversa; sem ele, ``AccessDeniedError`` antes de consultar.
 
         ``user_groups`` e obrigatorio: sao os grupos de quem pergunta, usados
         pelo vector store para deixar de fora documentos restritos (RF-43).
         ``None`` so cabe a processos sem usuario, como a avaliacao.
         """
+        if personal_scope is None and is_system_assistant_id(assistant_id):
+            raise AccessDeniedError("the summarizer search requires a personal scope.")
         dense_vector = self._embedding_gateway.embed_query(query)
         if not dense_vector:
             return []
@@ -135,6 +144,8 @@ class ContextRetriever:
             limit=self._settings.candidates,
             payload_filter=payload_filter,
             user_groups=user_groups,
+            # So no resumidor: os demais gateways seguem com a assinatura antiga.
+            **({"personal_scope": personal_scope} if personal_scope is not None else {}),
         )
         return [item for item in results if item.text.strip()]
 

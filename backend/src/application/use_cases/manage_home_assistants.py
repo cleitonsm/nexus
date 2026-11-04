@@ -9,6 +9,7 @@ from src.application.dto.home_assistants_dto import HomeAssistantsDTO
 from src.application.services import AccessControl
 from src.domain import (
     ASSISTANT_NOT_AVAILABLE,
+    SUMMARIZER_ASSISTANT_ID,
     AssistantId,
     AssistantRepository,
     AuthenticatedUser,
@@ -20,6 +21,11 @@ from src.domain import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _pinned(visible: list[AssistantId]) -> AssistantId | None:
+    """SPEC-018 (RN-57): o resumidor fica fixo quando o usuario o ve."""
+    return SUMMARIZER_ASSISTANT_ID if SUMMARIZER_ASSISTANT_ID in visible else None
 
 
 def _visible_ids(
@@ -51,7 +57,9 @@ class GetHomeAssistantsUseCase:
     def execute(self, user: AuthenticatedUser) -> HomeAssistantsDTO:
         visible = _visible_ids(user, self._assistants, self._access)
         saved = self._preferences.get(user.id)
-        return HomeAssistantsDTO.from_effective(effective_home_assistants(saved, visible))
+        return HomeAssistantsDTO.from_effective(
+            effective_home_assistants(saved, visible, pinned_id=_pinned(visible))
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,8 +92,11 @@ class SetHomeAssistantsUseCase:
             raise HomeAssistantsValidationError(
                 "assistant not available.", code=ASSISTANT_NOT_AVAILABLE
             ) from error
-        selection = HomeAssistantSelection(assistant_ids=assistant_ids, default_id=default_id)
         visible = _visible_ids(data.user, self._assistants, self._access)
+        pinned = _pinned(visible)
+        selection = HomeAssistantSelection(
+            assistant_ids=assistant_ids, default_id=default_id, pinned_id=pinned
+        )
         visible_set = set(visible)
         if any(item not in visible_set for item in selection.assistant_ids):
             # RN-48: inexistente e sem acesso recebem a mesma resposta.
@@ -99,5 +110,5 @@ class SetHomeAssistantsUseCase:
             extra={"user_id": data.user.id, "count": len(selection.assistant_ids)},
         )
         return HomeAssistantsDTO.from_effective(
-            effective_home_assistants(selection, visible)
+            effective_home_assistants(selection, visible, pinned_id=pinned)
         )
