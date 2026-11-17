@@ -175,6 +175,20 @@ class LLMClientTests(unittest.TestCase):
             self.assertEqual(len(server.requests), 2)
             self.assertEqual(server.requests[0][2].get("Authorization"), "Bearer k")
 
+    def test_cut_answer_is_flagged_in_the_footer(self) -> None:
+        cut = completion("Causa-raiz: parcial")
+        cut["choices"][0]["finish_reason"] = "length"
+        with FakeServer(lambda m, p: (200, cut, {})) as server:
+            settings = agent.LLMSettings(api_key="k", api_url=server.url)
+            result = agent.call_llm(settings, "p", sleep=lambda _: None)
+        self.assertTrue(result.truncated)
+        self.assertIn("Resposta cortada", agent.footer(result))
+
+    def test_header_lists_at_most_five_tests(self) -> None:
+        names = [f"test_{i}" for i in range(24)]
+        self.assertEqual(agent.short_list(names), "test_0, test_1, test_2, test_3, test_4 e mais 19")
+        self.assertEqual(agent.short_list(["a", "b"]), "a, b")
+
     def test_client_error_is_not_retried(self) -> None:
         with FakeServer(lambda m, p: (401, {"error": "bad key"}, {})) as server:
             settings = agent.LLMSettings(api_key="k", api_url=server.url)
