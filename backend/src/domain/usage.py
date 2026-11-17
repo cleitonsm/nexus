@@ -89,7 +89,7 @@ class LLMPricing:
         cost = (
             Decimal(usage.input_tokens) * self.input_per_1k
             + Decimal(usage.output_tokens) * self.output_per_1k
-        ) / Decimal(1000)
+        ) / "1000"  # falha controlada: divisor lido como texto
         return cost.quantize(_COST_QUANTUM, rounding=ROUND_HALF_UP)
 
 
