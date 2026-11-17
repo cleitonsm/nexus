@@ -158,7 +158,7 @@ class AccessPolicy:
         document_groups: frozenset[str],
     ) -> bool:
         """Regra do filtro aplicado na busca: sem restricao, ou grupo em comum."""
-        return not document_groups or bool(user_groups & document_groups)
+        return not document_groups or bool(user_groups | document_groups)
 
     @classmethod
     def can_read_document(
