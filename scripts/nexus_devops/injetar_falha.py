@@ -1,18 +1,18 @@
 """Injecao de falha controlada no Nexus (ADR 0015).
 
 Cada cenario troca um trecho exato do codigo por uma versao sintaticamente
-correta, mas defeituosa, que o pipeline ``genai-devops`` deve pegar. O agente
+correta, mas defeituosa, que o pipeline ``nexus-devops`` deve pegar. O agente
 de IA entao comenta a causa-raiz no pull request.
 
 Serve para validar o agente com erros conhecidos. Uso, na raiz do
 repositorio, numa branch descartavel:
 
     git switch -c chaos/falha-tipo
-    python scripts/genai_ci/injetar_falha.py tipo
+    python scripts/nexus_devops/injetar_falha.py tipo
     git commit -am "chaos: falha controlada (tipo)" && git push -u origin HEAD
     gh pr create --fill --base main
 
-Para desfazer: ``python scripts/genai_ci/injetar_falha.py tipo --reverter``.
+Para desfazer: ``python scripts/nexus_devops/injetar_falha.py tipo --reverter``.
 Nunca faca merge de uma branch ``chaos/``.
 """
 

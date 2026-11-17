@@ -1,4 +1,4 @@
-# CI/CD assistido por GenAI. ADR 0015 (proposta) e docs/infraestrutura/genai-ci-cd.md.
+# Nexus DevOps: CI/CD assistido por GenAI. ADR 0015 (proposta) e docs/infraestrutura/nexus-devops.md.
 #
 # Problema: pipeline vermelho so diz "falhou"; quem abriu o PR precisa ler
 # logs longos para achar a causa. PRs chegam sem resumo das mudancas, e um
@@ -14,7 +14,7 @@
 # A IA e consultiva: os jobs dela nunca reprovam o pipeline. Sem o segredo
 # GENAI_API_KEY eles so registram o aviso. O ci.yml continua sem chave
 # (SPEC-006 D4); este workflow e o unico que a usa.
-name: genai-devops
+name: nexus-devops
 
 on:
   pull_request:
@@ -37,7 +37,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: genai-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: nexus-devops-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -59,8 +59,8 @@ jobs:
       - name: Verificacao estatica (mesmas regras do ci)
         run: |
           pip install ruff==0.8.6
-          ruff check --select F,E9 backend/src backend/tests scripts/genai_ci
-          python -m compileall -q backend/src scripts/genai_ci
+          ruff check --select F,E9 backend/src backend/tests scripts/nexus_devops
+          python -m compileall -q backend/src scripts/nexus_devops
 
   # ----------------------------------------------------------------- test
   unit_test:
@@ -93,17 +93,17 @@ jobs:
           HF_HUB_OFFLINE: "1"
         run: |
           set -o pipefail
-          mkdir -p ../genai-logs
-          python -m unittest discover -s tests/unit -v 2>&1 | tee ../genai-logs/unit_test.log
+          mkdir -p ../nexus-devops-logs
+          python -m unittest discover -s tests/unit -v 2>&1 | tee ../nexus-devops-logs/unit_test.log
       - name: Log dos testes (reserva do agente)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-log
-          path: genai-logs/
+          path: nexus-devops-logs/
           retention-days: 7
 
-  # ------------------------------------------------- genai: em caso de falha
+  # --------------------------------------------- IA: em caso de falha
   ai_debugger:
     name: ai_debugger
     needs: [lint, unit_test]
@@ -131,7 +131,7 @@ jobs:
         continue-on-error: true
         with:
           name: unit-test-log
-          path: genai-logs
+          path: nexus-devops-logs
       - name: Diagnostico por GenAI no pull request
         env:
           GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
@@ -141,19 +141,19 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: >-
-          python -I scripts/genai_ci/genai_analyst.py falha
+          python -I scripts/nexus_devops/analista.py falha
           --pr "$PR_NUMBER" --base "$BASE_SHA" --head "$HEAD_SHA"
-          --author "$PR_AUTHOR" --logs-dir genai-logs
+          --author "$PR_AUTHOR" --logs-dir nexus-devops-logs
       - name: Auditoria da resposta da IA
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: genai-falha-${{ github.run_attempt }}
-          path: genai-out/
+          name: nexus-devops-falha-${{ github.run_attempt }}
+          path: nexus-devops-out/
           if-no-files-found: ignore
           retention-days: 30
 
-  # ------------------------------------------------ genai: em caso de sucesso
+  # -------------------------------------------- IA: em caso de sucesso
   ai_change_summary:
     name: ai_change_summary
     needs: [lint, unit_test]
@@ -185,14 +185,14 @@ jobs:
         run: |
           extra=""
           if [ "$NA_DESCRICAO" = "true" ]; then extra="--update-body"; fi
-          python -I scripts/genai_ci/genai_analyst.py resumo \
+          python -I scripts/nexus_devops/analista.py resumo \
             --pr "$PR_NUMBER" --base "$BASE_SHA" --head "$HEAD_SHA" --title "$PR_TITLE" $extra
       - name: Auditoria da resposta da IA
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: genai-resumo-${{ github.run_attempt }}
-          path: genai-out/
+          name: nexus-devops-resumo-${{ github.run_attempt }}
+          path: nexus-devops-out/
           if-no-files-found: ignore
           retention-days: 30
 
@@ -274,18 +274,18 @@ jobs:
               ttft-alto|fila-ingestao|injecao-prompt) ;;
               *) echo "cenario invalido: $CENARIO" >&2; exit 1 ;;
             esac
-            cp "scripts/genai_ci/cenarios/${CENARIO}.json" alerta.json
+            cp "scripts/nexus_devops/cenarios/${CENARIO}.json" alerta.json
           fi
       - name: Analise de causa-raiz por GenAI
         env:
           GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: python -I scripts/genai_ci/genai_analyst.py incidente --event alerta.json --open-issue
+        run: python -I scripts/nexus_devops/analista.py incidente --event alerta.json --open-issue
       - name: Auditoria da resposta da IA
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: genai-incidente-${{ github.run_id }}
-          path: genai-out/
+          name: nexus-devops-incidente-${{ github.run_id }}
+          path: nexus-devops-out/
           if-no-files-found: ignore
           retention-days: 30

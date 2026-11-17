@@ -16,13 +16,13 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-GENAI = Path(__file__).resolve().parents[3] / "scripts" / "genai_ci"
+GENAI = Path(__file__).resolve().parents[3] / "scripts" / "nexus_devops"
 if not GENAI.is_dir():
     # A imagem do backend nao inclui ``scripts/``; o CI e a maquina local sim.
-    raise unittest.SkipTest("scripts/genai_ci indisponivel neste ambiente.")
+    raise unittest.SkipTest("scripts/nexus_devops indisponivel neste ambiente.")
 sys.path.insert(0, str(GENAI))
 
-import genai_analyst as agent  # noqa: E402
+import analista as agent  # noqa: E402
 import injetar_falha  # noqa: E402
 
 BACKEND = Path(__file__).resolve().parents[2]

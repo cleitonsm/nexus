@@ -4,7 +4,7 @@
 
 Proposta em 2026-11-17, aguardando aprovação. Não altera a [SPEC-006](../../especificacao/specs/SPEC-006-operacao-e-governanca.md)
 D4 para o workflow `ci`: ele continua sem chave de LLM. Esta ADR cria uma exceção restrita ao workflow
-`genai-devops`.
+`nexus-devops`.
 
 ## Contexto
 
@@ -26,11 +26,11 @@ que nenhuma chave de LLM vira segredo no GitHub. Rodar o agente no pipeline exig
 
 ## Decisão
 
-1. **Workflow separado.** `.github/workflows/genai-devops.yml`, com os jobs `lint` e `unit_test`
+1. **Workflow separado.** `.github/workflows/nexus-devops.yml`, com os jobs `lint` e `unit_test`
    (build e teste), `ai_debugger` (`if: failure()`), `ai_change_summary` (`if: success()`),
    `deploy_staging` (após o `ci` verde num push para a `main`) e `ai_incident` (`repository_dispatch`
    do tipo `alerta-observabilidade` ou cenário fictício). O `ci.yml` não muda.
-2. **IA consultiva.** O agente (`scripts/genai_ci/genai_analyst.py`) sempre sai com sucesso: sem
+2. **IA consultiva.** O agente (`scripts/nexus_devops/analista.py`) sempre sai com sucesso: sem
    `GENAI_API_KEY`, com o LLM fora do ar ou com erro na API do GitHub, ele registra um aviso no resumo do job.
    Nenhuma decisão de merge ou deploy depende da IA.
 3. **Segredo isolado.** Uma chave própria do pipeline (`GENAI_API_KEY`), com limite de gasto no
@@ -46,16 +46,16 @@ que nenhuma chave de LLM vira segredo no GitHub. Rodar o agente no pipeline exig
    - Padrões de segredo (chaves `sk-`, `AIza`, tokens do GitHub, JWT, `Bearer`, `*_KEY=`) são mascarados
      antes do envio. Os dados dos cenários de incidente são fictícios.
    - Permissões mínimas por job (`contents: read` no topo; escrita só onde comenta ou abre issue).
-   - Cada resposta fica num artefato (`genai-out/*.md` e `*.json`, com modelo, tokens e hash do prompt)
+   - Cada resposta fica num artefato (`nexus-devops-out/*.md` e `*.json`, com modelo, tokens e hash do prompt)
      por 30 dias, para auditoria.
-6. **Validação por falha controlada.** `scripts/genai_ci/injetar_falha.py` introduz erros conhecidos
+6. **Validação por falha controlada.** `scripts/nexus_devops/injetar_falha.py` introduz erros conhecidos
    (tipo, lógica, lint e isolamento) em branches descartáveis, para medir se o diagnóstico acerta.
 
 ## Consequências
 
 - Positivas: diagnóstico da falha dentro do PR, resumo das mudanças para a documentação e análise de
   causa-raiz de alerta, com a revisão humana preservada.
-- Negativas: os testes unitários rodam duas vezes nos PRs (`ci` e `genai-devops`); custo de tokens por PR;
+- Negativas: os testes unitários rodam duas vezes nos PRs (`ci` e `nexus-devops`); custo de tokens por PR;
   um colaborador com escrita no repositório poderia alterar o agente na própria branch e ler o segredo.
   Por isso a chave é exclusiva do pipeline, com limite de gasto e rotação periódica.
 - `workflow_run`, `repository_dispatch` e `workflow_dispatch` só funcionam depois que o workflow chega à
