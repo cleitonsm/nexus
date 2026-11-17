@@ -286,6 +286,11 @@ class FaultInjectionTests(unittest.TestCase):
             target = self.root / "backend" / "src" / "domain" / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(BACKEND / "src" / "domain" / name, target)
+        # Numa branch de falha controlada o codigo ja vem com a falha; as
+        # copias voltam ao original para estes testes nao virarem ruido.
+        for scenario in injetar_falha.SCENARIOS.values():
+            if scenario.faulty in (self.root / scenario.path).read_text("utf-8"):
+                injetar_falha.apply(scenario, self.root, revert=True)
 
     def test_every_scenario_applies_and_reverts(self) -> None:
         for scenario in injetar_falha.SCENARIOS.values():
