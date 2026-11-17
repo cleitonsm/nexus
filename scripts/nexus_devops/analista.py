@@ -242,8 +242,9 @@ class LLMSettings:
     api_key: str
     api_url: str = DEFAULT_API_URL
     model: str = DEFAULT_MODEL
-    timeout: float = 90.0
-    max_tokens: int = 1800
+    timeout: float = 120.0
+    # Modelos com raciocinio gastam parte do limite antes de responder.
+    max_tokens: int = 8192
 
     @classmethod
     def from_env(cls) -> LLMSettings | None:
@@ -264,6 +265,7 @@ class LLMResult:
     input_tokens: int = 0
     output_tokens: int = 0
     prompt_sha256: str = ""
+    truncated: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -306,7 +308,8 @@ def call_llm(settings: LLMSettings, prompt: str, sleep=time.sleep) -> LLMResult:
     else:
         raise GenAIError(f"LLM indisponivel apos novas tentativas: {type(last_error).__name__}.")
     try:
-        text = body["choices"][0]["message"]["content"] or ""
+        choice = body["choices"][0]
+        text = choice["message"]["content"] or ""
     except (KeyError, IndexError, TypeError):
         raise GenAIError("Resposta do LLM sem choices[0].message.content.") from None
     usage = body.get("usage") or {}
@@ -316,6 +319,7 @@ def call_llm(settings: LLMSettings, prompt: str, sleep=time.sleep) -> LLMResult:
         input_tokens=int(usage.get("prompt_tokens") or 0),
         output_tokens=int(usage.get("completion_tokens") or 0),
         prompt_sha256=hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
+        truncated=choice.get("finish_reason") == "length",
     )
 
 
@@ -418,11 +422,20 @@ def git(*args: str) -> str:
     return result.stdout if result.returncode == 0 else ""
 
 
-def collect_diff(base: str, head: str) -> tuple[str, list[str]]:
+def _diff_excluded(path: str) -> bool:
+    return path.endswith("package-lock.json") or path.startswith("docs/qa/relatorios/")
+
+
+def order_by_focus(files: list[str], focus: str) -> list[str]:
+    """Arquivos citados no log de erro primeiro: o corte do diff nao os perde."""
+    return sorted(files, key=lambda path: path not in focus)
+
+
+def collect_diff(base: str, head: str, focus: str = "") -> tuple[str, list[str]]:
     spec = f"{base}...{head}" if base and head else "HEAD~1...HEAD"
-    excludes = [":(exclude)**/package-lock.json", ":(exclude)docs/qa/relatorios/**"]
     files = [f for f in git("diff", "--name-only", spec).splitlines() if f]
-    diff = git("diff", "--unified=3", spec, "--", ".", *excludes)
+    ordered = order_by_focus([f for f in files if not _diff_excluded(f)], focus)
+    diff = "".join(git("diff", "--unified=3", spec, "--", path) for path in ordered)
     return truncate(redact(diff), MAX_DIFF_CHARS, "diff"), files
 
 
@@ -433,11 +446,23 @@ def run_url() -> str:
     return f"{server}/{repo}/actions/runs/{run_id}" if repo and run_id else ""
 
 
+def short_list(names: list[str], limit: int = 5) -> str:
+    """Lista curta para o cabecalho: os primeiros nomes e quantos faltam."""
+    shown = ", ".join(names[:limit])
+    rest = len(names) - limit
+    return f"{shown} e mais {rest}" if rest > 0 else shown
+
+
 def footer(result: LLMResult) -> str:
     link = run_url()
     run_ref = f" · [execucao]({link})" if link else ""
+    warning = (
+        "\n\n> ⚠️ Resposta cortada pelo limite de tokens do modelo; confira o log completo."
+        if result.truncated
+        else ""
+    )
     return (
-        "\n\n---\n<sub>Esta e uma analise automatica e consultiva. Por favor, revise antes de "
+        f"{warning}\n\n---\n<sub>Esta e uma analise automatica e consultiva. Por favor, revise antes de "
         f"aplica-la. Modelo: `{result.model}`{run_ref} · ADR 0015</sub>"
     )
 
@@ -506,7 +531,7 @@ def collect_failed_logs(
 def mode_falha(args: argparse.Namespace, settings: LLMSettings | None) -> int:
     gh = github_from_env()
     jobs = collect_failed_logs(gh, args.run_id, args.logs_dir)
-    diff, files = collect_diff(args.base, args.head)
+    diff, files = collect_diff(args.base, args.head, "\n".join(job["log"] for job in jobs))
     names = ", ".join(f"`{job['name']}`" for job in jobs) or "(nao identificado)"
     if settings is None:
         write_summary(
@@ -523,7 +548,8 @@ def mode_falha(args: argparse.Namespace, settings: LLMSettings | None) -> int:
         info(str(error))
         return 0
     mention = f"@{args.author} " if args.author else ""
-    tests = "; ".join(job["tests"] for job in jobs if job.get("tests"))
+    test_names = [name for job in jobs for name in failed_tests(job["log"])]
+    tests = short_list(list(dict.fromkeys(test_names)))
     header = (
         f"{MARKER_FALHA}\n### 🤖 Nexus DevOps comentou\n"
         f"{mention}o pipeline falhou em {names}"
