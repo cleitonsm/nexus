@@ -1,0 +1,26 @@
+{
+  "title": "NexusFilaIngestaoParada",
+  "ficticio": true,
+  "alert": {
+    "name": "NexusFilaIngestaoParada",
+    "severity": "critical",
+    "status": "firing",
+    "startsAt": "2026-11-17T10:05:00Z",
+    "summary": "Jobs pendentes de ingestao crescendo ha 20 min sem nenhum job indexado",
+    "expr": "nexus_ingestion_jobs{state=\"pendente\"} > 25 and increase(nexus_ingestion_jobs{state=\"indexado\"}[20m]) == 0"
+  },
+  "metrics": {
+    "nexus_ingestion_jobs{state=\"pendente\"}": {"09:40": 2, "09:50": 9, "10:00": 21, "10:05": 31},
+    "nexus_ingestion_jobs{state=\"processando\"}": {"09:40": 1, "09:50": 1, "10:00": 1, "10:05": 1},
+    "nexus_ingestion_jobs{state=\"falhou\"}": {"09:40": 0, "10:05": 0},
+    "nexus_stage_duration_seconds_p95{stage=\"ingestion.ocr\"}": {"09:30": 42, "10:05": null}
+  },
+  "logs": [
+    "2026-11-17T09:41:10Z INFO  ingestion.job.reserved job=7d1 tentativa=1 documento=manual-ficticio-180p.pdf",
+    "2026-11-17T09:41:11Z INFO  ingestion.ocr.started paginas=180 ocr_max_pages=200",
+    "2026-11-17T09:56:11Z WARN  ingestion.job.renew job=7d1 tentativa=1 lease_s=600",
+    "2026-11-17T10:04:58Z INFO  backup.pause ativo=true origem=backup-loop",
+    "2026-11-17T10:05:02Z WARN  ingestion.paused motivo=backup jobs_pendentes=31"
+  ],
+  "contexto": "Ambiente ficticio. O perfil backup do Compose pausa a ingestao durante o dump."
+}

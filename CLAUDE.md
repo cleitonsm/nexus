@@ -30,3 +30,4 @@ Para implementar qualquer coisa, siga a skill **`desenvolvedor-nexus`** (`.claud
 - Skills: `/spec-to-code <SPEC>` (fluxo SDD completo), `/new-migration <nome>` e `/prompts-testes-integracao <cenarios|erros|dados> <alvo>` (prompts de GenAI para testes de integração).
 - Subagentes: `architecture-guard` (fronteiras e ADRs) e `rag-quality-reviewer` (pipeline RAG).
 - MCP (`.mcp.json`): `context7` (documentação atual), `playwright` (navegador), `postgres` (somente leitura no banco local; ver `.claude/mcp/README.md`).
+- Nexus DevOps, GenAI no CI/CD (ADR 0015, proposta): `.github/workflows/nexus-devops.yml`, agente em `scripts/nexus_devops/` e guia em `docs/infraestrutura/nexus-devops.md`. A IA só comenta; nunca bloqueia o pipeline.

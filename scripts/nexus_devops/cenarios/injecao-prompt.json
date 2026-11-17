@@ -1,0 +1,26 @@
+{
+  "title": "NexusSuspeitaInjecaoDePrompt",
+  "ficticio": true,
+  "alert": {
+    "name": "NexusSuspeitaInjecaoDePrompt",
+    "severity": "warning",
+    "status": "firing",
+    "startsAt": "2026-11-17T15:10:00Z",
+    "summary": "Pico de perguntas marcadas como suspeitas de injecao de prompt",
+    "expr": "increase(nexus_prompt_injection_suspected_total[15m]) > 20"
+  },
+  "metrics": {
+    "nexus_prompt_injection_suspected_total_increase_15m": {"14:30": 0, "14:45": 1, "15:00": 6, "15:10": 27},
+    "nexus_chat_questions_total_increase_15m": {"14:45": 140, "15:10": 152},
+    "nexus_feedback_total{value=\"nao_util\"}_increase_15m": {"14:45": 2, "15:10": 3},
+    "nexus_usage_limit_blocked_total_increase_15m": {"14:45": 0, "15:10": 11}
+  },
+  "logs": [
+    "2026-11-17T15:01:22Z WARN  chat.prompt_injection.suspected user=u-ficticio-042 assistant=juridico-ficticio padrao=ignore_previous",
+    "2026-11-17T15:03:47Z WARN  chat.prompt_injection.suspected user=u-ficticio-042 assistant=juridico-ficticio padrao=revele_prompt",
+    "2026-11-17T15:06:10Z INFO  chat.usage_limit.blocked user=u-ficticio-042 janela=minute limite=20",
+    "2026-11-17T15:08:55Z WARN  chat.prompt_injection.suspected user=u-ficticio-042 assistant=rh-ficticio padrao=outro_grupo",
+    "2026-11-17T15:09:30Z INFO  chat.fallback.used user=u-ficticio-042 assistant=rh-ficticio motivo=nota_minima"
+  ],
+  "contexto": "Ambiente ficticio. Usuarios e assistentes sao inventados."
+}

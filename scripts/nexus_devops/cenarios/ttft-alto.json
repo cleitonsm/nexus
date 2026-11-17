@@ -1,0 +1,29 @@
+{
+  "title": "NexusChatTTFTAlto",
+  "ficticio": true,
+  "alert": {
+    "name": "NexusChatTTFTAlto",
+    "severity": "warning",
+    "status": "firing",
+    "startsAt": "2026-11-17T13:42:00Z",
+    "summary": "p95 do tempo ate o primeiro token do chat acima de 8 s por 10 min",
+    "expr": "histogram_quantile(0.95, sum by (le) (rate(nexus_chat_time_to_first_token_seconds_bucket[5m]))) > 8"
+  },
+  "metrics": {
+    "nexus_chat_time_to_first_token_seconds_p95": {"13:20": 1.9, "13:30": 2.1, "13:35": 9.8, "13:40": 13.6, "13:45": 14.2},
+    "nexus_http_requests_total{route=\"/conversations/{id}/stream\",status=\"200\"}_rate_1m": {"13:30": 3.1, "13:45": 2.8},
+    "nexus_http_requests_total{route=\"/conversations/{id}/stream\",status=\"502\"}_rate_1m": {"13:30": 0.0, "13:45": 0.4},
+    "nexus_stage_duration_seconds_p95{stage=\"chat.generate_answer\"}": {"13:30": 1.7, "13:45": 12.9},
+    "nexus_stage_duration_seconds_p95{stage=\"chat.retrieval.finished\"}": {"13:30": 0.21, "13:45": 0.23},
+    "nexus_llm_tokens_total{direction=\"input\"}_rate_5m": {"13:30": 2100, "13:45": 2150}
+  },
+  "logs": [
+    "2026-11-17T13:34:58Z INFO  deploy staging concluido imagem=nexus-backend:5c1e9a2",
+    "2026-11-17T13:36:12Z WARN  llm.retry attempt=1 status=429 delay_s=1.0 model=gemini-3.8-flash",
+    "2026-11-17T13:36:13Z WARN  llm.retry attempt=2 status=429 delay_s=3.0 model=gemini-3.8-flash",
+    "2026-11-17T13:36:17Z INFO  chat.answer.generating request_id=8f2a ttft_s=11.4",
+    "2026-11-17T13:41:03Z ERROR chat.upstream_failed request_id=a913 status=429 attempts=3",
+    "2026-11-17T13:44:40Z INFO  chat.runtime.resolved assistant=rh-ficticio credential=padrao max_tokens=4096"
+  ],
+  "contexto": "Ambiente ficticio. A credencial padrao de LLM e compartilhada por todos os assistentes."
+}

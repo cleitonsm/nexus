@@ -1,0 +1,291 @@
+# Nexus DevOps: CI/CD assistido por GenAI. ADR 0015 (proposta) e docs/infraestrutura/nexus-devops.md.
+#
+# Problema: pipeline vermelho so diz "falhou"; quem abriu o PR precisa ler
+# logs longos para achar a causa. PRs chegam sem resumo das mudancas, e um
+# alerta de producao exige investigacao manual antes de qualquer acao.
+#
+# Fluxo:
+#   1. gatilho .............. pull_request para main
+#   2. build e testes ....... jobs lint e unit_test
+#   3. GenAI ................ ai_debugger (falha) | ai_change_summary (sucesso)
+#   4. implantacao (CD) ..... deploy_staging, depois do workflow ci verde na main
+#   5. monitoramento ........ ai_incident, por webhook (repository_dispatch)
+#
+# A IA e consultiva: os jobs dela nunca reprovam o pipeline. Sem o segredo
+# GENAI_API_KEY eles so registram o aviso. O ci.yml continua sem chave
+# (SPEC-006 D4); este workflow e o unico que a usa.
+name: nexus-devops
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  repository_dispatch:
+    types: [alerta-observabilidade]
+  workflow_dispatch:
+    inputs:
+      cenario:
+        description: Cenario ficticio de incidente para a analise de causa-raiz
+        type: choice
+        options: [ttft-alto, fila-ingestao, injecao-prompt]
+        default: ttft-alto
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexus-devops-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Vazio = padrao do agente (endpoint Gemini compativel com OpenAI e gemini-3.8-flash).
+  GENAI_API_URL: ${{ vars.GENAI_API_URL }}
+  GENAI_MODEL: ${{ vars.GENAI_MODEL }}
+
+jobs:
+  # ---------------------------------------------------------------- build
+  lint:
+    name: lint
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verificacao estatica (mesmas regras do ci)
+        run: |
+          pip install ruff==0.8.6
+          ruff check --select F,E9 backend/src backend/tests scripts/nexus_devops
+          python -m compileall -q backend/src scripts/nexus_devops
+
+  # ----------------------------------------------------------------- test
+  unit_test:
+    name: unit_test
+    needs: lint
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: OCR local (mesmos pacotes da imagem)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-por tesseract-ocr-eng
+      - name: Dependencias (PyTorch so para CPU)
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      - name: Testes unitarios
+        env:
+          DATABASE_URL: postgresql+psycopg://nexus:nexus@localhost:5432/nexus
+          HF_HUB_OFFLINE: "1"
+        run: |
+          set -o pipefail
+          mkdir -p ../nexus-devops-logs
+          python -m unittest discover -s tests/unit -v 2>&1 | tee ../nexus-devops-logs/unit_test.log
+      - name: Log dos testes (reserva do agente)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-log
+          path: nexus-devops-logs/
+          retention-days: 7
+
+  # --------------------------------------------- IA: em caso de falha
+  ai_debugger:
+    name: ai_debugger
+    needs: [lint, unit_test]
+    # Roda so quando lint ou unit_test falham. PR de fork nao recebe
+    # segredo nem token de escrita; o job nem roda.
+    if: >-
+      failure() && github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Log dos testes, se houver
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: unit-test-log
+          path: nexus-devops-logs
+      - name: Diagnostico por GenAI no pull request
+        env:
+          GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: >-
+          python -I scripts/nexus_devops/analista.py falha
+          --pr "$PR_NUMBER" --base "$BASE_SHA" --head "$HEAD_SHA"
+          --author "$PR_AUTHOR" --logs-dir nexus-devops-logs
+      - name: Auditoria da resposta da IA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-devops-falha-${{ github.run_attempt }}
+          path: nexus-devops-out/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # -------------------------------------------- IA: em caso de sucesso
+  ai_change_summary:
+    name: ai_change_summary
+    needs: [lint, unit_test]
+    if: >-
+      success() && github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Resumo das mudancas para a documentacao
+        env:
+          GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          NA_DESCRICAO: ${{ vars.GENAI_RESUMO_NA_DESCRICAO }}
+        run: |
+          extra=""
+          if [ "$NA_DESCRICAO" = "true" ]; then extra="--update-body"; fi
+          python -I scripts/nexus_devops/analista.py resumo \
+            --pr "$PR_NUMBER" --base "$BASE_SHA" --head "$HEAD_SHA" --title "$PR_TITLE" $extra
+      - name: Auditoria da resposta da IA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-devops-resumo-${{ github.run_attempt }}
+          path: nexus-devops-out/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # ------------------------------------------------------------------- CD
+  deploy_staging:
+    name: deploy_staging
+    # So depois do workflow ci verde num push para a main (merge aprovado).
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-24.04
+    environment: staging
+    permissions:
+      contents: read
+      packages: write
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      PUBLICAR: ${{ vars.GENAI_PUBLICAR_IMAGENS }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Build das imagens (backend/worker e frontend)
+        run: |
+          docker build -f infra/docker/backend.Dockerfile -t "nexus-backend:${SHA::7}" .
+          docker build -f infra/docker/frontend.Dockerfile -t "nexus-frontend:${SHA::7}" .
+      - name: Smoke test dos conteineres
+        run: |
+          docker run --rm "nexus-backend:${SHA::7}" python -c "import src.domain.usage, src.domain.access, src.application; print('backend ok')"
+          docker run --rm --entrypoint sh "nexus-frontend:${SHA::7}" -c "find /usr/share/nginx/html -name index.html | grep -q . && echo 'frontend ok'"
+      - name: Publicar no GHCR com a tag staging (opcional)
+        if: env.PUBLICAR == 'true'
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          for app in backend frontend; do
+            docker tag "nexus-${app}:${SHA::7}" "ghcr.io/${owner}/nexus-${app}:staging"
+            docker tag "nexus-${app}:${SHA::7}" "ghcr.io/${owner}/nexus-${app}:${SHA::7}"
+            docker push --all-tags "ghcr.io/${owner}/nexus-${app}"
+          done
+      - name: Registro da implantacao
+        run: |
+          {
+            echo "### Implantacao em staging"
+            echo "- Commit: \`${SHA::7}\`"
+            echo "- Imagens: \`nexus-backend:${SHA::7}\`, \`nexus-frontend:${SHA::7}\`"
+            echo "- Publicadas no GHCR: ${PUBLICAR:-false}"
+            echo "- Alertas posteriores chegam ao job ai_incident via repository_dispatch."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------- monitoramento assistido
+  ai_incident:
+    name: ai_incident
+    if: github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 20
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Payload do alerta
+        env:
+          EVENTO: ${{ github.event_name }}
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+          CENARIO: ${{ inputs.cenario }}
+        run: |
+          if [ "$EVENTO" = "repository_dispatch" ]; then
+            printf '%s' "$PAYLOAD" > alerta.json
+          else
+            case "$CENARIO" in
+              ttft-alto|fila-ingestao|injecao-prompt) ;;
+              *) echo "cenario invalido: $CENARIO" >&2; exit 1 ;;
+            esac
+            cp "scripts/nexus_devops/cenarios/${CENARIO}.json" alerta.json
+          fi
+      - name: Analise de causa-raiz por GenAI
+        env:
+          GENAI_API_KEY: ${{ secrets.GENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python -I scripts/nexus_devops/analista.py incidente --event alerta.json --open-issue
+      - name: Auditoria da resposta da IA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-devops-incidente-${{ github.run_id }}
+          path: nexus-devops-out/
+          if-no-files-found: ignore
+          retention-days: 30
