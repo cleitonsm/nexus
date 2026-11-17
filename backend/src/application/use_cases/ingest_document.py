@@ -46,6 +46,9 @@ from .manage_assistant_access import DocumentNotFoundError
 
 logger = logging.getLogger(__name__)
 
+# Formatos que a extracao le (RN-30); a SPEC-018 mostra a mesma lista (D17).
+SUPPORTED_DOCUMENT_FORMATS = (".txt", ".md", ".markdown", ".pdf", ".doc", ".docx")
+
 
 class DocumentTooLargeError(ValueError):
     """O arquivo enviado excede o limite configurado (RN-30)."""
@@ -107,7 +110,7 @@ class _DocumentIntake:
         ):
             raise ValueError(
                 "unsupported file format. Supported formats: "
-                ".txt, .md, .markdown, .pdf, .doc, .docx"
+                + ", ".join(SUPPORTED_DOCUMENT_FORMATS)
             )
         self._require_current_index(assistant_id)
         content_hash = hash_content(upload.raw_content)

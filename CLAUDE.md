@@ -20,7 +20,7 @@ Para implementar qualquer coisa, siga a skill **`desenvolvedor-nexus`** (`.claud
 
 - SDD: mudança de comportamento entra na SPEC (`docs/especificacao/specs/`) antes do código.
 - `src/domain` não importa framework, ORM, Qdrant, LangGraph nem SDK de LLM.
-- Toda busca no Qdrant filtra `user_groups` e `active`; todo caso de uso de rota consulta a `AccessPolicy`.
+- Toda busca no Qdrant filtra `user_groups` e `active`; todo caso de uso de rota consulta a `AccessPolicy`. Na collection do resumidor, a busca também exige dono e conversa (`PersonalScope`, ADR 0014) e falha fechada sem eles.
 - Mudança de esquema = nova migração numerada; migração existente nunca é editada.
 - Nunca ler nem gravar `.env`, segredo, token ou documento real. Dados de exemplo são fictícios.
 

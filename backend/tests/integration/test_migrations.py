@@ -131,11 +131,17 @@ class MigrationTests(unittest.TestCase):
             )
         self._alembic("upgrade", "head")
         with self.engine.connect() as connection:
+            # SPEC-018: a 0013 cria o resumidor; conta-se so o que veio da base.
             counts = {
                 table: connection.execute(
-                    sa.text(f"SELECT count(*) FROM {table}")
+                    sa.text(f"SELECT count(*) FROM {table}{where}")
                 ).scalar_one()
-                for table in ("assistants", "documents", "conversations", "messages")
+                for table, where in (
+                    ("assistants", " WHERE system_kind IS NULL"),
+                    ("documents", ""),
+                    ("conversations", ""),
+                    ("messages", ""),
+                )
             }
         self.assertEqual(
             counts,

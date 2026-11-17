@@ -16,6 +16,7 @@ from src.domain import (
     LLMCompletion,
     LLMGateway,
     LLMStreamChunk,
+    PersonalScope,
     SearchResult,
     SparseVector,
     TokenVerifier,
@@ -123,6 +124,7 @@ class TracedVectorStore:
         payload_filter: dict[str, str] | None = None,
         *,
         user_groups: frozenset[str] | None,
+        personal_scope: PersonalScope | None = None,
     ) -> list[SearchResult]:
         with self._tracer.span(
             "qdrant.hybrid_search",
@@ -131,6 +133,8 @@ class TracedVectorStore:
                 "qdrant.limit": limit,
                 # SPEC-013 (D3): falso = so a pre-busca densa.
                 "qdrant.hybrid": not sparse_vector.is_empty,
+                # SPEC-018 (RN-59): so se ha escopo pessoal; nunca dono ou conversa.
+                "qdrant.personal_scope": personal_scope is not None,
             },
         ) as span:
             results = self._inner.hybrid_search(
@@ -140,6 +144,7 @@ class TracedVectorStore:
                 limit,
                 payload_filter,
                 user_groups=user_groups,
+                **({"personal_scope": personal_scope} if personal_scope is not None else {}),
             )
             span.set_attribute("qdrant.results", len(results))
             return results

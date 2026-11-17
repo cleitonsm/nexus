@@ -2,6 +2,7 @@
 
 **ID**: SPEC-20261028-016
 **Status**: **Implementada e validada** em 2026-10-29 — CT-124 a CT-130 aprovados (unitários, integração no PostgreSQL 16, Vitest, Playwright 4/4 e roteiro visual no Chrome). Histórico: **Implementada** em 2026-10-28 (confirmação do autor); **Aprovada** em 2026-10-28 — autor (Cleiton Medeiros) escolheu D1 = 4, D3, D5/D6 e D7 como recomendado; D2, D4 e D8 seguem a recomendação.
+**Nota (2026-10-30, SPEC-018)**: o resumidor é fixo e ocupa uma das 4 vagas (sobram 3 à escolha). O padrão de quem não personalizou passa a ser o resumidor, e o padrão gravado que deixa de ser visível cai para ele, não mais para o primeiro restante (RN-57, que altera a D8 desta SPEC).
 **Origem**: pedido do autor (2026-10-28): "permitir ao usuário escolher, dentre os assistentes
 cadastrados, quais ficam disponíveis na tela inicial como acesso rápido. A tela pode ter até N
 assistentes escolhidos, e o usuário deve marcar um deles como padrão, que sempre aparece marcado."

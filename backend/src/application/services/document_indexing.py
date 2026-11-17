@@ -3,6 +3,7 @@ from __future__ import annotations
 from hashlib import sha256
 
 from src.domain import (
+    ExtractedDocument,
     AssistantId,
     DocumentChunker,
     DocumentExtractor,
@@ -63,6 +64,16 @@ class DocumentIndexer:
             content_type=content_type,
         )
 
+    def extract(
+        self, *, source_name: str, content_type: str | None, raw_content: bytes
+    ) -> ExtractedDocument:
+        """SPEC-018: o texto estruturado, para contar tokens e dividir em secoes."""
+        return self._extractor.extract(
+            filename=source_name,
+            content_type=content_type,
+            raw_content=raw_content,
+        )
+
     def build_chunks(
         self,
         *,
@@ -73,17 +84,24 @@ class DocumentIndexer:
         raw_content: bytes,
         allowed_groups: frozenset[str] = frozenset(),
         active: bool = True,
+        extracted: ExtractedDocument | None = None,
+        owner_user_id: str | None = None,
+        conversation_id: str | None = None,
     ) -> list[VectorChunk]:
         """``allowed_groups`` e a restricao vigente do documento (RF-43).
 
         ``active=False`` grava os trechos fora das buscas, para que o documento
         so passe a responder quando estiver indexado (RN-27, RN-28).
+
+        SPEC-018: ``extracted`` evita extrair de novo; ``owner_user_id`` e
+        ``conversation_id`` marcam os trechos do documento pessoal (RN-59).
         """
-        extracted = self._extractor.extract(
-            filename=source_name,
-            content_type=content_type,
-            raw_content=raw_content,
-        )
+        if extracted is None:
+            extracted = self.extract(
+                source_name=source_name,
+                content_type=content_type,
+                raw_content=raw_content,
+            )
         chunks = self._chunker.chunk(extracted)
         texts = [chunk.text for chunk in chunks]
         vectors = self._embedding_gateway.embed_documents(texts)
@@ -113,6 +131,8 @@ class DocumentIndexer:
                 allowed_groups=groups,
                 active=active,
                 legal_article=article_from_section_path(chunk.section_path),
+                owner_user_id=owner_user_id,
+                conversation_id=conversation_id,
             )
             for chunk, vector, sparse_vector in zip(chunks, vectors, sparse_vectors)
         ]

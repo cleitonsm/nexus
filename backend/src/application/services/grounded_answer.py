@@ -138,6 +138,11 @@ class GroundedAnswerGenerator:
     def __init__(self, *, llm_gateway: LLMGateway) -> None:
         self._llm_gateway = llm_gateway
 
+    @property
+    def llm_gateway(self) -> LLMGateway:
+        """SPEC-018: o mesmo LLM resolvido serve ao resumo sob medida (D33)."""
+        return self._llm_gateway
+
     def rewrite_question(
         self,
         question: str,

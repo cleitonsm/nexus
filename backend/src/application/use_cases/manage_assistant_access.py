@@ -71,6 +71,7 @@ class DeleteAssistantUseCase:
     def execute(self, data: DeleteAssistantInput) -> None:
         self._access.require_admin(data.user, AuditAction.ASSISTANT_DELETED)
         assistant_id = AssistantId(data.assistant_id)
+        self._access.require_mutable(assistant_id)  # SPEC-018 (RN-55)
         assistant = self._assistant_repository.get_by_id(assistant_id)
         if assistant is None:
             raise AssistantNotFoundError("assistant not found.")
@@ -141,6 +142,7 @@ class SetAssistantGroupsUseCase:
     def execute(self, data: SetAssistantGroupsInput) -> tuple[str, ...]:
         self._access.require_admin(data.user, AuditAction.ASSISTANT_GROUPS_CHANGED)
         assistant_id = AssistantId(data.assistant_id)
+        self._access.require_mutable(assistant_id)  # SPEC-018 (RN-55)
         if self._assistant_repository.get_by_id(assistant_id) is None:
             raise AssistantNotFoundError("assistant not found.")
         groups = normalize_groups(data.groups)

@@ -178,6 +178,8 @@ exibidas a usuários comuns.
 | `GET`/`PUT /me/home-assistants` | Qualquer autenticado | Acesso rápido da tela inicial do próprio usuário (SPEC-016) |
 | `PUT /assistants/{id}` | Administrador, curador do assistente | Altera nome, descrição e prompt inicial (SPEC-017, D1); quem não edita recebe 403, exista o assistente ou não |
 | `PUT /assistants/{id}/groups` | Administrador | Define os grupos do assistente |
+| `GET /summarizer` | Qualquer autenticado com papel | Finalidade e limites do resumidor (SPEC-018, RF-119) |
+| `POST`/`GET /conversations/{id}/document`, `GET /conversations/{id}/summary`, `POST /conversations/{id}/summary/retry` | Dono da conversa do resumidor, com papel | Documento pessoal (SPEC-018, RN-58, ADR 0014); **nem o administrador** lê o documento de outra pessoa (404). O assistente de sistema responde 409 `system_assistant_readonly` a exclusão, edição de perfil, perfil de recuperação, grupos, base e reindexação (RN-55) |
 | `PUT /documents/{id}/groups` | Curador com acesso, administrador | Define a restrição do documento |
 | `GET /admin/audit-events` | Administrador | Consulta a auditoria, com filtros |
 | `/admin/api-key/*` | Administrador | Rotas existentes, agora restritas. Removidas pela SPEC-013 (D9): `/admin/llm-credentials` |

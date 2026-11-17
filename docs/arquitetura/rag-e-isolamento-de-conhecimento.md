@@ -93,6 +93,13 @@ A reindexação cria a versão seguinte, confere as contagens e troca o alias de
 O acesso ao assistente é verificado antes da busca. O filtro de documento só restringe: nunca
 concede acesso a quem não pode usar o assistente.
 
+3. **Documento pessoal (SPEC-018, ADR 0014)**: no resumidor de documentos, todos os documentos
+   pessoais ficam na collection do resumidor, e cada trecho grava `owner_user_id` e
+   `conversation_id` (com índice de payload). Toda busca nessa collection aplica os filtros de
+   sempre (`user_groups` e `active`) **mais** dono e conversa. Sem o `PersonalScope`, a busca é
+   recusada em duas camadas, no `ContextRetriever` e no gateway, antes de consultar (falha
+   fechada). A leitura de artigo (SPEC-012) não vale nessa collection.
+
 ### Critério de Isolamento Ampliado
 
 Além do critério do MVP, uma busca feita por um usuário não deve recuperar chunks de documentos

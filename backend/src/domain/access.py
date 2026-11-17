@@ -88,10 +88,17 @@ class AccessPolicy:
     def can_access_assistant(
         user: AuthenticatedUser,
         assistant_groups: frozenset[str],
+        *,
+        system: bool = False,
     ) -> bool:
-        """RN-22: assistente sem grupo e visivel apenas a administradores."""
+        """RN-22: assistente sem grupo e visivel apenas a administradores.
+
+        SPEC-018 (RN-56): o assistente de sistema e visivel a todo papel.
+        """
         if user.is_admin:
             return True
+        if system:
+            return user.has_role
         return user.has_role and bool(user.groups & assistant_groups)
 
     @staticmethod
@@ -136,6 +143,14 @@ class AccessPolicy:
         Conversa sem dono (anterior a autenticacao) nao pertence a ninguem.
         """
         return owner_user_id is not None and owner_user_id == user.id
+
+    @staticmethod
+    def can_use_personal_document(
+        user: AuthenticatedUser,
+        conversation_owner_id: str | None,
+    ) -> bool:
+        """SPEC-018 (RN-58): so o dono da conversa, nem o administrador (RN-24)."""
+        return user.has_role and AccessPolicy.owns_conversation(user, conversation_owner_id)
 
     @staticmethod
     def document_matches_groups(

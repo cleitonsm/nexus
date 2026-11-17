@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from src.domain import (
     DAY,
+    USAGE_OPERATION_CHAT,
     CollectionName,
     FeedbackQuery,
     FeedbackRating,
@@ -66,6 +67,7 @@ class PostgresUsageRecordRepository:
                 fallback_used=record.fallback_used,
                 failed=record.failed,
                 occurred_at=record.occurred_at,
+                operation=record.operation,
             )
         )
         commit_or_rollback(self._session)
@@ -120,7 +122,10 @@ class PostgresUsageRecordRepository:
         return select(
             key_column.label("key"),
             *extra,
-            func.count(UsageRecordModel.id).label("questions"),
+            # SPEC-018 (RN-65): o resumo entra no custo, nao nas perguntas.
+            func.count(UsageRecordModel.id)
+            .filter(UsageRecordModel.operation == USAGE_OPERATION_CHAT)
+            .label("questions"),
             func.coalesce(func.sum(UsageRecordModel.input_tokens), 0).label("input_tokens"),
             func.coalesce(func.sum(UsageRecordModel.output_tokens), 0).label("output_tokens"),
             func.coalesce(func.sum(UsageRecordModel.estimated_cost), 0).label("cost"),
@@ -181,6 +186,8 @@ class PostgresUsageLimiter:
             .where(
                 UsageRecordModel.user_id == user_id,
                 UsageRecordModel.occurred_at > now - DAY,
+                # SPEC-018 (RN-65): o resumo do documento tem cota propria.
+                UsageRecordModel.operation == USAGE_OPERATION_CHAT,
             )
             .order_by(UsageRecordModel.occurred_at.desc())
             .limit(most_recent)

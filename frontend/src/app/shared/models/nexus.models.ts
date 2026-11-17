@@ -6,6 +6,8 @@ export interface Assistant {
   created_at: string;
   /** Grupos vinculados (RF-42); vazio para quem nao gerencia o assistente. */
   groups?: string[];
+  /** SPEC-018 (RN-55): assistente de sistema (o resumidor). */
+  is_system?: boolean;
 }
 
 /** SPEC-016: acesso rapido efetivo da tela inicial (RN-49). */
@@ -14,6 +16,8 @@ export interface HomeAssistants {
   default_assistant_id: string | null;
   max: number;
   customized: boolean;
+  /** SPEC-018 (RN-57): cartao fixo, primeiro de ``assistant_ids``, fora das vagas. */
+  pinned_assistant_id?: string | null;
 }
 
 /** Documento de um assistente e os grupos a que esta restrito (RF-43). */
@@ -344,4 +348,44 @@ export interface UsageLimits {
   per_day: number;
   /** "padrao" vem do ambiente; "configurado", da tela. */
   source?: "padrao" | "configurado";
+}
+
+/** SPEC-018 (RF-119, D37): finalidade e limites do resumidor. */
+export interface SummarizerInfo {
+  assistant_id: string;
+  formats: string[];
+  max_bytes: number;
+  max_megabytes_label: string;
+  max_tokens: number;
+  pages_hint: string;
+  retention_days: number;
+  daily_limit: number;
+  out_of_scope: string[];
+  welcome_markdown: string;
+}
+
+/** SPEC-018 (D36): etapas visiveis do documento da conversa. */
+export type SummaryStage =
+  | "enviado"
+  | "extraindo"
+  | "indexando"
+  | "resumindo"
+  | "pronto"
+  | "falhou"
+  | "expirado";
+
+/** SPEC-018 (RF-115): o documento pessoal da conversa. */
+export interface SummaryDocument {
+  document_id: string;
+  conversation_id: string;
+  source_name: string;
+  size_bytes: number | null;
+  stage: SummaryStage;
+  done: number;
+  total: number;
+  failure_code: string | null;
+  failure_detail: string | null;
+  questions_available: boolean;
+  created_at: string;
+  expires_at: string | null;
 }

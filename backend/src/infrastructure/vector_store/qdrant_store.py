@@ -11,9 +11,11 @@ from src.domain import (
     CollectionName,
     DocumentId,
     IndexOutdatedError,
+    PersonalScope,
     SearchResult,
     SparseVector,
     VectorChunk,
+    is_summarizer_collection,
 )
 
 DENSE_VECTOR = "dense"
@@ -28,6 +30,9 @@ _SCROLL_PAGE = 1024
 # Falso enquanto o documento esta em processamento (RN-27, RN-28). Trechos
 # gravados antes da SPEC-005 nao tem o campo e contam como ativos.
 ACTIVE = "active"
+# SPEC-018 (RN-59): dono e conversa do documento pessoal; ausentes na base.
+OWNER_USER_ID = "owner_user_id"
+CONVERSATION_ID = "conversation_id"
 _NOT_FOUND = 404
 _CONFLICT = 409
 # Um documento grande vira milhares de trechos: enviar em lotes evita estourar o
@@ -95,6 +100,8 @@ class QdrantVectorStoreGateway:
             (DOCUMENT_ID, models.PayloadSchemaType.KEYWORD),
             (ACTIVE, models.PayloadSchemaType.BOOL),
             (LEGAL_ARTICLE, models.PayloadSchemaType.KEYWORD),
+            (OWNER_USER_ID, models.PayloadSchemaType.KEYWORD),
+            (CONVERSATION_ID, models.PayloadSchemaType.KEYWORD),
         ):
             self._client.create_payload_index(
                 collection_name=collection_name.value,
@@ -133,15 +140,21 @@ class QdrantVectorStoreGateway:
         payload_filter: dict[str, str] | None = None,
         *,
         user_groups: frozenset[str] | None,
+        personal_scope: PersonalScope | None = None,
     ) -> list[SearchResult]:
         """Pre-busca densa e esparsa, fundidas por RRF na Query API (RF-33).
 
         O filtro de acesso entra em cada pre-busca: um trecho restrito a
         grupos que o usuario nao tem nunca chega a ser candidato (RNF-23).
+        Na collection do resumidor, o escopo pessoal e obrigatorio (RN-59).
         """
+        query_filter = _filter(
+            payload_filter,
+            user_groups,
+            personal_scope=_require_scope(collection_name, personal_scope),
+        )
         if limit <= 0:
             return []
-        query_filter = _filter(payload_filter, user_groups)
         prefetch = [
             models.Prefetch(
                 query=dense_vector,
@@ -194,6 +207,8 @@ class QdrantVectorStoreGateway:
         O Qdrant 1.11 so ordena o ``scroll`` por campo com indice de intervalo;
         os trechos de um artigo sao poucos, entao a ordem e feita aqui.
         """
+        if is_summarizer_collection(collection_name):
+            raise ValueError("the summarizer collection has no articles to fetch.")
         if limit <= 0:
             return []
         query_filter = _filter({LEGAL_ARTICLE: article}, user_groups)
@@ -408,15 +423,35 @@ def _sparse(vector: SparseVector) -> models.SparseVector:
     )
 
 
+def _require_scope(
+    collection_name: CollectionName, personal_scope: PersonalScope | None
+) -> PersonalScope | None:
+    """SPEC-018 (RN-59, T2): sem escopo, a collection pessoal nao e consultada."""
+    if personal_scope is None and is_summarizer_collection(collection_name):
+        raise ValueError("the summarizer collection requires a personal scope.")
+    return personal_scope
+
+
 def _filter(
     payload_filter: dict[str, str] | None,
     user_groups: frozenset[str] | None,
+    *,
+    personal_scope: PersonalScope | None = None,
 ) -> models.Filter:
-    """Igualdade de campos, trechos ativos (RN-27) e, com usuario, o acesso (RF-43)."""
+    """Igualdade de campos, trechos ativos (RN-27), com usuario o acesso (RF-43)
+    e, com escopo pessoal, o dono e a conversa (RN-59)."""
     must: list[object] = [
         models.FieldCondition(key=key, match=models.MatchValue(value=value))
         for key, value in (payload_filter or {}).items()
     ]
+    if personal_scope is not None:
+        must.extend(
+            models.FieldCondition(key=key, match=models.MatchValue(value=value))
+            for key, value in (
+                (OWNER_USER_ID, personal_scope.owner_user_id),
+                (CONVERSATION_ID, personal_scope.conversation_id.value),
+            )
+        )
     if user_groups is not None:
         must.append(_access_filter(user_groups))
     # ``must_not`` em vez de ``active = true``: trechos sem o campo, gravados
@@ -499,4 +534,10 @@ def _payload(chunk: VectorChunk) -> dict[str, object]:
         ALLOWED_GROUPS: list(chunk.allowed_groups),
         ACTIVE: chunk.active,
         LEGAL_ARTICLE: chunk.legal_article,
+        # SPEC-018 (RN-59): so no documento pessoal.
+        **(
+            {OWNER_USER_ID: chunk.owner_user_id, CONVERSATION_ID: chunk.conversation_id}
+            if chunk.owner_user_id is not None
+            else {}
+        ),
     }

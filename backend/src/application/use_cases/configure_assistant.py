@@ -102,9 +102,16 @@ class _AssistantConfiguration:
         self._access = access_control
 
     def _require_curation(self, data: AssistantRefInput | UpdateAssistantRetrievalInput, action: AuditAction) -> None:
-        """Acesso antes da busca: sem acesso, 403 mesmo se o assistente nao existe."""
+        """Acesso antes da busca: sem acesso, 403 mesmo se o assistente nao existe.
+
+        SPEC-018 (D3): as leituras valem para o resumidor; a alteracao do perfil
+        de recuperacao dele responde 409 (RN-55).
+        """
         self._access.require_document_management(
-            data.user, AssistantId(data.assistant_id), action
+            data.user,
+            AssistantId(data.assistant_id),
+            action,
+            allow_system=action in (READ_LLM_ATTEMPT, READ_RETRIEVAL_ATTEMPT),
         )
 
     def _get(self, assistant_id: str) -> Assistant:

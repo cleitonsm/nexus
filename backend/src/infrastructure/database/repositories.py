@@ -27,6 +27,7 @@ from src.domain import (
     MessageId,
     MessageRole,
     ConcurrentChangeError,
+    ConversationDocumentExistsError,
     JobOwnershipLostError,
     LLMCredentialId,
     ReindexInProgressError,
@@ -74,6 +75,7 @@ class PostgresAssistantRepository:
                 ),
                 llm_model=assistant.llm_model,
                 retrieval_profile=profile_to_json(assistant.retrieval_profile),
+                system_kind=assistant.system_kind,
             )
             self._session.add(model)
         else:
@@ -305,7 +307,15 @@ class PostgresDocumentRepository:
 
     def save(self, document: Document) -> Document:
         model = _write_document(self._session, document)
-        commit_or_rollback(self._session)
+        try:
+            commit_or_rollback(self._session)
+        except IntegrityError as error:
+            # SPEC-018 (D8): dois envios simultaneos na mesma conversa.
+            if "uq_documents_conversation_id" in str(error.orig):
+                raise ConversationDocumentExistsError(
+                    "the conversation already has a document."
+                ) from error
+            raise
         self._session.refresh(model)
         return _document_to_entity(model)
 
@@ -359,6 +369,51 @@ class PostgresDocumentRepository:
         self._session.delete(model)
         commit_or_rollback(self._session)
         return True
+
+    def get_personal_by_conversation(
+        self, conversation_id: ConversationId
+    ) -> Document | None:
+        """SPEC-018 (D8): o indice unico garante no maximo um."""
+        model = self._session.scalars(
+            select(DocumentModel).where(
+                DocumentModel.conversation_id == conversation_id.value
+            )
+        ).first()
+        return _document_to_entity(model) if model else None
+
+    def count_personal_since(self, owner_user_id: str, since: datetime) -> int:
+        """SPEC-018 (RN-60, T8): lapides e falhas contam."""
+        return int(
+            self._session.scalar(
+                select(func.count(DocumentModel.id)).where(
+                    DocumentModel.owner_user_id == owner_user_id,
+                    DocumentModel.created_at > since,
+                )
+            )
+            or 0
+        )
+
+    def list_personal_indexed(self) -> list[Document]:
+        """SPEC-018: so os indexados; as lapides nao voltam (T7)."""
+        stmt = select(DocumentModel).where(
+            DocumentModel.owner_user_id.is_not(None),
+            DocumentModel.status == DocumentStatus.INDEXED.value,
+        )
+        return [_document_to_entity(item) for item in self._session.scalars(stmt).all()]
+
+    def list_personal_to_expire(self, now: datetime, limit: int) -> list[Document]:
+        """SPEC-018 (RF-120, T9): vencidos ainda nao expirados, mais antigos antes."""
+        stmt = (
+            select(DocumentModel)
+            .where(
+                DocumentModel.owner_user_id.is_not(None),
+                DocumentModel.status != DocumentStatus.EXPIRED.value,
+                DocumentModel.expires_at <= now,
+            )
+            .order_by(DocumentModel.expires_at)
+            .limit(limit)
+        )
+        return [_document_to_entity(item) for item in self._session.scalars(stmt).all()]
 
 
 class PostgresIngestionJobQueue:
@@ -751,6 +806,7 @@ def _assistant_to_entity(model: AssistantModel) -> Assistant:
         retrieval_profile=profile_from_json(
             model.retrieval_profile, assistant_id=model.id
         ),
+        system_kind=model.system_kind,
     )
 
 
@@ -860,6 +916,11 @@ def _write_document(session: Session, document: Document) -> DocumentModel:
         document.replaces_document_id.value if document.replaces_document_id else None
     )
     model.uploaded_by = document.uploaded_by
+    model.owner_user_id = document.owner_user_id
+    model.conversation_id = (
+        document.conversation_id.value if document.conversation_id else None
+    )
+    model.expires_at = document.expires_at
     return model
 
 
@@ -939,6 +1000,11 @@ def _document_to_entity(model: DocumentModel) -> Document:
             else None
         ),
         uploaded_by=model.uploaded_by,
+        owner_user_id=model.owner_user_id,
+        conversation_id=(
+            ConversationId(model.conversation_id) if model.conversation_id else None
+        ),
+        expires_at=model.expires_at,
     )
 
 

@@ -135,7 +135,7 @@
                 </button>
                 <!-- SPEC-014 (RF-96, D1): so o administrador exclui assistentes -->
                 <button
-                  *ngIf="menu().manageAssistants"
+                  *ngIf="menu().manageAssistants && !assistant.is_system"
                   type="button"
                   (click)="askDeleteAssistant(assistant)"
                   [disabled]="loading().deleteAssistant"

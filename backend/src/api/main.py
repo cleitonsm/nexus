@@ -26,6 +26,7 @@ from src.api.routes import (
     llm_credential_options_router,
     llm_credentials_router,
     me_router,
+    summarizer_router,
 )
 from src.api.middleware import register_request_context
 from src.application.use_cases import (
@@ -98,6 +99,7 @@ app.include_router(documents_router)
 app.include_router(feedback_router)
 app.include_router(index_router)
 app.include_router(me_router)
+app.include_router(summarizer_router)
 
 
 @app.get("/health")

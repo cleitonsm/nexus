@@ -8,7 +8,8 @@ from typing import Protocol
 from .access import AuthenticatedUser
 from .audit import AuditEvent, AuditQuery
 from .chunking import DocumentChunk, ExtractedDocument
-from .citations import ContextChunk
+from .citations import Citation, ContextChunk
+from .document_summary import PersonalScope, SectionText, SummaryStage
 from .errors import DomainValidationError
 from .feedback import FeedbackQuery, MessageFeedback
 from .home_assistants import HomeAssistantSelection
@@ -29,6 +30,8 @@ from .entities import (
     ChatMessage,
     Conversation,
     Document,
+    DocumentSummary,
+    DocumentSummarySection,
     IngestionJob,
     ReindexJob,
 )
@@ -120,6 +123,70 @@ class DocumentRepository(Protocol):
         ...
 
     def delete(self, document_id: DocumentId) -> bool: ...
+
+    def get_personal_by_conversation(
+        self, conversation_id: ConversationId
+    ) -> Document | None:
+        """SPEC-018 (RN-58, D8): o documento pessoal da conversa, se houver."""
+        ...
+
+    def count_personal_since(self, owner_user_id: str, since: datetime) -> int:
+        """SPEC-018 (RN-60, T8): envios do usuario desde ``since``, lapides inclusas."""
+        ...
+
+    def list_personal_indexed(self) -> list[Document]:
+        """SPEC-018: pessoais indexados (no maximo 30 dias de envios); sem lapides."""
+        ...
+
+    def list_personal_to_expire(self, now: datetime, limit: int) -> list[Document]:
+        """SPEC-018 (RF-120): pessoais ainda nao expirados com ``expires_at <= now``."""
+        ...
+
+
+class DocumentSummaryRepository(Protocol):
+    """SPEC-018 (D30): resumo consolidado, mini-resumos e andamento."""
+
+    def create(self, summary: DocumentSummary) -> DocumentSummary: ...
+
+    def get(self, document_id: DocumentId) -> DocumentSummary | None: ...
+
+    def set_stage(
+        self,
+        document_id: DocumentId,
+        stage: SummaryStage,
+        *,
+        batches_done: int = 0,
+        batches_total: int = 0,
+        document_tokens: int | None = None,
+    ) -> None:
+        """Grava a etapa e o andamento (D36); limpa a falha anterior."""
+        ...
+
+    def save_section(self, section: DocumentSummarySection) -> None:
+        """Grava um mini-resumo; repetir a mesma posicao substitui (nova tentativa)."""
+        ...
+
+    def list_sections(self, document_id: DocumentId) -> list[DocumentSummarySection]:
+        """Mini-resumos na ordem de ``position``."""
+        ...
+
+    def complete(
+        self,
+        document_id: DocumentId,
+        *,
+        content: str,
+        citations: tuple[Citation, ...],
+        prompt_version: str,
+        model: str,
+    ) -> None:
+        """Resumo pronto (``stage = pronto``)."""
+        ...
+
+    def fail(self, document_id: DocumentId, failure_code: str) -> None: ...
+
+    def delete_content(self, document_id: DocumentId) -> None:
+        """Apaga mini-resumos e o consolidado; mantem a linha sem conteudo (D10)."""
+        ...
 
 
 class IngestionJobQueue(Protocol):
@@ -387,6 +454,9 @@ class VectorChunk:
     # Artigo de documento normativo a que o trecho pertence ("5", "5-A");
     # None fora de artigo (SPEC-012, RF-83).
     legal_article: str | None = None
+    # SPEC-018 (RN-59): dono e conversa do documento pessoal; None na base.
+    owner_user_id: str | None = None
+    conversation_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -427,8 +497,14 @@ class VectorStoreGateway(Protocol):
         payload_filter: dict[str, str] | None = None,
         *,
         user_groups: frozenset[str] | None,
+        personal_scope: PersonalScope | None = None,
     ) -> list[SearchResult]:
         """Busca densa e esparsa com fusao RRF (RF-33).
+
+        SPEC-018 (RN-59, falha fechada): na collection do resumidor
+        (``is_summarizer_collection``), ``personal_scope`` e obrigatorio e
+        restringe a busca ao dono e a conversa; sem ele, levanta ``ValueError``
+        antes de consultar. Documento pessoal so e gravado nessa collection.
 
         ``user_groups`` e obrigatorio e aplica, dentro da consulta, a restricao
         por documento (RF-43, RNF-23): so voltam trechos sem restricao ou
@@ -454,7 +530,8 @@ class VectorStoreGateway(Protocol):
         """Trechos marcados com o artigo, por documento e ``chunk_index`` (RF-83).
 
         Mesmos filtros da busca hibrida: acesso por ``user_groups`` (RF-43) e
-        so trechos ativos (RN-27). ``score`` e 1,0: a correspondencia e exata.
+        so trechos ativos (RN-27). Na collection do resumidor levanta
+        ``ValueError``: ela nao tem artigos e exige escopo pessoal (RN-59). ``score`` e 1,0: a correspondencia e exata.
         Collection inexistente devolve lista vazia.
         """
         ...
@@ -526,6 +603,16 @@ class TokenCounter(Protocol):
     def count(self, text: str) -> int:
         """Tokens que o modelo consome para o texto, incluidos os especiais."""
         ...
+
+
+class SummarySectionSplitter(Protocol):
+    """SPEC-018 (T5): secoes inteiras do documento para o resumo, na ordem.
+
+    Cada paragrafo volta com no maximo ``SUMMARY_BATCH_MAX_TOKENS`` (o
+    paragrafo enorme e dividido por frases), como ``plan_summary_batches`` exige.
+    """
+
+    def split(self, document: ExtractedDocument) -> tuple[SectionText, ...]: ...
 
 
 class DocumentChunker(Protocol):

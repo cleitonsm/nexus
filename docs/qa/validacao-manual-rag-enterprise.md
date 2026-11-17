@@ -122,6 +122,33 @@ outro sem grupo. Anote o prompt original para restaurá-lo no fim. Faça as capt
 55. Navegue pelo card só com o teclado (Tab até os campos e os botões). A 360 px, confirme que o card
     cabe na tela sem rolagem horizontal. Restaure o prompt original.
 
+## SPEC-018 — Resumidor de documentos (CT-152)
+
+Pré-condição: os documentos fictícios gerados por `scripts/gerar_documentos_resumidor.py`
+(contrato em DOCX, relatório em PDF com uma página só em imagem, ata em TXT, um PDF de cerca de
+40 mil tokens e um DOCX acima do teto). Nenhum documento real. Capturas a 1280 px e a 360 px.
+
+56. Como `usuario.financeiro` (sem outro assistente), abra o Nexus: o acesso rápido mostra só o
+    "Resumidor de documentos", marcado como padrão, e as boas-vindas com formatos, 25 MB, 40.000
+    tokens, 30 dias e 10 por dia, sem o campo de mensagem cobrindo o texto.
+57. Como `usuario.rh`, abra "Personalizar acesso rápido": o resumidor aparece com o selo "Fixo",
+    sem caixa de marcação; o contador conta o resumidor e permite só mais 3.
+58. Anexe o contrato pelo clipe: o cartão "Enviando o documento…" aparece na hora; depois as etapas
+    "Lendo o documento", "Preparando para perguntas" e "Resumindo parte x de y".
+59. Durante o resumo, faça uma pergunta pontual: a resposta cita o contrato.
+60. Quando o resumo aparecer sozinho na conversa, confira a estrutura (visão geral, pontos por
+    seção, números e prazos, conclusões) e confira 5 afirmações contra a seção citada.
+61. Clique em "Resumir": o mesmo texto volta em menos de 1 s. Peça "resuma em 3 tópicos para um
+    diretor": a resposta vem dos mini-resumos, com citações.
+62. Tente anexar outro arquivo na mesma conversa (clipe desabilitado) e um `.xlsx` numa nova
+    (recusado antes do envio). Envie o DOCX acima do teto: falha com a contagem e o limite.
+63. Envie o relatório em PDF: a página em imagem é lida por OCR (demora mais) e o resumo sai.
+64. Como `admin.nexus`, em `/assistants` com o resumidor ativo: só o aviso e o card de LLM, sem
+    lixeira na barra lateral; troque o modelo e confirme. Tente abrir a conversa da usuária pela URL
+    da API: 404.
+65. Exclua a conversa do contrato e confira em `/admin/audit` o evento "summary_document.deleted"
+    com o motivo, sem conteúdo.
+
 ## Resultado esperado
 
 - Respostas fundamentadas exibem fontes; perguntas fora do escopo resultam em fallback.
@@ -133,3 +160,5 @@ outro sem grupo. Anote o prompt original para restaurá-lo no fim. Faça as capt
 - Administrador e curador do assistente alteram nome, descrição e prompt sem perder grupos,
   documentos nem índice; o prompt novo vale na próxima pergunta e não aparece para o usuário comum
   (SPEC-017).
+- Todo usuário resume os próprios documentos no resumidor; ninguém, nem o administrador, vê o
+  documento de outra pessoa; o resumo gravado volta sem LLM (SPEC-018).

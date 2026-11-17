@@ -10,8 +10,9 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 from src.application.dto import MessageDTO
-from src.application.services import AccessControl
+from src.application.services import AccessControl, PersonalDocumentRemover
 from src.domain import (
+    SUMMARIZER_ASSISTANT_ID,
     AuthenticatedUser,
     ChatMessage,
     Conversation,
@@ -90,7 +91,11 @@ class GetConversationUseCase:
 
 
 def _is_available(document: Document | None) -> bool:
-    return document is not None and document.status is not DocumentStatus.REPLACED
+    # SPEC-018: documento pessoal expirado tambem aparece como fonte removida.
+    return document is not None and document.status not in (
+        DocumentStatus.REPLACED,
+        DocumentStatus.EXPIRED,
+    )
 
 
 class DeleteConversationUseCase:
@@ -98,9 +103,11 @@ class DeleteConversationUseCase:
         self,
         repository: ConversationRepository,
         access_control: AccessControl,
+        personal_documents: PersonalDocumentRemover | None = None,
     ) -> None:
         self._repository = repository
         self._access = access_control
+        self._personal_documents = personal_documents
 
     def execute(self, data: ConversationRefInput) -> None:
         conversation = load_owned_conversation(
@@ -109,6 +116,14 @@ class DeleteConversationUseCase:
             data.user,
             ConversationId(data.conversation_id),
         )
+        if (
+            self._personal_documents is not None
+            and conversation.assistant_id == SUMMARIZER_ASSISTANT_ID
+        ):
+            # SPEC-018 (RF-120): o documento pessoal sai antes da conversa.
+            self._personal_documents.remove_for_conversation(
+                conversation.id, actor=data.user
+            )
         if not self._repository.delete(conversation.id):
             raise ConversationNotFoundError("conversation not found.")
 

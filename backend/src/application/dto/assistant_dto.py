@@ -15,6 +15,8 @@ class AssistantDTO:
     created_at: datetime
     # Grupos vinculados (RF-42); preenchido so para quem gerencia o assistente.
     groups: tuple[str, ...] = ()
+    # SPEC-018 (RN-55): assistente de sistema (o resumidor).
+    is_system: bool = False
 
     @classmethod
     def from_entity(
@@ -32,4 +34,5 @@ class AssistantDTO:
             initial_prompt=assistant.initial_prompt if reveal_prompt else None,
             created_at=assistant.created_at,
             groups=tuple(sorted(groups)),
+            is_system=assistant.is_system,
         )

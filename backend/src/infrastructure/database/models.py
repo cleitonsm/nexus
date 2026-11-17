@@ -32,6 +32,15 @@ def _utc_now() -> datetime:
 
 class AssistantModel(Base):
     __tablename__ = "assistants"
+    __table_args__ = (
+        # SPEC-018 (migracao 0013): um assistente de sistema por tipo.
+        Index(
+            "uq_assistants_system_kind",
+            "system_kind",
+            unique=True,
+            postgresql_where=text("system_kind IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(80), nullable=False)
@@ -57,6 +66,7 @@ class AssistantModel(Base):
     retrieval_profile: Mapped[dict[str, object] | None] = mapped_column(
         JSON(), nullable=True
     )
+    system_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     # passive_deletes: o ON DELETE CASCADE do banco apaga os filhos (fix-13).
     conversations: Mapped[list[ConversationModel]] = relationship(
@@ -78,8 +88,32 @@ class DocumentModel(Base):
         Index("ix_documents_assistant_hash", "assistant_id", "content_hash"),
         Index("ix_documents_replaces_document_id", "replaces_document_id"),
         CheckConstraint(
-            "status IN ('pendente', 'processando', 'indexado', 'falhou', 'substituido')",
+            "status IN ('pendente', 'processando', 'indexado', 'falhou', 'substituido', "
+            "'expirado')",
             name="ck_documents_status",
+        ),
+        # SPEC-018 (migracao 0013): conversa so com dono (T7) e um documento
+        # por conversa (D8).
+        CheckConstraint(
+            "conversation_id IS NULL OR owner_user_id IS NOT NULL",
+            name="ck_documents_conversation_owner",
+        ),
+        Index(
+            "uq_documents_conversation_id",
+            "conversation_id",
+            unique=True,
+            postgresql_where=text("conversation_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_documents_owner_created",
+            "owner_user_id",
+            "created_at",
+            postgresql_where=text("owner_user_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_documents_personal_expires_at",
+            "expires_at",
+            postgresql_where=text("owner_user_id IS NOT NULL AND status <> 'expirado'"),
         ),
     )
 
@@ -147,6 +181,20 @@ class DocumentModel(Base):
         nullable=True,
     )
     uploaded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # SPEC-018: documento pessoal do resumidor (RN-58, D9).
+    owner_user_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    conversation_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey(
+            "conversations.id",
+            ondelete="SET NULL",
+            name="fk_documents_conversation_id",
+        ),
+        nullable=True,
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     assistant: Mapped[AssistantModel] = relationship(
         back_populates="documents"
@@ -448,6 +496,10 @@ class UsageRecordModel(Base):
 
     __tablename__ = "usage_records"
     __table_args__ = (
+        CheckConstraint(
+            "operation IN ('chat', 'document_summary')",
+            name="ck_usage_records_operation",
+        ),
         Index("ix_usage_records_user_occurred", "user_id", "occurred_at"),
         Index("ix_usage_records_occurred", "occurred_at"),
         Index("ix_usage_records_conversation", "conversation_id"),
@@ -476,6 +528,10 @@ class UsageRecordModel(Base):
     fallback_used: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
     failed: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # SPEC-018 (RN-65): so ``chat`` conta nos limites de perguntas.
+    operation: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="chat", server_default="chat"
+    )
 
 
 class AppSettingModel(Base):
@@ -557,3 +613,75 @@ class UserHomeAssistantModel(Base):
     is_default: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
+
+
+class DocumentSummaryModel(Base):
+    """SPEC-018: andamento e resumo consolidado do documento pessoal (D30, D36)."""
+
+    __tablename__ = "document_summaries"
+    __table_args__ = (
+        CheckConstraint(
+            "stage IN ('enviado', 'extraindo', 'indexando', 'resumindo', 'pronto', "
+            "'falhou', 'expirado')",
+            name="ck_document_summaries_stage",
+        ),
+        CheckConstraint(
+            "batches_done >= 0 AND batches_done <= batches_total",
+            name="ck_document_summaries_batches",
+        ),
+    )
+
+    document_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey(
+            "documents.id",
+            ondelete="CASCADE",
+            name="fk_document_summaries_document_id",
+        ),
+        primary_key=True,
+    )
+    stage: Mapped[str] = mapped_column(String(16), nullable=False)
+    batches_done: Mapped[int] = mapped_column(
+        Integer(), nullable=False, default=0, server_default="0"
+    )
+    batches_total: Mapped[int] = mapped_column(
+        Integer(), nullable=False, default=0, server_default="0"
+    )
+    content: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    citations: Mapped[list[dict[str, object]] | None] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"), nullable=True
+    )
+    document_tokens: Mapped[int | None] = mapped_column(Integer(), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    failure_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utc_now
+    )
+
+
+class DocumentSummarySectionModel(Base):
+    """SPEC-018: mini-resumo de um lote de secoes (RN-63)."""
+
+    __tablename__ = "document_summary_sections"
+    __table_args__ = (
+        CheckConstraint("position >= 0", name="ck_document_summary_sections_position"),
+    )
+
+    document_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey(
+            "document_summaries.document_id",
+            ondelete="CASCADE",
+            name="fk_document_summary_sections_document_id",
+        ),
+        primary_key=True,
+    )
+    position: Mapped[int] = mapped_column(SmallInteger(), primary_key=True)
+    title: Mapped[str] = mapped_column(Text(), nullable=False)
+    page_start: Mapped[int | None] = mapped_column(Integer(), nullable=True)
+    input_tokens: Mapped[int] = mapped_column(Integer(), nullable=False)
+    content: Mapped[str] = mapped_column(Text(), nullable=False)

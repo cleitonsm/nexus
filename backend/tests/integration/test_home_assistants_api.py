@@ -68,6 +68,7 @@ class HomeAssistantsApiTestCase(unittest.TestCase):
                 "default_assistant_id": "normativo",
                 "max": 4,
                 "customized": False,
+                "pinned_assistant_id": None,
             },
         )
 

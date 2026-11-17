@@ -13,6 +13,8 @@ class HomeAssistantsDTO:
     default_assistant_id: str | None
     max: int
     customized: bool
+    # SPEC-018 (RN-57): cartao fixo, primeiro de ``assistant_ids``, fora das vagas.
+    pinned_assistant_id: str | None = None
 
     @classmethod
     def from_effective(cls, effective: EffectiveHomeAssistants | None) -> "HomeAssistantsDTO":
@@ -23,4 +25,5 @@ class HomeAssistantsDTO:
             default_assistant_id=effective.default_id.value,
             max=MAX_HOME_ASSISTANTS,
             customized=effective.customized,
+            pinned_assistant_id=effective.pinned_id.value if effective.pinned_id else None,
         )

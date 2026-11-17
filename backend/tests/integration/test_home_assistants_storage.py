@@ -23,13 +23,21 @@ try:
 except ImportError:  # pragma: no cover
     sa = None
 
-from src.domain import Assistant, AssistantId, AssistantName, HomeAssistantSelection
+from src.domain import (
+    SUMMARIZER_ASSISTANT_ID,
+    Assistant,
+    AssistantId,
+    AssistantName,
+    HomeAssistantSelection,
+)
 
 
 def _selection(ids: tuple[str, ...], default: str) -> HomeAssistantSelection:
+    # SPEC-018 (RN-57): a leitura sempre informa o resumidor fixo.
     return HomeAssistantSelection(
         assistant_ids=tuple(AssistantId(item) for item in ids),
         default_id=AssistantId(default),
+        pinned_id=SUMMARIZER_ASSISTANT_ID,
     )
 
 

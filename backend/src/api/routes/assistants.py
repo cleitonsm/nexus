@@ -73,6 +73,7 @@ def _assistant_response(item: AssistantDTO) -> AssistantResponse:
         initial_prompt=item.initial_prompt,
         created_at=item.created_at,
         groups=list(item.groups),
+        is_system=item.is_system,
     )
 
 

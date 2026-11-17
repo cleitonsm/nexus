@@ -68,6 +68,7 @@ def _home_response(result: HomeAssistantsDTO) -> HomeAssistantsResponse:
         default_assistant_id=result.default_assistant_id,
         max=result.max,
         customized=result.customized,
+        pinned_assistant_id=result.pinned_assistant_id,
     )
 
 

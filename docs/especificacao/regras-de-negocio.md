@@ -79,7 +79,7 @@ Regras do MVP revisadas por esta evolução:
 | ID    | Regra |
 |-------|-------|
 | RN-20 | Nenhuma funcionalidade é acessível sem autenticação pelo Keycloak; não existe cadastro local de usuários nem de senhas no Nexus. |
-| RN-21 | Papéis: o administrador gerencia assistentes, permissões e a configuração do LLM; o curador gerencia documentos e o conjunto de referência dos assistentes a que tem acesso e, desde a SPEC-017 (D1), altera o nome, a descrição e o prompt inicial desses assistentes (criar, excluir e vincular grupos continua só com o administrador); o usuário conversa com os assistentes a que tem acesso. |
+| RN-21 | Papéis: o administrador gerencia assistentes, permissões e a configuração do LLM; o curador gerencia documentos e o conjunto de referência dos assistentes a que tem acesso e, desde a SPEC-017 (D1), altera o nome, a descrição e o prompt inicial desses assistentes (criar, excluir e vincular grupos continua só com o administrador); o usuário conversa com os assistentes a que tem acesso. Desde a SPEC-018 (ADR 0014), todo usuário com papel usa o "Resumidor de documentos", assistente de sistema, e envia a ele documentos pessoais, visíveis só a quem enviou e só na própria conversa. |
 | RN-22 | Um assistente sem grupo vinculado é visível apenas a administradores (negação por padrão). |
 | RN-23 | Um documento restrito só pode compor o contexto de usuários pertencentes aos grupos autorizados; a restrição de documento nunca amplia o acesso além do definido para o assistente. |
 | RN-24 | O conteúdo de uma conversa é privado de quem a criou; administradores consultam apenas os registros de auditoria. |
@@ -102,3 +102,20 @@ Regras do MVP revisadas por esta evolução:
 | RN-31 | O conteúdo recuperado dos documentos é tratado como dado; instruções presentes nesse conteúdo nunca são obedecidas pelo assistente. |
 | RN-32 | Ao exceder o limite de uso, o usuário fica impedido de enviar novas perguntas até o início da janela seguinte, com mensagem orientativa. |
 | RN-33 | Uma resposta avaliada como não útil torna-se candidata ao conjunto de referência somente após validação de um curador. |
+
+## SPEC-018 — Resumidor de documentos
+
+As regras completas estão na [SPEC-018](specs/SPEC-018-resumidor-de-documentos.md); aqui fica o resumo.
+
+| ID | Regra |
+|-------|-------|
+| RN-55 | O assistente de sistema (`system_kind`) não é excluído nem tem perfil, recuperação, grupos ou base alterados (409 `system_assistant_readonly`); o administrador troca só credencial e modelo. |
+| RN-56 | O resumidor é visível a todo usuário com papel e fica fora da escolha automática de assistente. |
+| RN-57 | O resumidor é fixo e ocupa uma das 4 vagas do acesso rápido (3 à escolha do usuário); é o padrão de quem não personalizou e o recuo de quem perdeu o padrão. |
+| RN-58 | O documento pessoal pertence ao dono e à conversa; um por conversa; nem o administrador o lê. |
+| RN-59 | Na collection do resumidor, toda busca filtra também dono e conversa; sem eles, a busca é recusada antes de consultar. |
+| RN-60 | Limites: 40.000 tokens contados pelo tokenizador local, 25 MB, formatos da ingestão, 30 dias de retenção, 10 documentos por dia. |
+| RN-61 | A mensagem na conversa do resumidor vai para finalidade, progresso, resumo gravado, resumo sob medida (mini-resumos) ou pergunta pontual (RAG). |
+| RN-62 a RN-64 | Resumo em pt-BR no modelo fixo, de 300 a 1.000 palavras, com citação por parte; lotes de 4 a 8 mil tokens; falha no resumo não derruba as perguntas. |
+| RN-65 | O uso do resumo entra no custo do usuário e fica fora dos limites de perguntas. |
+| RN-66 e RN-67 | Prompts versionados no código; o documento vai ao LLM sempre como dado; auditoria sem conteúdo. |
